@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { themeData } from '@/lib/themeData';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { useHistory, useFavorites } from '@/lib/hooks';
+import { HistoryList } from '@/components/HistoryList';
+import { FavoritesList } from '@/components/FavoritesList';
+import { Tabs } from '@/components/Tabs';
+import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { ClockIcon, StarIcon } from '@heroicons/react/24/outline';
+
 
 export default function Home() {
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -13,17 +21,25 @@ export default function Home() {
     const [showGeminiArea, setShowGeminiArea] = useState(false);
     const [isDiggingDeeper, setIsDiggingDeeper] = useState(false);
     const [digDeeperResults, setDigDeeperResults] = useState<React.ReactNode>(null);
+    const { history, addHistory } = useHistory();
+    const { favorites, toggleFavorite } = useFavorites();
 
     const resetGeminiFeatures = () => {
-        setShowGeminiArea(false);
         setDigDeeperResults(null);
         setIsDiggingDeeper(false);
     };
 
     const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedCategory(e.target.value);
+        setShowGeminiArea(false);
         resetGeminiFeatures();
     };
+
+    useEffect(() => {
+        if (currentTheme) {
+            updateTheme(currentTheme);
+        }
+    }, [favorites]);
 
     const spinGacha = () => {
         setIsGachaSpinning(true);
@@ -46,24 +62,43 @@ export default function Home() {
                 clearInterval(shuffleInterval);
                 const finalThemeIndex = Math.floor(Math.random() * themePool.length);
                 const finalTheme = themePool[finalThemeIndex];
-                setCurrentTheme(finalTheme);
-
-                const categoryName = selectedCategory === 'all'
-                    ? Object.keys(themeData).find(key => themeData[key].includes(finalTheme))
-                    : selectedCategory;
-
-                setThemeDisplay(
-                    <div className="text-center">
-                        <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
-                        <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{finalTheme}</p>
-                    </div>
-                );
-
-                setShowGeminiArea(true);
+                updateTheme(finalTheme);
+                addHistory(finalTheme);
                 setIsGachaSpinning(false);
                 setGachaButtonText('もう一度回す');
             }
         }, 100);
+    };
+
+    const updateTheme = (theme: string) => {
+        setCurrentTheme(theme);
+
+        const categoryName = Object.keys(themeData).find(key => themeData[key].includes(theme)) || '色々';
+
+        setThemeDisplay(
+            <div className="text-center relative">
+                <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
+                <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{theme}</p>
+                <button
+                    onClick={() => toggleFavorite(theme)}
+                    className="absolute top-1/2 -translate-y-1/2 right-0 md:-right-12 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+                    aria-label="お気に入りに追加/削除"
+                >
+                    {favorites.includes(theme) ? (
+                        <StarIconSolid className="h-6 w-6 text-yellow-400" />
+                    ) : (
+                        <StarIconOutline className="h-6 w-6 text-gray-400" />
+                    )}
+                </button>
+            </div>
+        );
+        setShowGeminiArea(true);
+        resetGeminiFeatures();
+    };
+
+    const handleSelectTheme = (theme: string) => {
+        updateTheme(theme);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const getDeeperQuestions = async () => {
@@ -164,6 +199,19 @@ export default function Home() {
                 >
                     {gachaButtonText}
                 </button>
+
+                <div className="mt-8">
+                    <Tabs tabs={[
+                        {
+                            label: '履歴',
+                            content: <HistoryList history={history} favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
+                        },
+                        {
+                            label: 'お気に入り',
+                            content: <FavoritesList favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
+                        }
+                    ]} />
+                </div>
             </div>
         </div>
     );
