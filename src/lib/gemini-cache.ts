@@ -4,7 +4,7 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-const CACHE_DURATION_MS = 60 * 1440 * 1000; // 1 day
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 1日（本番環境と統一）
 
 export function get(key: string): any | null {
   const entry = cache.get(key);
@@ -27,4 +27,12 @@ export function set(key: string, data: any): void {
     timestamp: Date.now(),
   };
   cache.set(key, entry);
+
+  // 開発環境用：メモリ使用量制限
+  if (cache.size > 100) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
 }

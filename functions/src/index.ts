@@ -17,16 +17,41 @@ const corsHandler = cors({
 
 // シンプルなインメモリキャッシュ
 const cache = new Map<string, {data: any; timestamp: number}>();
-const CACHE_TTL = 30 * 60 * 1000; // 30分
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 1日
 
-// レート制限（シンプルな実装）
+// レート制限
 const requestCounts = new Map<string, {count: number; resetTime: number}>();
-const RATE_LIMIT = 10; // 1時間に10回
-const RATE_WINDOW = 60 * 60 * 1000; // 1時間
+const RATE_LIMIT = 50; // 1日に50回
+const RATE_WINDOW = 24 * 60 * 60 * 1000; // 1日
+
+// 追加：攻撃対策の強化
+const suspiciousPatterns = new Map<string, number>();
+const blockedIPs = new Set<string>(); // 悪質IPのブロックリスト
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
+  
+  // ブロックリストチェック
+  if (blockedIPs.has(ip)) {
+    logger.warn(`Blocked IP attempted access: ${ip}`);
+    return true;
+  }
+  
   const userRequests = requestCounts.get(ip);
+
+  // 不審なパターンのチェック（攻撃対策強化）
+  const currentCount = suspiciousPatterns.get(ip) || 0;
+  suspiciousPatterns.set(ip, currentCount + 1);
+  setTimeout(() => suspiciousPatterns.delete(ip), 5 * 60 * 1000); // 5分でリセット
+
+  // 攻撃パターンの検出と自動ブロック
+  if (currentCount > 15) { // 5分間で15回以上は悪質
+    logger.error(`Malicious activity detected from IP: ${ip}. Adding to blocklist.`);
+    blockedIPs.add(ip);
+    // 1時間後にブロック解除
+    setTimeout(() => blockedIPs.delete(ip), 60 * 60 * 1000);
+    return true;
+  }
 
   if (!userRequests || now > userRequests.resetTime) {
     requestCounts.set(ip, {count: 1, resetTime: now + RATE_WINDOW});
