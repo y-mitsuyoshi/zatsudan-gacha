@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
     const payload = { contents: chatHistory };
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(apiUrl, {
         method: 'POST',
