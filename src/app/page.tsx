@@ -9,7 +9,7 @@ import { FavoritesList } from '@/components/FavoritesList';
 import { Tabs } from '@/components/Tabs';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { ClockIcon, StarIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 
 export default function Home() {
@@ -23,6 +23,7 @@ export default function Home() {
     const [digDeeperResults, setDigDeeperResults] = useState<React.ReactNode>(null);
     const { history, addHistory } = useHistory();
     const { favorites, toggleFavorite } = useFavorites();
+    const [isCopied, setIsCopied] = useState(false);
 
     const resetGeminiFeatures = () => {
         setDigDeeperResults(null);
@@ -79,17 +80,31 @@ export default function Home() {
             <div className="text-center relative">
                 <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
                 <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{theme}</p>
-                <button
-                    onClick={() => toggleFavorite(theme)}
-                    className="absolute top-1/2 -translate-y-1/2 right-0 md:-right-12 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                    aria-label="お気に入りに追加/削除"
-                >
-                    {favorites.includes(theme) ? (
-                        <StarIconSolid className="h-6 w-6 text-yellow-400" />
-                    ) : (
-                        <StarIconOutline className="h-6 w-6 text-gray-400" />
-                    )}
-                </button>
+                <div className="absolute top-1/2 -translate-y-1/2 right-0 md:-right-12 flex items-center space-x-2">
+                    <button
+                        onClick={() => handleCopy(theme)}
+                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+                        aria-label="コピーする"
+                    >
+                        {isCopied ? (
+                            <CheckIcon className="h-6 w-6 text-green-500" />
+                        ) : (
+                            <ClipboardIcon className="h-6 w-6 text-gray-400" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => toggleFavorite(theme)}
+                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+                        aria-label="お気に入りに追加/削除"
+                    >
+                        {favorites.includes(theme) ? (
+                            <StarIconSolid className="h-6 w-6 text-yellow-400" />
+                        ) : (
+                            <StarIconOutline className="h-6 w-6 text-gray-400" />
+                        )}
+                    </button>
+                </div>
+                {isCopied && <p className="text-sm text-green-600 dark:text-green-400 mt-2">コピーしました！</p>}
             </div>
         );
         setShowGeminiArea(true);
@@ -99,6 +114,17 @@ export default function Home() {
     const handleSelectTheme = (theme: string) => {
         updateTheme(theme);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCopy = (text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setIsCopied(true);
+            setTimeout(() => {
+                setIsCopied(false);
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
     };
 
     const getDeeperQuestions = async () => {
