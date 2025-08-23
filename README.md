@@ -1,1 +1,0 @@
-# zatsudan-gacha
