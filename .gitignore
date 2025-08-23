@@ -46,3 +46,9 @@ next-env.d.ts
 .firebase
 firebase-debug.log
 .firebaserc
+
+# firebase functions
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/.env.local

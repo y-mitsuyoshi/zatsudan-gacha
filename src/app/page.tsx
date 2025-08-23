@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { callGeminiAPI } from '@/lib/api-config';
 import { themeData } from '@/lib/themeData';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { useHistory, useFavorites } from '@/lib/hooks';
@@ -126,50 +127,34 @@ export default function Home() {
         );
 
         try {
-            const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-            if (!apiKey) {
-                throw new Error('Gemini API key not configured');
-            }
+            const result = await callGeminiAPI(currentTheme);
+            
+            const questions = result.text.split('\n')
+                .filter(line => line.trim())
+                .map(line => line.replace(/^[•\-\*\d\.]\s*/, '').trim())
+                .filter(line => line);
 
-            const prompt = `「${currentTheme}」という雑談テーマについて、会話がもっと面白く広がるような、ユニークで深掘りできる質問を3つ提案してください。形式は箇条書きで、質問のみを返してください。`;
-            const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-            const payload = { contents: chatHistory };
-
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.text();
-                console.error("Gemini API request failed:", errorBody);
-                throw new Error(`API Error: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-
-            if (result.candidates && result.candidates.length > 0 &&
-                result.candidates[0].content && result.candidates[0].content.parts &&
-                result.candidates[0].content.parts.length > 0) {
-
-                const text = result.candidates[0].content.parts[0].text;
-
-                const questions = text.split('\n').filter((q: string) => q.trim().length > 0).map((q: string) => q.replace(/^[・*-]\s*/, ''));
-
-                setDigDeeperResults(
-                    <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
-                        {questions.map((question: string, index: number) => (
-                            <li key={index}>{question}</li>
-                        ))}
-                    </ul>
-                );
-            } else {
-                throw new Error("AIからの有効な回答がありませんでした。");
-            }
-
+            setDigDeeperResults(
+                <div className="space-y-3">
+                    <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-4">
+                        💭 こんな話題で深掘りしてみては？
+                    </h4>
+                    {questions.map((question, index) => (
+                        <div 
+                            key={index}
+                            className="p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-200 cursor-pointer"
+                            onClick={() => handleCopy(question)}
+                        >
+                            <p className="text-gray-700 dark:text-gray-300 font-medium">
+                                {question}
+                            </p>
+                        </div>
+                    ))}
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                        ✨ 質問をクリックするとコピーできます
+                    </p>
+                </div>
+            );
         } catch (error) {
             console.error("API call failed:", error);
             setDigDeeperResults(<p className="text-red-600">エラーが発生しました。少し時間をおいてから、もう一度お試しください。</p>);
