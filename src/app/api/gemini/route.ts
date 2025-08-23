@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited } from '@/lib/rate-limiter';
+import { get, set } from '../../../lib/gemini-cache';
 
 export async function POST(request: Request) {
   if (isRateLimited()) {
@@ -19,6 +20,11 @@ export async function POST(request: Request) {
 
     if (!theme || typeof theme !== 'string') {
       return NextResponse.json({ error: 'Theme is required and must be a string' }, { status: 400 });
+    }
+
+    const cached = get(theme);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -189,7 +195,9 @@ export async function POST(request: Request) {
         result.candidates[0].content.parts.length > 0) {
 
         const text = result.candidates[0].content.parts[0].text;
-        return NextResponse.json({ text });
+        const response = { text };
+        set(theme, response);
+        return NextResponse.json(response);
     } else {
         return NextResponse.json({ error: "AIからの有効な回答がありませんでした。" }, { status: 500 });
     }
