@@ -207,7 +207,7 @@ export default function Home() {
                     </div>
 
                     {gameMode === 'timeAttack' && (
-                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">1分間でテーマについて語りきろう！</p>
+                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">制限時間内にテーマについて語りきろう！</p>
                     )}
                 </div>
 
