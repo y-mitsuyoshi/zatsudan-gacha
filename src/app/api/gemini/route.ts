@@ -7,10 +7,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { theme } = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.error('Failed to parse JSON body:', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
-    if (!theme) {
-      return NextResponse.json({ error: 'Theme is required' }, { status: 400 });
+    const { theme } = body ?? {};
+
+    if (!theme || typeof theme !== 'string') {
+      return NextResponse.json({ error: 'Theme is required and must be a string' }, { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -22,7 +30,7 @@ export async function POST(request: Request) {
     const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
     const payload = { contents: chatHistory };
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-latest:generateContent?key=${apiKey}`;
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
