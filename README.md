@@ -14,7 +14,7 @@
 
 ### 1. 前提条件
 
-- [Node.js](https://nodejs.org/) (v18以降を推奨)
+- [Node.js](https://nodejs.org/) (v18.17.0以降を推奨)
 - [Git](https://git-scm.com/)
 
 ### 2. インストール
