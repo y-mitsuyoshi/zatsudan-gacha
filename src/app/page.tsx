@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { themeData } from '@/lib/themeData';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { useHistory, useFavorites } from '@/lib/hooks';
@@ -29,10 +29,10 @@ export default function Home() {
     const { favorites, toggleFavorite } = useFavorites();
     const [isCopied, setIsCopied] = useState(false);
 
-    const resetGeminiFeatures = () => {
+    const resetGeminiFeatures = useCallback(() => {
         setDigDeeperResults(null);
         setIsDiggingDeeper(false);
-    };
+    }, []);
 
     const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedCategory(e.target.value);
@@ -40,42 +40,18 @@ export default function Home() {
         resetGeminiFeatures();
     };
 
-    useEffect(() => {
-        if (currentTheme) {
-            updateTheme(currentTheme);
-        }
-    }, [favorites]);
+    const handleCopy = useCallback((text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setIsCopied(true);
+            setTimeout(() => {
+                setIsCopied(false);
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }, []);
 
-    const spinGacha = () => {
-        setIsGachaSpinning(true);
-        setGachaButtonText('抽選中...');
-        setThemeDisplay(null);
-        resetGeminiFeatures();
-
-        const themePool = (selectedCategory === 'all')
-            ? Object.values(themeData).flat()
-            : themeData[selectedCategory];
-
-        let shuffleCount = 0;
-        const shuffleInterval = setInterval(() => {
-            const randomIndex = Math.floor(Math.random() * themePool.length);
-            const tempTheme = themePool[randomIndex];
-            setThemeDisplay(<p className="text-2xl font-bold text-gray-700 dark:text-gray-300 animate-pulse">{tempTheme}</p>);
-            shuffleCount++;
-
-            if (shuffleCount >= 10) {
-                clearInterval(shuffleInterval);
-                const finalThemeIndex = Math.floor(Math.random() * themePool.length);
-                const finalTheme = themePool[finalThemeIndex];
-                updateTheme(finalTheme);
-                addHistory(finalTheme);
-                setIsGachaSpinning(false);
-                setGachaButtonText('もう一度回す');
-            }
-        }, 100);
-    };
-
-    const updateTheme = (theme: string) => {
+    const updateTheme = useCallback((theme: string) => {
         setCurrentTheme(theme);
 
         const categoryName = Object.keys(themeData).find(key => themeData[key].includes(theme)) || '色々';
@@ -113,22 +89,53 @@ export default function Home() {
         );
         setShowGeminiArea(true);
         resetGeminiFeatures();
+    }, [favorites, isCopied, toggleFavorite, handleCopy, resetGeminiFeatures]);
+
+    useEffect(() => {
+        if (currentTheme) {
+            updateTheme(currentTheme);
+        }
+    }, [currentTheme, updateTheme]);
+
+    const themePool = (selectedCategory === 'all')
+        ? Object.values(themeData).flat()
+        : themeData[selectedCategory] || [];
+
+    const spinGacha = () => {
+        setIsGachaSpinning(true);
+        setGachaButtonText('抽選中...');
+        setThemeDisplay(null);
+        resetGeminiFeatures();
+
+        let shuffleCount = 0;
+        const shuffleInterval = setInterval(() => {
+            if (!themePool || themePool.length === 0) {
+                clearInterval(shuffleInterval);
+                updateTheme("テーマが見つかりません。");
+                setIsGachaSpinning(false);
+                setGachaButtonText('ガチャを回す');
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * themePool.length);
+            const tempTheme = themePool[randomIndex];
+            setThemeDisplay(<p className="text-2xl font-bold text-gray-700 dark:text-gray-300 animate-pulse">{tempTheme}</p>);
+            shuffleCount++;
+
+            if (shuffleCount >= 10) {
+                clearInterval(shuffleInterval);
+                const finalThemeIndex = Math.floor(Math.random() * themePool.length);
+                const finalTheme = themePool[finalThemeIndex];
+                updateTheme(finalTheme);
+                addHistory(finalTheme);
+                setIsGachaSpinning(false);
+                setGachaButtonText('もう一度回す');
+            }
+        }, 100);
     };
 
     const handleSelectTheme = (theme: string) => {
         updateTheme(theme);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const handleCopy = (text: string) => {
-        navigator.clipboard.writeText(text).then(() => {
-            setIsCopied(true);
-            setTimeout(() => {
-                setIsCopied(false);
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-        });
     };
 
     const getDeeperQuestions = async () => {
@@ -208,25 +215,26 @@ export default function Home() {
                         </button>
                     </div>
 
-                    {gameMode === 'normal' ? (
-                        <>
-                            <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
-                            <select
-                                id="category-select"
-                                value={selectedCategory}
-                                onChange={handleCategoryChange}
-                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                            >
-                                <option value="all">すべてのテーマ</option>
-                                {Object.keys(themeData).map(category => (
-                                    <option key={category} value={category}>{category}</option>
-                                ))}
-                            </select>
-                        </>
-                    ) : (
-                        <p className="text-sm text-center text-gray-500 dark:text-gray-400">1分間でテーマについて語りきろう！</p>
+                    <div className="mb-6">
+                        <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
+                        <select
+                            id="category-select"
+                            value={selectedCategory}
+                            onChange={handleCategoryChange}
+                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        >
+                            <option value="all">すべてのテーマ</option>
+                            {Object.keys(themeData).map(category => (
+                                <option key={category} value={category}>{category}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {gameMode === 'timeAttack' && (
+                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">1分間でテーマについて語りきろう！</p>
                     )}
                 </div>
+
 
                 {gameMode === 'normal' ? (
                     <>
@@ -263,7 +271,7 @@ export default function Home() {
                     </>
                 ) : (
                     <div className="mb-6">
-                        <TimeAttackMode />
+                        <TimeAttackMode themes={themePool} />
                     </div>
                 )}
 

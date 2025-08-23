@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { themeData } from '@/lib/themeData';
 import { useHistory } from '@/lib/hooks';
 
 type GameStatus = 'waiting' | 'running' | 'finished';
 
-export const TimeAttackMode = () => {
+interface TimeAttackModeProps {
+    themes: string[];
+}
+
+export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
     const [status, setStatus] = useState<GameStatus>('waiting');
     const [currentTheme, setCurrentTheme] = useState('');
     const [timerDuration, setTimerDuration] = useState(60);
@@ -14,13 +17,16 @@ export const TimeAttackMode = () => {
     const { addHistory } = useHistory();
 
     const getRandomTheme = useCallback(() => {
-        const allThemes = Object.values(themeData).flat();
-        const randomIndex = Math.floor(Math.random() * allThemes.length);
-        const newTheme = allThemes[randomIndex];
+        if (themes.length === 0) {
+            setCurrentTheme("このカテゴリにテーマはありません。");
+            return;
+        }
+        const randomIndex = Math.floor(Math.random() * themes.length);
+        const newTheme = themes[randomIndex];
         setCurrentTheme(newTheme);
         addHistory(newTheme);
         return newTheme;
-    }, [addHistory]);
+    }, [themes, addHistory]);
 
     useEffect(() => {
         if (status !== 'running') {
