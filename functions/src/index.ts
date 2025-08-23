@@ -21,7 +21,7 @@ const CACHE_TTL = 24 * 60 * 60 * 1000; // 1日
 
 // レート制限
 const requestCounts = new Map<string, {count: number; resetTime: number}>();
-const RATE_LIMIT = 50; // 1日に50回
+const RATE_LIMIT = 20; // 1日に20回
 const RATE_WINDOW = 24 * 60 * 60 * 1000; // 1日
 
 // 追加：攻撃対策の強化
@@ -42,14 +42,14 @@ function isRateLimited(ip: string): boolean {
   // 不審なパターンのチェック（攻撃対策強化）
   const currentCount = suspiciousPatterns.get(ip) || 0;
   suspiciousPatterns.set(ip, currentCount + 1);
-  setTimeout(() => suspiciousPatterns.delete(ip), 5 * 60 * 1000); // 5分でリセット
+  setTimeout(() => suspiciousPatterns.delete(ip), 60 * 1000); // 1分でリセット
 
   // 攻撃パターンの検出と自動ブロック
-  if (currentCount > 15) { // 5分間で15回以上は悪質
+  if (currentCount > 10) { // 1分間で10回以上は悪質
     logger.error(`Malicious activity detected from IP: ${ip}. Adding to blocklist.`);
     blockedIPs.add(ip);
-    // 1時間後にブロック解除
-    setTimeout(() => blockedIPs.delete(ip), 60 * 60 * 1000);
+    // 24時間後にブロック解除
+    setTimeout(() => blockedIPs.delete(ip), 24 * 60 * 60 * 1000);
     return true;
   }
 
