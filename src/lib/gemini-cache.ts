@@ -4,7 +4,7 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_DURATION_MS = 60 * 1440 * 1000; // 1 day
 
 export function get(key: string): any | null {
   const entry = cache.get(key);
