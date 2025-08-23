@@ -9,6 +9,22 @@ const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "700"], va
 export const metadata: Metadata = {
   title: "雑談テーマガチャ",
   description: "リモートでも、雑談でつながろう。",
+  openGraph: {
+    title: "雑談テーマガチャ",
+    description: "会議のアイスブレイクや雑談のきっかけに！ランダムにお題を出すアプリ。",
+    // TODO: デプロイ後に本番環境のURLに更新してください
+    url: "https://zatsudan-gacha.vercel.app/",
+    siteName: "雑談テーマガチャ",
+    // TODO: アプリのOGP画像へのパスをここに追加してください
+    // images: [
+    //   {
+    //     url: '/ogp.png', // 例: /ogp.png
+    //     width: 1200,
+    //     height: 630,
+    //   },
+    // ],
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

@@ -8,6 +8,7 @@ import { HistoryList } from '@/components/HistoryList';
 import { FavoritesList } from '@/components/FavoritesList';
 import { Tabs } from '@/components/Tabs';
 import { TimeAttackMode } from '@/components/TimeAttackMode';
+import { ShareButtons } from '@/components/ShareButtons';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
@@ -292,6 +293,8 @@ export default function Home() {
                         }
                     ]} />
                 </div>
+
+                <ShareButtons />
             </div>
         </div>
     );
