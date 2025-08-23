@@ -14,19 +14,27 @@
 
 ### 1. 前提条件
 
-- [Node.js](https://nodejs.org/) (`v22.14.0`以降を推奨)
+- [Node.js](https://nodejs.org/) (`v22.14.0`以降が必須)
 - [pnpm](https://pnpm.io/ja/) (v9以降)
 - [Git](https://git-scm.com/)
 
 ### 2. インストール
 
-1. **リポジトリをクローンする**
+1. **Node.jsバージョンの確認**
+   
+   このプロジェクトはNode.js v22.14.0以降が必要です。現在のバージョンを確認してください：
+   ```bash
+   node -v
+   ```
+   v22.14.0未満の場合は、[Node.js公式サイト](https://nodejs.org/)から最新版をインストールしてください。
+
+2. **リポジトリをクローンする**
    ```bash
    git clone https://github.com/your-username/zatsudan-gacha.git
    cd zatsudan-gacha
    ```
 
-2. **依存関係をインストールする**
+3. **依存関係をインストールする**
 
    このプロジェクトでは、パッケージマネージャーとして`pnpm`を使用します。`pnpm`がインストールされていない場合は、以下のコマンドでインストールしてください。
    ```bash
