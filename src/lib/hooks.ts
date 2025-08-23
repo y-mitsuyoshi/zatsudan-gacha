@@ -55,7 +55,7 @@ export const useHistory = () => {
     const addHistory = (theme: string) => {
         setHistory(prevHistory => {
             const newHistory = [theme, ...prevHistory.filter(h => h !== theme)];
-            return newHistory.slice(0, 50); // 履歴は最新50件まで
+            return newHistory.slice(0, 10); // 履歴は最新10件まで
         });
     };
 
