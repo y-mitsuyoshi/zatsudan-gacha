@@ -118,21 +118,23 @@ firebase functions:config:get
    npm run build
    cd ..
    ```
+   
+   > **注**: Firebase Functionsディレクトリでは、Firebase CLIとの互換性のためnpmを使用します。
 
 3. **デプロイの実行**
 
    **すべてをデプロイ（推奨）:**
    ```bash
-   npm run deploy
+   pnpm run deploy
    ```
 
    **個別にデプロイする場合:**
    ```bash
    # Functionsのみ
-   npm run deploy:functions
+   pnpm run deploy:functions
    
    # Hostingのみ
-   npm run deploy:hosting
+   pnpm run deploy:hosting
    ```
 
 ### 環境の違い
