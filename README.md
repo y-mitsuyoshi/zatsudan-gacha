@@ -14,7 +14,8 @@
 
 ### 1. 前提条件
 
-- [Node.js](https://nodejs.org/) (v18.17.0以降を推奨)
+- [Node.js](https://nodejs.org/) (`v22.14.0`以降を推奨)
+- [pnpm](https://pnpm.io/ja/) (v9以降)
 - [Git](https://git-scm.com/)
 
 ### 2. インストール
@@ -26,8 +27,15 @@
    ```
 
 2. **依存関係をインストールする**
+
+   このプロジェクトでは、パッケージマネージャーとして`pnpm`を使用します。`pnpm`がインストールされていない場合は、以下のコマンドでインストールしてください。
    ```bash
-   npm install
+   npm install -g pnpm
+   ```
+
+   準備ができたら、依存関係をインストールします。
+   ```bash
+   pnpm install
    ```
 
 ### 3. 環境変数の設定
@@ -50,7 +58,7 @@ AIによる深掘り機能を利用するには、Google Gemini APIキーが必�
 以下のコマンドを実行すると、開発サーバーが起動します。
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ブラウザで `http://localhost:3000` を開くと、アプリケーションが表示されます。
