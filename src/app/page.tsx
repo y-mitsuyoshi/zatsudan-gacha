@@ -81,10 +81,10 @@ export default function Home() {
         const categoryName = Object.keys(themeData).find(key => themeData[key].includes(theme)) || '色々';
 
         setThemeDisplay(
-            <div className="text-center relative">
+            <div className="text-center relative pr-24">
                 <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
                 <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{theme}</p>
-                <div className="absolute top-1/2 -translate-y-1/2 right-0 md:-right-12 flex items-center space-x-2">
+                <div className="absolute top-1/2 -translate-y-1/2 right-4 flex items-center space-x-2">
                     <button
                         onClick={() => handleCopy(theme)}
                         className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
