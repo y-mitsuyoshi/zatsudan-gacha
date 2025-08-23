@@ -6,7 +6,7 @@
 
 - **カテゴリ別テーマ**: 「趣味」「旅行」「仕事」など、様々なカテゴリからテーマを絞り込めます。もちろん、すべてのテーマからランダムに選ぶことも可能です。
 - **ガチャ演出**: ボタンを押すと、テーマが高速で切り替わるアニメーションで、ガチャを回すワクワク感を楽しめます。
-- **AIによる深掘り**: Gemini APIを活用し、選ばれたテーマに対して「AIに深掘り質問を考えてもらう」機能があります。これにより、一つのテーマからさらに会話を広げることができます。
+- **AIによる深掘り**: Gemini APIを活用し、選ばれたテーマに対して「AIに深掘り質問を考えてもらう」機能があります。これにより、一つのテーマからさらに会話を広げることができます。本番環境では、Firebase Functionsを使用してAPIキーの安全性を確保しています。
 
 ## 🚀 はじめに
 
@@ -70,74 +70,110 @@ pnpm run dev
 - [TypeScript](https://www.typescriptlang.org/) – 型付け
 - [Tailwind CSS](https://tailwindcss.com/) – CSSフレームワーク
 - [Google Gemini API](https://ai.google.dev/) – AIモデル
+- [Firebase](https://firebase.google.com/) – ホスティング・Functions（本番環境）
 
 ## 🔥 Firebaseへのデプロイ
 
-このアプリケーションはFirebase Hostingにデプロイできます。
+このアプリケーションはFirebase HostingとFirebase Functionsにデプロイできます。本番環境では、セキュリティを向上させるためにFirebase FunctionsでGemini APIを処理します。
 
-### 1. Firebaseツールの準備
+### 前提条件
 
-プロジェクトには`firebase-tools`が開発依存関係として含まれていますが、グローバルにインストールしておくと便利です。
+1. **Firebaseプロジェクトの作成**
+   - [Firebase Console](https://console.firebase.google.com/)でプロジェクトを作成
+   - Firebase Hostingを有効化
+   - Firebase Functionsを有効化（Blazeプランが必要ですが、無料枠内で十分利用可能）
 
-```bash
-npm install -g firebase-tools
-```
+2. **Firebaseツールの準備**
+   ```bash
+   npm install -g firebase-tools
+   ```
 
-### 2. Firebaseへのログイン
+3. **Firebaseへのログイン**
+   ```bash
+   firebase login
+   ```
 
-次のコマンドを実行し、ブラウザでFirebaseアカウントにログインします。
+### セキュアなAPIキー設定
 
-```bash
-firebase login
-```
-
-### 3. プロジェクトのビルド
-
-デプロイする前に、Next.jsアプリケーションを静的ファイルとしてビルドする必要があります。
-
-**重要**: ビルド時に`.env.local`の環境変数が静的ファイルに埋め込まれます。
-
-```bash
-pnpm run build
-```
-
-このコマンドにより、`out`ディレクトリにデプロイ用のファイルが生成されます。
-
-### 4. デプロイの実行
-
-最後に、Firebaseにデプロイします。
+本番環境では、APIキーをFirebase Functionsの環境変数として設定します：
 
 ```bash
-firebase deploy --only hosting
+# Gemini APIキーを設定
+firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY_HERE"
+
+# 設定を確認
+firebase functions:config:get
 ```
 
-デプロイが完了すると、コンソールに表示されるURLでアプリケーションにアクセスできます。
+### デプロイ手順
 
-### `.firebaserc.example` の使い方（重要）
+1. **プロジェクトのビルド**
+   ```bash
+   pnpm run build
+   ```
 
-リポジトリには個人のFirebase設定を含む `.firebaserc` を直接コミットしないためのテンプレートファイル
-`.firebaserc.example` を用意しています。デプロイする際はローカルで実際のプロジェクトIDを設定した `.firebaserc`
-ファイルを作成してください。
+2. **Firebase Functionsのビルド**
+   ```bash
+   cd functions
+   npm run build
+   cd ..
+   ```
 
-手順:
+3. **デプロイの実行**
 
-1. リポジトリをクローンまたは取得した後、テンプレートをコピーして自分のプロジェクトIDに置き換えます。
+   **すべてをデプロイ（推奨）:**
+   ```bash
+   npm run deploy
+   ```
+
+   **個別にデプロイする場合:**
+   ```bash
+   # Functionsのみ
+   npm run deploy:functions
+   
+   # Hostingのみ
+   npm run deploy:hosting
+   ```
+
+### 環境の違い
+
+- **開発環境**: Next.js API Routes使用（`/api/gemini`）
+- **本番環境**: Firebase Functions使用（`https://us-central1-{project-id}.cloudfunctions.net/gemini`）
+
+### セキュリティ機能
+
+本番環境では以下のセキュリティ機能が有効になります：
+
+- **APIキー保護**: Firebase Functionsの環境変数で管理
+- **CORS設定**: 信頼できるドメインからのアクセスのみ許可
+- **レート制限**: 1IPアドレスあたり1時間に10回まで
+- **キャッシュ機能**: 同一テーマを30分間キャッシュ
+
+### Firebase設定ファイル
+
+`.firebaserc.example` を使用して設定：
 
 ```bash
 cp .firebaserc.example .firebaserc
-# もしくはエディタで開いて "REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID" を実際の projectId に書き換える
+# エディタで "REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID" を実際のプロジェクトIDに置き換え
 ```
 
-2. `.firebaserc` は `.gitignore` に含まれているため、誤ってリモートに上がることはありません。
+### デプロイ後の確認
 
-3. その後、通常通りビルド・デプロイします。
+デプロイが完了したら、以下で動作確認：
 
 ```bash
-pnpm run build
-firebase deploy --only hosting
+# API動作テスト
+curl -X POST \
+  https://us-central1-{your-project-id}.cloudfunctions.net/gemini \
+  -H "Content-Type: application/json" \
+  -d '{"theme":"テストテーマ"}'
 ```
 
-注意点:
+### トラブルシューティング
 
-- 複数人で作業する場合は、各自が自分の `.firebaserc` を作成してください。共通の設定を共有する必要がある場合は、`.firebaserc.example` を更新してプロジェクト固有のヒントを追記してください。
-- リポジトリに含めるのはテンプレートのみとし、個人用のキーやプロジェクトIDはコミットしないでください。
+- **Functions デプロイエラー**: `firebase functions:config:get`でAPI設定を確認
+- **CORS エラー**: `functions/src/index.ts`でドメイン設定を確認
+- **Node.js バージョンエラー**: Functions用にNode.js 18以上が必要
+
+詳細な設定手順は `FIREBASE_SETUP.md` および `SECURITY_SETUP.md` をご参照ください。
