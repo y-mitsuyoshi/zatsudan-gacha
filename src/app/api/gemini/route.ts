@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited } from '@/lib/rate-limiter';
 import { get, set } from '../../../lib/gemini-cache';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(request: Request) {
   if (isRateLimited()) {
@@ -29,19 +28,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
     const prompt = `「${theme}」という雑談テーマについて、会話がもっと面白く広がるような、ユニークで深掘りできる質問を3つ提案してください。形式は箇条書きで、質問のみを返してください。`;
+    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+    const payload = { contents: chatHistory };
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
-    const cacheData = { text };
-    set(theme, cacheData);
+    const apiResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
-    return NextResponse.json(cacheData);
+    if (!apiResponse.ok) {
+        const errorBody = await apiResponse.text();
+        console.error("Gemini API request failed:", errorBody);
+        throw new Error(`API Error: ${apiResponse.statusText}`);
+    }
+
+    const result = await apiResponse.json();
+
+    if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+
+        const text = result.candidates[0].content.parts[0].text;
+        const cacheData = { text };
+        set(theme, cacheData);
+        return NextResponse.json(cacheData);
+    } else {
+        console.error("Invalid response structure from Gemini API:", result);
+        throw new Error("AIからの有効な回答がありませんでした。");
+    }
 
   } catch (error) {
     console.error("Gemini API call failed:", error);
