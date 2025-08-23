@@ -1,6 +1,32 @@
-# Firebase Functions デプロイ手順
+# Firebase セットアップ手順
 
-## 1. 環境変数の設定
+## 1. Firebase プロジェクトの設定
+
+### Firebase Console での設定
+1. [Firebase Console](https://console.firebase.google.com/) にアクセス
+2. 新しいプロジェクトを作成（既にある場合はスキップ）
+3. Analytics を有効にする
+4. プロジェクト設定から設定値を取得
+
+### 環境変数の設定
+`.env.local` ファイルを作成し、以下の値を設定してください：
+
+```bash
+# Google AI Studio (https://aistudio.google.com/app/apikey) で取得したAPIキーを設定してください
+# 開発環境でのみ使用（本番環境ではFirebase Functionsで管理）
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+
+# Firebase 設定（Firebase Console のプロジェクト設定から取得）
+NEXT_PUBLIC_FIREBASE_API_KEY="your-api-key"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="123456789"
+NEXT_PUBLIC_FIREBASE_APP_ID="1:123456789:web:abcdef"
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="G-XXXXXXXXXX"
+```
+
+## 2. Firebase Functions の設定
 
 Firebase Functions で Gemini API を使用するために、環境変数を設定します：
 
@@ -22,7 +48,29 @@ npm run deploy:functions
 npm run deploy
 ```
 
-## 3. 本番環境での確認
+## 3. Firebase Analytics の確認
+
+デプロイ後、Firebase Console で Analytics データを確認できます：
+
+1. [Firebase Console](https://console.firebase.google.com/) にアクセス
+2. プロジェクトを選択
+3. 左メニューの「Analytics」→「ダッシュボード」を選択
+4. リアルタイムまたは過去のデータを確認
+
+### トラッキングされるイベント
+- `page_view`: ページビュー
+- `gacha_spin`: ガチャ実行
+- `gacha_result`: ガチャ結果
+- `category_changed`: カテゴリ変更
+- `game_mode_changed`: ゲームモード変更
+- `ai_dig_deeper_requested`: AI深掘り機能使用
+- `ai_dig_deeper_success`: AI深掘り成功
+- `ai_dig_deeper_error`: AI深掘りエラー
+- `ai_question_copied`: AI質問コピー
+- `theme_copied`: テーマコピー
+- `favorite_toggled`: お気に入り追加/削除
+
+## 4. 本番環境での確認
 
 デプロイ後、以下のエンドポイントでAPIが動作するか確認してください：
 

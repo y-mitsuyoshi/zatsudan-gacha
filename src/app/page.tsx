@@ -10,6 +10,7 @@ import { FavoritesList } from '@/components/FavoritesList';
 import { Tabs } from '@/components/Tabs';
 import { TimeAttackMode } from '@/components/TimeAttackMode';
 import { ShareButtons } from '@/components/ShareButtons';
+import { trackEvent } from '@/lib/firebase';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
@@ -37,9 +38,16 @@ export default function Home() {
     }, []);
 
     const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedCategory(e.target.value);
+        const newCategory = e.target.value;
+        setSelectedCategory(newCategory);
         setShowGeminiArea(false);
         resetGeminiFeatures();
+        
+        // カテゴリ変更をトラッキング
+        trackEvent('category_changed', {
+            category: newCategory,
+            previous_category: selectedCategory
+        });
     };
 
     const handleCopy = useCallback((text: string) => {
@@ -84,6 +92,12 @@ export default function Home() {
         setThemeDisplay(null);
         resetGeminiFeatures();
 
+        // ガチャ実行をトラッキング
+        trackEvent('gacha_spin', {
+            category: selectedCategory,
+            game_mode: gameMode
+        });
+
         let shuffleCount = 0;
         const shuffleInterval = setInterval(() => {
             if (!themePool || themePool.length === 0) {
@@ -106,6 +120,13 @@ export default function Home() {
                 addHistory(finalTheme);
                 setIsGachaSpinning(false);
                 setGachaButtonText('もう一度回す');
+
+                // ガチャ結果をトラッキング
+                trackEvent('gacha_result', {
+                    theme: finalTheme,
+                    category: selectedCategory,
+                    game_mode: gameMode
+                });
             }
         }, 100);
     };
@@ -126,6 +147,12 @@ export default function Home() {
             </div>
         );
 
+        // AI深掘り機能使用をトラッキング
+        trackEvent('ai_dig_deeper_requested', {
+            theme: currentTheme,
+            category: selectedCategory
+        });
+
         try {
             const result = await callGeminiAPI(currentTheme);
             
@@ -133,6 +160,12 @@ export default function Home() {
                 .filter(line => line.trim())
                 .map(line => line.replace(/^[•\-\*\d\.]\s*/, '').trim())
                 .filter(line => line);
+
+            // AI深掘り成功をトラッキング
+            trackEvent('ai_dig_deeper_success', {
+                theme: currentTheme,
+                questions_count: questions.length
+            });
 
             setDigDeeperResults(
                 <div className="space-y-3">
@@ -143,7 +176,14 @@ export default function Home() {
                         <div 
                             key={index}
                             className="p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-200 cursor-pointer"
-                            onClick={() => handleCopy(question)}
+                            onClick={() => {
+                                handleCopy(question);
+                                // 質問コピーをトラッキング
+                                trackEvent('ai_question_copied', {
+                                    question: question,
+                                    theme: currentTheme
+                                });
+                            }}
                         >
                             <p className="text-gray-700 dark:text-gray-300 font-medium">
                                 {question}
@@ -157,6 +197,13 @@ export default function Home() {
             );
         } catch (error) {
             console.error("API call failed:", error);
+            
+            // AI深掘り失敗をトラッキング
+            trackEvent('ai_dig_deeper_error', {
+                theme: currentTheme,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            
             setDigDeeperResults(<p className="text-red-600">エラーが発生しました。少し時間をおいてから、もう一度お試しください。</p>);
         } finally {
             setIsDiggingDeeper(false);
@@ -176,7 +223,10 @@ export default function Home() {
                 <div className="mb-6">
                     <div className="flex justify-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 mb-6">
                         <button
-                            onClick={() => setGameMode('normal')}
+                            onClick={() => {
+                                setGameMode('normal');
+                                trackEvent('game_mode_changed', { mode: 'normal' });
+                            }}
                             className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                                 gameMode === 'normal'
                                     ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
@@ -186,7 +236,10 @@ export default function Home() {
                             ノーマル
                         </button>
                         <button
-                            onClick={() => setGameMode('timeAttack')}
+                            onClick={() => {
+                                setGameMode('timeAttack');
+                                trackEvent('game_mode_changed', { mode: 'timeAttack' });
+                            }}
                             className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                                 gameMode === 'timeAttack'
                                     ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
@@ -228,7 +281,10 @@ export default function Home() {
                             <div className="mb-6">
                                 <div className="flex justify-center items-center space-x-4">
                                     <button
-                                        onClick={() => handleCopy(currentTheme)}
+                                        onClick={() => {
+                                            handleCopy(currentTheme);
+                                            trackEvent('theme_copied', { theme: currentTheme });
+                                        }}
                                         className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
                                         aria-label="コピーする"
                                     >
@@ -239,7 +295,13 @@ export default function Home() {
                                         )}
                                     </button>
                                     <button
-                                        onClick={() => toggleFavorite(currentTheme)}
+                                        onClick={() => {
+                                            toggleFavorite(currentTheme);
+                                            trackEvent('favorite_toggled', { 
+                                                theme: currentTheme,
+                                                action: favorites.includes(currentTheme) ? 'removed' : 'added'
+                                            });
+                                        }}
                                         className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
                                         aria-label="お気に入りに追加/削除"
                                     >
