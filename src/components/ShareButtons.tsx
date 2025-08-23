@@ -56,10 +56,10 @@ export const ShareButtons = () => {
                 このアプリをシェア
             </h3>
             <div className="flex justify-center items-center space-x-4">
-                <a href={xUrl} target="_blank" rel="noopener noreferrer" aria-label="Xでシェア" className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
+                <a href={xUrl} target="_blank" rel="noopener noreferrer" aria-label="Xでシェア" className="text-black dark:text-white transition-colors">
                     <XIcon className="h-8 w-8" />
                 </a>
-                <a href={facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebookでシェア" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
+                <a href={facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebookでシェア" className="text-blue-600 dark:text-blue-500 transition-colors">
                     <FacebookIcon className="h-8 w-8" />
                 </a>
                 <a href={lineUrl} target="_blank" rel="noopener noreferrer" aria-label="LINEでシェア" className="text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors">
