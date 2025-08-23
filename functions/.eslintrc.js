@@ -1,4 +1,5 @@
 module.exports = {
+  root: true, // この設定をルートとして扱い、親ディレクトリの設定を無視
   env: {
     browser: true,
     es6: true,
@@ -17,6 +18,13 @@ module.exports = {
     "@typescript-eslint",
     "import",
   ],
+  settings: {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  },
   rules: {
     "@typescript-eslint/adjacent-overload-signatures": "error",
     "@typescript-eslint/no-empty-function": "error",
@@ -33,6 +41,7 @@ module.exports = {
     "import/no-deprecated": "warn",
     "import/no-extraneous-dependencies": "error",
     "import/no-unassigned-import": "warn",
+    "import/no-unresolved": "off", // Firebase Functions v2のモジュール解決問題を回避
     "no-cond-assign": "error",
     "no-duplicate-case": "error",
     "no-duplicate-imports": "error",
