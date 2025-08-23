@@ -12,7 +12,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
     "autoprefixer": "^10.4.21",
     "next": "^14.2.32",
