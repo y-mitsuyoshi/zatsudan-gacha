@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
+import { isRateLimited } from '@/lib/rate-limiter';
 
 export async function POST(request: Request) {
+  if (isRateLimited()) {
+    return NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
+  }
+
   try {
     const { theme } = await request.json();
 
