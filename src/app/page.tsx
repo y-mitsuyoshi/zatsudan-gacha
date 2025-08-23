@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { themeData } from '@/lib/themeData';
+import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
 export default function Home() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [currentTheme, setCurrentTheme] = useState('');
-    const [themeDisplay, setThemeDisplay] = useState<React.ReactNode>(<p className="text-lg text-gray-600">カテゴリを選んでボタンを押してね！</p>);
+    const [themeDisplay, setThemeDisplay] = useState<React.ReactNode>(<p className="text-lg text-gray-600 dark:text-gray-400">カテゴリを選んでボタンを押してね！</p>);
     const [gachaButtonText, setGachaButtonText] = useState('ガチャを回す');
     const [isGachaSpinning, setIsGachaSpinning] = useState(false);
     const [showGeminiArea, setShowGeminiArea] = useState(false);
@@ -38,7 +39,7 @@ export default function Home() {
         const shuffleInterval = setInterval(() => {
             const randomIndex = Math.floor(Math.random() * themePool.length);
             const tempTheme = themePool[randomIndex];
-            setThemeDisplay(<p className="text-2xl font-bold text-gray-700 animate-pulse">{tempTheme}</p>);
+            setThemeDisplay(<p className="text-2xl font-bold text-gray-700 dark:text-gray-300 animate-pulse">{tempTheme}</p>);
             shuffleCount++;
 
             if (shuffleCount >= 10) {
@@ -53,8 +54,8 @@ export default function Home() {
 
                 setThemeDisplay(
                     <div className="text-center">
-                        <span className="inline-block bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
-                        <p className="text-2xl md:text-3xl font-bold text-indigo-600">{finalTheme}</p>
+                        <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
+                        <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{finalTheme}</p>
                     </div>
                 );
 
@@ -72,7 +73,7 @@ export default function Home() {
         setDigDeeperResults(
             <div className="flex items-center justify-center p-4">
                 <div className="loader"></div>
-                <p className="ml-4 text-gray-600">AIが質問を考えています...</p>
+                <p className="ml-4 text-gray-600 dark:text-gray-400">AIが質問を考えています...</p>
             </div>
         );
 
@@ -93,7 +94,7 @@ export default function Home() {
             const questions = text.split('\n').filter((q: string) => q.trim().length > 0).map((q: string) => q.replace(/^[・*-]\s*/, ''));
 
             setDigDeeperResults(
-                <ul className="list-disc list-inside space-y-2 text-gray-700">
+                <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
                     {questions.map((question: string, index: number) => (
                         <li key={index}>{question}</li>
                     ))}
@@ -110,18 +111,21 @@ export default function Home() {
 
 
     return (
-        <div className="bg-slate-100 flex items-center justify-center min-h-screen p-4 font-sans">
-            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl text-center w-full max-w-lg mx-auto">
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">雑談テーマガチャ</h1>
-                <p className="text-gray-500 mb-6">リモートでも、雑談でつながろう。</p>
+        <div className="bg-slate-100 dark:bg-slate-900 flex items-center justify-center min-h-screen p-4 font-sans transition-colors duration-300">
+            <div className="relative bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl text-center w-full max-w-lg mx-auto transition-colors duration-300">
+                <div className="absolute top-4 right-4">
+                    <ThemeToggleButton />
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">雑談テーマガチャ</h1>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">リモートでも、雑談でつながろう。</p>
 
                 <div className="mb-6">
-                    <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 mb-2">カテゴリを選ぶ:</label>
+                    <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
                     <select
                         id="category-select"
                         value={selectedCategory}
                         onChange={handleCategoryChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                     >
                         <option value="all">すべてのテーマ</option>
                         {Object.keys(themeData).map(category => (
@@ -130,7 +134,7 @@ export default function Home() {
                     </select>
                 </div>
 
-                <div id="theme-display" className="bg-gray-50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 transition-all duration-300">
+                <div id="theme-display" className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
                     {themeDisplay}
                 </div>
 
@@ -140,12 +144,12 @@ export default function Home() {
                             id="dig-deeper-button"
                             onClick={getDeeperQuestions}
                             disabled={isDiggingDeeper}
-                            className="w-full bg-white border border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-sm hover:shadow-md btn-active-effect flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-white dark:bg-gray-700 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-600 font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-sm hover:shadow-md btn-active-effect flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <span className="mr-2">✨</span> AIに深掘り質問を考えてもらう
                         </button>
                         {digDeeperResults && (
-                            <div id="dig-deeper-results" className="mt-4 text-left bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                            <div id="dig-deeper-results" className="mt-4 text-left bg-indigo-50 dark:bg-gray-900/50 p-4 rounded-lg border border-indigo-200 dark:border-gray-700">
                                 {digDeeperResults}
                             </div>
                         )}
@@ -156,7 +160,7 @@ export default function Home() {
                     id="gacha-button"
                     onClick={spinGacha}
                     disabled={isGachaSpinning}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 shadow-md hover:shadow-lg btn-active-effect disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 shadow-md hover:shadow-lg btn-active-effect disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {gachaButtonText}
                 </button>
