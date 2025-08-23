@@ -3,31 +3,35 @@ import { useState, useEffect } from 'react';
 const isServer = typeof window === 'undefined';
 
 function useStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-    const [storedValue, setStoredValue] = useState<T>(() => {
+    const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+    useEffect(() => {
         if (isServer) {
-            return initialValue;
+            return;
         }
         try {
             const item = window.localStorage.getItem(key);
-            return item ? JSON.parse(item) : initialValue;
+            if (item) {
+                setStoredValue(JSON.parse(item));
+            }
         } catch (error) {
             console.error(error);
-            return initialValue;
         }
-    });
+    }, [key]);
 
-    useEffect(() => {
-        if (!isServer) {
-            try {
-                const valueToStore = storedValue instanceof Function ? storedValue(storedValue) : storedValue;
+    const setValue = (value: T | ((val: T) => T)) => {
+        try {
+            const valueToStore = value instanceof Function ? value(storedValue) : value;
+            setStoredValue(valueToStore);
+            if (!isServer) {
                 window.localStorage.setItem(key, JSON.stringify(valueToStore));
-            } catch (error) {
-                console.error(error);
             }
+        } catch (error) {
+            console.error(error);
         }
-    }, [key, storedValue]);
+    };
 
-    return [storedValue, setStoredValue];
+    return [storedValue, setValue];
 }
 
 
