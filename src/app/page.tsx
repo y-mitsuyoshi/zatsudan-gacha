@@ -57,39 +57,14 @@ export default function Home() {
         const categoryName = Object.keys(themeData).find(key => themeData[key].includes(theme)) || '色々';
 
         setThemeDisplay(
-            <div className="text-center relative pr-24">
+            <div className="text-center">
                 <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
                 <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{theme}</p>
-                <div className="absolute top-1/2 -translate-y-1/2 right-4 flex items-center space-x-2">
-                    <button
-                        onClick={() => handleCopy(theme)}
-                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                        aria-label="コピーする"
-                    >
-                        {isCopied ? (
-                            <CheckIcon className="h-6 w-6 text-green-500" />
-                        ) : (
-                            <ClipboardIcon className="h-6 w-6 text-gray-400" />
-                        )}
-                    </button>
-                    <button
-                        onClick={() => toggleFavorite(theme)}
-                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                        aria-label="お気に入りに追加/削除"
-                    >
-                        {favorites.includes(theme) ? (
-                            <StarIconSolid className="h-6 w-6 text-yellow-400" />
-                        ) : (
-                            <StarIconOutline className="h-6 w-6 text-gray-400" />
-                        )}
-                    </button>
-                </div>
-                {isCopied && <p className="text-sm text-green-600 dark:text-green-400 mt-2">コピーしました！</p>}
             </div>
         );
         setShowGeminiArea(true);
         resetGeminiFeatures();
-    }, [favorites, isCopied, toggleFavorite, handleCopy, resetGeminiFeatures]);
+    }, [resetGeminiFeatures]);
 
     useEffect(() => {
         if (currentTheme) {
@@ -241,6 +216,36 @@ export default function Home() {
                         <div id="theme-display" className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
                             {themeDisplay}
                         </div>
+
+                        {currentTheme && (
+                            <div className="mb-6">
+                                <div className="flex justify-center items-center space-x-4">
+                                    <button
+                                        onClick={() => handleCopy(currentTheme)}
+                                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        aria-label="コピーする"
+                                    >
+                                        {isCopied ? (
+                                            <CheckIcon className="h-6 w-6 text-green-500" />
+                                        ) : (
+                                            <ClipboardIcon className="h-6 w-6 text-gray-400" />
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => toggleFavorite(currentTheme)}
+                                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        aria-label="お気に入りに追加/削除"
+                                    >
+                                        {favorites.includes(currentTheme) ? (
+                                            <StarIconSolid className="h-6 w-6 text-yellow-400" />
+                                        ) : (
+                                            <StarIconOutline className="h-6 w-6 text-gray-400" />
+                                        )}
+                                    </button>
+                                </div>
+                                {isCopied && <p className="text-sm text-green-600 dark:text-green-400 mt-2">コピーしました！</p>}
+                            </div>
+                        )}
 
                         {showGeminiArea && (
                             <div id="gemini-feature-area" className="mb-6">
