@@ -126,28 +126,49 @@ export default function Home() {
         );
 
         try {
-            const response = await fetch('/api/gemini', {
+            const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+            if (!apiKey) {
+                throw new Error('Gemini API key not configured');
+            }
+
+            const prompt = `「${currentTheme}」という雑談テーマについて、会話がもっと面白く広がるような、ユニークで深掘りできる質問を3つ提案してください。形式は箇条書きで、質問のみを返してください。`;
+            const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ theme: currentTheme })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
+                const errorBody = await response.text();
+                console.error("Gemini API request failed:", errorBody);
                 throw new Error(`API Error: ${response.statusText}`);
             }
 
             const result = await response.json();
-            const text = result.text;
 
-            const questions = text.split('\n').filter((q: string) => q.trim().length > 0).map((q: string) => q.replace(/^[・*-]\s*/, ''));
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
 
-            setDigDeeperResults(
-                <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
-                    {questions.map((question: string, index: number) => (
-                        <li key={index}>{question}</li>
-                    ))}
-                </ul>
-            );
+                const text = result.candidates[0].content.parts[0].text;
+
+                const questions = text.split('\n').filter((q: string) => q.trim().length > 0).map((q: string) => q.replace(/^[・*-]\s*/, ''));
+
+                setDigDeeperResults(
+                    <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                        {questions.map((question: string, index: number) => (
+                            <li key={index}>{question}</li>
+                        ))}
+                    </ul>
+                );
+            } else {
+                throw new Error("AIからの有効な回答がありませんでした。");
+            }
 
         } catch (error) {
             console.error("API call failed:", error);
