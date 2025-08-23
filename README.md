@@ -110,3 +110,32 @@ firebase deploy --only hosting
 ```
 
 デプロイが完了すると、コンソールに表示されるURLでアプリケーションにアクセスできます。
+
+### `.firebaserc.example` の使い方（重要）
+
+リポジトリには個人のFirebase設定を含む `.firebaserc` を直接コミットしないためのテンプレートファイル
+`.firebaserc.example` を用意しています。デプロイする際はローカルで実際のプロジェクトIDを設定した `.firebaserc`
+ファイルを作成してください。
+
+手順:
+
+1. リポジトリをクローンまたは取得した後、テンプレートをコピーして自分のプロジェクトIDに置き換えます。
+
+```bash
+cp .firebaserc.example .firebaserc
+# もしくはエディタで開いて "REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID" を実際の projectId に書き換える
+```
+
+2. `.firebaserc` は `.gitignore` に含まれているため、誤ってリモートに上がることはありません。
+
+3. その後、通常通りビルド・デプロイします。
+
+```bash
+pnpm run build
+firebase deploy --only hosting
+```
+
+注意点:
+
+- 複数人で作業する場合は、各自が自分の `.firebaserc` を作成してください。共通の設定を共有する必要がある場合は、`.firebaserc.example` を更新してプロジェクト固有のヒントを追記してください。
+- リポジトリに含めるのはテンプレートのみとし、個人用のキーやプロジェクトIDはコミットしないでください。
