@@ -70,3 +70,43 @@ pnpm run dev
 - [TypeScript](https://www.typescriptlang.org/) – 型付け
 - [Tailwind CSS](https://tailwindcss.com/) – CSSフレームワーク
 - [Google Gemini API](https://ai.google.dev/) – AIモデル
+
+## 🔥 Firebaseへのデプロイ
+
+このアプリケーションはFirebase Hostingにデプロイできます。
+
+### 1. Firebaseツールの準備
+
+プロジェクトには`firebase-tools`が開発依存関係として含まれていますが、グローバルにインストールしておくと便利です。
+
+```bash
+npm install -g firebase-tools
+```
+
+### 2. Firebaseへのログイン
+
+次のコマンドを実行し、ブラウザでFirebaseアカウントにログインします。
+
+```bash
+firebase login
+```
+
+### 3. プロジェクトのビルド
+
+デプロイする前に、Next.jsアプリケーションを静的ファイルとしてビルドする必要があります。
+
+```bash
+pnpm run build
+```
+
+このコマンドにより、`out`ディレクトリにデプロイ用のファイルが生成されます。
+
+### 4. デプロイの実行
+
+最後に、Firebaseにデプロイします。
+
+```bash
+firebase deploy --only hosting
+```
+
+デプロイが完了すると、コンソールに表示されるURLでアプリケーションにアクセスできます。
