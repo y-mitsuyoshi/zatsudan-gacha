@@ -7,12 +7,16 @@ import { useHistory, useFavorites } from '@/lib/hooks';
 import { HistoryList } from '@/components/HistoryList';
 import { FavoritesList } from '@/components/FavoritesList';
 import { Tabs } from '@/components/Tabs';
+import { TimeAttackMode } from '@/components/TimeAttackMode';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 
 export default function Home() {
+    type GameMode = 'normal' | 'timeAttack';
+
+    const [gameMode, setGameMode] = useState<GameMode>('normal');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [currentTheme, setCurrentTheme] = useState('');
     const [themeDisplay, setThemeDisplay] = useState<React.ReactNode>(<p className="text-lg text-gray-600 dark:text-gray-400">カテゴリを選んでボタンを押してね！</p>);
@@ -181,50 +185,87 @@ export default function Home() {
                 <p className="text-gray-500 dark:text-gray-400 mb-6">リモートでも、雑談でつながろう。</p>
 
                 <div className="mb-6">
-                    <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
-                    <select
-                        id="category-select"
-                        value={selectedCategory}
-                        onChange={handleCategoryChange}
-                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                    >
-                        <option value="all">すべてのテーマ</option>
-                        {Object.keys(themeData).map(category => (
-                            <option key={category} value={category}>{category}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div id="theme-display" className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-                    {themeDisplay}
-                </div>
-
-                {showGeminiArea && (
-                    <div id="gemini-feature-area" className="mb-6">
+                    <div className="flex justify-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 mb-6">
                         <button
-                            id="dig-deeper-button"
-                            onClick={getDeeperQuestions}
-                            disabled={isDiggingDeeper}
-                            className="w-full bg-white dark:bg-gray-700 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-600 font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-sm hover:shadow-md btn-active-effect flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => setGameMode('normal')}
+                            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                gameMode === 'normal'
+                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
+                            }`}
                         >
-                            <span className="mr-2">✨</span> AIに深掘り質問を考えてもらう
+                            ノーマル
                         </button>
-                        {digDeeperResults && (
-                            <div id="dig-deeper-results" className="mt-4 text-left bg-indigo-50 dark:bg-gray-900/50 p-4 rounded-lg border border-indigo-200 dark:border-gray-700">
-                                {digDeeperResults}
+                        <button
+                            onClick={() => setGameMode('timeAttack')}
+                            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                gameMode === 'timeAttack'
+                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
+                            }`}
+                        >
+                            タイムアタック
+                        </button>
+                    </div>
+
+                    {gameMode === 'normal' ? (
+                        <>
+                            <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
+                            <select
+                                id="category-select"
+                                value={selectedCategory}
+                                onChange={handleCategoryChange}
+                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                            >
+                                <option value="all">すべてのテーマ</option>
+                                {Object.keys(themeData).map(category => (
+                                    <option key={category} value={category}>{category}</option>
+                                ))}
+                            </select>
+                        </>
+                    ) : (
+                        <p className="text-sm text-center text-gray-500 dark:text-gray-400">1分間でテーマについて語りきろう！</p>
+                    )}
+                </div>
+
+                {gameMode === 'normal' ? (
+                    <>
+                        <div id="theme-display" className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
+                            {themeDisplay}
+                        </div>
+
+                        {showGeminiArea && (
+                            <div id="gemini-feature-area" className="mb-6">
+                                <button
+                                    id="dig-deeper-button"
+                                    onClick={getDeeperQuestions}
+                                    disabled={isDiggingDeeper}
+                                    className="w-full bg-white dark:bg-gray-700 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-600 font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-sm hover:shadow-md btn-active-effect flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <span className="mr-2">✨</span> AIに深掘り質問を考えてもらう
+                                </button>
+                                {digDeeperResults && (
+                                    <div id="dig-deeper-results" className="mt-4 text-left bg-indigo-50 dark:bg-gray-900/50 p-4 rounded-lg border border-indigo-200 dark:border-gray-700">
+                                        {digDeeperResults}
+                                    </div>
+                                )}
                             </div>
                         )}
+
+                        <button
+                            id="gacha-button"
+                            onClick={spinGacha}
+                            disabled={isGachaSpinning}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 shadow-md hover:shadow-lg btn-active-effect disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {gachaButtonText}
+                        </button>
+                    </>
+                ) : (
+                    <div className="mb-6">
+                        <TimeAttackMode />
                     </div>
                 )}
-
-                <button
-                    id="gacha-button"
-                    onClick={spinGacha}
-                    disabled={isGachaSpinning}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 shadow-md hover:shadow-lg btn-active-effect disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                    {gachaButtonText}
-                </button>
 
                 <div className="mt-8">
                     <Tabs tabs={[
