@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_JP } from "next/font/google";
 import { Providers } from "./providers";
+import { DomainRedirect } from "@/components/DomainRedirect";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
@@ -41,6 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${notoSansJp.variable} font-sans`}>
+        <DomainRedirect />
         <Providers>{children}</Providers>
       </body>
     </html>
