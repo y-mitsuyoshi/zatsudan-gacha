@@ -9,6 +9,7 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 // CORS設定
 const corsHandler = cors({
   origin: [
+    "https://zatsudan-gacha.app",
     "https://zatsudan-gacha.web.app",
     "https://zatsudan-gacha.firebaseapp.com",
     "http://localhost:3000", // 開発環境用
