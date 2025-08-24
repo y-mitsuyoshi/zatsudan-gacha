@@ -8,13 +8,25 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "700"], variable: '--font-noto-sans-jp' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://zatsudan-gacha.app/"),
+  metadataBase: new URL("https://zatsudan-gacha.app"),
   title: "雑談テーマガチャ",
   description: "リモートでも、雑談でつながろう。",
   icons: {
-    icon: "/favicon.png",
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
     shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    apple: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.png", sizes: "180x180", type: "image/png" },
+    ],
+    other: [
+      {
+        rel: 'apple-touch-icon-precomposed',
+        url: '/favicon.png',
+      },
+    ],
   },
   openGraph: {
     title: "雑談テーマガチャ",
@@ -23,7 +35,7 @@ export const metadata: Metadata = {
     siteName: "雑談テーマガチャ",
     images: [
       {
-        url: "/ogp.png",
+        url: "https://zatsudan-gacha.app/ogp.png",
         width: 512,
         height: 512,
         alt: "雑談テーマガチャ",
@@ -32,10 +44,10 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "雑談テーマガチャ",
     description: "会議のアイスブレイクや雑談のきっかけに！ランダムにお題を出すアプリ。",
-    images: ["/ogp.png"],
+    images: ["https://zatsudan-gacha.app/ogp.png"],
   },
 };
 
