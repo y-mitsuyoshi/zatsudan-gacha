@@ -11,7 +11,11 @@ const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "700"], va
 export const metadata: Metadata = {
   metadataBase: new URL("https://zatsudan-gacha.app"),
   title: "雑談テーマガチャ",
-  description: "リモートでも、雑談でつながろう。",
+  description: "会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」！ボタン一つで面白いお題をランダムに提案し、会話のきっかけを作ります。",
+  keywords: ['雑談', 'テーマ', 'ガチャ', 'アイスブレイク', 'リモートワーク', 'オンライン会議', 'ネタ'],
+  verification: {
+    google: "",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
@@ -31,7 +35,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "雑談テーマガチャ",
-    description: "会議のアイスブレイクや雑談のきっかけに！ランダムにお題を出すアプリ。",
+    description: "会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」！ボタン一つで面白いお題をランダムに提案し、会話のきっかけを作ります。",
     url: "https://zatsudan-gacha.app/",
     siteName: "雑談テーマガチャ",
     images: [
@@ -47,7 +51,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "雑談テーマガチャ",
-    description: "会議のアイスブレイクや雑談のきっかけに！ランダムにお題を出すアプリ。",
+    description: "会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」！ボタン一つで面白いお題をランダムに提案し、会話のきっかけを作ります。",
     images: ["https://zatsudan-gacha.app/ogp.png"],
   },
 };

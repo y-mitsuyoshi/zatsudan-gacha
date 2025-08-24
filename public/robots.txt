@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zatsudan-gacha.app/sitemap.xml
