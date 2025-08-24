@@ -5,7 +5,7 @@ import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class">
+    <ThemeProvider attribute="class" defaultTheme="light">
       <AnalyticsProvider>
         {children}
       </AnalyticsProvider>
