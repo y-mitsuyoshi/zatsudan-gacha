@@ -13,12 +13,21 @@ const firebaseConfig = {
 };
 
 let analytics: Analytics | null = null;
+let isInitializing = false;
+let isInitialized = false;
 
 export async function initFirebaseAnalytics() {
   // サーバーサイドでは実行しない
   if (typeof window === 'undefined') {
     return null;
   }
+
+  // 既に初期化済みまたは初期化中の場合は重複実行を避ける
+  if (isInitialized || isInitializing) {
+    return analytics;
+  }
+
+  isInitializing = true;
 
   try {
     // Firebase Appの初期化
@@ -28,12 +37,12 @@ export async function initFirebaseAnalytics() {
     const supported = await isSupported();
     if (supported) {
       analytics = getAnalytics(app);
-      console.log('Firebase Analytics initialized successfully');
-    } else {
-      console.log('Firebase Analytics is not supported in this environment');
+      isInitialized = true;
     }
   } catch (error) {
-    console.error('Failed to initialize Firebase Analytics:', error);
+    // Analytics初期化エラーは静かに処理
+  } finally {
+    isInitializing = false;
   }
 
   return analytics;
@@ -43,19 +52,33 @@ export function getFirebaseAnalytics() {
   return analytics;
 }
 
+export function isAnalyticsInitialized() {
+  return isInitialized;
+}
+
 // ページビューをトラッキングする関数
 export function trackPageView(page_title: string, page_location?: string) {
-  if (analytics) {
+  if (analytics && isInitialized) {
     logEvent(analytics, 'page_view', {
       page_title,
       page_location: page_location || window.location.href,
     });
+  } else if (!isInitialized) {
+    // 2秒後にリトライ
+    setTimeout(() => {
+      if (analytics && isInitialized) {
+        logEvent(analytics, 'page_view', {
+          page_title,
+          page_location: page_location || window.location.href,
+        });
+      }
+    }, 2000);
   }
 }
 
 // カスタムイベントをトラッキングする関数
 export function trackEvent(eventName: string, parameters?: Record<string, any>) {
-  if (analytics) {
+  if (analytics && isInitialized) {
     logEvent(analytics, eventName, parameters);
   }
 }
