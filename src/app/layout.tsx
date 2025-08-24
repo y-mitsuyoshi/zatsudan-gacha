@@ -8,10 +8,12 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "700"], variable: '--font-noto-sans-jp' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zatsudan-gacha.app/"),
   title: "雑談テーマガチャ",
   description: "リモートでも、雑談でつながろう。",
   icons: {
     icon: "/favicon.png",
+    shortcut: "/favicon.png",
     apple: "/favicon.png",
   },
   openGraph: {
