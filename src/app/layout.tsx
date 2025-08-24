@@ -12,8 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "雑談テーマガチャ",
     description: "会議のアイスブレイクや雑談のきっかけに！ランダムにお題を出すアプリ。",
-    // TODO: デプロイ後に本番環境のURLに更新してください
-    url: "https://zatsudan-gacha.vercel.app/",
+    url: "https://zatsudan-gacha.app/",
     siteName: "雑談テーマガチャ",
     // TODO: アプリのOGP画像へのパスをここに追加してください
     // images: [
