@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { callGeminiAPI } from '@/lib/api-config';
 import { themeData } from '@/lib/themeData';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
@@ -15,9 +16,13 @@ import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 
+const RouletteMode = dynamic(() => import('@/components/RouletteMode').then(mod => mod.RouletteMode), {
+    ssr: false,
+    loading: () => <p>Loading...</p>
+});
 
 export default function Home() {
-    type GameMode = 'normal' | 'timeAttack';
+    type GameMode = 'normal' | 'timeAttack' | 'roulette';
 
     const [gameMode, setGameMode] = useState<GameMode>('normal');
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -227,7 +232,7 @@ export default function Home() {
                                 setGameMode('normal');
                                 trackEvent('game_mode_changed', { mode: 'normal' });
                             }}
-                            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                            className={`w-1/3 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                                 gameMode === 'normal'
                                     ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
@@ -240,7 +245,7 @@ export default function Home() {
                                 setGameMode('timeAttack');
                                 trackEvent('game_mode_changed', { mode: 'timeAttack' });
                             }}
-                            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                            className={`w-1/3 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                                 gameMode === 'timeAttack'
                                     ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
@@ -248,31 +253,45 @@ export default function Home() {
                         >
                             タイムアタック
                         </button>
+                        <button
+                            onClick={() => {
+                                setGameMode('roulette');
+                                trackEvent('game_mode_changed', { mode: 'roulette' });
+                            }}
+                            className={`w-1/3 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                gameMode === 'roulette'
+                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
+                            }`}
+                        >
+                            ルーレット
+                        </button>
                     </div>
 
-                    <div className="mb-6">
-                        <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
-                        <select
-                            id="category-select"
-                            value={selectedCategory}
-                            onChange={handleCategoryChange}
-                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                        >
-                            <option value="all">すべてのテーマ</option>
-                            {Object.keys(themeData).map(category => (
-                                <option key={category} value={category}>{category}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {gameMode !== 'roulette' && (
+                        <div className="mb-6">
+                            <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
+                            <select
+                                id="category-select"
+                                value={selectedCategory}
+                                onChange={handleCategoryChange}
+                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                            >
+                                <option value="all">すべてのテーマ</option>
+                                {Object.keys(themeData).map(category => (
+                                    <option key={category} value={category}>{category}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     {gameMode === 'timeAttack' && (
                         <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">制限時間内にテーマについて語りきろう！</p>
                     )}
                 </div>
 
-
-                {gameMode === 'normal' ? (
-                    <>
+                {gameMode === 'normal' && (
+                     <>
                         <div id="theme-display" className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
                             {themeDisplay}
                         </div>
@@ -343,9 +362,15 @@ export default function Home() {
                             {gachaButtonText}
                         </button>
                     </>
-                ) : (
+                )}
+                {gameMode === 'timeAttack' && (
                     <div className="mb-6">
                         <TimeAttackMode themes={themePool} />
+                    </div>
+                )}
+                 {gameMode === 'roulette' && (
+                    <div className="mb-6">
+                        <RouletteMode />
                     </div>
                 )}
 
