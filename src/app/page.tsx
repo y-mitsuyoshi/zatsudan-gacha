@@ -9,7 +9,6 @@ import { HistoryList } from '@/components/HistoryList';
 import { FavoritesList } from '@/components/FavoritesList';
 import { Tabs } from '@/components/Tabs';
 import { TimeAttackMode } from '@/components/TimeAttackMode';
-import { RouletteMode } from '@/components/RouletteMode2';
 import { ShareButtons } from '@/components/ShareButtons';
 import { trackEvent } from '@/lib/firebase';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
@@ -18,7 +17,7 @@ import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/
 
 
 export default function Home() {
-    type GameMode = 'normal' | 'timeAttack' | 'roulette';
+    type GameMode = 'normal' | 'timeAttack';
 
     const [gameMode, setGameMode] = useState<GameMode>('normal');
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -118,10 +117,7 @@ export default function Home() {
                 const finalThemeIndex = Math.floor(Math.random() * themePool.length);
                 const finalTheme = themePool[finalThemeIndex];
                 updateTheme(finalTheme);
-                // ノーマルモードの場合のみ履歴に追加
-                if (gameMode === 'normal') {
-                    addHistory(finalTheme);
-                }
+                addHistory(finalTheme);
                 setIsGachaSpinning(false);
                 setGachaButtonText('もう一度回す');
 
@@ -231,7 +227,7 @@ export default function Home() {
                                 setGameMode('normal');
                                 trackEvent('game_mode_changed', { mode: 'normal' });
                             }}
-                            className={`w-1/3 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                                 gameMode === 'normal'
                                     ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
@@ -244,26 +240,13 @@ export default function Home() {
                                 setGameMode('timeAttack');
                                 trackEvent('game_mode_changed', { mode: 'timeAttack' });
                             }}
-                            className={`w-1/3 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                                 gameMode === 'timeAttack'
                                     ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
                             }`}
                         >
                             タイムアタック
-                        </button>
-                        <button
-                            onClick={() => {
-                                setGameMode('roulette');
-                                trackEvent('game_mode_changed', { mode: 'roulette' });
-                            }}
-                            className={`w-1/3 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                                gameMode === 'roulette'
-                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
-                            }`}
-                        >
-                            ルーレット
                         </button>
                     </div>
 
@@ -274,7 +257,6 @@ export default function Home() {
                             value={selectedCategory}
                             onChange={handleCategoryChange}
                             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                            style={{ display: gameMode === 'roulette' ? 'none' : 'block' }}
                         >
                             <option value="all">すべてのテーマ</option>
                             {Object.keys(themeData).map(category => (
@@ -285,10 +267,6 @@ export default function Home() {
 
                     {gameMode === 'timeAttack' && (
                         <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">制限時間内にテーマについて語りきろう！</p>
-                    )}
-                    
-                    {gameMode === 'roulette' && (
-                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">ルーレットで抽選しよう！項目と重みを設定できます。</p>
                     )}
                 </div>
 
@@ -365,30 +343,24 @@ export default function Home() {
                             {gachaButtonText}
                         </button>
                     </>
-                ) : gameMode === 'timeAttack' ? (
+                ) : (
                     <div className="mb-6">
                         <TimeAttackMode themes={themePool} />
                     </div>
-                ) : (
-                    <div className="mb-6">
-                        <RouletteMode />
-                    </div>
                 )}
 
-                {gameMode !== 'roulette' && (
-                    <div className="mt-8">
-                        <Tabs tabs={[
-                            {
-                                label: '履歴',
-                                content: <HistoryList history={history} favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
-                            },
-                            {
-                                label: 'お気に入り',
-                                content: <FavoritesList favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
-                            }
-                        ]} />
-                    </div>
-                )}
+                <div className="mt-8">
+                    <Tabs tabs={[
+                        {
+                            label: '履歴',
+                            content: <HistoryList history={history} favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
+                        },
+                        {
+                            label: 'お気に入り',
+                            content: <FavoritesList favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
+                        }
+                    ]} />
+                </div>
 
                 <ShareButtons />
             </div>
