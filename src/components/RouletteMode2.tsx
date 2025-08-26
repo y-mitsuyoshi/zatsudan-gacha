@@ -359,16 +359,17 @@ export function RouletteMode() {
         <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-indigo-200/20 to-pink-200/20 rounded-full blur-xl"></div>
         
         <div className="relative flex justify-center mb-8">
-          <div className="relative">
+          <div className="relative w-full max-w-sm sm:max-w-md md:max-w-lg">
             <canvas
               ref={canvasRef}
               width={340}
               height={340}
-              className="rounded-full shadow-2xl ring-4 ring-white/50 dark:ring-gray-800/50"
+              className="rounded-full shadow-2xl ring-4 ring-white/50 dark:ring-gray-800/50 w-full h-auto max-w-[280px] sm:max-w-[320px] md:max-w-[340px] mx-auto"
               style={{
                 filter: isSpinning ? 'blur(0.5px) brightness(1.1)' : 'none',
                 transition: 'filter 0.3s ease, transform 0.3s ease',
-                transform: isSpinning ? 'scale(1.02)' : 'scale(1)'
+                transform: isSpinning ? 'scale(1.02)' : 'scale(1)',
+                aspectRatio: '1 / 1'
               }}
             />
           </div>
@@ -402,9 +403,6 @@ export function RouletteMode() {
         {winner && !isSpinning && (
           <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border-2 border-green-200 dark:border-green-700 text-center">
             <div className="text-5xl mb-4 animate-bounce">🎉</div>
-            <div className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-              当選者
-            </div>
             <div 
               className="text-3xl font-black tracking-wide"
               style={{ color: winner.color }}
@@ -423,20 +421,20 @@ export function RouletteMode() {
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white">項目の設定</h3>
         
         {/* 新しいアイテム追加 */}
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && addItem()}
-            placeholder="新しい項目を入力"
-            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium"
+            placeholder="新しい項目を入力（最大20文字）"
+            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-base"
             maxLength={20}
           />
           <button
             onClick={addItem}
             disabled={!newItemName.trim() || items.length >= 12}
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 disabled:transform-none font-semibold"
+            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 disabled:transform-none font-semibold whitespace-nowrap min-w-[120px] sm:min-w-0"
           >
             <PlusIcon className="w-5 h-5" />
           </button>
@@ -454,56 +452,57 @@ export function RouletteMode() {
             items.map((item, index) => (
             <div
               key={item.id}
-              className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
+              className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              <div
-                className="w-6 h-6 rounded-full shadow-lg border-2 border-white"
-                style={{ backgroundColor: item.color }}
-              />
-              
-              <div className="flex-1 min-w-0">
-                <span className="text-gray-900 dark:text-white font-semibold text-lg truncate block">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div
+                  className="w-6 h-6 rounded-full shadow-lg border-2 border-white flex-shrink-0"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="text-gray-900 dark:text-white font-semibold text-base sm:text-lg truncate">
                   {item.name}
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 bg-white dark:bg-gray-700 rounded-xl px-3 py-2 border border-gray-200 dark:border-gray-600">
-                <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                  重み
-                </span>
+              <div className="flex items-center justify-between sm:justify-end gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 bg-white dark:bg-gray-700 rounded-xl px-3 py-2 border border-gray-200 dark:border-gray-600">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
+                    重み
+                  </span>
+                  <button
+                    onClick={() => updateWeight(item.id, item.weight - 1)}
+                    disabled={item.weight <= 1}
+                    className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                  >
+                    <MinusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  </button>
+                  <span className="w-6 sm:w-8 text-center text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                    {item.weight}
+                  </span>
+                  <button
+                    onClick={() => updateWeight(item.id, item.weight + 1)}
+                    disabled={item.weight >= 10}
+                    className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => updateWeight(item.id, item.weight - 1)}
-                  disabled={item.weight <= 1}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                  onClick={() => removeItem(item.id)}
+                  className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 flex-shrink-0"
+                  title="削除"
                 >
-                  <MinusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                </button>
-                <span className="w-8 text-center text-lg font-bold text-gray-900 dark:text-white">
-                  {item.weight}
-                </span>
-                <button
-                  onClick={() => updateWeight(item.id, item.weight + 1)}
-                  disabled={item.weight >= 10}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
-                >
-                  <PlusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  <TrashIcon className="w-5 h-5" />
                 </button>
               </div>
-
-              <button
-                onClick={() => removeItem(item.id)}
-                className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110"
-                title="削除"
-              >
-                <TrashIcon className="w-5 h-5" />
-              </button>
             </div>
           ))
           )}
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-          <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2 font-medium">
+          <div className="text-sm sm:text-base text-blue-800 dark:text-blue-200 space-y-2 font-medium">
             <p>💡 最大12項目まで追加できます</p>
             <p>⚖️ 重みが大きいほど当選確率が高くなります（1-10）</p>
             <p>🎯 項目が0個の場合はルーレットを回せません</p>
