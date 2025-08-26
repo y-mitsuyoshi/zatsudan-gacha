@@ -409,9 +409,6 @@ export function RouletteMode() {
             >
               {winner.name}
             </div>
-            <div className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              おめでとうございます！
-            </div>
           </div>
         )}
       </div>
