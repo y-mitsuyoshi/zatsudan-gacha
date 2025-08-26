@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { PlusIcon, MinusIcon, PlayIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { trackEvent } from '@/lib/firebase';
 
 interface RouletteItem {
   id: string;
@@ -217,18 +218,46 @@ export function RouletteMode() {
       };
       setItems([...items, newItem]);
       setNewItemName('');
+      
+      // Google Analytics イベント送信
+      trackEvent('roulette_item_added', {
+        item_name: newItem.name,
+        item_count: items.length + 1,
+        color: newItem.color
+      });
     }
   };
 
   const removeItem = (id: string) => {
+    const itemToRemove = items.find(item => item.id === id);
     setItems(items.filter(item => item.id !== id));
+    
+    // Google Analytics イベント送信
+    if (itemToRemove) {
+      trackEvent('roulette_item_removed', {
+        item_name: itemToRemove.name,
+        item_count: items.length - 1,
+        color: itemToRemove.color
+      });
+    }
   };
 
   const updateWeight = (id: string, newWeight: number) => {
     if (newWeight >= 1 && newWeight <= 10) {
+      const oldItem = items.find(item => item.id === id);
       setItems(items.map(item => 
         item.id === id ? { ...item, weight: newWeight } : item
       ));
+      
+      // Google Analytics イベント送信
+      if (oldItem) {
+        trackEvent('roulette_weight_changed', {
+          item_name: oldItem.name,
+          old_weight: oldItem.weight,
+          new_weight: newWeight,
+          weight_change: newWeight - oldItem.weight
+        });
+      }
     }
   };
 
@@ -237,6 +266,13 @@ export function RouletteMode() {
 
     setIsSpinning(true);
     setWinner(null);
+
+    // Google Analytics イベント送信 - スピン開始
+    trackEvent('roulette_spin_started', {
+      item_count: items.length,
+      total_weight: items.reduce((sum, item) => sum + item.weight, 0),
+      items: items.map(item => ({ name: item.name, weight: item.weight }))
+    });
 
     // ランダムな回転角度を計算（最低5回転 + ランダム）
     const minSpins = 5;
@@ -278,22 +314,38 @@ export function RouletteMode() {
     const arrowAngle = (270 - normalizedRotation + 360) % 360;
     
     let currentAngle = 0;
+    let winnerItem: RouletteItem | null = null;
     
     for (const item of items) {
       const sectionAngle = (item.weight / totalWeight) * 360;
       const endAngle = currentAngle + sectionAngle;
       
       if (arrowAngle >= currentAngle && arrowAngle < endAngle) {
+        winnerItem = item;
         setWinner(item);
-        return;
+        break;
       }
       
       currentAngle = endAngle;
     }
     
     // フォールバック
-    if (items.length > 0) {
+    if (!winnerItem && items.length > 0) {
+      winnerItem = items[0];
       setWinner(items[0]);
+    }
+    
+    // Google Analytics イベント送信 - 結果確定
+    if (winnerItem) {
+      trackEvent('roulette_result', {
+        winner_name: winnerItem.name,
+        winner_weight: winnerItem.weight,
+        winner_color: winnerItem.color,
+        total_items: items.length,
+        total_weight: totalWeight,
+        final_rotation: finalRotation,
+        arrow_angle: arrowAngle
+      });
     }
   };
 
