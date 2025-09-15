@@ -8,6 +8,14 @@
     ],
     "rewrites": [
       {
+        "source": "/profile-maker",
+        "destination": "/profile-maker.html"
+      },
+      {
+        "source": "/profile-maker/",
+        "destination": "/profile-maker.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
