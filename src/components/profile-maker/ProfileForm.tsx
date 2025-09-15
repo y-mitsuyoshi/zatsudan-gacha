@@ -141,7 +141,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
           </div>
       </div>
 
-      <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">推しの"好き"を語る</h3>
+      <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">推しの&quot;好き&quot;を語る</h3>
 
       <TagInput
         label="推しの好きなところ（最大3つ）"
