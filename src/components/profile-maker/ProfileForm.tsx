@@ -181,21 +181,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         maxTags={3}
       />
 
-      <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">関係性について</h3>
-       <FormInput
-        label="推しコンビ・ペア名"
-        name="pairName"
-        value={profile.pairName}
-        onChange={handleChange}
-        placeholder="例：「〇〇と△△」"
-      />
-       <FormInput
-        label="そのコンビの好きなところ"
-        name="pairEpisode"
-        value={profile.pairEpisode}
-        onChange={handleChange}
-      />
-
       <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">ステータス・記念日</h3>
       <FormInput
         label="ファン歴"

@@ -18,8 +18,6 @@ export default function ProfileMakerPage() {
     favoriteVisual: 'デビュー当時の初々しいビジュアル',
     favoriteQuote: '「諦めたらそこで試合終了ですよ」',
     customTags: ['#存在が尊い', '#歩く芸術'],
-    pairName: '伝説のコンビ',
-    pairEpisode: '二人にしか出せない空気感が好き',
     fanHistory: 'デビュー当時から',
     title: '顔面国宝',
   });

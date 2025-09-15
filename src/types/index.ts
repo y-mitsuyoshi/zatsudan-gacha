@@ -10,8 +10,6 @@ export type ProfileState = {
   favoriteVisual: string;
   favoriteQuote: string;
   customTags: string[];
-  pairName: string;
-  pairEpisode: string;
   fanHistory: string;
   title: string;
 };

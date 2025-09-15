@@ -19,7 +19,7 @@ const CardSection = ({ title, children, className = '' }: { title: string; child
 
 export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile, template }) => {
   const {
-    name, group, color, image, likes, episode, favoriteQuote, customTags, title, fanHistory
+    name, group, color, image, likes, episode, favoriteVisual, favoriteQuote, customTags, title, fanHistory
   } = profile;
 
   // --- Template Styles ---
@@ -188,11 +188,6 @@ export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile,
         {title && (
           <div className={`${s.titleContainer} ml-2 flex-shrink-0`} style={template === 'cool' ? accentStyle : {}}>
             <p className={`${s.titleText} text-base sm:text-lg`}>{title}</p>
-            {template !== 'pop' && template !== 'neon' && (
-              <p className="text-xs uppercase tracking-wider mt-1 opacity-70" style={accentTextStyle}>
-                - Title -
-              </p>
-            )}
           </div>
         )}
       </header>
@@ -219,6 +214,9 @@ export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile,
         <div className="md:col-span-2 space-y-2 sm:space-y-4 md:border-l border-gray-200 dark:border-gray-700 md:pl-4 lg:pl-8 mt-2 md:mt-0">
            <CardSection title="出会いのきっかけ" className={s.sectionTitle}>
             <p className="text-sm sm:text-base">{episode || <span className="text-gray-400 text-sm">（未入力）</span>}</p>
+          </CardSection>
+          <CardSection title="好きなビジュアル・衣装" className={s.sectionTitle}>
+            <p className="text-sm sm:text-base">{favoriteVisual || <span className="text-gray-400 text-sm">（未入力）</span>}</p>
           </CardSection>
           <CardSection title="ファン歴" className={s.sectionTitle}>
             <p className="text-sm sm:text-base">{fanHistory || <span className="text-gray-400 text-sm">（未入力）</span>}</p>
