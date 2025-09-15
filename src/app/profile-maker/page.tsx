@@ -12,6 +12,7 @@ export default function ProfileMakerPage() {
     name: 'すごい推し',
     group: '次元を超えた存在',
     color: '#a855f7', // purple-500
+    image: '',
     likes: ['顔', '声', '全部'],
     episode: '伝説のライブでのパフォーマンスに感動した',
     favoriteVisual: 'デビュー当時の初々しいビジュアル',
@@ -56,18 +57,29 @@ export default function ProfileMakerPage() {
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                   プレビュー
                 </h2>
-                <div className="flex space-x-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
-                  {(['simple', 'pop', 'cool'] as Template[]).map(t => (
+                <div className="flex flex-wrap gap-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
+                  {([
+                    { key: 'simple', label: 'シンプル' },
+                    { key: 'pop', label: 'ポップ' },
+                    { key: 'cool', label: 'クール' },
+                    { key: 'elegant', label: 'エレガント' },
+                    { key: 'kawaii', label: 'かわいい' },
+                    { key: 'vintage', label: 'ヴィンテージ' },
+                    { key: 'neon', label: 'ネオン' },
+                    { key: 'dreamy', label: 'ドリーミー' },
+                    { key: 'retro', label: 'レトロ' },
+                    { key: 'minimal', label: 'ミニマル' }
+                  ] as { key: Template; label: string }[]).map(({ key, label }) => (
                     <button
-                      key={t}
-                      onClick={() => setTemplate(t)}
-                      className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                        template === t
+                      key={key}
+                      onClick={() => setTemplate(key)}
+                      className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                        template === key
                           ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
                           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
                       }`}
                     >
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                      {label}
                     </button>
                   ))}
                 </div>

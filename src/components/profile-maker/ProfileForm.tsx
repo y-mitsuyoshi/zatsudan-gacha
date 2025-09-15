@@ -56,6 +56,18 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
     }));
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imageUrl = event.target?.result as string;
+        setProfile(prev => ({ ...prev, image: imageUrl }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Dummy handler for now
   const handleLikesChange = (newLikes: string[]) => {
     setProfile(prev => ({ ...prev, likes: newLikes }));
@@ -77,6 +89,39 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.group}
         onChange={handleChange}
       />
+      
+      <div className="mb-6">
+        <label htmlFor="image" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          推しの画像
+        </label>
+        <div className="space-y-3">
+          <input
+            type="file"
+            id="image"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+          />
+          {profile.image && (
+            <div className="flex items-center space-x-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={profile.image}
+                alt="推しの画像プレビュー"
+                className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+              />
+              <button
+                type="button"
+                onClick={() => setProfile(prev => ({ ...prev, image: '' }))}
+                className="text-red-500 hover:text-red-700 text-sm font-medium"
+              >
+                画像を削除
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      
       <div className="mb-6">
           <label htmlFor="color" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               担当・イメージカラー
