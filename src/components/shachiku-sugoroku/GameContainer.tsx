@@ -40,15 +40,17 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
       setGameState(newState);
       setIsRolling(false);
       
-      // Hide dice after a brief delay
-      setTimeout(() => {
-        setShowDice(false);
-        // Start step-by-step movement if there are pending moves
-        if (newState.pendingMoves && newState.pendingMoves > 0) {
+      // Start step-by-step movement if there are pending moves
+      if (newState.pendingMoves && newState.pendingMoves > 0) {
+        setIsMoving(true);
+        setTimeout(() => {
           handleStepMovement(newState);
-        }
-      }, 1500);
-    }, 300);
+        }, 800);
+      } else {
+        // No movement needed, hide dice
+        setTimeout(() => setShowDice(false), 1500);
+      }
+    }, 600);
   };
 
   const handleStepMovement = (currentState: GameState) => {
@@ -56,8 +58,6 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
       setIsMoving(false);
       return;
     }
-
-    setIsMoving(true);
     
     const moveStep = () => {
       setGameState(prevState => {
@@ -65,36 +65,24 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
         
         // Continue moving if there are more pending moves
         if (newState.pendingMoves && newState.pendingMoves > 0) {
-          setTimeout(moveStep, 900); // 900ms間隔でゆっくり移動
+          setTimeout(moveStep, 1200); // ゆっくりとした移動
         } else {
-          setTimeout(() => setIsMoving(false), 800);
-          // Clear dice after movement completes
-          setTimeout(() => setShowDice(false), 1500);
+          // 移動完了時の処理
+          setTimeout(() => {
+            setIsMoving(false);
+            setShowDice(false);
+          }, 800);
         }
         
         return newState;
       });
     };
 
-    // Start the first move after a short delay
-    setTimeout(moveStep, 800);
+    // Start the first move
+    moveStep();
   };
 
-  const handleNextStep = () => {
-    if (gameState.pendingMoves && gameState.pendingMoves > 0) {
-      const newState = moveOneStep(gameState);
-      setGameState(newState);
-      
-      // Continue automatic movement if more moves remaining
-      if (newState.pendingMoves && newState.pendingMoves > 0) {
-        setTimeout(() => handleNextStep(), 800); // Slightly faster timing
-      } else {
-        setIsMoving(false);
-        // Clear dice after movement completes
-        setTimeout(() => setShowDice(false), 1000);
-      }
-    }
-  };
+
 
   if (gameState.isFinished) {
     return <ResultCard gameState={gameState} />;
