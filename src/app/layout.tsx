@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_JP } from "next/font/google";
+import { Inter, Noto_Sans_JP, M_PLUS_Rounded_1c } from "next/font/google";
 import Script from "next/script";
 import { Providers } from "./providers";
 import { DomainRedirect } from "@/components/DomainRedirect";
@@ -8,6 +8,11 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "700"], variable: '--font-noto-sans-jp' });
+const mPlusRounded1c = M_PLUS_Rounded_1c({
+  subsets: ['latin'],
+  weight: ['400', '700', '800'],
+  variable: '--font-m-plus-rounded-1c',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zatsudan-gacha.app"),
@@ -100,7 +105,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" suppressHydrationWarning>
-      <body className={`${inter.variable} ${notoSansJp.variable} font-sans`}>
+      <body className={`${inter.variable} ${notoSansJp.variable} ${mPlusRounded1c.variable} font-sans`}>
         <DomainRedirect />
         <Providers>
           {children}

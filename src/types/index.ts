@@ -49,3 +49,15 @@ export type ProfileState = {
   fanHistory: string;
   title: string;
 };
+
+// --- Station Sign Maker Types ---
+
+export type StationTemplate = 'jr-east' | 'tokyo-metro' | 'simple';
+
+export type StationSignState = {
+  station: string;
+  roman: string;
+  prevStation: string;
+  nextStation: string;
+  lineColor: string;
+};
