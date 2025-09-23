@@ -61,7 +61,7 @@ export default function IsekaiStatusPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-8 font-sans transition-colors duration-300">
+      <div className="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-8 font-sans transition-colors duration-300 pb-0">
         <div className="max-w-7xl mx-auto">
           <header className="flex justify-between items-center mb-8">
             <div>

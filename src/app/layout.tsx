@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_JP } from "next/font/google";
 import Script from "next/script";
 import { Providers } from "./providers";
 import { DomainRedirect } from "@/components/DomainRedirect";
+import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
@@ -72,11 +73,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "雑談テーマガチャ",
     description: "会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」！ボタン一つで面白いお題をランダムに提案し、会話のきっかけを作ります。",
-    url: "https://zatsudan-gacha.app/",
+    url: "https://zatsudan-gacha.web.app/",
     siteName: "雑談テーマガチャ",
     images: [
       {
-        url: "https://zatsudan-gacha.app/ogp.png",
+        url: "https://zatsudan-gacha.web.app/ogp.png",
         width: 512,
         height: 512,
         alt: "雑談テーマガチャ",
@@ -88,7 +89,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "雑談テーマガチャ",
     description: "会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」！ボタン一つで面白いお題をランダムに提案し、会話のきっかけを作ります。",
-    images: ["https://zatsudan-gacha.app/ogp.png"],
+    images: ["https://zatsudan-gacha.web.app/ogp.png"],
   },
 };
 
@@ -101,7 +102,10 @@ export default function RootLayout({
     <html lang="ja" suppressHydrationWarning>
       <body className={`${inter.variable} ${notoSansJp.variable} font-sans`}>
         <DomainRedirect />
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Footer />
+        </Providers>
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7296906013994885"
