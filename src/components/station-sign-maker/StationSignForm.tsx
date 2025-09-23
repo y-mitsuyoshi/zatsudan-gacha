@@ -14,7 +14,7 @@ export const StationSignForm: React.FC<StationSignFormProps> = ({ stationState, 
     const { name, value } = e.target;
 
     if (name === 'station') {
-      const roman = toRomaji(value, { uppercase: true });
+      const roman = toRomaji(value).toUpperCase();
       setStationState(prevState => ({
         ...prevState,
         [name]: value,

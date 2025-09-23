@@ -133,13 +133,19 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
 
   switch (effect.type) {
     case 'yaruki':
-      newState.yaruki = Math.max(0, Math.min(100, newState.yaruki + effect.value));
+      if (typeof effect.value === 'number') {
+        newState.yaruki = Math.max(0, Math.min(100, newState.yaruki + effect.value));
+      }
       break;
     case 'move':
-      newState.position = Math.max(0, newState.position + effect.value);
+      if (typeof effect.value === 'number') {
+        newState.position = Math.max(0, newState.position + effect.value);
+      }
       break;
     case 'rest':
-      newState.isResting += effect.value;
+      if (typeof effect.value === 'number') {
+        newState.isResting += effect.value;
+      }
       break;
     case 'item':
       const itemToAdd = ITEMS[effect.value as string];
@@ -263,7 +269,7 @@ function checkEndGame(state: GameState): GameState {
 
     newState.newlyUnlockedAchievements = newlyUnlocked;
 
-    const allAchievements = [...new Set([...newState.unlockedAchievements, ...newlyUnlocked])];
+    const allAchievements = Array.from(new Set([...newState.unlockedAchievements, ...newlyUnlocked]));
     if(allAchievements.length > newState.unlockedAchievements.length) {
         newState.unlockedAchievements = allAchievements;
         saveAchievementsToStorage(allAchievements);
