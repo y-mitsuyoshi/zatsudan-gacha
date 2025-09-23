@@ -69,23 +69,45 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
         className={`
           relative w-20 h-20 bg-white rounded-lg border-2 border-gray-300 shadow-lg
           ${isRolling ? 'animate-spin' : showFinal ? 'animate-bounce' : ''}
-          transition-all duration-300
+          transition-all duration-300 transform hover:scale-105
         `}
+        style={{
+          background: isRolling 
+            ? 'linear-gradient(45deg, #f3f4f6, #e5e7eb)' 
+            : 'linear-gradient(145deg, #ffffff, #f9fafb)'
+        }}
       >
         {getDotPositions(currentValue).map((position, index) => (
           <div key={index} className={getDotClassName(position)} />
         ))}
+        
+        {/* Dice number overlay when final */}
+        {!isRolling && showFinal && (
+          <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+            {finalValue}
+          </div>
+        )}
       </div>
       
       {!isRolling && showFinal && (
-        <div className="text-lg font-bold text-gray-700 dark:text-gray-300 animate-pulse">
-          {finalValue}が出ました！
+        <div className="text-center">
+          <div className="text-lg font-bold text-gray-700 dark:text-gray-300 animate-pulse">
+            🎯 {finalValue}が出ました！
+          </div>
+          <div className="text-sm text-green-600 dark:text-green-400 mt-1">
+            {finalValue}マス進みます
+          </div>
         </div>
       )}
       
       {isRolling && (
-        <div className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">
-          🎲 サイコロを振っています...
+        <div className="text-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400 animate-pulse font-medium">
+            🎲 サイコロを振っています...
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            結果をお待ちください
+          </div>
         </div>
       )}
     </div>

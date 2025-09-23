@@ -2,7 +2,7 @@ import { Job, Item, BoardSquare, GameState, SetupFormState } from '@/types/sugor
 
 // --- Master Data ---
 
-export const JOBS: Job[] = ['営業', 'エンジニア', 'デザイナー', '企画・マーケティング'];
+export const JOBS: Job[] = ['営業', 'エンジニア', 'デザイナー', '企画・マーケティング', '人事・総務', '経理・財務'];
 
 export const ITEMS: { [id: string]: Item } = {
   'energy-drink': {
@@ -17,7 +17,7 @@ export const ITEMS: { [id: string]: Item } = {
   },
 };
 
-const BOARD_SIZE = 30;
+const BOARD_SIZE = 50;
 export const GAME_BOARD: BoardSquare[] = [
     { position: 0, type: 'start', title: 'スタート', description: '社畜すごろくの始まり。', effect: null },
     { position: 1, type: 'event', title: '月曜朝からやる気でない', description: 'やる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
@@ -48,8 +48,28 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 26, type: 'event', title: 'インフルエンサーが紹介', description: 'やる気が15上がる。', effect: { type: 'yaruki', value: 15 } },
     { position: 27, type: 'event', title: 'サーバーダウン', description: 'エンジニア以外は2マス戻る。', effect: { type: 'job-specific', value: 'server-down' } },
     { position: 28, type: 'event', title: '接待', description: '営業はやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'settai' } },
-    { position: 29, type: 'normal', title: 'あと少し…', description: 'ゴールの光が見えてきた。', effect: null },
-    { position: 30, type: 'goal', title: 'ゴール！', description: 'ボーナス支給日！おめでとう！', effect: null },
+    { position: 29, type: 'event', title: '新人研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' } },
+    { position: 30, type: 'event', title: '月末の売上締め', description: '経理・財務は2回休み。営業はやる気10UP。', effect: { type: 'job-specific', value: 'month-end' } },
+    { position: 31, type: 'normal', title: '中間地点', description: 'まだまだ先は長い…', effect: null },
+    { position: 32, type: 'event', title: '健康診断で再検査', description: '心配になってやる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
+    { position: 33, type: 'event', title: '採用面接の担当', description: '人事・総務はやる気15UP。他は1マス進む。', effect: { type: 'job-specific', value: 'interview-duty' } },
+    { position: 34, type: 'event', title: '経費精算の山', description: '経理・財務は1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'expense-hell' } },
+    { position: 35, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
+    { position: 36, type: 'event', title: 'デザインコンペ入賞', description: 'デザイナーは4マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'design-award' } },
+    { position: 37, type: 'event', title: '社内システム障害', description: 'エンジニアは3回休み。他は2マス戻る。', effect: { type: 'job-specific', value: 'major-system-failure' } },
+    { position: 38, type: 'event', title: '忘年会の幹事', description: '人事・総務以外は2マス戻る。', effect: { type: 'job-specific', value: 'party-organizer' } },
+    { position: 39, type: 'normal', title: '平和な午後', description: 'コーヒーブレイクでリフレッシュ。', effect: null },
+    { position: 40, type: 'event', title: '予算会議', description: '経理・財務は2マス進む。企画・マーケは1回休み。', effect: { type: 'job-specific', value: 'budget-meeting' } },
+    { position: 41, type: 'event', title: '大型案件受注', description: '営業は6マス進む！他は2マス進む。', effect: { type: 'job-specific', value: 'big-deal' } },
+    { position: 42, type: 'event', title: 'ウイルス感染', description: 'エンジニア以外は1回休み。', effect: { type: 'job-specific', value: 'virus-infection' } },
+    { position: 43, type: 'normal', title: '残業なしの日', description: '早く帰れてラッキー！', effect: null },
+    { position: 44, type: 'event', title: '人事評価面談', description: '人事・総務は1マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'performance-review' } },
+    { position: 45, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
+    { position: 46, type: 'event', title: '決算処理', description: '経理・財務は3回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'financial-closing' } },
+    { position: 47, type: 'event', title: '最終プレゼン', description: 'やる気が20上がる。ゴールまであと少し！', effect: { type: 'yaruki', value: 20 } },
+    { position: 48, type: 'event', title: '退職者の引き継ぎ', description: '人事・総務は2回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'handover' } },
+    { position: 49, type: 'normal', title: 'ゴール直前', description: 'もうすぐゴール！最後の踏ん張り。', effect: null },
+    { position: 50, type: 'goal', title: 'ゴール！', description: 'ボーナス支給日！おめでとう！', effect: null },
 ];
 
 
@@ -229,6 +249,126 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     message = '接待で気疲れ...やる気が10DOWN。';
                 }
                 break;
+            // 新しい職業固有イベント
+            case 'training-instructor':
+                if (newState.job === '人事・総務') {
+                    newState.position += 3;
+                    message = '新人研修の講師を務めて評価UP！3マス進む！';
+                } else {
+                    newState.yaruki = Math.min(100, newState.yaruki + 5);
+                    message = '新人研修を受けてスキルUP！やる気が5UP！';
+                }
+                break;
+            case 'month-end':
+                if (newState.job === '経理・財務') {
+                    newState.isResting += 2;
+                    message = '月末の売上締めで激務！2回休み。';
+                } else if (newState.job === '営業') {
+                    newState.yaruki = Math.min(100, newState.yaruki + 10);
+                    message = '売上目標達成！やる気が10UP！';
+                } else {
+                    message = '経理部門が忙しそうだ。';
+                }
+                break;
+            case 'interview-duty':
+                if (newState.job === '人事・総務') {
+                    newState.yaruki = Math.min(100, newState.yaruki + 15);
+                    message = '優秀な人材を発見！やる気が15UP！';
+                } else {
+                    newState.position += 1;
+                    message = '面接で自分を見つめ直した。1マス進む。';
+                }
+                break;
+            case 'expense-hell':
+                if (newState.job === '経理・財務') {
+                    newState.isResting += 1;
+                    message = '領収書の山に埋もれて1回休み。';
+                } else {
+                    newState.yaruki = Math.max(0, newState.yaruki - 5);
+                    message = '経費精算が面倒...やる気が5DOWN。';
+                }
+                break;
+            case 'design-award':
+                if (newState.job === 'デザイナー') {
+                    newState.position += 4;
+                    message = 'デザインコンペで入賞！4マス進む！';
+                } else {
+                    newState.yaruki = Math.min(100, newState.yaruki + 5);
+                    message = '会社のデザインが評価されて嬉しい！やる気が5UP！';
+                }
+                break;
+            case 'major-system-failure':
+                if (newState.job === 'エンジニア') {
+                    newState.isResting += 3;
+                    message = '大規模システム障害で3日間不眠不休...3回休み。';
+                } else {
+                    newState.position = Math.max(0, newState.position - 2);
+                    message = 'システム障害で仕事が進まない！2マス戻る。';
+                }
+                break;
+            case 'party-organizer':
+                if (newState.job === '人事・総務') {
+                    message = '人事・総務は慣れたもの。忘年会を無事開催！';
+                } else {
+                    newState.position = Math.max(0, newState.position - 2);
+                    message = '忘年会の幹事で大変...2マス戻る。';
+                }
+                break;
+            case 'budget-meeting':
+                if (newState.job === '経理・財務') {
+                    newState.position += 2;
+                    message = '予算会議で専門知識を発揮！2マス進む！';
+                } else if (newState.job === '企画・マーケティング') {
+                    newState.isResting += 1;
+                    message = '予算削減で企画が通らない...1回休み。';
+                } else {
+                    message = '予算会議は他部署の話。';
+                }
+                break;
+            case 'big-deal':
+                if (newState.job === '営業') {
+                    newState.position += 6;
+                    message = '大型案件を受注！営業の大手柄で6マス進む！';
+                } else {
+                    newState.position += 2;
+                    message = '大型案件受注で会社全体が活気づく！2マス進む！';
+                }
+                break;
+            case 'virus-infection':
+                if (newState.job === 'エンジニア') {
+                    message = 'エンジニアがウイルス対策ソフトで対処。';
+                } else {
+                    newState.isResting += 1;
+                    message = 'コンピューターウイルス感染で1回休み。';
+                }
+                break;
+            case 'performance-review':
+                if (newState.job === '人事・総務') {
+                    newState.position += 1;
+                    message = '人事評価面談を実施。1マス進む。';
+                } else {
+                    newState.yaruki = Math.max(0, newState.yaruki - 5);
+                    message = '人事評価面談で緊張...やる気が5DOWN。';
+                }
+                break;
+            case 'financial-closing':
+                if (newState.job === '経理・財務') {
+                    newState.isResting += 3;
+                    message = '決算処理で連日深夜残業...3回休み。';
+                } else {
+                    newState.position = Math.max(0, newState.position - 1);
+                    message = '決算資料の提出で1マス戻る。';
+                }
+                break;
+            case 'handover':
+                if (newState.job === '人事・総務') {
+                    newState.isResting += 2;
+                    message = '退職者の引き継ぎ業務で2回休み。';
+                } else {
+                    newState.position = Math.max(0, newState.position - 1);
+                    message = '退職者からの引き継ぎで1マス戻る。';
+                }
+                break;
         }
         break;
   }
@@ -280,7 +420,7 @@ function checkEndGame(state: GameState): GameState {
     return newState;
 }
 
-export function takeTurn(currentState: GameState): GameState {
+export function takeTurn(currentState: GameState, diceValue?: number): GameState {
   let newState = { ...currentState, turn: currentState.turn + 1 };
 
   if (newState.isResting > 0) {
@@ -291,28 +431,51 @@ export function takeTurn(currentState: GameState): GameState {
     return newState;
   }
 
-  const diceResult = rollDice();
-  let newPosition = newState.position + diceResult;
+  const diceResult = diceValue ?? rollDice();
+  
+  // 段階的移動のためのプロパティを追加
+  newState.pendingMoves = diceResult;
+  newState.gameMessage = `サイコロで${diceResult}が出ました！一マスずつ進みます。`;
+  
+  return newState;
+}
 
-  if (newPosition >= BOARD_SIZE) {
-    newPosition = BOARD_SIZE;
-    newState.position = newPosition;
-    newState.path = [...newState.path, newPosition];
+// 一マスずつの移動を処理する新しい関数
+export function moveOneStep(currentState: GameState): GameState {
+  let newState = { ...currentState };
+  
+  if (!newState.pendingMoves || newState.pendingMoves <= 0) {
+    return newState;
+  }
+
+  // 一マス進む
+  newState.position += 1;
+  newState.pendingMoves -= 1;
+  newState.path = [...newState.path, newState.position];
+  newState.landedOnCounts[newState.position] = (newState.landedOnCounts[newState.position] || 0) + 1;
+
+  // ゴールチェック
+  if (newState.position >= BOARD_SIZE) {
+    newState.position = BOARD_SIZE;
+    newState.pendingMoves = 0;
     return checkEndGame(newState);
   }
 
-  newState.position = newPosition;
-  newState.path = [...newState.path, newPosition];
-  newState.landedOnCounts[newPosition] = (newState.landedOnCounts[newPosition] || 0) + 1;
-
+  // 中間マスの効果適用
   const currentSquare = GAME_BOARD.find(s => s.position === newState.position);
   if (currentSquare) {
-    newState = applySquareEffect(newState, currentSquare);
+    // 移動中の場合は簡単なメッセージのみ
+    if (newState.pendingMoves > 0) {
+      newState.gameMessage = `${currentSquare.title}を通過...（あと${newState.pendingMoves}マス）`;
+    } else {
+      // 最終到達地点では効果を適用
+      newState = applySquareEffect(newState, currentSquare);
+    }
   }
 
   // Check for yaruki penalty achievement
   if (newState.yaruki <= 0) {
-      newState.landedOnCounts[-2] = (newState.landedOnCounts[-2] || 0) + 1;
+    newState.landedOnCounts[-2] = (newState.landedOnCounts[-2] || 0) + 1;
   }
 
   return newState;

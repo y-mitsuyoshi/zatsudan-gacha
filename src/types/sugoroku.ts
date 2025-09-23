@@ -1,5 +1,5 @@
 // Defines the available jobs for the player
-export type Job = '営業' | 'エンジニア' | 'デザイナー' | '企画・マーケティング';
+export type Job = '営業' | 'エンジニア' | 'デザイナー' | '企画・マーケティング' | '人事・総務' | '経理・財務';
 
 // Defines the structure for an item the player can use
 export interface Item {
@@ -40,6 +40,7 @@ export interface GameState {
   path: number[]; // History of squares landed on
   landedOnCounts: { [key: number]: number }; // Count of times landed on each square
   ending: string | null; // The ending of the game
+  pendingMoves?: number; // Number of moves left to complete step by step
 }
 
 // Defines the initial form state before the game starts
