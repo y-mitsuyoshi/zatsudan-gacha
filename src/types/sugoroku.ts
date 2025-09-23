@@ -1,5 +1,5 @@
 // Defines the available jobs for the player
-export type Job = '営業' | 'エンジニア' | 'デザイナー' | '企画・マーケティング' | '人事・総務' | '経理・財務';
+export type Job = '営業' | 'エンジニア' | 'デザイナー' | '企画・マーケティング' | '人事・総務' | '経理・財務' | '法務・コンプラ' | '広報・PR' | '品質保証' | '総合職';
 
 // Defines the structure for an item the player can use
 export interface Item {

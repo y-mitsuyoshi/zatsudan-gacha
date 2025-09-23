@@ -2,7 +2,7 @@ import { Job, Item, BoardSquare, GameState, SetupFormState } from '@/types/sugor
 
 // --- Master Data ---
 
-export const JOBS: Job[] = ['営業', 'エンジニア', 'デザイナー', '企画・マーケティング', '人事・総務', '経理・財務'];
+export const JOBS: Job[] = ['営業', 'エンジニア', 'デザイナー', '企画・マーケティング', '人事・総務', '経理・財務', '法務・コンプラ', '広報・PR', '品質保証', '総合職'];
 
 export const ITEMS: { [id: string]: Item } = {
   'energy-drink': {
@@ -20,32 +20,32 @@ export const ITEMS: { [id: string]: Item } = {
 const BOARD_SIZE = 50;
 export const GAME_BOARD: BoardSquare[] = [
     { position: 0, type: 'start', title: 'スタート', description: '社畜すごろくの始まり。', effect: null },
-    { position: 1, type: 'event', title: '月曜朝からやる気でない', description: 'やる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
-    { position: 2, type: 'event', title: '電車遅延', description: 'ギリギリセーフ！しかしやる気が5下がる。', effect: { type: 'yaruki', value: -5 } },
+    { position: 1, type: 'event', title: '月曜朝からやる気でない', description: 'やる気が15下がる。', effect: { type: 'yaruki', value: -15 } },
+    { position: 2, type: 'event', title: '電車遅延', description: 'ギリギリセーフ！しかしやる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
     { position: 3, type: 'item', title: '備品室で発見', description: '栄養ドリンクを手に入れた。', effect: { type: 'item', value: 'energy-drink' } },
     { position: 4, type: 'event', title: '退勤直前の"ちょっといい？"', description: '2マス戻る。', effect: { type: 'move', value: -2 } },
     { position: 5, type: 'job-specific', title: '職業イベント', description: '職業によって運命が変わる…', effect: null }, // Job specific event
-    { position: 6, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
-    { position: 7, type: 'event', title: 'ランチで入った店が大当たり！', description: 'やる気が15回復！', effect: { type: 'yaruki', value: 15 } },
-    { position: 8, type: 'event', title: 'PCフリーズ', description: 'データは無事だったが、1マス戻る。', effect: { type: 'move', value: -1 } },
+    { position: 6, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 } },
+    { position: 7, type: 'event', title: 'ランチで入った店が大当たり！', description: 'やる気が10回復！', effect: { type: 'yaruki', value: 10 } },
+    { position: 8, type: 'event', title: 'PCフリーズ', description: 'データは無事だったが、やる気が10下がり、1マス戻る。', effect: { type: 'move', value: -1 } },
     { position: 9, type: 'event', title: '理不尽な修正依頼', description: 'デザイナーは2回休み。他は1回休み。', effect: { type: 'job-specific', value: 'designer-hell' } },
-    { position: 10, type: 'normal', title: '平穏な一日', description: 'なにごともなく業務終了。', effect: null },
+    { position: 10, type: 'event', title: '残業連続', description: '異常な残業でやる気が20下がり、1回休み。', effect: { type: 'yaruki', value: -20 } },
     { position: 11, type: 'item', title: '先輩からの差し入れ', description: '有給休暇申請書を手に入れた。', effect: { type: 'item', value: 'paid-leave' } },
     { position: 12, type: 'event', title: 'システム障害発生', description: 'エンジニアはやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'system-error' } },
     { position: 13, type: 'event', title: '無意味な定例会議', description: '企画・マーケは1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'useless-meeting' } },
     { position: 14, type: 'normal', title: '定時退社', description: '今日もお疲れ様でした。', effect: null },
-    { position: 15, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
+    { position: 15, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 } },
     { position: 16, type: 'event', title: '競合にコンペで勝利！', description: '営業は5マス進む。他は1マス進む。', effect: { type: 'job-specific', value: 'sales-win' } },
     { position: 17, type: 'event', title: 'SNSで企画がバズる！', description: '企画・マーケは5マス進む。他はやる気10UP。', effect: { type: 'job-specific', value: 'viral-hit' } },
     { position: 18, type: 'event', title: 'クリエイティブなひらめき', description: 'デザイナーは3マス進む。', effect: { type: 'job-specific', value: 'creative-spark' } },
     { position: 19, type: 'event', title: '動くはずのコードが動かない', description: 'エンジニアは1回休み。', effect: { type: 'job-specific', value: 'code-bug' } },
     { position: 20, type: 'normal', title: '有給休暇', description: '心と体をリフレッシュ。', effect: null },
-    { position: 21, type: 'event', title: '飲み会', description: 'やる気が10上がるが、次のターンは1マスしか進めない。', effect: { type: 'yaruki', value: 10 } }, // Special effect to be handled
-    { position: 22, type: 'event', title: '上司の無茶振り', description: 'やる気が20下がる。', effect: { type: 'yaruki', value: -20 } },
+    { position: 21, type: 'event', title: '飲み会', description: 'やる気が5上がるが、次のターンは1マスしか進めない。', effect: { type: 'yaruki', value: 5 } }, // Special effect to be handled
+    { position: 22, type: 'event', title: '上司の無茶振り', description: 'やる気が25下がる。', effect: { type: 'yaruki', value: -25 } },
     { position: 23, type: 'normal', title: '穏やかな一日', description: '集中して業務ができた。', effect: null },
     { position: 24, type: 'item', title: '謎のメモ', description: '「有給休暇申請書」を手に入れた', effect: { type: 'item', value: 'paid-leave' } },
     { position: 25, type: 'event', title: 'プロジェクト完了！', description: '大きな達成感！3マス進む。', effect: { type: 'move', value: 3 } },
-    { position: 26, type: 'event', title: 'インフルエンサーが紹介', description: 'やる気が15上がる。', effect: { type: 'yaruki', value: 15 } },
+    { position: 26, type: 'event', title: '総合職の活躍', description: '総合職は2マス進む＋やる気5UP。他は1マス進む。', effect: { type: 'job-specific', value: 'multi-task' } },
     { position: 27, type: 'event', title: 'サーバーダウン', description: 'エンジニア以外は2マス戻る。', effect: { type: 'job-specific', value: 'server-down' } },
     { position: 28, type: 'event', title: '接待', description: '営業はやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'settai' } },
     { position: 29, type: 'event', title: '新人研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' } },
@@ -54,7 +54,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 32, type: 'event', title: '健康診断で再検査', description: '心配になってやる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
     { position: 33, type: 'event', title: '採用面接の担当', description: '人事・総務はやる気15UP。他は1マス進む。', effect: { type: 'job-specific', value: 'interview-duty' } },
     { position: 34, type: 'event', title: '経費精算の山', description: '経理・財務は1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'expense-hell' } },
-    { position: 35, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
+    { position: 35, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 } },
     { position: 36, type: 'event', title: 'デザインコンペ入賞', description: 'デザイナーは4マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'design-award' } },
     { position: 37, type: 'event', title: '社内システム障害', description: 'エンジニアは3回休み。他は2マス戻る。', effect: { type: 'job-specific', value: 'major-system-failure' } },
     { position: 38, type: 'event', title: '忘年会の幹事', description: '人事・総務以外は2マス戻る。', effect: { type: 'job-specific', value: 'party-organizer' } },
@@ -66,9 +66,9 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 44, type: 'event', title: '人事評価面談', description: '人事・総務は1マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'performance-review' } },
     { position: 45, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
     { position: 46, type: 'event', title: '決算処理', description: '経理・財務は3回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'financial-closing' } },
-    { position: 47, type: 'event', title: '最終プレゼン', description: 'やる気が20上がる。ゴールまであと少し！', effect: { type: 'yaruki', value: 20 } },
-    { position: 48, type: 'event', title: '退職者の引き継ぎ', description: '人事・総務は2回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'handover' } },
-    { position: 49, type: 'normal', title: 'ゴール直前', description: 'もうすぐゴール！最後の踏ん張り。', effect: null },
+    { position: 47, type: 'event', title: 'コンプライアンス監査', description: '法務・コンプラは3マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'legal-compliance' } },
+    { position: 48, type: 'event', title: 'メディア対応', description: '広報・PRは4マス進む。他は緊張でやる気5DOWN。', effect: { type: 'job-specific', value: 'pr-campaign' } },
+    { position: 49, type: 'event', title: '品質検査', description: '品質保証は2マス進む。他は1回休み。', effect: { type: 'job-specific', value: 'quality-issue' } },
     { position: 50, type: 'goal', title: 'ゴール！', description: 'ボーナス支給日！おめでとう！', effect: null },
 ];
 
@@ -84,9 +84,36 @@ const ACHIEVEMENTS = {
 };
 
 const ENDINGS = {
-    'true': { title: '円満退職', description: '最高のパフォーマンスを発揮し、伝説の社員として名を残した。' },
-    'good': { title: '平穏なサラリーマン人生', description: '大きな波乱もなく、安定した社畜ライフを全うした。' },
-    'bad': { title: '強制リタイア', description: '心身ともに疲れ果て、ドクターストップにより退場となった…。' }
+    'legendary': { title: '伝説の社員', description: '完璧なパフォーマンスと高いやる気で、会社の歴史に名を刻む伝説の社員となった。' },
+    'promotion': { title: '昇進昇格', description: '優秀な成績が認められ、管理職への昇進が決定した。' },
+    'mentor': { title: '頼れる先輩', description: '後輩からの信頼も厚く、社内の模範となる存在として活躍した。' },
+    'specialist': { title: '専門職のエキスパート', description: '専門分野での深い知識と経験を積み、その道のプロフェッショナルとなった。' },
+    'innovator': { title: 'イノベーター', description: '新しいアイデアと創造力で、会社に革新をもたらした。' },
+    'ace': { title: '営業エース', description: '驚異的な営業成績を残し、社内で「エース」と呼ばれるようになった。' },
+    'creator': { title: 'クリエイティブ・ディレクター', description: '独創性豊かな作品で業界に名を轟かせ、クリエイターとして成功した。' },
+    'leader': { title: 'リーダーシップ賞', description: '優れたリーダーシップでチームを牽引し、多くの成果を生み出した。' },
+    'stable': { title: '安定サラリーマン', description: '大きな波乱もなく、着実に仕事をこなす模範的な社員として過ごした。' },
+    'balanced': { title: 'ワークライフバランス', description: '仕事とプライベートのバランスを保ち、充実した社会人生活を送った。' },
+    'diligent': { title: '勤勉な働き者', description: '真面目にコツコツと仕事に取り組み、周囲から信頼される社員となった。' },
+    'team-player': { title: 'チームプレイヤー', description: 'チームワークを大切にし、みんなで協力して目標を達成した。' },
+    'steady': { title: '堅実な歩み', description: '派手さはないが、確実に成果を積み重ねる堅実な社員として評価された。' },
+    'consistent': { title: '一貫性のある成果', description: '安定したパフォーマンスで、長期にわたって会社に貢献した。' },
+    'reliable': { title: '信頼できる仲間', description: '困った時に頼りにされる、信頼性の高い社員として活躍した。' },
+    'average': { title: '平凡な社畜', description: '特別なことはないが、普通の社畜として日々を過ごした。' },
+    'survivor': { title: 'サバイバー', description: '様々な困難を乗り越え、なんとか生き残った社畜ライフだった。' },
+    'mediocre': { title: '可もなく不可もなく', description: '特に目立つこともなく、平凡な社会人生活を送った。' },
+    'routine': { title: 'ルーティンワーカー', description: '決められた業務を淡々とこなす、典型的な会社員として過ごした。' },
+    'ordinary': { title: '普通のサラリーマン', description: 'ごく普通の会社員として、ごく普通の毎日を過ごした。' },
+    'burnout': { title: '燃え尽き症候群', description: '過度なストレスと疲労により、完全に燃え尽きてしまった。' },
+    'dropout': { title: '脱落者', description: '激しい競争についていけず、途中で脱落してしまった。' },
+    'overwork': { title: '過労による退場', description: '過労が原因で体調を崩し、やむなく退職することになった。' },
+    'mental-break': { title: 'メンタルブレイク', description: '精神的な負担に耐えきれず、心が折れてしまった。' },
+    'stress-victim': { title: 'ストレス被害者', description: '職場のストレスに押し潰され、心身ともにボロボロになった。' },
+    'exhausted': { title: '完全燃焼', description: '全てを出し切って完全に疲れ果て、もう何も残っていない状態になった。' },
+    'breakdown': { title: '心身の限界', description: '心と体の限界を超えてしまい、回復に長い時間が必要になった。' },
+    'resignation': { title: '無気力退職', description: 'やる気を完全に失い、無気力状態のまま退職に至った。' },
+    'collapse': { title: '完全崩壊', description: '全てが崩れ去り、再起不能な状態まで追い込まれてしまった。' },
+    'defeat': { title: '敗北者', description: '社畜レースに完全に敗北し、惨めな結末を迎えることになった。' }
 };
 
 const ACHIEVEMENT_STORAGE_KEY = 'shachiku-sugoroku-achievements';
@@ -155,6 +182,11 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
     case 'yaruki':
       if (typeof effect.value === 'number') {
         newState.yaruki = Math.max(0, Math.min(100, newState.yaruki + effect.value));
+        // 残業連続イベント（position 10）の場合は追加で1回休み
+        if (square.position === 10 && effect.value < 0) {
+          newState.isResting += 1;
+          message += ' 疲労で1回休み。';
+        }
       }
       break;
     case 'move':
@@ -369,6 +401,45 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     message = '退職者からの引き継ぎで1マス戻る。';
                 }
                 break;
+            
+            // 新職業用の追加イベント
+            case 'legal-compliance':
+                if (newState.job === '法務・コンプラ') {
+                    newState.position += 3;
+                    message = 'コンプライアンス研修で評価UP！3マス進む！';
+                } else {
+                    newState.yaruki = Math.max(0, newState.yaruki - 5);
+                    message = 'コンプライアンス研修で疲労...やる気が5DOWN。';
+                }
+                break;
+            case 'pr-campaign':
+                if (newState.job === '広報・PR') {
+                    newState.position += 4;
+                    message = 'PR戦略が大成功！4マス進む！';
+                } else {
+                    newState.yaruki = Math.min(100, newState.yaruki + 10);
+                    message = '会社のイメージがUP！やる気が10UP！';
+                }
+                break;
+            case 'quality-issue':
+                if (newState.job === '品質保証') {
+                    newState.position += 2;
+                    message = '品質問題を事前に発見！2マス進む！';
+                } else {
+                    newState.isResting += 1;
+                    message = '品質問題で作業やり直し...1回休み。';
+                }
+                break;
+            case 'multi-task':
+                if (newState.job === '総合職') {
+                    newState.position += 2;
+                    newState.yaruki = Math.min(100, newState.yaruki + 5);
+                    message = '総合職の柔軟性を発揮！2マス進む＆やる気5UP！';
+                } else {
+                    newState.position += 1;
+                    message = '他部署のお手伝い。1マス進む。';
+                }
+                break;
         }
         break;
   }
@@ -390,22 +461,88 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
 function checkEndGame(state: GameState): GameState {
     let newState = { ...state };
 
-    // Determine Ending
-    if (newState.yaruki >= 80 && newState.turn <= 10) {
-        newState.ending = 'true';
-    } else if (newState.yaruki <= 20) {
-        newState.ending = 'bad';
+    // Determine Ending based on multiple factors
+    const yaruki = newState.yaruki;
+    const turn = newState.turn;
+    const hasRestCount = (newState.landedOnCounts[-1] || 0);
+    const hasYarukiZeroCount = (newState.landedOnCounts[-2] || 0);
+    
+    // Legendary endings (very high performance)
+    if (yaruki >= 95 && turn <= 5) {
+        newState.ending = 'legendary';
+    } else if (yaruki >= 90 && turn <= 8 && hasRestCount === 0) {
+        newState.ending = 'promotion';
+    } else if (yaruki >= 85 && turn <= 10) {
+        newState.ending = 'mentor';
+    } else if (yaruki >= 80 && turn <= 7) {
+        newState.ending = 'specialist';
+    } else if (yaruki >= 80 && turn <= 12) {
+        newState.ending = 'innovator';
+    } else if (yaruki >= 75 && newState.job === '営業') {
+        newState.ending = 'ace';
+    } else if (yaruki >= 75 && newState.job === 'デザイナー') {
+        newState.ending = 'creator';
+    } else if (yaruki >= 75 && turn <= 15) {
+        newState.ending = 'leader';
+    }
+    // Good endings (stable performance)
+    else if (yaruki >= 70 && yaruki < 85 && hasRestCount <= 2) {
+        newState.ending = 'stable';
+    } else if (yaruki >= 65 && yaruki < 80 && hasRestCount <= 1) {
+        newState.ending = 'balanced';
+    } else if (yaruki >= 60 && yaruki < 75 && turn <= 20) {
+        newState.ending = 'diligent';
+    } else if (yaruki >= 55 && yaruki < 70 && hasRestCount <= 3) {
+        newState.ending = 'team-player';
+    } else if (yaruki >= 50 && yaruki < 65 && turn <= 25) {
+        newState.ending = 'steady';
+    } else if (yaruki >= 45 && yaruki < 60) {
+        newState.ending = 'consistent';
+    } else if (yaruki >= 40 && yaruki < 55) {
+        newState.ending = 'reliable';
+    }
+    // Average endings (mediocre performance)
+    else if (yaruki >= 35 && yaruki < 50 && hasRestCount <= 5) {
+        newState.ending = 'average';
+    } else if (yaruki >= 30 && yaruki < 45 && hasRestCount <= 7) {
+        newState.ending = 'survivor';
+    } else if (yaruki >= 25 && yaruki < 40) {
+        newState.ending = 'mediocre';
+    } else if (yaruki >= 20 && yaruki < 35) {
+        newState.ending = 'routine';
+    } else if (yaruki >= 15 && yaruki < 30) {
+        newState.ending = 'ordinary';
+    }
+    // Bad endings (poor performance)
+    else if (yaruki >= 10 && yaruki < 20 && hasYarukiZeroCount >= 2) {
+        newState.ending = 'burnout';
+    } else if (yaruki >= 10 && yaruki < 20 && hasRestCount >= 8) {
+        newState.ending = 'dropout';
+    } else if (yaruki >= 5 && yaruki < 15 && turn >= 30) {
+        newState.ending = 'overwork';
+    } else if (yaruki >= 5 && yaruki < 15 && hasYarukiZeroCount >= 3) {
+        newState.ending = 'mental-break';
+    } else if (yaruki >= 1 && yaruki < 10 && hasRestCount >= 10) {
+        newState.ending = 'stress-victim';
+    } else if (yaruki >= 1 && yaruki < 10 && hasYarukiZeroCount >= 4) {
+        newState.ending = 'exhausted';
+    } else if (yaruki === 0 && hasRestCount >= 5) {
+        newState.ending = 'breakdown';
+    } else if (yaruki <= 5 && turn >= 35) {
+        newState.ending = 'resignation';
+    } else if (yaruki <= 3 && hasYarukiZeroCount >= 5) {
+        newState.ending = 'collapse';
     } else {
-        newState.ending = 'good';
+        newState.ending = 'defeat';
     }
 
     // Check Achievements
     const newlyUnlocked: string[] = [];
     if (newState.turn <= 5) newlyUnlocked.push('super-fast');
-    if (newState.landedOnCounts[-1] === undefined) newlyUnlocked.push('no-rest'); // Assuming isResting updates a special count
+    if (hasRestCount === 0) newlyUnlocked.push('no-rest');
     if ((newState.landedOnCounts[1] || 0) >= 3) newlyUnlocked.push('monday-hater');
     if (newState.yaruki === 100) newlyUnlocked.push('yaruki-master');
-    if ((newState.landedOnCounts[-2] || 0) >= 1) newlyUnlocked.push('yaruki-zero'); // Assuming yaruki penalty updates a special count
+    if (hasYarukiZeroCount >= 1) newlyUnlocked.push('yaruki-zero');
 
     newState.newlyUnlockedAchievements = newlyUnlocked;
 

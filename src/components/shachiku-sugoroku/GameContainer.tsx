@@ -65,9 +65,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
         
         // Continue moving if there are more pending moves
         if (newState.pendingMoves && newState.pendingMoves > 0) {
-          setTimeout(moveStep, 1000); // Wait 1 second between moves
+          setTimeout(moveStep, 900); // 900ms間隔でゆっくり移動
         } else {
-          setTimeout(() => setIsMoving(false), 500);
+          setTimeout(() => setIsMoving(false), 800);
+          // Clear dice after movement completes
+          setTimeout(() => setShowDice(false), 1500);
         }
         
         return newState;
@@ -75,7 +77,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
     };
 
     // Start the first move after a short delay
-    setTimeout(moveStep, 500);
+    setTimeout(moveStep, 800);
   };
 
   const handleNextStep = () => {

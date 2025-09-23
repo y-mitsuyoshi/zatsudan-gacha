@@ -67,22 +67,28 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 }) => {
   const [currentAnimatingPosition, setCurrentAnimatingPosition] = React.useState(position);
   const [showEventPopup, setShowEventPopup] = React.useState<{square: BoardSquare | null, show: boolean}>({square: null, show: false});
+  const [isAnimating, setIsAnimating] = React.useState(false);
   
   React.useEffect(() => {
-    if (isMoving && previousPosition !== position) {
-      // 段階的移動アニメーション
-      const animateMovement = async () => {
+    // 移動中は段階的アニメーションを実行
+    if (isMoving && previousPosition !== position && !isAnimating) {
+      setIsAnimating(true);
+      
+      const animateStepByStep = async () => {
         const start = previousPosition;
         const end = position;
+        const direction = end > start ? 1 : -1;
         const steps = Math.abs(end - start);
         
-        for (let i = 1; i <= steps; i++) {
-          await new Promise(resolve => setTimeout(resolve, 400));
-          const nextPos = start + (end > start ? i : -i);
-          setCurrentAnimatingPosition(nextPos);
+        for (let step = 1; step <= steps; step++) {
+          const nextPosition = start + (direction * step);
+          setCurrentAnimatingPosition(nextPosition);
+          await new Promise(resolve => setTimeout(resolve, 800)); // ゆっくり800ms間隔
         }
         
-        // 最終位置でイベント表示
+        setIsAnimating(false);
+        
+        // 最終位置でのイベント表示
         const finalSquare = GAME_BOARD.find(s => s.position === position);
         if (finalSquare && (finalSquare.type === 'item' || finalSquare.type === 'salary' || finalSquare.type === 'job-specific')) {
           setShowEventPopup({square: finalSquare, show: true});
@@ -90,11 +96,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         }
       };
       
-      animateMovement();
-    } else {
+      animateStepByStep();
+    } else if (!isMoving && !isAnimating) {
+      // 移動中でないときは即座に位置を更新
       setCurrentAnimatingPosition(position);
     }
-  }, [isMoving, previousPosition, position]);
+  }, [position, isMoving, previousPosition, isAnimating]);
 
   const getMovementPath = () => {
     if (!isMoving || previousPosition === position) return [];
