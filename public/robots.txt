@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://zatsudan-gacha.app/sitemap.xml
+# Specific pages for better crawling
+Allow: /isekai-status
+Allow: /profile-maker
+
+# Disallow dynamic API routes
+Disallow: /api/
+
+Sitemap: https://zatsudan-gacha.web.app/sitemap.xml

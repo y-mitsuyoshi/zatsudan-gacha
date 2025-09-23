@@ -16,6 +16,14 @@
         "destination": "/profile-maker.html"
       },
       {
+        "source": "/isekai-status",
+        "destination": "/isekai-status.html"
+      },
+      {
+        "source": "/isekai-status/",
+        "destination": "/isekai-status.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

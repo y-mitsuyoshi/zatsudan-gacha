@@ -83,7 +83,7 @@ export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, s
   ];
 
   return (
-    <form>
+    <form role="form" aria-label="異世界転生ステータスカード生成フォーム">
       <h3 className="text-lg font-bold mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">基本情報</h3>
       <FormInput
         label="あなたの名前"
@@ -120,6 +120,9 @@ export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, s
       </div>
 
       <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">運命を決める5つの質問</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        以下の質問に答えて、あなたの異世界での運命を決めましょう。すべての質問に回答する必要があります。
+      </p>
       {questions.map(q => (
         <RadioGroup
           key={q.name}
