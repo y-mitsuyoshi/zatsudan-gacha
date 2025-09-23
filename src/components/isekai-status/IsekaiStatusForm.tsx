@@ -1,6 +1,6 @@
 "use client";
 
-import { IsekaiFormState, Gender, QuestionAnswer } from "@/types";
+import { IsekaiFormState, Gender, QuestionAnswer, QuestionAnswerWithEmpty } from "@/types";
 
 interface IsekaiStatusFormProps {
   formState: IsekaiFormState;
@@ -38,7 +38,7 @@ const FormInput = ({ label, name, value, onChange, required = false, type = 'tex
 const RadioGroup = ({ question, name, value, onChange, options }: {
   question: string;
   name: keyof IsekaiFormState;
-  value: QuestionAnswer;
+  value: QuestionAnswerWithEmpty;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   options: { value: QuestionAnswer; label: string }[];
 }) => (
@@ -75,11 +75,11 @@ export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, s
   };
 
   const questions = [
-    { name: 'q1', question: '【質問1】巨大なドラゴンの前に立っている。どうする？', options: [{ value: 'A', label: '勇敢に剣を抜いて戦う' }, { value: 'B', label: '魔法で一発逆転を狙う' }, { value: 'C', label: '全力で見えないフリをして逃げる' }] },
-    { name: 'q2', question: '【質問2】王様から授けられる褒美は、次のうちどれがいい？', options: [{ value: 'A', label: '国一番の名誉と称号' }, { value: 'B', label: '一生遊んで暮らせるだけの金貨' }, { value: 'C', label: '誰も知らない古代遺跡の地図' }] },
-    { name: 'q3', question: '【質問3】仲間がピンチ！あなたは…', options: [{ value: 'A', label: '自分が盾になってでも仲間を守る' }, { value: 'B', label: '冷静に状況を分析し、的確な指示を出す' }, { value: 'C', label: '「後は頼んだ！」と言い残して撤退の準備を始める' }] },
-    { name: 'q4', question: '【質問4】手に入れたい最強の能力は？', options: [{ value: 'A', label: '全てを見通す千里眼' }, { value: 'B', label: '時を巻き戻す力' }, { value: 'C', label: 'どんな動物とも話せる能力' }] },
-    { name: 'q5', question: '【質問5】長い旅の終わり。あなたは何を求める？', options: [{ value: 'A', label: 'さらなる強さを求めて修行の旅へ' }, { value: 'B', label: '静かな場所で平穏な暮らしを始める' }, { value: 'C', label: '旅の思い出を本にして一儲けを企む' }] },
+    { name: 'q1', question: '【質問1】巨大なドラゴンの前に立っている。どうする？', options: [{ value: 'A' as QuestionAnswer, label: '勇敢に剣を抜いて戦う' }, { value: 'B' as QuestionAnswer, label: '魔法で一発逆転を狙う' }, { value: 'C' as QuestionAnswer, label: '全力で見えないフリをして逃げる' }] },
+    { name: 'q2', question: '【質問2】王様から授けられる褒美は、次のうちどれがいい？', options: [{ value: 'A' as QuestionAnswer, label: '国一番の名誉と称号' }, { value: 'B' as QuestionAnswer, label: '一生遊んで暮らせるだけの金貨' }, { value: 'C' as QuestionAnswer, label: '誰も知らない古代遺跡の地図' }] },
+    { name: 'q3', question: '【質問3】仲間がピンチ！あなたは…', options: [{ value: 'A' as QuestionAnswer, label: '自分が盾になってでも仲間を守る' }, { value: 'B' as QuestionAnswer, label: '冷静に状況を分析し、的確な指示を出す' }, { value: 'C' as QuestionAnswer, label: '「後は頼んだ！」と言い残して撤退の準備を始める' }] },
+    { name: 'q4', question: '【質問4】手に入れたい最強の能力は？', options: [{ value: 'A' as QuestionAnswer, label: '全てを見通す千里眼' }, { value: 'B' as QuestionAnswer, label: '時を巻き戻す力' }, { value: 'C' as QuestionAnswer, label: 'どんな動物とも話せる能力' }] },
+    { name: 'q5', question: '【質問5】長い旅の終わり。あなたは何を求める？', options: [{ value: 'A' as QuestionAnswer, label: 'さらなる強さを求めて修行の旅へ' }, { value: 'B' as QuestionAnswer, label: '静かな場所で平穏な暮らしを始める' }, { value: 'C' as QuestionAnswer, label: '旅の思い出を本にして一儲けを企む' }] },
   ];
 
   return (
@@ -125,7 +125,7 @@ export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, s
           key={q.name}
           question={q.question}
           name={q.name as keyof IsekaiFormState}
-          value={formState[q.name as keyof IsekaiFormState] as QuestionAnswer}
+          value={formState[q.name as keyof IsekaiFormState] as QuestionAnswerWithEmpty}
           onChange={handleChange}
           options={q.options}
         />

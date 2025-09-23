@@ -6,15 +6,17 @@ export type Gender = 'male' | 'female' | 'other' | 'none';
 
 export type QuestionAnswer = 'A' | 'B' | 'C';
 
+export type QuestionAnswerWithEmpty = QuestionAnswer | '';
+
 export interface IsekaiFormState {
   name: string;
   birthDate: string; // YYYY-MM-DD
   gender: Gender;
-  q1: QuestionAnswer;
-  q2: QuestionAnswer;
-  q3: QuestionAnswer;
-  q4: QuestionAnswer;
-  q5: QuestionAnswer;
+  q1: QuestionAnswerWithEmpty;
+  q2: QuestionAnswerWithEmpty;
+  q3: QuestionAnswerWithEmpty;
+  q4: QuestionAnswerWithEmpty;
+  q5: QuestionAnswerWithEmpty;
 }
 
 export interface IsekaiStatus {

@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 interface ActionButtonsProps {
   profileName: string;
+  disabled?: boolean;
 }
 
 const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -14,7 +15,7 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName }) => {
+export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disabled = false }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerateImage = async () => {
@@ -70,14 +71,15 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName }) => 
       </div>
       <button
         onClick={handleGenerateImage}
-        disabled={isGenerating}
+        disabled={isGenerating || disabled}
         className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
       >
         {isGenerating ? '画像生成中...' : '画像をダウンロード'}
       </button>
       <button
         onClick={handleShareToX}
-        className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 flex items-center justify-center space-x-2 hover:bg-gray-800 dark:hover:bg-gray-200"
+        disabled={disabled}
+        className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 flex items-center justify-center space-x-2 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-70 disabled:cursor-not-allowed"
       >
         <XIcon className="h-5 w-5" />
         <span>Xでシェアする</span>
