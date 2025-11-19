@@ -94,7 +94,7 @@ const ACHIEVEMENTS = {
   'yaruki-zero': { name: '燃え尽き症候群', description: 'やる気がゼロになって1回以上休む。' },
 };
 
-const ENDINGS = {
+export const ENDINGS = {
     'legendary': { title: '伝説の社員', description: '完璧なパフォーマンスと高いやる気で、会社の歴史に名を刻む伝説の社員となった。' },
     'promotion': { title: '昇進昇格', description: '優秀な成績が認められ、管理職への昇進が決定した。' },
     'mentor': { title: '頼れる先輩', description: '後輩からの信頼も厚く、社内の模範となる存在として活躍した。' },

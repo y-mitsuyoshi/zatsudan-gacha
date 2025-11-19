@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { GameState, SquareType } from '@/types/sugoroku';
-import { GAME_BOARD } from '@/lib/sugoroku-logic';
+import { GAME_BOARD, ENDINGS } from '@/lib/sugoroku-logic';
 
 // Simplified Path Board
 const PathGameBoard = ({ path }: { path: number[], playerName: string }) => {
@@ -69,38 +69,64 @@ export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
   }
 
   const getEndingData = () => {
-    switch(ending) {
-      case 'true':
-        return {
-          title: '🎉 伝説の社員！',
-          subtitle: '最高のエンディングを迎えました',
-          rank: 'S',
-          description: 'あなたは数々の困難を乗り越え、誰もが羨む円満退職を勝ち取りました！その勇姿は後世まで語り継がれるでしょう。',
-          gradient: 'from-yellow-300 via-orange-400 to-red-400',
-          icon: '👑',
-          bgPattern: 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-100 via-orange-50 to-white'
-        };
-      case 'good':
-        return {
-          title: '✨ 安定の成功！',
-          subtitle: '素晴らしいキャリアでした',
-          rank: 'A',
-          description: '大きなトラブルもなく、堅実にキャリアを積み重ねました。安定こそが最強の武器です！',
-          gradient: 'from-blue-400 via-cyan-400 to-teal-400',
-          icon: '🌈',
-          bgPattern: 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-100 via-cyan-50 to-white'
-        };
-      default:
-        return {
-          title: '🚑 燃え尽き...',
-          subtitle: '少し休みましょう',
-          rank: 'C',
-          description: '頑張りすぎてしまったようです...。でも大丈夫、人生にはリセットボタンがあります（このゲームにも！）。',
-          gradient: 'from-gray-400 to-slate-500',
-          icon: '🛌',
-          bgPattern: 'bg-gray-100'
-        };
+    const endingKey = ending as keyof typeof ENDINGS;
+    const endingInfo = ENDINGS[endingKey] || { title: '不明なエンディング', description: 'データが見つかりません' };
+
+    // Rank Logic
+    let rank = 'C';
+    let gradient = 'from-gray-400 to-slate-500';
+    let icon = '🤔';
+    let bgPattern = 'bg-gray-100';
+    let subtitle = 'お疲れ様でした';
+
+    const sRank = ['legendary', 'promotion', 'mentor', 'specialist', 'innovator', 'ace', 'creator', 'leader'];
+    const aRank = ['stable', 'balanced', 'diligent', 'team-player', 'steady'];
+    const bRank = ['consistent', 'reliable', 'average', 'survivor', 'freelance', 'entrepreneur', 'global', 'investor', 'influencer', 'farmer', 'writer'];
+    const cRank = ['mediocre', 'routine', 'ordinary'];
+    // D Rank (Bad endings)
+    const dRank = ['burnout', 'dropout', 'overwork', 'mental-break', 'stress-victim', 'exhausted', 'breakdown', 'resignation', 'collapse', 'defeat'];
+
+    if (sRank.includes(endingKey)) {
+        rank = 'S';
+        gradient = 'from-yellow-300 via-orange-400 to-red-400';
+        icon = '👑';
+        bgPattern = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-100 via-orange-50 to-white';
+        subtitle = '最高のエンディング！';
+    } else if (aRank.includes(endingKey)) {
+        rank = 'A';
+        gradient = 'from-blue-400 via-cyan-400 to-teal-400';
+        icon = '✨';
+        bgPattern = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-100 via-cyan-50 to-white';
+        subtitle = '素晴らしいキャリア！';
+    } else if (bRank.includes(endingKey)) {
+        rank = 'B';
+        gradient = 'from-green-400 to-emerald-500';
+        icon = '👍';
+        bgPattern = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-green-100 via-emerald-50 to-white';
+        subtitle = 'ナイス社畜ライフ！';
+    } else if (cRank.includes(endingKey)) {
+        rank = 'C';
+        gradient = 'from-gray-400 to-slate-500';
+        icon = '🍵';
+        bgPattern = 'bg-gray-50';
+        subtitle = '平凡こそが幸せ？';
+    } else if (dRank.includes(endingKey)) {
+        rank = 'D';
+        gradient = 'from-purple-500 to-indigo-600';
+        icon = '🚑';
+        bgPattern = 'bg-purple-50';
+        subtitle = '少し休みましょう...';
     }
+
+    return {
+      title: endingInfo.title,
+      subtitle: subtitle,
+      rank: rank,
+      description: endingInfo.description,
+      gradient: gradient,
+      icon: icon,
+      bgPattern: bgPattern
+    };
   };
 
   const endingData = getEndingData();
