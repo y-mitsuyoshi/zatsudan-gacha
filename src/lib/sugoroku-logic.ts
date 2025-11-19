@@ -27,7 +27,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 4, type: 'event', title: '退勤直前の"ちょっといい？"', description: '2マス戻る。', effect: { type: 'move', value: -2 }, icon: '👹' },
     { position: 5, type: 'job-specific', title: '職業イベント', description: '職業によって運命が変わる…', effect: null, icon: '🎲' },
     { position: 6, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 }, icon: '💰' },
-    { position: 7, type: 'event', title: 'ランチで入った店が大当たり！', description: 'やる気が10回復！', effect: { type: 'yaruki', value: 10 }, icon: '🍱' },
+    { position: 7, type: 'event', title: 'ランチガチャ', description: '今日のランチは当たりかハズレか...', effect: { type: 'job-specific', value: 'lunch-gacha' }, icon: '🍱' },
     { position: 8, type: 'event', title: 'PCフリーズ', description: 'データは無事だったが、やる気が10下がり、1マス戻る。', effect: { type: 'move', value: -1 }, icon: '💻' },
     { position: 9, type: 'event', title: '理不尽な修正依頼', description: 'デザイナーは2回休み。他は1回休み。', effect: { type: 'job-specific', value: 'designer-hell' }, icon: '🤯' },
     { position: 10, type: 'event', title: '残業連続', description: '異常な残業でやる気が20下がり、1回休み。', effect: { type: 'yaruki', value: -20 }, icon: '🏢' },
@@ -49,7 +49,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 26, type: 'event', title: '総合職の活躍', description: '総合職は2マス進む＋やる気5UP。他は1マス進む。', effect: { type: 'job-specific', value: 'multi-task' }, icon: '🦸' },
     { position: 27, type: 'event', title: 'サーバーダウン', description: 'エンジニア以外は2マス戻る。', effect: { type: 'job-specific', value: 'server-down' }, icon: '🔌' },
     { position: 28, type: 'event', title: '接待', description: '営業はやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'settai' }, icon: '🍶' },
-    { position: 29, type: 'event', title: '新人研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' }, icon: '👨‍🏫' },
+    { position: 29, type: 'event', title: '研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' }, icon: '👨‍🏫' },
     { position: 30, type: 'normal', title: '中間地点', description: '折り返し地点！まだまだ先は長い…', effect: null, icon: '🚩' },
     { position: 31, type: 'event', title: '月末の売上締め', description: '経理・財務は2回休み。営業はやる気10UP。', effect: { type: 'job-specific', value: 'month-end' }, icon: '🗓️' },
     { position: 32, type: 'event', title: '健康診断で再検査', description: '心配になってやる気が10下がる。', effect: { type: 'yaruki', value: -10 }, icon: '🏥' },
@@ -76,7 +76,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 53, type: 'event', title: '仮眠', description: '少し寝てスッキリ。やる気が10回復！', effect: { type: 'yaruki', value: 10 }, icon: '🔋' },
     { position: 54, type: 'event', title: 'プリンター紙詰まり', description: 'イライラして1マス戻る。', effect: { type: 'move', value: -1 }, icon: '📠' },
     { position: 55, type: 'salary', title: 'ボーナス査定', description: '期待が高まる！やる気が20回復！', effect: { type: 'yaruki', value: 20 }, icon: '💴' },
-    { position: 56, type: 'event', title: '社内の噂話', description: '聞いてはいけないことを聞いてしまった…やる気5DOWN。', effect: { type: 'yaruki', value: -5 }, icon: '🗣️' },
+    { position: 56, type: 'event', title: '社内の噂話', description: '良い噂？悪い噂？', effect: { type: 'job-specific', value: 'office-rumor' }, icon: '🗣️' },
     { position: 57, type: 'event', title: '社長賞受賞', description: 'まさかの受賞！3マス進む！', effect: { type: 'move', value: 3 }, icon: '🌟' },
     { position: 58, type: 'event', title: '大掃除', description: '腰が痛い…1回休み。', effect: { type: 'rest', value: 1 }, icon: '🧹' },
     { position: 59, type: 'event', title: '最終プレゼン', description: 'ラストスパート！やる気が10UP！', effect: { type: 'yaruki', value: 10 }, icon: '🎤' },
@@ -304,10 +304,10 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
             case 'training-instructor':
                 if (newState.job === '人事・総務') {
                     newState.pendingMoves = (newState.pendingMoves || 0) + 3;
-                    message = '新人研修の講師を務めて評価UP！3マス進む！';
+                    message = '研修の講師を務めて評価UP！3マス進む！';
                 } else {
                     newState.yaruki = Math.min(100, newState.yaruki + 5);
-                    message = '新人研修を受けてスキルUP！やる気が5UP！';
+                    message = '研修を受けてスキルUP！やる気が5UP！';
                 }
                 break;
             case 'month-end':
@@ -319,6 +319,24 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     message = '売上目標達成！やる気が10UP！';
                 } else {
                     message = '経理部門が忙しそうだ。';
+                }
+                break;
+            case 'lunch-gacha':
+                if (Math.random() < 0.7) {
+                    newState.yaruki = Math.min(100, newState.yaruki + 10);
+                    message = 'ランチで入った店が大当たり！やる気が10UP！';
+                } else {
+                    newState.yaruki = Math.max(0, newState.yaruki - 5);
+                    message = 'ランチの店が混んでて休憩時間が減った...やる気が5DOWN。';
+                }
+                break;
+            case 'office-rumor':
+                if (Math.random() < 0.5) {
+                    newState.yaruki = Math.min(100, newState.yaruki + 10);
+                    message = '自分の良い噂を聞いた！やる気が10UP！';
+                } else {
+                    newState.yaruki = Math.max(0, newState.yaruki - 10);
+                    message = '嫌な噂を聞いてしまった...やる気が10DOWN。';
                 }
                 break;
             case 'interview-duty':
@@ -593,6 +611,8 @@ export function takeTurn(currentState: GameState, diceValue?: number): GameState
     newState.gameMessage = `休み中... あと${newState.isResting}ターン休み。`;
     // Track rests for achievements, using a special key like -1
     newState.landedOnCounts[-1] = (newState.landedOnCounts[-1] || 0) + 1;
+    // Ensure pendingMoves is 0 when resting to avoid UI bugs
+    newState.pendingMoves = 0;
     return newState;
   }
 
@@ -678,9 +698,11 @@ export function moveOneStep(currentState: GameState): GameState {
           // If effect added moves, set wait flag to show popup/animation
           // AND set ignoreNextEvent to true so the NEXT landing doesn't trigger another event
           // ALSO set wait if it is the GOAL
-          if ((newState.pendingMoves && newState.pendingMoves !== 0) || currentSquare.type === 'goal') {
+          // イベントが発生したら（effectがあれば）、メッセージを読ませるためにウェイトを入れる
+          if (currentSquare.effect || currentSquare.type === 'goal') {
               newState.isEventWait = true;
-              if (newState.pendingMoves !== 0) {
+              // 移動が発生する場合のみ、次のイベントを無視するフラグを立てる
+              if (newState.pendingMoves && newState.pendingMoves !== 0) {
                   newState.ignoreNextEvent = true;
               }
           }
