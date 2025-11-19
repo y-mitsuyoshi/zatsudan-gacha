@@ -21,7 +21,7 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
       setShowFinal(false);
       const interval = setInterval(() => {
         setCurrentValue(Math.floor(Math.random() * 6) + 1);
-      }, 100);
+      }, 80); // Faster rotation
 
       const timeout = setTimeout(() => {
         clearInterval(interval);
@@ -50,63 +50,43 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
   };
 
   const getDotClassName = (position: string) => {
-    const base = "absolute w-3 h-3 bg-gray-800 rounded-full";
+    const base = "absolute w-4 h-4 bg-gray-800 rounded-full shadow-inner";
     const positions = {
-      'top-left': 'top-2 left-2',
-      'top-right': 'top-2 right-2',
-      'middle-left': 'top-1/2 left-2 -translate-y-1/2',
-      'middle-right': 'top-1/2 right-2 -translate-y-1/2',
-      'bottom-left': 'bottom-2 left-2',
-      'bottom-right': 'bottom-2 right-2',
+      'top-left': 'top-3 left-3',
+      'top-right': 'top-3 right-3',
+      'middle-left': 'top-1/2 left-3 -translate-y-1/2',
+      'middle-right': 'top-1/2 right-3 -translate-y-1/2',
+      'bottom-left': 'bottom-3 left-3',
+      'bottom-right': 'bottom-3 right-3',
       'center': 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
     };
     return `${base} ${positions[position as keyof typeof positions]}`;
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <div 
-        className={`
-          relative w-20 h-20 bg-white rounded-lg border-2 border-gray-300 shadow-lg
-          ${isRolling ? 'animate-spin' : showFinal ? 'animate-bounce' : ''}
-          transition-all duration-300 transform hover:scale-105
-        `}
-        style={{
-          background: isRolling 
-            ? 'linear-gradient(45deg, #f3f4f6, #e5e7eb)' 
-            : 'linear-gradient(145deg, #ffffff, #f9fafb)'
-        }}
-      >
-        {getDotPositions(currentValue).map((position, index) => (
-          <div key={index} className={getDotClassName(position)} />
-        ))}
-        
-        {/* Dice number overlay when final */}
-        {!isRolling && showFinal && (
-          <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-            {finalValue}
-          </div>
-        )}
+    <div className="flex flex-col items-center">
+      <div className="relative perspective-1000">
+        <div 
+          className={`
+            relative w-24 h-24 bg-white rounded-2xl border-4 border-gray-200 shadow-xl
+            ${isRolling ? 'animate-[spin_0.5s_linear_infinite]' : showFinal ? 'animate-bounce' : ''}
+            transition-all duration-300 transform
+          `}
+          style={{
+            background: 'linear-gradient(145deg, #ffffff, #f0f0f0)',
+            boxShadow: '5px 5px 10px #d1d1d1, -5px -5px 10px #ffffff'
+          }}
+        >
+          {getDotPositions(currentValue).map((position, index) => (
+            <div key={index} className={getDotClassName(position)} />
+          ))}
+        </div>
       </div>
       
       {!isRolling && showFinal && (
-        <div className="text-center">
-          <div className="text-lg font-bold text-gray-700 dark:text-gray-300 animate-pulse">
-            🎯 {finalValue}が出ました！
-          </div>
-          <div className="text-sm text-green-600 dark:text-green-400 mt-1">
-            {finalValue}マス進みます
-          </div>
-        </div>
-      )}
-      
-      {isRolling && (
-        <div className="text-center">
-          <div className="text-sm text-gray-500 dark:text-gray-400 animate-pulse font-medium">
-            🎲 サイコロを振っています...
-          </div>
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            結果をお待ちください
+        <div className="mt-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600">
+            {finalValue}！
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { Job, Item, BoardSquare, GameState, SetupFormState } from '@/types/sugoroku';
+import { audioManager } from '@/utils/audio';
 
 // --- Master Data ---
 
@@ -17,59 +18,69 @@ export const ITEMS: { [id: string]: Item } = {
   },
 };
 
-const BOARD_SIZE = 50;
+const BOARD_SIZE = 60;
 export const GAME_BOARD: BoardSquare[] = [
-    { position: 0, type: 'start', title: 'スタート', description: '社畜すごろくの始まり。', effect: null },
-    { position: 1, type: 'event', title: '月曜朝からやる気でない', description: 'やる気が15下がる。', effect: { type: 'yaruki', value: -15 } },
-    { position: 2, type: 'event', title: '電車遅延', description: 'ギリギリセーフ！しかしやる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
-    { position: 3, type: 'item', title: '備品室で発見', description: '栄養ドリンクを手に入れた。', effect: { type: 'item', value: 'energy-drink' } },
-    { position: 4, type: 'event', title: '退勤直前の"ちょっといい？"', description: '2マス戻る。', effect: { type: 'move', value: -2 } },
-    { position: 5, type: 'job-specific', title: '職業イベント', description: '職業によって運命が変わる…', effect: null }, // Job specific event
-    { position: 6, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 } },
-    { position: 7, type: 'event', title: 'ランチで入った店が大当たり！', description: 'やる気が10回復！', effect: { type: 'yaruki', value: 10 } },
-    { position: 8, type: 'event', title: 'PCフリーズ', description: 'データは無事だったが、やる気が10下がり、1マス戻る。', effect: { type: 'move', value: -1 } },
-    { position: 9, type: 'event', title: '理不尽な修正依頼', description: 'デザイナーは2回休み。他は1回休み。', effect: { type: 'job-specific', value: 'designer-hell' } },
-    { position: 10, type: 'event', title: '残業連続', description: '異常な残業でやる気が20下がり、1回休み。', effect: { type: 'yaruki', value: -20 } },
-    { position: 11, type: 'item', title: '先輩からの差し入れ', description: '有給休暇申請書を手に入れた。', effect: { type: 'item', value: 'paid-leave' } },
-    { position: 12, type: 'event', title: 'システム障害発生', description: 'エンジニアはやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'system-error' } },
-    { position: 13, type: 'event', title: '無意味な定例会議', description: '企画・マーケは1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'useless-meeting' } },
-    { position: 14, type: 'normal', title: '定時退社', description: '今日もお疲れ様でした。', effect: null },
-    { position: 15, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 } },
-    { position: 16, type: 'event', title: '競合にコンペで勝利！', description: '営業は5マス進む。他は1マス進む。', effect: { type: 'job-specific', value: 'sales-win' } },
-    { position: 17, type: 'event', title: 'SNSで企画がバズる！', description: '企画・マーケは5マス進む。他はやる気10UP。', effect: { type: 'job-specific', value: 'viral-hit' } },
-    { position: 18, type: 'event', title: 'クリエイティブなひらめき', description: 'デザイナーは3マス進む。', effect: { type: 'job-specific', value: 'creative-spark' } },
-    { position: 19, type: 'event', title: '動くはずのコードが動かない', description: 'エンジニアは1回休み。', effect: { type: 'job-specific', value: 'code-bug' } },
-    { position: 20, type: 'normal', title: '有給休暇', description: '心と体をリフレッシュ。', effect: null },
-    { position: 21, type: 'event', title: '飲み会', description: 'やる気が5上がるが、次のターンは1マスしか進めない。', effect: { type: 'yaruki', value: 5 } }, // Special effect to be handled
-    { position: 22, type: 'event', title: '上司の無茶振り', description: 'やる気が25下がる。', effect: { type: 'yaruki', value: -25 } },
-    { position: 23, type: 'normal', title: '穏やかな一日', description: '集中して業務ができた。', effect: null },
-    { position: 24, type: 'item', title: '謎のメモ', description: '「有給休暇申請書」を手に入れた', effect: { type: 'item', value: 'paid-leave' } },
-    { position: 25, type: 'event', title: 'プロジェクト完了！', description: '大きな達成感！3マス進む。', effect: { type: 'move', value: 3 } },
-    { position: 26, type: 'event', title: '総合職の活躍', description: '総合職は2マス進む＋やる気5UP。他は1マス進む。', effect: { type: 'job-specific', value: 'multi-task' } },
-    { position: 27, type: 'event', title: 'サーバーダウン', description: 'エンジニア以外は2マス戻る。', effect: { type: 'job-specific', value: 'server-down' } },
-    { position: 28, type: 'event', title: '接待', description: '営業はやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'settai' } },
-    { position: 29, type: 'event', title: '新人研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' } },
-    { position: 30, type: 'event', title: '月末の売上締め', description: '経理・財務は2回休み。営業はやる気10UP。', effect: { type: 'job-specific', value: 'month-end' } },
-    { position: 31, type: 'normal', title: '中間地点', description: 'まだまだ先は長い…', effect: null },
-    { position: 32, type: 'event', title: '健康診断で再検査', description: '心配になってやる気が10下がる。', effect: { type: 'yaruki', value: -10 } },
-    { position: 33, type: 'event', title: '採用面接の担当', description: '人事・総務はやる気15UP。他は1マス進む。', effect: { type: 'job-specific', value: 'interview-duty' } },
-    { position: 34, type: 'event', title: '経費精算の山', description: '経理・財務は1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'expense-hell' } },
-    { position: 35, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 } },
-    { position: 36, type: 'event', title: 'デザインコンペ入賞', description: 'デザイナーは4マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'design-award' } },
-    { position: 37, type: 'event', title: '社内システム障害', description: 'エンジニアは3回休み。他は2マス戻る。', effect: { type: 'job-specific', value: 'major-system-failure' } },
-    { position: 38, type: 'event', title: '忘年会の幹事', description: '人事・総務以外は2マス戻る。', effect: { type: 'job-specific', value: 'party-organizer' } },
-    { position: 39, type: 'normal', title: '平和な午後', description: 'コーヒーブレイクでリフレッシュ。', effect: null },
-    { position: 40, type: 'event', title: '予算会議', description: '経理・財務は2マス進む。企画・マーケは1回休み。', effect: { type: 'job-specific', value: 'budget-meeting' } },
-    { position: 41, type: 'event', title: '大型案件受注', description: '営業は6マス進む！他は2マス進む。', effect: { type: 'job-specific', value: 'big-deal' } },
-    { position: 42, type: 'event', title: 'ウイルス感染', description: 'エンジニア以外は1回休み。', effect: { type: 'job-specific', value: 'virus-infection' } },
-    { position: 43, type: 'normal', title: '残業なしの日', description: '早く帰れてラッキー！', effect: null },
-    { position: 44, type: 'event', title: '人事評価面談', description: '人事・総務は1マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'performance-review' } },
-    { position: 45, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 } },
-    { position: 46, type: 'event', title: '決算処理', description: '経理・財務は3回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'financial-closing' } },
-    { position: 47, type: 'event', title: 'コンプライアンス監査', description: '法務・コンプラは3マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'legal-compliance' } },
-    { position: 48, type: 'event', title: 'メディア対応', description: '広報・PRは4マス進む。他は緊張でやる気5DOWN。', effect: { type: 'job-specific', value: 'pr-campaign' } },
-    { position: 49, type: 'event', title: '品質検査', description: '品質保証は2マス進む。他は1回休み。', effect: { type: 'job-specific', value: 'quality-issue' } },
-    { position: 50, type: 'goal', title: 'ゴール！', description: 'ボーナス支給日！おめでとう！', effect: null },
+    { position: 0, type: 'start', title: 'スタート', description: '社畜すごろくの始まり。', effect: null, icon: '🏁' },
+    { position: 1, type: 'event', title: '月曜朝からやる気でない', description: 'やる気が15下がる。', effect: { type: 'yaruki', value: -15 }, icon: '📉' },
+    { position: 2, type: 'event', title: '電車遅延', description: 'ギリギリセーフ！しかしやる気が10下がる。', effect: { type: 'yaruki', value: -10 }, icon: '🚃' },
+    { position: 3, type: 'item', title: '備品室で発見', description: '栄養ドリンクを手に入れた。', effect: { type: 'item', value: 'energy-drink' }, icon: '🥤' },
+    { position: 4, type: 'event', title: '退勤直前の"ちょっといい？"', description: '2マス戻る。', effect: { type: 'move', value: -2 }, icon: '👹' },
+    { position: 5, type: 'job-specific', title: '職業イベント', description: '職業によって運命が変わる…', effect: null, icon: '🎲' },
+    { position: 6, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 }, icon: '💰' },
+    { position: 7, type: 'event', title: 'ランチで入った店が大当たり！', description: 'やる気が10回復！', effect: { type: 'yaruki', value: 10 }, icon: '🍱' },
+    { position: 8, type: 'event', title: 'PCフリーズ', description: 'データは無事だったが、やる気が10下がり、1マス戻る。', effect: { type: 'move', value: -1 }, icon: '💻' },
+    { position: 9, type: 'event', title: '理不尽な修正依頼', description: 'デザイナーは2回休み。他は1回休み。', effect: { type: 'job-specific', value: 'designer-hell' }, icon: '🤯' },
+    { position: 10, type: 'event', title: '残業連続', description: '異常な残業でやる気が20下がり、1回休み。', effect: { type: 'yaruki', value: -20 }, icon: '🏢' },
+    { position: 11, type: 'item', title: '先輩からの差し入れ', description: '有給休暇申請書を手に入れた。', effect: { type: 'item', value: 'paid-leave' }, icon: '🎁' },
+    { position: 12, type: 'event', title: 'システム障害発生', description: 'エンジニアはやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'system-error' }, icon: '⚠️' },
+    { position: 13, type: 'event', title: '無意味な定例会議', description: '企画・マーケは1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'useless-meeting' }, icon: '💤' },
+    { position: 14, type: 'normal', title: '定時退社', description: '今日もお疲れ様でした。', effect: null, icon: '🏠' },
+    { position: 15, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 }, icon: '💰' },
+    { position: 16, type: 'event', title: '競合にコンペで勝利！', description: '営業は5マス進む。他は1マス進む。', effect: { type: 'job-specific', value: 'sales-win' }, icon: '🏆' },
+    { position: 17, type: 'event', title: 'SNSで企画がバズる！', description: '企画・マーケは5マス進む。他はやる気10UP。', effect: { type: 'job-specific', value: 'viral-hit' }, icon: '📱' },
+    { position: 18, type: 'event', title: 'クリエイティブなひらめき', description: 'デザイナーは3マス進む。', effect: { type: 'job-specific', value: 'creative-spark' }, icon: '💡' },
+    { position: 19, type: 'event', title: '動くはずのコードが動かない', description: 'エンジニアは1回休み。', effect: { type: 'job-specific', value: 'code-bug' }, icon: '🐛' },
+    { position: 20, type: 'normal', title: '有給休暇', description: '心と体をリフレッシュ。', effect: null, icon: '🏖️' },
+    { position: 21, type: 'event', title: '飲み会', description: 'やる気が5上がるが、次のターンは1マスしか進めない。', effect: { type: 'yaruki', value: 5 }, icon: '🍺' },
+    { position: 22, type: 'event', title: '上司の無茶振り', description: 'やる気が25下がる。', effect: { type: 'yaruki', value: -25 }, icon: '💢' },
+    { position: 23, type: 'normal', title: '穏やかな一日', description: '集中して業務ができた。', effect: null, icon: '🍵' },
+    { position: 24, type: 'item', title: '謎のメモ', description: '「有給休暇申請書」を手に入れた', effect: { type: 'item', value: 'paid-leave' }, icon: '📝' },
+    { position: 25, type: 'event', title: 'プロジェクト完了！', description: '大きな達成感！3マス進む。', effect: { type: 'move', value: 3 }, icon: '🎊' },
+    { position: 26, type: 'event', title: '総合職の活躍', description: '総合職は2マス進む＋やる気5UP。他は1マス進む。', effect: { type: 'job-specific', value: 'multi-task' }, icon: '🦸' },
+    { position: 27, type: 'event', title: 'サーバーダウン', description: 'エンジニア以外は2マス戻る。', effect: { type: 'job-specific', value: 'server-down' }, icon: '🔌' },
+    { position: 28, type: 'event', title: '接待', description: '営業はやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'settai' }, icon: '🍶' },
+    { position: 29, type: 'event', title: '新人研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' }, icon: '👨‍🏫' },
+    { position: 30, type: 'normal', title: '中間地点', description: '折り返し地点！まだまだ先は長い…', effect: null, icon: '🚩' },
+    { position: 31, type: 'event', title: '月末の売上締め', description: '経理・財務は2回休み。営業はやる気10UP。', effect: { type: 'job-specific', value: 'month-end' }, icon: '🗓️' },
+    { position: 32, type: 'event', title: '健康診断で再検査', description: '心配になってやる気が10下がる。', effect: { type: 'yaruki', value: -10 }, icon: '🏥' },
+    { position: 33, type: 'event', title: '採用面接の担当', description: '人事・総務はやる気15UP。他は1マス進む。', effect: { type: 'job-specific', value: 'interview-duty' }, icon: '👔' },
+    { position: 34, type: 'event', title: '経費精算の山', description: '経理・財務は1回休み。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'expense-hell' }, icon: '🧾' },
+    { position: 35, type: 'salary', title: '給料日', description: 'やる気が20回復！', effect: { type: 'yaruki', value: 20 }, icon: '💰' },
+    { position: 36, type: 'event', title: 'デザインコンペ入賞', description: 'デザイナーは4マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'design-award' }, icon: '🎖️' },
+    { position: 37, type: 'event', title: '社内システム障害', description: 'エンジニアは3回休み。他は2マス戻る。', effect: { type: 'job-specific', value: 'major-system-failure' }, icon: '💥' },
+    { position: 38, type: 'event', title: '忘年会の幹事', description: '人事・総務以外は2マス戻る。', effect: { type: 'job-specific', value: 'party-organizer' }, icon: '🍻' },
+    { position: 39, type: 'normal', title: '平和な午後', description: 'コーヒーブレイクでリフレッシュ。', effect: null, icon: '☕' },
+    { position: 40, type: 'event', title: '予算会議', description: '経理・財務は2マス進む。企画・マーケは1回休み。', effect: { type: 'job-specific', value: 'budget-meeting' }, icon: '📊' },
+    { position: 41, type: 'event', title: '大型案件受注', description: '営業は6マス進む！他は2マス進む。', effect: { type: 'job-specific', value: 'big-deal' }, icon: '🤝' },
+    { position: 42, type: 'event', title: 'ウイルス感染', description: 'エンジニア以外は1回休み。', effect: { type: 'job-specific', value: 'virus-infection' }, icon: '🦠' },
+    { position: 43, type: 'normal', title: '残業なしの日', description: '早く帰れてラッキー！', effect: null, icon: '🌇' },
+    { position: 44, type: 'event', title: '人事評価面談', description: '人事・総務は1マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'performance-review' }, icon: '📝' },
+    { position: 45, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 }, icon: '💰' },
+    { position: 46, type: 'event', title: '決算処理', description: '経理・財務は3回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'financial-closing' }, icon: '💹' },
+    { position: 47, type: 'event', title: 'コンプライアンス監査', description: '法務・コンプラは3マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'legal-compliance' }, icon: '⚖️' },
+    { position: 48, type: 'event', title: 'メディア対応', description: '広報・PRは4マス進む。他は緊張でやる気5DOWN。', effect: { type: 'job-specific', value: 'pr-campaign' }, icon: '📢' },
+    { position: 49, type: 'event', title: '品質検査', description: '品質保証は2マス進む。他は1回休み。', effect: { type: 'job-specific', value: 'quality-issue' }, icon: '🔍' },
+    { position: 50, type: 'event', title: '誤送信メール', description: 'ヒヤッとしてやる気が5下がる。', effect: { type: 'yaruki', value: -5 }, icon: '📧' },
+    { position: 51, type: 'normal', title: 'お菓子休憩', description: '糖分補給でリフレッシュ。', effect: null, icon: '🍩' },
+    { position: 52, type: 'event', title: '海外出張', description: '大変だが経験になる。2マス進む。', effect: { type: 'move', value: 2 }, icon: '✈️' },
+    { position: 53, type: 'event', title: '仮眠', description: '少し寝てスッキリ。やる気が10回復！', effect: { type: 'yaruki', value: 10 }, icon: '🔋' },
+    { position: 54, type: 'event', title: 'プリンター紙詰まり', description: 'イライラして1マス戻る。', effect: { type: 'move', value: -1 }, icon: '📠' },
+    { position: 55, type: 'salary', title: 'ボーナス査定', description: '期待が高まる！やる気が20回復！', effect: { type: 'yaruki', value: 20 }, icon: '💴' },
+    { position: 56, type: 'event', title: '社内の噂話', description: '聞いてはいけないことを聞いてしまった…やる気5DOWN。', effect: { type: 'yaruki', value: -5 }, icon: '🗣️' },
+    { position: 57, type: 'event', title: '社長賞受賞', description: 'まさかの受賞！3マス進む！', effect: { type: 'move', value: 3 }, icon: '🌟' },
+    { position: 58, type: 'event', title: '大掃除', description: '腰が痛い…1回休み。', effect: { type: 'rest', value: 1 }, icon: '🧹' },
+    { position: 59, type: 'event', title: '最終プレゼン', description: 'ラストスパート！やる気が10UP！', effect: { type: 'yaruki', value: 10 }, icon: '🎤' },
+    { position: 60, type: 'goal', title: 'ゴール！', description: 'ボーナス支給日！おめでとう！', effect: null, icon: '🎊' },
 ];
 
 
@@ -191,7 +202,8 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
       break;
     case 'move':
       if (typeof effect.value === 'number') {
-        newState.position = Math.max(0, newState.position + effect.value);
+        // Instead of setting position directly, add to pendingMoves
+        newState.pendingMoves = (newState.pendingMoves || 0) + effect.value;
       }
       break;
     case 'rest':
@@ -232,16 +244,16 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'sales-win':
                 if (newState.job === '営業') {
-                    newState.position += 5;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 5;
                     message = '営業の活躍でコンペに勝利！5マス進む！';
                 } else {
-                    newState.position += 1;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 1;
                     message = 'コンペに勝利！1マス進む。';
                 }
                 break;
              case 'viral-hit':
                 if (newState.job === '企画・マーケティング') {
-                    newState.position += 5;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 5;
                     message = '企画したキャンペーンがSNSでバズった！5マス進む！';
                 } else {
                     newState.yaruki = Math.min(100, newState.yaruki + 10);
@@ -250,7 +262,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'creative-spark':
                 if (newState.job === 'デザイナー') {
-                    newState.position += 3;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 3;
                     message = 'クリエイティブなひらめき！3マス進む！';
                 } else {
                     message = '隣のデザイナーがすごいものを作っている。';
@@ -266,7 +278,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'server-down':
                  if (newState.job !== 'エンジニア') {
-                    newState.position = Math.max(0, newState.position - 2);
+                    newState.pendingMoves = (newState.pendingMoves || 0) - 2;
                     message = 'サーバーダウン！仕事にならないので2マス戻る。';
                 } else {
                     message = 'サーバーダウン！エンジニアは復旧作業に追われる。';
@@ -284,7 +296,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
             // 新しい職業固有イベント
             case 'training-instructor':
                 if (newState.job === '人事・総務') {
-                    newState.position += 3;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 3;
                     message = '新人研修の講師を務めて評価UP！3マス進む！';
                 } else {
                     newState.yaruki = Math.min(100, newState.yaruki + 5);
@@ -307,7 +319,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     newState.yaruki = Math.min(100, newState.yaruki + 15);
                     message = '優秀な人材を発見！やる気が15UP！';
                 } else {
-                    newState.position += 1;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 1;
                     message = '面接で自分を見つめ直した。1マス進む。';
                 }
                 break;
@@ -322,7 +334,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'design-award':
                 if (newState.job === 'デザイナー') {
-                    newState.position += 4;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 4;
                     message = 'デザインコンペで入賞！4マス進む！';
                 } else {
                     newState.yaruki = Math.min(100, newState.yaruki + 5);
@@ -334,7 +346,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     newState.isResting += 3;
                     message = '大規模システム障害で3日間不眠不休...3回休み。';
                 } else {
-                    newState.position = Math.max(0, newState.position - 2);
+                    newState.pendingMoves = (newState.pendingMoves || 0) - 2;
                     message = 'システム障害で仕事が進まない！2マス戻る。';
                 }
                 break;
@@ -342,13 +354,13 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 if (newState.job === '人事・総務') {
                     message = '人事・総務は慣れたもの。忘年会を無事開催！';
                 } else {
-                    newState.position = Math.max(0, newState.position - 2);
+                    newState.pendingMoves = (newState.pendingMoves || 0) - 2;
                     message = '忘年会の幹事で大変...2マス戻る。';
                 }
                 break;
             case 'budget-meeting':
                 if (newState.job === '経理・財務') {
-                    newState.position += 2;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 2;
                     message = '予算会議で専門知識を発揮！2マス進む！';
                 } else if (newState.job === '企画・マーケティング') {
                     newState.isResting += 1;
@@ -359,10 +371,10 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'big-deal':
                 if (newState.job === '営業') {
-                    newState.position += 6;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 6;
                     message = '大型案件を受注！営業の大手柄で6マス進む！';
                 } else {
-                    newState.position += 2;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 2;
                     message = '大型案件受注で会社全体が活気づく！2マス進む！';
                 }
                 break;
@@ -376,7 +388,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'performance-review':
                 if (newState.job === '人事・総務') {
-                    newState.position += 1;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 1;
                     message = '人事評価面談を実施。1マス進む。';
                 } else {
                     newState.yaruki = Math.max(0, newState.yaruki - 5);
@@ -388,7 +400,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     newState.isResting += 3;
                     message = '決算処理で連日深夜残業...3回休み。';
                 } else {
-                    newState.position = Math.max(0, newState.position - 1);
+                    newState.pendingMoves = (newState.pendingMoves || 0) - 1;
                     message = '決算資料の提出で1マス戻る。';
                 }
                 break;
@@ -397,7 +409,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                     newState.isResting += 2;
                     message = '退職者の引き継ぎ業務で2回休み。';
                 } else {
-                    newState.position = Math.max(0, newState.position - 1);
+                    newState.pendingMoves = (newState.pendingMoves || 0) - 1;
                     message = '退職者からの引き継ぎで1マス戻る。';
                 }
                 break;
@@ -405,7 +417,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
             // 新職業用の追加イベント
             case 'legal-compliance':
                 if (newState.job === '法務・コンプラ') {
-                    newState.position += 3;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 3;
                     message = 'コンプライアンス研修で評価UP！3マス進む！';
                 } else {
                     newState.yaruki = Math.max(0, newState.yaruki - 5);
@@ -414,7 +426,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'pr-campaign':
                 if (newState.job === '広報・PR') {
-                    newState.position += 4;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 4;
                     message = 'PR戦略が大成功！4マス進む！';
                 } else {
                     newState.yaruki = Math.min(100, newState.yaruki + 10);
@@ -423,7 +435,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'quality-issue':
                 if (newState.job === '品質保証') {
-                    newState.position += 2;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 2;
                     message = '品質問題を事前に発見！2マス進む！';
                 } else {
                     newState.isResting += 1;
@@ -432,11 +444,11 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
                 break;
             case 'multi-task':
                 if (newState.job === '総合職') {
-                    newState.position += 2;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 2;
                     newState.yaruki = Math.min(100, newState.yaruki + 5);
                     message = '総合職の柔軟性を発揮！2マス進む＆やる気5UP！';
                 } else {
-                    newState.position += 1;
+                    newState.pendingMoves = (newState.pendingMoves || 0) + 1;
                     message = '他部署のお手伝い。1マス進む。';
                 }
                 break;
@@ -458,7 +470,7 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
   return newState;
 }
 
-function checkEndGame(state: GameState): GameState {
+export function checkEndGame(state: GameState): GameState {
     let newState = { ...state };
 
     // Determine Ending based on multiple factors
@@ -581,33 +593,88 @@ export function takeTurn(currentState: GameState, diceValue?: number): GameState
 export function moveOneStep(currentState: GameState): GameState {
   let newState = { ...currentState };
   
-  if (!newState.pendingMoves || newState.pendingMoves <= 0) {
+  // If waiting, do nothing
+  if (newState.isEventWait) return newState;
+
+  if (!newState.pendingMoves || newState.pendingMoves === 0) {
     return newState;
   }
 
-  // 一マス進む
-  newState.position += 1;
-  newState.pendingMoves -= 1;
-  newState.path = [...newState.path, newState.position];
-  newState.landedOnCounts[newState.position] = (newState.landedOnCounts[newState.position] || 0) + 1;
-
-  // ゴールチェック
-  if (newState.position >= BOARD_SIZE) {
-    newState.position = BOARD_SIZE;
-    newState.pendingMoves = 0;
-    return checkEndGame(newState);
+  // Move
+  if (newState.pendingMoves > 0) {
+      newState.position += 1;
+      newState.pendingMoves -= 1;
+      
+      // Check for goal during forward movement
+      if (newState.position >= BOARD_SIZE) {
+          newState.position = BOARD_SIZE;
+          newState.pendingMoves = 0;
+          audioManager.playSe('fanfare'); // Play fanfare sound
+      } else {
+          audioManager.playSe('move'); // Play move sound
+      }
+  } else {
+      // Handle backward movement
+      newState.position -= 1;
+      newState.pendingMoves += 1;
+      audioManager.playSe('move'); // Play move sound
   }
 
   // 中間マスの効果適用
-  const currentSquare = GAME_BOARD.find(s => s.position === newState.position);
-  if (currentSquare) {
-    // 移動中の場合は簡単なメッセージのみ
-    if (newState.pendingMoves > 0) {
-      newState.gameMessage = `${currentSquare.title}を通過...（あと${newState.pendingMoves}マス）`;
-    } else {
-      // 最終到達地点では効果を適用
-      newState = applySquareEffect(newState, currentSquare);
-    }
+  // Check if landed (pendingMoves is now 0)
+  if (newState.pendingMoves === 0) {
+      // Check if we should ignore this event (because it's a secondary move)
+      if (newState.ignoreNextEvent) {
+          const currentSquare = GAME_BOARD.find(s => s.position === newState.position);
+          newState.gameMessage = `${currentSquare?.title || 'マス'}に止まりました。(イベント移動完了)`;
+          newState.ignoreNextEvent = false; // Reset flag
+          
+          // If at goal, we still want to show the goal popup/finish
+          if (newState.position === BOARD_SIZE) {
+              newState.isEventWait = true;
+          }
+          return newState;
+      }
+
+      const currentSquare = GAME_BOARD.find(s => s.position === newState.position);
+      if (currentSquare) {
+          newState = applySquareEffect(newState, currentSquare);
+          
+          // Play event sound based on effect type
+          if (currentSquare.type === 'goal') {
+               // Sound already played in move loop or play here if needed
+               // audioManager.playSe('fanfare'); 
+          } else if (currentSquare.effect) {
+             if (currentSquare.effect.value && typeof currentSquare.effect.value === 'number' && currentSquare.effect.value < 0) {
+                 audioManager.playSe('bad');
+             } else if (currentSquare.effect.type === 'rest' || currentSquare.effect.type === 'job-specific') {
+                 // Heuristic for bad events
+                 if (currentSquare.description.includes('休み') || currentSquare.description.includes('下がる') || currentSquare.description.includes('戻る')) {
+                     audioManager.playSe('bad');
+                 } else {
+                     audioManager.playSe('good');
+                 }
+             } else {
+                 audioManager.playSe('good');
+             }
+          }
+
+          // If effect added moves, set wait flag to show popup/animation
+          // AND set ignoreNextEvent to true so the NEXT landing doesn't trigger another event
+          // ALSO set wait if it is the GOAL
+          if ((newState.pendingMoves && newState.pendingMoves !== 0) || currentSquare.type === 'goal') {
+              newState.isEventWait = true;
+              if (newState.pendingMoves !== 0) {
+                  newState.ignoreNextEvent = true;
+              }
+          }
+      }
+  } else {
+      // Moving...
+      const currentSquare = GAME_BOARD.find(s => s.position === newState.position);
+      if (currentSquare) {
+          newState.gameMessage = `${currentSquare.title}を通過...`;
+      }
   }
 
   // Check for yaruki penalty achievement

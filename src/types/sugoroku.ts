@@ -22,6 +22,7 @@ export interface BoardSquare {
     type: 'move' | 'rest' | 'yaruki' | 'item' | 'job-specific';
     value: number | string;
   } | null;
+  icon?: string;
 }
 
 // Defines the overall state of the game
@@ -41,6 +42,8 @@ export interface GameState {
   landedOnCounts: { [key: number]: number }; // Count of times landed on each square
   ending: string | null; // The ending of the game
   pendingMoves?: number; // Number of moves left to complete step by step
+  isEventWait?: boolean; // Whether to pause for event animation
+  ignoreNextEvent?: boolean; // Whether to skip the event on the next landing (for secondary moves)
 }
 
 // Defines the initial form state before the game starts

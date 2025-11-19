@@ -11,29 +11,30 @@ interface GameBoardProps {
   previousPosition?: number;
   isMoving?: boolean;
   diceValue?: number | null;
+  isEventWait?: boolean;
 }
 
 const getSquareColor = (type: SquareType): string => {
   switch (type) {
-    case 'start': return 'bg-gradient-to-br from-emerald-400 via-green-500 to-emerald-600 border-emerald-700 shadow-emerald-200';
-    case 'goal': return 'bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 border-orange-600 shadow-yellow-200';
-    case 'salary': return 'bg-gradient-to-br from-blue-400 via-sky-500 to-cyan-500 border-cyan-600 shadow-blue-200';
-    case 'item': return 'bg-gradient-to-br from-purple-400 via-violet-500 to-purple-600 border-purple-700 shadow-purple-200';
-    case 'job-specific': return 'bg-gradient-to-br from-indigo-400 via-blue-500 to-indigo-600 border-indigo-700 shadow-indigo-200';
-    case 'event': return 'bg-gradient-to-br from-red-400 via-pink-500 to-rose-500 border-rose-600 shadow-red-200';
-    default: return 'bg-gradient-to-br from-slate-300 via-gray-300 to-slate-400 border-slate-500 shadow-slate-200';
+    case 'start': return 'bg-emerald-100 border-emerald-400 text-emerald-700';
+    case 'goal': return 'bg-yellow-100 border-yellow-400 text-yellow-700';
+    case 'salary': return 'bg-blue-100 border-blue-400 text-blue-700';
+    case 'item': return 'bg-purple-100 border-purple-400 text-purple-700';
+    case 'job-specific': return 'bg-indigo-100 border-indigo-400 text-indigo-700';
+    case 'event': return 'bg-pink-100 border-pink-400 text-pink-700';
+    default: return 'bg-white border-gray-200 text-gray-600';
   }
 };
 
 const getSquareIcon = (type: SquareType): string => {
   switch (type) {
     case 'start': return '🏁';
-    case 'goal': return '🏆';
+    case 'goal': return '🎊';
     case 'salary': return '💰';
-    case 'item': return '📦';
+    case 'item': return '🎁';
     case 'job-specific': return '💼';
     case 'event': return '⚡';
-    default: return '📍';
+    default: return '';
   }
 };
 
@@ -45,73 +46,31 @@ const BoardSquareComponent: React.FC<{
 }> = ({ square, isActive, isInPath, isPrevious }) => {
   return (
     <div className={`
-      relative border-3 rounded-2xl p-3 flex flex-col justify-between h-32 transition-all duration-700 transform-gpu
+      relative rounded-xl p-1 flex flex-col items-center justify-center h-20 w-full transition-all duration-500
+      border-b-4 active:border-b-0 active:translate-y-1
       ${getSquareColor(square.type)}
-      ${isActive ? 'ring-4 ring-yellow-400 ring-opacity-90 shadow-2xl scale-110 z-30 animate-pulse' : ''}
-      ${isInPath ? 'ring-2 ring-orange-300 ring-opacity-80 scale-105 shadow-xl animate-bounce' : ''}
-      ${isPrevious ? 'ring-2 ring-gray-400 ring-opacity-60 scale-95 opacity-70' : ''}
-      ${!isActive && !isInPath && !isPrevious ? 'shadow-lg hover:shadow-xl hover:scale-105 hover:rotate-1' : ''}
+      ${isActive ? 'transform scale-110 z-20 ring-4 ring-yellow-400 shadow-xl' : 'shadow-md hover:shadow-lg hover:-translate-y-0.5'}
+      ${isInPath ? 'ring-2 ring-blue-400 ring-opacity-60 scale-105' : ''}
+      ${isPrevious ? 'opacity-80' : ''}
     `}>
-      {/* Position Number - Enhanced */}
-      <div className={`
-        absolute -top-3 -left-3 w-8 h-8 rounded-full border-3 flex items-center justify-center
-        ${isActive ? 'bg-yellow-400 border-yellow-600 animate-spin' : 'bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600'}
-      `}>
-        <span className={`text-xs font-bold ${isActive ? 'text-gray-800' : 'text-gray-700 dark:text-gray-300'}`}>
-          {square.position}
-        </span>
+      {/* Position Number */}
+      <div className="absolute top-1 left-1 text-[9px] font-bold opacity-50">
+        {square.position}
       </div>
       
-      {/* Square Icon - Enhanced */}
-      <div className="flex justify-center items-start pt-1">
-        <span className={`text-3xl drop-shadow-2xl transition-all duration-500 ${isActive ? 'animate-bounce scale-125' : 'hover:scale-110'}`}>
-          {getSquareIcon(square.type)}
-        </span>
+      {/* Icon */}
+      <div className="text-xl mb-0.5 transform transition-transform hover:scale-125">
+        {square.icon || getSquareIcon(square.type)}
       </div>
       
-      {/* Square Title - Enhanced */}
-      <div className="text-center mt-auto">
-        <div className={`
-          text-xs font-bold leading-tight px-2 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-300
-          ${isActive 
-            ? 'bg-white/90 text-gray-800 shadow-lg scale-105' 
-            : 'bg-white/60 dark:bg-black/60 text-gray-800 dark:text-white'
-          }
-        `}>
-          {square.title}
-        </div>
+      {/* Title */}
+      <div className="text-[9px] font-bold text-center leading-tight line-clamp-2 px-0.5 w-full overflow-hidden">
+        {square.title}
       </div>
       
-      {/* Special Effects - Enhanced */}
-      {square.type === 'salary' && (
-        <div className="absolute top-2 right-2 text-yellow-400 animate-bounce">
-          <span className="text-sm">�</span>
-        </div>
-      )}
-      {square.type === 'item' && (
-        <div className="absolute top-2 right-2 text-purple-400 animate-pulse">
-          <span className="text-sm">✨</span>
-        </div>
-      )}
-      {square.type === 'job-specific' && (
-        <div className="absolute bottom-1 right-1 text-indigo-300 animate-ping">
-          <span className="text-xs">🎯</span>
-        </div>
-      )}
-      {square.type === 'event' && (
-        <div className="absolute top-1 left-1 text-red-300 animate-pulse">
-          <span className="text-xs">⚠️</span>
-        </div>
-      )}
-      
-      {/* Active Square Glow Effect */}
+      {/* Active Indicator */}
       {isActive && (
-        <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 to-orange-200 rounded-2xl animate-pulse opacity-30 -z-10" />
-      )}
-      
-      {/* Path Trail Effect */}
-      {isInPath && (
-        <div className="absolute inset-0 bg-gradient-to-r from-orange-200 to-red-200 rounded-2xl animate-pulse opacity-40 -z-10" />
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
       )}
     </div>
   );
@@ -122,182 +81,163 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   playerName, 
   previousPosition = 0,
   isMoving = false,
-  diceValue = null
+  diceValue = null,
+  isEventWait = false
 }) => {
   const [showEventPopup, setShowEventPopup] = React.useState<{square: BoardSquare | null, show: boolean}>({square: null, show: false});
   const [movementPath, setMovementPath] = React.useState<number[]>([]);
   
   React.useEffect(() => {
-    // 移動パスの計算
     if (isMoving && previousPosition !== position) {
       const path = [];
-      for (let i = previousPosition + 1; i <= position; i++) {
-        path.push(i);
+      // Handle moving backwards too if needed, though usually forward
+      if (position > previousPosition) {
+          for (let i = previousPosition + 1; i <= position; i++) {
+            path.push(i);
+          }
+      } else {
+          // Moving backwards
+          for (let i = previousPosition - 1; i >= position; i--) {
+              path.push(i);
+          }
       }
       setMovementPath(path);
     } else if (!isMoving) {
       setMovementPath([]);
-      
-      // 移動完了時のイベント表示
-      const currentSquare = GAME_BOARD.find(s => s.position === position);
-      if (currentSquare && currentSquare.effect && position > 0 && position !== previousPosition) {
-        setTimeout(() => {
-          setShowEventPopup({square: currentSquare, show: true});
-          setTimeout(() => setShowEventPopup({square: null, show: false}), 3500);
-        }, 1000);
-      }
     }
-  }, [position, isMoving, previousPosition]);
 
-  // ボードを行ごとに分割（蛇行パターン）
-  const rows = [];
-  const squaresPerRow = 10;
-  const totalRows = Math.ceil(51 / squaresPerRow);
+    // Show popup when waiting for event animation
+    if (isEventWait) {
+        const currentSquare = GAME_BOARD.find(s => s.position === position);
+        if (currentSquare && currentSquare.effect) {
+            setShowEventPopup({square: currentSquare, show: true});
+            // Auto hide is handled by parent removing isEventWait, but we can also auto hide here for safety
+            const timer = setTimeout(() => setShowEventPopup({square: null, show: false}), 2500);
+            return () => clearTimeout(timer);
+        }
+    } else {
+        // If not waiting, ensure popup is hidden (unless we want to keep it open for a bit?)
+        // Actually, let's just hide it when isEventWait becomes false.
+        setShowEventPopup({square: null, show: false});
+    }
 
-  for (let row = 0; row < totalRows; row++) {
-    const rowSquares = [];
-    const startSquare = row * squaresPerRow;
-    const endSquare = Math.min((row + 1) * squaresPerRow - 1, 50);
-    
-    for (let squarePos = startSquare; squarePos <= endSquare; squarePos++) {
-      const square = GAME_BOARD.find(s => s.position === squarePos);
-      if (square) {
-        rowSquares.push(square);
+  }, [position, isMoving, previousPosition, isEventWait]);
+
+  // Responsive Snake Layout Logic
+  // We use CSS Grid with auto-fit/minmax for responsiveness, but to maintain the "snake" path visual,
+  // we need to be careful. A pure CSS grid snake is hard.
+  // Instead, we'll use a fixed column count that changes with breakpoints.
+  // Mobile: 5 cols, Desktop: 10 cols.
+  
+  const renderRows = (cols: number) => {
+      const rows = [];
+      const totalRows = Math.ceil(61 / cols); // Updated for 60 items (0-60 = 61 items)
+
+      for (let row = 0; row < totalRows; row++) {
+        const rowSquares = [];
+        const startSquare = row * cols;
+        const endSquare = Math.min((row + 1) * cols - 1, 60);
+        
+        for (let squarePos = startSquare; squarePos <= endSquare; squarePos++) {
+          const square = GAME_BOARD.find(s => s.position === squarePos);
+          if (square) {
+            rowSquares.push(square);
+          }
+        }
+        
+        // Reverse even rows (0, 2, 4...) for snake effect? 
+        // Usually snake starts left->right (row 0), then right->left (row 1).
+        // So row 1, 3, 5 should be reversed.
+        const isReversed = row % 2 === 1;
+        if (isReversed) {
+          rowSquares.reverse();
+        }
+        
+        rows.push({ squares: rowSquares, isReversed, rowIndex: row });
       }
-    }
-    
-    // 奇数行は逆順にして蛇行パターンを作る
-    if (row % 2 === 1) {
-      rowSquares.reverse();
-    }
-    
-    rows.push(rowSquares);
-  }
+      return rows;
+  };
+
+  // We render two versions and hide/show based on media query to ensure correct snake layout
+  // This is a bit heavy but ensures the visual path is correct for both sizes.
+  // Alternatively, we could use a resize observer, but CSS media queries are cleaner for SSR.
+  
+  const MobileRows = renderRows(5);
+  const DesktopRows = renderRows(10);
+
+  const BoardGrid = ({ rows, className }: { rows: any[], className: string }) => (
+      <div className={`space-y-4 ${className}`}>
+        {rows.map(({ squares, isReversed, rowIndex }) => (
+            <div key={rowIndex} className="relative">
+                {/* Connector Line Background */}
+                <div className="absolute top-1/2 left-2 right-2 h-4 bg-gray-200 dark:bg-gray-700 -z-10 rounded-full transform -translate-y-1/2 opacity-50"></div>
+                
+                {/* Vertical Connectors (Curves) */}
+                {rowIndex < rows.length - 1 && (
+                    <div className={`absolute top-1/2 h-20 w-8 border-4 border-gray-200 dark:border-gray-700 -z-20 opacity-50
+                        ${isReversed ? 'left-0 rounded-l-full border-r-0' : 'right-0 rounded-r-full border-l-0'}
+                    `}></div>
+                )}
+
+                <div className={`grid ${rows === MobileRows ? 'grid-cols-5' : 'grid-cols-10'} gap-2`}>
+                    {squares.map((square: BoardSquare) => (
+                    <div key={square.position} className="relative">
+                        <BoardSquareComponent 
+                            square={square} 
+                            isActive={position === square.position}
+                            isInPath={movementPath.includes(square.position)}
+                            isPrevious={previousPosition === square.position && isMoving}
+                        />
+                        
+                        {/* Player Token */}
+                        {position === square.position && (
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-500 ease-in-out">
+                                <PlayerToken playerName={playerName} />
+                            </div>
+                        )}
+                    </div>
+                    ))}
+                </div>
+            </div>
+        ))}
+      </div>
+  );
 
   return (
-    <div className="relative">
-      {/* Railway Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-3xl border border-amber-200/50 dark:border-gray-600/50 shadow-2xl">
-        {/* 線路の枕木パターン */}
-        <div className="absolute inset-0 opacity-10">
-          {Array.from({ length: 15 }, (_, i) => (
-            <div 
-              key={i} 
-              className="absolute w-full h-2 bg-amber-800 dark:bg-amber-600 rounded-sm" 
-              style={{ top: `${i * 6.67}%` }}
-            />
-          ))}
-        </div>
-      </div>
-      
-      {/* Dice Display */}
-      {diceValue && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-40 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white px-8 py-4 rounded-2xl font-bold text-2xl shadow-2xl animate-bounce border-4 border-white">
-          <span className="animate-pulse">🎲 {diceValue}</span>
-        </div>
-      )}
-      
-      {/* Event Popup - Enhanced */}
+    <div className="relative w-full">
+      {/* Event Popup */}
       {showEventPopup.show && showEventPopup.square && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 max-w-md">
-          <div className="bg-gradient-to-br from-white via-yellow-50 to-orange-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-2xl p-8 shadow-2xl border-4 border-gradient-to-r from-yellow-400 to-orange-400 animate-pulse">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200 border-4 border-yellow-400 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500"></div>
+            
             <div className="text-center">
-              <div className="text-5xl mb-4 animate-bounce">{getSquareIcon(showEventPopup.square.type)}</div>
-              <div className="font-bold text-xl text-gray-800 dark:text-white mb-3 leading-tight">
+              <div className="text-6xl mb-4 animate-bounce">{showEventPopup.square.icon || getSquareIcon(showEventPopup.square.type)}</div>
+              <h3 className="text-xl font-black text-gray-800 dark:text-white mb-2">
                 {showEventPopup.square.title}
-              </div>
-              <div className="text-base text-gray-600 dark:text-gray-300 leading-relaxed">
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 font-medium leading-relaxed">
                 {showEventPopup.square.description}
-              </div>
-              <div className="text-3xl mt-4 animate-bounce delay-300">✨</div>
+              </p>
             </div>
-            {/* 閉じるボタン */}
+            
             <button 
               onClick={() => setShowEventPopup({square: null, show: false})}
-              className="absolute top-2 right-2 w-8 h-8 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 font-bold transition-colors"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
             >
-              ×
+              ✕
             </button>
           </div>
         </div>
       )}
       
-      {/* Game Board */}
-      <div className="relative p-8 bg-gradient-to-br from-white/60 to-amber-50/60 dark:from-gray-800/60 dark:to-gray-700/60 rounded-3xl backdrop-blur-sm border-2 border-amber-200/30 dark:border-gray-600/30 shadow-inner">
-        <div className="space-y-6">
-          {rows.map((rowSquares, rowIndex) => (
-            <div key={rowIndex} className="relative">
-              {/* 線路表示 */}
-              <div className="absolute inset-0 flex items-center pointer-events-none">
-                <div className="w-full h-1 bg-gradient-to-r from-gray-400 via-gray-600 to-gray-400 rounded-full shadow-lg opacity-60" />
-              </div>
-              
-              {/* 駅名表示 */}
-              <div className="absolute -left-20 top-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-lg border border-blue-500">
-                <span className="block text-xs opacity-80">第{rowIndex + 1}区間</span>
-                <span>🚉</span>
-              </div>
-              
-              <div className="flex gap-4 relative z-10">
-                {rowSquares.map((square) => (
-                  <div key={square.position} className="relative flex-1">
-                    <BoardSquareComponent 
-                      square={square} 
-                      isActive={position === square.position}
-                      isInPath={movementPath.includes(square.position)}
-                      isPrevious={previousPosition === square.position && isMoving}
-                    />
-                    
-                    {/* Player Token */}
-                    {position === square.position && (
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
-                        <div className="transform transition-all duration-500 ease-in-out hover:scale-110">
-                          <PlayerToken playerName={playerName} />
-                        </div>
-                        {/* 到着エフェクト */}
-                        {!isMoving && (
-                          <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-60" />
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* 移動軌跡表示 */}
-                    {isMoving && movementPath.includes(square.position) && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-300/40 to-orange-300/40 rounded-2xl animate-pulse border-2 border-yellow-500/60 shadow-lg">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-ping" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* 装飾要素 */}
-        <div className="absolute -top-6 -left-6 text-4xl animate-bounce">🚉</div>
-        <div className="absolute -bottom-6 -right-6 text-3xl animate-pulse delay-1000">🚥</div>
-        <div className="absolute top-1/3 -right-6 text-2xl animate-pulse delay-500">�</div>
-        <div className="absolute -top-6 right-1/4 text-lg animate-bounce delay-700">�</div>
-        <div className="absolute bottom-1/3 -left-6 text-xl animate-pulse delay-300">🎪</div>
-      </div>
-      
-      {/* 移動中の効果音表示 */}
-      {isMoving && (
-        <div className="absolute bottom-6 left-6 bg-black/80 text-white px-4 py-3 rounded-2xl text-base font-bold animate-pulse border border-white/20">
-          <span className="animate-bounce inline-block mr-2">�</span>
-          ガタンゴトン... 移動中
-        </div>
-      )}
-      
-      {/* ゲーム進行状況表示 */}
-      <div className="absolute top-6 right-6 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-600/50">
-        <div className="text-sm font-bold text-gray-700 dark:text-gray-300">
-          {isMoving ? '🏃‍♂️ 移動中...' : '⭐ 待機中'}
-        </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          現在地: {position}/50
-        </div>
+      {/* Board Container */}
+      <div className="relative bg-[#f0f4f8] dark:bg-gray-900/50 rounded-3xl p-2 sm:p-6 overflow-hidden">
+         {/* Mobile Layout (< 1024px) */}
+         <BoardGrid rows={MobileRows} className="block lg:hidden" />
+         
+         {/* Desktop Layout (>= 1024px) */}
+         <BoardGrid rows={DesktopRows} className="hidden lg:block" />
       </div>
     </div>
   );
