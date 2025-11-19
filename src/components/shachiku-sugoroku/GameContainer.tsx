@@ -129,6 +129,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
           <GameBoard 
             position={gameState.position} 
             playerName={gameState.playerName} 
+            job={gameState.job}
             previousPosition={previousPosition}
             isMoving={isMoving}
             diceValue={showDice ? diceValue : null}

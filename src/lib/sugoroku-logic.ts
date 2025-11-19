@@ -124,7 +124,14 @@ const ENDINGS = {
     'breakdown': { title: '心身の限界', description: '心と体の限界を超えてしまい、回復に長い時間が必要になった。' },
     'resignation': { title: '無気力退職', description: 'やる気を完全に失い、無気力状態のまま退職に至った。' },
     'collapse': { title: '完全崩壊', description: '全てが崩れ去り、再起不能な状態まで追い込まれてしまった。' },
-    'defeat': { title: '敗北者', description: '社畜レースに完全に敗北し、惨めな結末を迎えることになった。' }
+    'defeat': { title: '敗北者', description: '社畜レースに完全に敗北し、惨めな結末を迎えることになった。' },
+    'freelance': { title: 'フリーランス転身', description: '会社を辞めて独立し、自由な働き方を手に入れた。' },
+    'entrepreneur': { title: '起業家', description: '自らの会社を立ち上げ、社長として新たな道を歩み始めた。' },
+    'global': { title: '海外移住', description: '日本を飛び出し、海外で新たなキャリアをスタートさせた。' },
+    'investor': { title: '投資家', description: '蓄えた資産を元手に投資家となり、悠々自適な生活を送ることになった。' },
+    'influencer': { title: 'インフルエンサー', description: 'SNSでの発信力が注目され、インフルエンサーとして生きていくことになった。' },
+    'farmer': { title: '農業従事者', description: '都会の喧騒を離れ、自然と共に生きる道を選んだ。' },
+    'writer': { title: '作家デビュー', description: '社畜生活の経験を綴った本が大ヒットし、作家としてデビューした。' }
 };
 
 const ACHIEVEMENT_STORAGE_KEY = 'shachiku-sugoroku-achievements';
@@ -525,22 +532,31 @@ export function checkEndGame(state: GameState): GameState {
     } else if (yaruki >= 15 && yaruki < 30) {
         newState.ending = 'ordinary';
     }
-    // Bad endings (poor performance)
-    else if (yaruki >= 10 && yaruki < 20 && hasYarukiZeroCount >= 2) {
+    // Special "Escape" endings (low yaruki but specific conditions)
+    else if (yaruki < 20 && newState.job === 'エンジニア') {
+        newState.ending = 'freelance';
+    } else if (yaruki < 20 && newState.job === '企画・マーケティング') {
+        newState.ending = 'entrepreneur';
+    } else if (yaruki < 20 && newState.job === '営業') {
+        newState.ending = 'investor';
+    } else if (yaruki < 20 && newState.job === '広報・PR') {
+        newState.ending = 'influencer';
+    } else if (yaruki < 20 && newState.job === '人事・総務') {
+        newState.ending = 'writer';
+    } else if (yaruki < 15 && turn >= 40) {
+        newState.ending = 'farmer'; // Took too long, decided to farm
+    } else if (yaruki < 15 && hasRestCount >= 5) {
+        newState.ending = 'global'; // Rested a lot, decided to travel
+    }
+    // Bad endings (poor performance) - Reduced frequency
+    else if (yaruki >= 10 && yaruki < 20 && hasYarukiZeroCount >= 3) {
         newState.ending = 'burnout';
-    } else if (yaruki >= 10 && yaruki < 20 && hasRestCount >= 8) {
+    } else if (yaruki >= 5 && yaruki < 15 && turn >= 35) {
         newState.ending = 'dropout';
-    } else if (yaruki >= 5 && yaruki < 15 && turn >= 30) {
+    } else if (yaruki >= 0 && yaruki < 10 && hasRestCount >= 8) {
         newState.ending = 'overwork';
-    } else if (yaruki >= 5 && yaruki < 15 && hasYarukiZeroCount >= 3) {
-        newState.ending = 'mental-break';
-    } else if (yaruki >= 1 && yaruki < 10 && hasRestCount >= 10) {
-        newState.ending = 'stress-victim';
-    } else if (yaruki >= 1 && yaruki < 10 && hasYarukiZeroCount >= 4) {
-        newState.ending = 'exhausted';
-    } else if (yaruki === 0 && hasRestCount >= 5) {
+    } else if (yaruki <= 0 && hasYarukiZeroCount >= 5) {
         newState.ending = 'breakdown';
-    } else if (yaruki <= 5 && turn >= 35) {
         newState.ending = 'resignation';
     } else if (yaruki <= 3 && hasYarukiZeroCount >= 5) {
         newState.ending = 'collapse';

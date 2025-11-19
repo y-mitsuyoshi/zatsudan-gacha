@@ -8,6 +8,7 @@ import { PlayerToken } from './PlayerToken';
 interface GameBoardProps {
   position: number;
   playerName: string;
+  job?: string;
   previousPosition?: number;
   isMoving?: boolean;
   diceValue?: number | null;
@@ -79,6 +80,7 @@ const BoardSquareComponent: React.FC<{
 export const GameBoard: React.FC<GameBoardProps> = ({ 
   position, 
   playerName, 
+  job,
   previousPosition = 0,
   isMoving = false,
   diceValue = null,
@@ -192,7 +194,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                         {/* Player Token */}
                         {position === square.position && (
                             <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-500 ease-in-out">
-                                <PlayerToken playerName={playerName} />
+                                <PlayerToken playerName={playerName} job={job} />
                             </div>
                         )}
                     </div>
