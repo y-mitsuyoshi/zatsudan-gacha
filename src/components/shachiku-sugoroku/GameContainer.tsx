@@ -22,6 +22,12 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
   const [isMoving, setIsMoving] = useState(false);
   const [isSoundOn, setIsSoundOn] = useState(false);
 
+  // Keep track of latest gameState for callbacks
+  const gameStateRef = React.useRef(gameState);
+  React.useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
   // Movement logic using useEffect for stability
   React.useEffect(() => {
     let moveTimer: NodeJS.Timeout;
@@ -68,9 +74,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
   const handleDiceRollComplete = () => {
     // Calculate new game state after dice animation completes
     setTimeout(() => {
-      setPreviousPosition(gameState.position);
+      // Use ref to get the latest state
+      const currentGameState = gameStateRef.current;
+      setPreviousPosition(currentGameState.position);
       
-      const newState = takeTurn(gameState, diceValue);
+      const newState = takeTurn(currentGameState, diceValue);
       setGameState(newState);
       setIsRolling(false);
       
