@@ -24,6 +24,22 @@
         "destination": "/isekai-status.html"
       },
       {
+        "source": "/shachiku-sugoroku",
+        "destination": "/shachiku-sugoroku.html"
+      },
+      {
+        "source": "/shachiku-sugoroku/",
+        "destination": "/shachiku-sugoroku.html"
+      },
+      {
+        "source": "/station-sign-maker",
+        "destination": "/station-sign-maker.html"
+      },
+      {
+        "source": "/station-sign-maker/",
+        "destination": "/station-sign-maker.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
