@@ -9,9 +9,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ['var(--font-inter)', 'var(--font-noto-sans-jp)'],
-      },
+
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
