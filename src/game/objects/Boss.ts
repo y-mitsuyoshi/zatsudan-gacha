@@ -7,16 +7,18 @@ export class Boss extends Enemy {
     private bossState: 'IDLE' | 'ATTACK' = 'IDLE';
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
-        super(scene, x, y, 'enemy'); // Use same placeholder texture but red
-        this.setScale(2); // Make it bigger
+        super(scene, x, y, 'boss');
+        this.setScale(2); // 64x64 -> 128x128
         this.scoreValue = 5000;
         this.hp = 50;
     }
 
-    spawn(x: number, y: number) {
-        super.spawn(x, y);
-        this.hp = 50;
-        this.setVelocityY(100); // Move down to enter screen
+    spawn(x: number, y: number, stage: number = 1) {
+        super.spawn(x, y, stage);
+        // Scale Boss HP
+        // Base 50 + (stage * 25)
+        this.hp = 50 + (stage * 25);
+        this.setVelocityY(100); // Move down to enter screen (overrides super speed for entry)
     }
 
     preUpdate(time: number, delta: number) {

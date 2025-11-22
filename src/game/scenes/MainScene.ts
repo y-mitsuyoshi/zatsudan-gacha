@@ -3,6 +3,7 @@ import { Player } from '../objects/Player';
 import { Bullet } from '../objects/Bullet';
 import { Enemy } from '../objects/Enemy';
 import { Boss } from '../objects/Boss';
+import { soundManager } from '../utils/SoundManager';
 
 interface GameState {
     score: number;
@@ -47,6 +48,8 @@ export class MainScene extends Phaser.Scene {
   create() {
     this.gameTime = 0;
     this.bossSpawned = false;
+
+    soundManager.playBGM();
 
     // --- Object Pooling ---
     this.bullets = this.physics.add.group({
@@ -97,7 +100,10 @@ export class MainScene extends Phaser.Scene {
     this.gameTime += delta;
 
     if (this.gameTime < this.stageDuration) {
-        if (Math.random() < 0.02) {
+        // Increase spawn rate based on stage
+        // Base 0.02, +0.005 per stage?
+        const spawnRate = 0.02 + (this.stage * 0.005);
+        if (Math.random() < spawnRate) {
             this.spawnEnemy();
         }
     } else if (!this.bossSpawned) {
@@ -112,6 +118,7 @@ export class MainScene extends Phaser.Scene {
       const bullet = this.bullets.get(x, y);
       if (bullet) {
           bullet.fire(x, y);
+          soundManager.playShoot();
       }
   }
 
@@ -121,6 +128,7 @@ export class MainScene extends Phaser.Scene {
           if (enemy.active) {
               enemy.die();
               this.addScore(enemy.scoreValue);
+              soundManager.playExplosion();
           }
       });
 
@@ -139,7 +147,8 @@ export class MainScene extends Phaser.Scene {
       const x = Phaser.Math.Between(20, this.scale.width - 20);
       const enemy = this.enemies.get(x, -50);
       if (enemy) {
-          enemy.spawn(x, -50);
+          // Pass stage info to scale difficulty (speed)
+          enemy.spawn(x, -50, this.stage);
           enemy.off('died');
           enemy.on('died', (score: number) => this.addScore(score));
       }
@@ -148,7 +157,7 @@ export class MainScene extends Phaser.Scene {
   private spawnBoss() {
       const boss = new Boss(this, this.scale.width / 2, -100);
       this.enemies.add(boss);
-      boss.spawn(this.scale.width / 2, -100);
+      boss.spawn(this.scale.width / 2, -100, this.stage);
       boss.on('died', (score: number) => {
           this.addScore(score);
           this.stageClear();
@@ -182,6 +191,7 @@ export class MainScene extends Phaser.Scene {
           bullet.setActive(false);
           bullet.setVisible(false);
           enemy.takeDamage(1);
+          soundManager.playExplosion();
       }
   }
 
@@ -190,6 +200,7 @@ export class MainScene extends Phaser.Scene {
       const enemy = obj2 as Enemy;
 
       if (player.active && enemy.active) {
+          soundManager.playDamage();
           if (enemy instanceof Boss) {
                player.takeDamage(10);
                player.y += 50;

@@ -4,16 +4,20 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     public hp: number = 1;
     public scoreValue: number = 100;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, texture: string = 'enemy') {
-        super(scene, x, y, texture);
+    constructor(scene: Phaser.Scene, x: number, y: number, texture?: string) {
+        super(scene, x, y, texture || 'enemy');
     }
 
-    spawn(x: number, y: number) {
+    spawn(x: number, y: number, stage: number = 1) {
         this.body!.reset(x, y);
         this.setActive(true);
         this.setVisible(true);
-        this.hp = 1;
-        this.setVelocityY(100); // Default downward movement
+        this.hp = 1; // Normal enemies die in 1 hit usually
+
+        // Speed increases with stage
+        // Base 100 + (stage * 20)
+        const speed = 100 + (stage * 20);
+        this.setVelocityY(speed);
     }
 
     takeDamage(amount: number) {

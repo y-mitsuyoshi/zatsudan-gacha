@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { soundManager } from '../utils/SoundManager';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -6,6 +7,7 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   init(data: { score: number; stage: number }) {
+      soundManager.stopBGM();
       // Dispatch event to React
       const event = new CustomEvent('shachiku-game-over', { detail: data });
       window.dispatchEvent(event);
