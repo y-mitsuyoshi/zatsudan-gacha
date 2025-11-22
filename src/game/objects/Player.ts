@@ -5,6 +5,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyZ: Phaser.Input.Keyboard.Key;
   private keyX: Phaser.Input.Keyboard.Key;
+  private keySpace: Phaser.Input.Keyboard.Key;
   private wasd: any;
 
   private lastFired: number = 0;
@@ -17,10 +18,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public weaponLevel: number = 1;
   private maxWeaponLevel: number = 5;
 
-  constructor(scene: MainScene, x: number, y: number) {
+  private isFiring: boolean = false;
+
+  constructor(scene: MainScene, x: number, y: number, initialHp: number = 100, initialBombs: number = 3, initialWeaponLevel: number = 1) {
     super(scene, x, y, 'player');
     scene.add.existing(this);
     scene.physics.add.existing(this);
+
+    this.hp = initialHp;
+    this.bombs = initialBombs;
+    this.weaponLevel = initialWeaponLevel;
 
     this.setCollideWorldBounds(true);
 
@@ -28,6 +35,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.cursors = scene.input.keyboard!.createCursorKeys();
     this.keyZ = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.keyX = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X);
+    this.keySpace = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.wasd = scene.input.keyboard!.addKeys({
         up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -64,22 +72,35 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     else if (this.cursors.down.isDown || this.wasd.down.isDown) vy = speed;
 
     // Mouse/Touch (Follow pointer)
-    const pointer = this.scene.input.activePointer;
-    // Move if pointer is within game area (simple check) or just always follow if active
-    // We want to follow without clicking for mouse, but maybe require touch for mobile?
-    // Phaser pointer is always active.
-    
-    // Check if it's mouse or touch
-    // For mouse, we want to follow. For touch, we usually drag.
-    // Let's just move towards pointer if distance is significant
-    
-    const dist = Phaser.Math.Distance.Between(this.x, this.y, pointer.x, pointer.y);
-    
-    // If keyboard is not being used, use pointer
-    if (vx === 0 && vy === 0) {
+    // We iterate through all pointers to find one that is valid for movement (not over UI)
+    const pointers = [this.scene.input.pointer1, this.scene.input.pointer2];
+    let movePointer = null;
+
+    for (const p of pointers) {
+        if (p.isDown) {
+            // Simple check: if pointer is in the bottom-left corner (Fire button area), ignore for movement
+            // Fire button is at (50, height-40), radius 30.
+            // Let's define a safe zone.
+            const isOverFireBtn = p.x < 100 && p.y > this.scene.scale.height - 100;
+            const isOverBombBtn = p.x > this.scene.scale.width - 100 && p.y > this.scene.scale.height - 100;
+            
+            if (!isOverFireBtn && !isOverBombBtn) {
+                movePointer = p;
+                break;
+            }
+        }
+    }
+
+    // PC Mouse Hover (always active even if not down)
+    if (!movePointer && !this.scene.sys.game.device.os.android && !this.scene.sys.game.device.os.iOS) {
+        movePointer = this.scene.input.activePointer;
+    }
+
+    if (vx === 0 && vy === 0 && movePointer) {
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, movePointer.x, movePointer.y);
         if (dist > 10) {
-            this.scene.physics.moveToObject(this, pointer, speed);
-            return;
+             this.scene.physics.moveToObject(this, movePointer, speed);
+             return;
         } else {
             this.setVelocity(0, 0);
             return;
@@ -90,11 +111,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private handleShooting(time: number) {
-    // Auto shoot always
-    if (time > this.lastFired) {
-        this.fireWeapon();
-        this.lastFired = time + this.fireRate;
+    // Manual fire: Space, Z, or Left Click (PC only)
+    const pointer = this.scene.input.activePointer;
+    
+    // On Mobile, we do NOT fire on simple touch (that's for movement). We use the button.
+    // On PC, we can fire on Click.
+    const isMobile = this.scene.sys.game.device.os.android || this.scene.sys.game.device.os.iOS;
+    const isClicking = !isMobile && pointer.isDown; 
+    
+    if (this.keySpace.isDown || this.keyZ.isDown || isClicking || this.isFiring) {
+        if (time > this.lastFired) {
+            this.fireWeapon();
+            this.lastFired = time + this.fireRate;
+        }
     }
+  }
+
+  public setFiring(status: boolean) {
+      this.isFiring = status;
   }
 
   private fireWeapon() {
@@ -113,13 +147,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
       // Level 3: Spread
       if (this.weaponLevel >= 3) {
-           // We need to implement angled shots in MainScene or Bullet
-           // For now, just more bullets
            scene.fireBullet(x - 20, y + 20);
            scene.fireBullet(x + 20, y + 20);
       }
       
-      // Level 4 & 5 could add more or change bullet type
+      // Level 4: More spread
+      if (this.weaponLevel >= 4) {
+           scene.fireBullet(x - 30, y + 30);
+           scene.fireBullet(x + 30, y + 30);
+      }
+
+      // Level 5: Max
+      if (this.weaponLevel >= 5) {
+           // Maybe faster fire rate? Handled in handleShooting ideally, but here we can just add more bullets
+           scene.fireBullet(x, y - 20);
+      }
   }
 
   public upgradeWeapon() {
@@ -141,10 +183,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
      if (Phaser.Input.Keyboard.JustDown(this.keyX)) {
          this.useBomb();
      }
-
-     // Multi-touch for bomb on mobile could be handled here,
-     // but Phaser's pointer logic for multi-touch might need enabling in config.
-     // For now, we'll stick to a UI button for Bomb in SP (later) or Z/X keys.
   }
 
   public useBomb() {

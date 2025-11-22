@@ -10,6 +10,7 @@ interface GameState {
     score: number;
     hp: number;
     bombs: number;
+    weaponLevel: number;
     stage: number;
 }
 
@@ -32,6 +33,10 @@ export class MainScene extends Phaser.Scene {
   private stageDuration: number = 30000; // 30 seconds for Stage 1
   private bossSpawned: boolean = false;
 
+  // Difficulty Multipliers
+  private spawnRate: number = 0.02;
+  private enemySpeedMult: number = 1;
+
   constructor() {
     super('MainScene');
   }
@@ -39,13 +44,26 @@ export class MainScene extends Phaser.Scene {
   init(data: Partial<GameState>) {
       this.score = data.score || 0;
       this.stage = data.stage || 1;
+      // Ensure we don't reset to default if 0 is passed (which is falsy but valid for HP/Bombs potentially, though HP 0 is dead)
       this.registry.set('initialHp', data.hp !== undefined ? data.hp : 100);
       this.registry.set('initialBombs', data.bombs !== undefined ? data.bombs : 3);
+      this.registry.set('initialWeaponLevel', data.weaponLevel !== undefined ? data.weaponLevel : 1);
+      
+      console.log('Stage Init:', { stage: this.stage, hp: data.hp, bombs: data.bombs, weapon: data.weaponLevel });
   }
 
   create() {
     this.gameTime = 0;
     this.bossSpawned = false;
+
+    // Difficulty Scaling
+    // Stage 1: Base
+    // Stage 2: +20% speed, +20% spawn
+    // Stage 3: +40% speed, +40% spawn
+    // Exponential scaling for higher stages
+    const difficultyMult = Math.pow(1.2, this.stage - 1);
+    this.spawnRate = 0.02 * difficultyMult;
+    this.enemySpeedMult = difficultyMult;
 
     soundManager.playBGM();
 
@@ -59,7 +77,7 @@ export class MainScene extends Phaser.Scene {
         duration: 1000,
         repeat: -1,
         onUpdate: (tween) => {
-            bg.tilePositionY -= 2; // Scroll up (move forward)
+            bg.tilePositionY -= 2 * this.enemySpeedMult; // Scroll speed matches enemy speed scaling
         }
     });
 
@@ -89,9 +107,11 @@ export class MainScene extends Phaser.Scene {
     });
 
     // --- Player ---
-    this.player = new Player(this, this.scale.width / 2, this.scale.height - 100);
-    this.player.hp = this.registry.get('initialHp');
-    this.player.bombs = this.registry.get('initialBombs');
+    const initialHp = this.registry.get('initialHp');
+    const initialBombs = this.registry.get('initialBombs');
+    const initialWeaponLevel = this.registry.get('initialWeaponLevel');
+    
+    this.player = new Player(this, this.scale.width / 2, this.scale.height - 100, initialHp, initialBombs, initialWeaponLevel);
 
     // --- Collisions ---
     this.physics.add.overlap(this.bullets, this.enemies, this.handleBulletEnemyCollision, undefined, this);
@@ -126,10 +146,7 @@ export class MainScene extends Phaser.Scene {
     this.gameTime += delta;
 
     if (this.gameTime < this.stageDuration) {
-        // Increase spawn rate based on stage
-        // Base 0.02, +0.005 per stage?
-        const spawnRate = 0.02 + (this.stage * 0.005);
-        if (Math.random() < spawnRate) {
+        if (Math.random() < this.spawnRate) {
             this.spawnEnemy();
         }
     } else if (!this.bossSpawned) {
@@ -154,7 +171,9 @@ export class MainScene extends Phaser.Scene {
           bullet.enableBody(true, x, y, true, true);
           bullet.setActive(true);
           bullet.setVisible(true);
-          bullet.setVelocity(velocityX, velocityY);
+          // Scale bullet speed with stage
+          const speedMult = 1 + ((this.stage - 1) * 0.1);
+          bullet.setVelocity(velocityX * speedMult, velocityY * speedMult);
           bullet.setTint(0xff0000); // Red for enemy bullets
       }
   }
@@ -186,6 +205,9 @@ export class MainScene extends Phaser.Scene {
       if (enemy) {
           // Pass stage info to scale difficulty (speed)
           enemy.spawn(x, -50, this.stage);
+          // Apply speed multiplier from scene (redundant if Enemy uses stage, but good for fine tuning)
+          // Enemy.spawn uses stage to set speed, so we rely on that.
+          
           enemy.off('died');
           enemy.on('died', (score: number) => {
               this.addScore(score);
@@ -232,6 +254,7 @@ export class MainScene extends Phaser.Scene {
           score: this.score,
           hp: this.player.hp,
           bombs: this.player.bombs,
+          weaponLevel: this.player.weaponLevel,
           stage: nextStage
       };
       localStorage.setItem('shachiku_save', JSON.stringify(saveData));
@@ -339,7 +362,9 @@ export class MainScene extends Phaser.Scene {
       // Stage
       this.stageText = this.add.text(this.scale.width - 80, 10, `Stage ${this.stage}`, { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
 
-      // Mobile Bomb Button
+      // Mobile Controls
+      
+      // Bomb Button (Right side)
       const bombBtn = this.add.circle(this.scale.width - 40, this.scale.height - 40, 30, 0xff0000).setInteractive();
       bombBtn.setAlpha(0.6);
       const bombIcon = this.add.text(this.scale.width - 40, this.scale.height - 40, '有給', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
@@ -347,6 +372,30 @@ export class MainScene extends Phaser.Scene {
       bombBtn.on('pointerdown', () => {
           if (this.player.active) {
               this.player.useBomb();
+          }
+      });
+
+      // Fire Button (Left side)
+      // User requested: "Separate move button and bullet button".
+      // Assuming touch movement is drag anywhere, or maybe a virtual joystick?
+      // For now, let's add a dedicated Fire button on the left.
+      const fireBtn = this.add.circle(50, this.scale.height - 40, 30, 0x0000ff).setInteractive();
+      fireBtn.setAlpha(0.6);
+      const fireIcon = this.add.text(50, this.scale.height - 40, 'Fire', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+
+      fireBtn.on('pointerdown', () => {
+          if (this.player.active) {
+              this.player.setFiring(true);
+          }
+      });
+      fireBtn.on('pointerup', () => {
+          if (this.player.active) {
+              this.player.setFiring(false);
+          }
+      });
+      fireBtn.on('pointerout', () => {
+          if (this.player.active) {
+              this.player.setFiring(false);
           }
       });
   }
