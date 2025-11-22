@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { type Game } from 'phaser';
-import html2canvas from 'html2canvas';
+
 
 interface GameStats {
     score: number;
@@ -62,6 +62,7 @@ export default function ShachikuGame() {
   const handleShare = async () => {
       const element = document.getElementById('result-card');
       if (element) {
+          const html2canvas = (await import('html2canvas')).default;
           const canvas = await html2canvas(element);
           const image = canvas.toDataURL('image/png');
 
