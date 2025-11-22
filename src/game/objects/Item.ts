@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-export type ItemType = 'SCORE' | 'POWERUP' | 'HEAL' | 'BOMB';
+export type ItemType = 'SCORE' | 'POWERUP' | 'HEAL' | 'BOMB' | 'WEAPON_LASER' | 'WEAPON_FLAME';
 
 export class Item extends Phaser.Physics.Arcade.Sprite {
     public itemType: ItemType;
@@ -12,6 +12,8 @@ export class Item extends Phaser.Physics.Arcade.Sprite {
             case 'POWERUP': texture = 'item_powerup'; break;
             case 'HEAL': texture = 'item_heal'; break;
             case 'BOMB': texture = 'item_bomb'; break;
+            case 'WEAPON_LASER': texture = 'item_weapon_laser'; break;
+            case 'WEAPON_FLAME': texture = 'item_weapon_flame'; break;
         }
         super(scene, x, y, texture);
         this.itemType = type;
@@ -22,6 +24,7 @@ export class Item extends Phaser.Physics.Arcade.Sprite {
         if (type === 'HEAL') this.value = 20;
         if (type === 'BOMB') this.value = 1;
         if (type === 'POWERUP') this.value = 1;
+        // Weapons just trigger state change
 
         scene.add.existing(this);
         scene.physics.add.existing(this);

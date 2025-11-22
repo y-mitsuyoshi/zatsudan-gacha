@@ -12,7 +12,28 @@ interface GameState {
     bombs: number;
     weaponLevel: number;
     stage: number;
+    weaponType?: 'NORMAL' | 'LASER' | 'FLAME';
 }
+
+// Stage Configuration
+const STAGE_CONFIG = [
+    { title: "Morning Commute\nRun for the Train!", spawnRate: 0.05 },
+    { title: "Morning Assembly\nListen to the Speech!", spawnRate: 0.08 },
+    { title: "Email Storm\nReply All!", spawnRate: 0.12 },
+    { title: "Middle Management\nApproval Hell!", spawnRate: 0.15 },
+    { title: "System Failure\nCritical Error!", spawnRate: 0.20 },
+    { title: "The Black Company\nFinal Showdown!", spawnRate: 0.30 }
+];
+
+const TITLES = [
+    "Intern",           // Start
+    "Regular Employee", // Clear Stage 1
+    "Chief",            // Clear Stage 2
+    "Manager",          // Clear Stage 3
+    "General Manager",  // Clear Stage 4
+    "Executive",        // Clear Stage 5
+    "President"         // Clear Stage 6
+];
 
 export class MainScene extends Phaser.Scene {
   private player!: Player;
@@ -28,13 +49,14 @@ export class MainScene extends Phaser.Scene {
   private hpText!: Phaser.GameObjects.Text;
   private bombText!: Phaser.GameObjects.Text;
   private stageText!: Phaser.GameObjects.Text;
+  private rankText!: Phaser.GameObjects.Text;
 
   private gameTime: number = 0;
-  private stageDuration: number = 30000; // 30 seconds for Stage 1
+  private stageDuration: number = 45000; // Increased duration per stage
   private bossSpawned: boolean = false;
 
   // Difficulty Multipliers
-  private spawnRate: number = 0.02;
+  private spawnRate: number = 0.05;
   private enemySpeedMult: number = 1;
 
   constructor() {
@@ -44,12 +66,11 @@ export class MainScene extends Phaser.Scene {
   init(data: Partial<GameState>) {
       this.score = data.score || 0;
       this.stage = data.stage || 1;
-      // Ensure we don't reset to default if 0 is passed (which is falsy but valid for HP/Bombs potentially, though HP 0 is dead)
+
       this.registry.set('initialHp', data.hp !== undefined ? data.hp : 100);
       this.registry.set('initialBombs', data.bombs !== undefined ? data.bombs : 3);
       this.registry.set('initialWeaponLevel', data.weaponLevel !== undefined ? data.weaponLevel : 1);
-      
-      console.log('Stage Init:', { stage: this.stage, hp: data.hp, bombs: data.bombs, weapon: data.weaponLevel });
+      this.registry.set('initialWeaponType', data.weaponType || 'NORMAL');
   }
 
   create() {
@@ -57,12 +78,12 @@ export class MainScene extends Phaser.Scene {
     this.bossSpawned = false;
 
     // Difficulty Scaling
-    // Stage 1: Base
-    // Stage 2: +20% speed, +20% spawn
-    // Stage 3: +40% speed, +40% spawn
-    // Exponential scaling for higher stages
-    const difficultyMult = Math.pow(1.2, this.stage - 1);
-    this.spawnRate = 0.02 * difficultyMult;
+    // More aggressive scaling
+    const difficultyMult = Math.pow(1.3, this.stage - 1);
+
+    // Use Config or fallback
+    const config = STAGE_CONFIG[this.stage - 1] || STAGE_CONFIG[STAGE_CONFIG.length - 1];
+    this.spawnRate = config.spawnRate;
     this.enemySpeedMult = difficultyMult;
 
     soundManager.playBGM();
@@ -70,39 +91,40 @@ export class MainScene extends Phaser.Scene {
     // --- Background ---
     const bgTexture = `bg_stage${this.stage > 6 ? 6 : this.stage}`;
     const bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, bgTexture).setOrigin(0);
-    // Scroll background
+
     this.tweens.addCounter({
         from: 0,
         to: 1,
         duration: 1000,
         repeat: -1,
         onUpdate: (tween) => {
-            bg.tilePositionY -= 2 * this.enemySpeedMult; // Scroll speed matches enemy speed scaling
+            bg.tilePositionY -= (2 + (this.stage * 0.5)) * this.enemySpeedMult;
         }
     });
 
     // --- Object Pooling ---
+    // Increased limits for "Rush" feel
     this.bullets = this.physics.add.group({
         classType: Bullet,
-        maxSize: 30,
+        maxSize: 50,
         runChildUpdate: true
     });
 
     this.enemyBullets = this.physics.add.group({
         classType: Bullet,
-        maxSize: 100,
+        maxSize: 200, // Bullet hell!
         runChildUpdate: true
     });
 
     this.enemies = this.physics.add.group({
         classType: Enemy,
-        maxSize: 50,
+        maxSize: 100, // More enemies
         runChildUpdate: true
     });
 
     this.items = this.physics.add.group({
         classType: Item,
-        maxSize: 20,
+        maxSize: 30,
         runChildUpdate: true
     });
 
@@ -112,6 +134,7 @@ export class MainScene extends Phaser.Scene {
     const initialWeaponLevel = this.registry.get('initialWeaponLevel');
     
     this.player = new Player(this, this.scale.width / 2, this.scale.height - 100, initialHp, initialBombs, initialWeaponLevel);
+    this.player.setWeaponType(this.registry.get('initialWeaponType'));
 
     // --- Collisions ---
     this.physics.add.overlap(this.bullets, this.enemies, this.handleBulletEnemyCollision, undefined, this);
@@ -123,10 +146,11 @@ export class MainScene extends Phaser.Scene {
     this.createHUD();
 
     // Show Stage Title
-    const stageTitle = this.add.text(this.scale.width/2, this.scale.height/2, `Stage ${this.stage}\nCommuter Rush`, {
+    const stageConfig = STAGE_CONFIG[this.stage - 1] || { title: `Stage ${this.stage}` };
+    const stageTitle = this.add.text(this.scale.width/2, this.scale.height/2, `Stage ${this.stage}\n${stageConfig.title}`, {
         fontSize: '32px', color: '#fff', align: 'center', stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5);
-    this.time.delayedCall(2000, () => stageTitle.destroy());
+    this.time.delayedCall(3000, () => stageTitle.destroy());
   }
 
   update(time: number, delta: number) {
@@ -134,7 +158,7 @@ export class MainScene extends Phaser.Scene {
         this.scene.start('GameOverScene', {
             score: this.score,
             stage: this.stage,
-            reason: 'GAME OVER'
+            reason: 'GAME OVER\nRetirement'
         });
         return;
     }
@@ -150,6 +174,8 @@ export class MainScene extends Phaser.Scene {
             this.spawnEnemy();
         }
     } else if (!this.bossSpawned) {
+        // Kill all existing mobs before boss?
+        // Maybe not, keep the chaos.
         this.spawnBoss();
         this.bossSpawned = true;
     }
@@ -157,10 +183,10 @@ export class MainScene extends Phaser.Scene {
 
   // --- Core Logic ---
 
-  public fireBullet(x: number, y: number) {
+  public fireBullet(x: number, y: number, type: 'NORMAL' | 'LASER' | 'FLAME' = 'NORMAL', angle: number = -90) {
       const bullet = this.bullets.get(x, y);
       if (bullet) {
-          bullet.fire(x, y);
+          bullet.fire(x, y, type, angle);
           soundManager.playShoot();
       }
   }
@@ -168,13 +194,7 @@ export class MainScene extends Phaser.Scene {
   public fireEnemyBullet(x: number, y: number, velocityX: number = 0, velocityY: number = 300) {
       const bullet = this.enemyBullets.get(x, y);
       if (bullet) {
-          bullet.enableBody(true, x, y, true, true);
-          bullet.setActive(true);
-          bullet.setVisible(true);
-          // Scale bullet speed with stage
-          const speedMult = 1 + ((this.stage - 1) * 0.1);
-          bullet.setVelocity(velocityX * speedMult, velocityY * speedMult);
-          bullet.setTint(0xff0000); // Red for enemy bullets
+          bullet.fireEnemy(x, y, velocityX, velocityY);
       }
   }
 
@@ -182,11 +202,20 @@ export class MainScene extends Phaser.Scene {
       this.enemies.getChildren().forEach((child) => {
           const enemy = child as Enemy;
           if (enemy.active) {
-              enemy.die();
-              this.addScore(enemy.scoreValue);
-              soundManager.playExplosion();
+              // Bosses take damage but don't die instantly
+              if (enemy instanceof Boss) {
+                  enemy.takeDamage(50);
+              } else {
+                  enemy.die();
+                  this.addScore(enemy.scoreValue);
+              }
           }
       });
+
+      // Clear enemy bullets
+      this.enemyBullets.clear(true, true);
+
+      soundManager.playExplosion();
 
       const flash = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffffff);
       flash.setOrigin(0);
@@ -203,10 +232,7 @@ export class MainScene extends Phaser.Scene {
       const x = Phaser.Math.Between(20, this.scale.width - 20);
       const enemy = this.enemies.get(x, -50);
       if (enemy) {
-          // Pass stage info to scale difficulty (speed)
           enemy.spawn(x, -50, this.stage);
-          // Apply speed multiplier from scene (redundant if Enemy uses stage, but good for fine tuning)
-          // Enemy.spawn uses stage to set speed, so we rely on that.
           
           enemy.off('died');
           enemy.on('died', (score: number) => {
@@ -219,20 +245,39 @@ export class MainScene extends Phaser.Scene {
   private spawnBoss() {
       const boss = new Boss(this, this.scale.width / 2, -100);
       this.enemies.add(boss);
+      // Correctly pass the current stage to spawn
       boss.spawn(this.scale.width / 2, -100, this.stage);
       boss.on('died', (score: number) => {
           this.addScore(score);
           this.stageClear();
       });
+
+      // Boss warning
+      const warning = this.add.text(this.scale.width/2, this.scale.height/3, "WARNING\nBOSS APPROACHING", {
+          fontSize: '40px', color: '#ff0000', align: 'center', stroke: '#000', strokeThickness: 6
+      }).setOrigin(0.5);
+      this.tweens.add({
+          targets: warning,
+          alpha: 0,
+          duration: 500,
+          yoyo: true,
+          repeat: 5,
+          onComplete: () => warning.destroy()
+      });
   }
 
   private spawnItem(x: number, y: number) {
-      if (Math.random() < 0.3) { // 30% chance
+      // Chance to drop item
+      if (Math.random() < 0.2) {
           const rand = Math.random();
           let type: ItemType = 'SCORE';
-          if (rand < 0.5) type = 'SCORE';
-          else if (rand < 0.7) type = 'POWERUP';
-          else if (rand < 0.9) type = 'HEAL';
+
+          // Weapon drops (rare)
+          if (rand < 0.05) type = 'WEAPON_LASER';
+          else if (rand < 0.10) type = 'WEAPON_FLAME';
+          else if (rand < 0.4) type = 'SCORE';
+          else if (rand < 0.6) type = 'POWERUP';
+          else if (rand < 0.8) type = 'HEAL';
           else type = 'BOMB';
 
           const item = this.items.get(x, y, type);
@@ -240,7 +285,7 @@ export class MainScene extends Phaser.Scene {
               item.setActive(true);
               item.setVisible(true);
               item.body.reset(x, y);
-              item.setVelocityY(100);
+              item.setVelocityY(150);
           }
       }
   }
@@ -248,28 +293,31 @@ export class MainScene extends Phaser.Scene {
   private stageClear() {
       this.add.text(this.scale.width/2, this.scale.height/2, "STAGE CLEAR", {fontSize: '32px', color: '#ffff00', stroke: '#000', strokeThickness: 4}).setOrigin(0.5);
 
-      // Save Progress
       const nextStage = this.stage + 1;
+
+      // Determine Title
+      const titleIndex = Math.min(this.stage, TITLES.length - 1);
+      const newTitle = TITLES[titleIndex];
+
       const saveData: GameState = {
           score: this.score,
           hp: this.player.hp,
           bombs: this.player.bombs,
           weaponLevel: this.player.weaponLevel,
+          weaponType: this.player.weaponType,
           stage: nextStage
       };
       localStorage.setItem('shachiku_save', JSON.stringify(saveData));
 
-      this.time.delayedCall(3000, () => {
+      this.time.delayedCall(4000, () => {
            if (nextStage > 6) {
                // All Clear
                this.scene.start('GameOverScene', {
                    score: this.score,
                    stage: 6,
-                   reason: 'ALL CLEAR! 伝説の社畜'
+                   reason: 'ALL CLEAR!\nLegendary Salaryman'
                });
            } else {
-               // Seamless transition?
-               // Ideally we fade out and restart scene with new data
                this.cameras.main.fade(1000, 0, 0, 0);
                this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
                    this.scene.restart(saveData);
@@ -283,10 +331,21 @@ export class MainScene extends Phaser.Scene {
       const enemy = obj2 as Enemy;
 
       if (bullet.active && enemy.active) {
-          bullet.setActive(false);
-          bullet.setVisible(false);
-          enemy.takeDamage(1);
-          soundManager.playExplosion();
+          enemy.takeDamage(bullet.damage);
+
+          // Laser doesn't destroy itself immediately (piercing), but we don't want it to kill the same enemy every frame
+          // Arcade Physics overlap runs every frame.
+          // To make laser pierce effectively without multi-hitting the same target instantly:
+          // We could use an immunity timer on enemy or check overlap only once.
+          // For simplicity: Normal bullets die. Laser bullets stay alive.
+
+          if (bullet.bulletType !== 'LASER') {
+              bullet.setActive(false);
+              bullet.setVisible(false);
+              soundManager.playExplosion(); // Mini explosion sound
+          } else {
+               // Laser visual effect hit?
+          }
       }
   }
 
@@ -299,9 +358,10 @@ export class MainScene extends Phaser.Scene {
           if (enemy instanceof Boss) {
                player.takeDamage(10);
                player.y += 50;
+               // Push back
           } else {
                enemy.die();
-               player.takeDamage(20);
+               player.takeDamage(15);
           }
       }
   }
@@ -340,6 +400,14 @@ export class MainScene extends Phaser.Scene {
               case 'BOMB':
                   player.addBomb();
                   break;
+              case 'WEAPON_LASER':
+                  player.setWeaponType('LASER');
+                  this.addScore(1000);
+                  break;
+              case 'WEAPON_FLAME':
+                  player.setWeaponType('FLAME');
+                  this.addScore(1000);
+                  break;
           }
       }
   }
@@ -347,27 +415,29 @@ export class MainScene extends Phaser.Scene {
   // --- UI & Score ---
 
   private createHUD() {
+      // Rank
+      const currentTitle = TITLES[Math.min(this.stage - 1, TITLES.length - 1)];
+      this.rankText = this.add.text(10, 10, `役職: ${currentTitle}`, { fontSize: '14px', color: '#ffff00', stroke: '#000', strokeThickness: 3 });
+
       // Score
-      this.scoreText = this.add.text(10, 10, '残業代: 0', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      this.scoreText = this.add.text(10, 30, '残業代: 0', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
       
       // Health Bar
-      this.add.text(10, 35, 'メンタル:', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
-      this.add.rectangle(10, 55, 104, 14, 0xffffff).setOrigin(0); // Border
-      this.add.rectangle(12, 57, 100, 10, 0x000000).setOrigin(0); // Background
-      this.hpText = this.add.text(120, 35, '100%', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
+      this.add.text(10, 55, 'メンタル:', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
+      this.add.rectangle(10, 75, 104, 14, 0xffffff).setOrigin(0);
+      this.add.rectangle(12, 77, 100, 10, 0x000000).setOrigin(0);
+      this.hpText = this.add.text(120, 55, '100%', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
       
       // Bomb
-      this.bombText = this.add.text(10, 80, '有給: 3', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      this.bombText = this.add.text(10, 95, '有給: 3', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
       
       // Stage
-      this.stageText = this.add.text(this.scale.width - 80, 10, `Stage ${this.stage}`, { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      this.stageText = this.add.text(this.scale.width - 100, 10, `Stage ${this.stage}`, { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
 
       // Mobile Controls
-      
-      // Bomb Button (Right side)
       const bombBtn = this.add.circle(this.scale.width - 40, this.scale.height - 40, 30, 0xff0000).setInteractive();
       bombBtn.setAlpha(0.6);
-      const bombIcon = this.add.text(this.scale.width - 40, this.scale.height - 40, '有給', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      this.add.text(this.scale.width - 40, this.scale.height - 40, '有給', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
       
       bombBtn.on('pointerdown', () => {
           if (this.player.active) {
@@ -375,13 +445,9 @@ export class MainScene extends Phaser.Scene {
           }
       });
 
-      // Fire Button (Left side)
-      // User requested: "Separate move button and bullet button".
-      // Assuming touch movement is drag anywhere, or maybe a virtual joystick?
-      // For now, let's add a dedicated Fire button on the left.
       const fireBtn = this.add.circle(50, this.scale.height - 40, 30, 0x0000ff).setInteractive();
       fireBtn.setAlpha(0.6);
-      const fireIcon = this.add.text(50, this.scale.height - 40, 'Fire', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      this.add.text(50, this.scale.height - 40, 'Fire', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
 
       fireBtn.on('pointerdown', () => {
           if (this.player.active) {
@@ -404,18 +470,15 @@ export class MainScene extends Phaser.Scene {
       this.scoreText.setText(`残業代: ${this.score}`);
       this.bombText.setText(`有給: ${this.player.bombs}`);
       
-      // Update HP Bar
       const hpPercent = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1);
       this.hpText.setText(`${Math.floor(hpPercent * 100)}%`);
       
-      // Redraw HP bar
       if (!this.registry.get('hpBar')) {
-           this.registry.set('hpBar', this.add.rectangle(12, 57, 100, 10, 0x00ff00).setOrigin(0));
+           this.registry.set('hpBar', this.add.rectangle(12, 77, 100, 10, 0x00ff00).setOrigin(0));
       }
       const bar = this.registry.get('hpBar') as Phaser.GameObjects.Rectangle;
       bar.width = 100 * hpPercent;
       
-      // Color change based on HP
       if (hpPercent < 0.3) bar.fillColor = 0xff0000;
       else if (hpPercent < 0.6) bar.fillColor = 0xffff00;
       else bar.fillColor = 0x00ff00;
