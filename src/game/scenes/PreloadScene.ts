@@ -6,7 +6,13 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload() {
-    // No external assets to load for now
+    // Load Backgrounds
+    this.load.image('bg_stage1', '/assets/game/bg_stage1.png');
+    this.load.image('bg_stage2', '/assets/game/bg_stage2.png');
+    this.load.image('bg_stage3', '/assets/game/bg_stage3.png');
+    this.load.image('bg_stage4', '/assets/game/bg_stage4.png');
+    this.load.image('bg_stage5', '/assets/game/bg_stage5.png');
+    this.load.image('bg_stage6', '/assets/game/bg_stage6.png');
   }
 
   create() {

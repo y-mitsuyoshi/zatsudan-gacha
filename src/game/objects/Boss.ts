@@ -51,12 +51,16 @@ export class Boss extends Enemy {
     }
 
     attack() {
-        // Simple circular spread or directed shot
-        // For now, just log or spawn a simple bullet if we had EnemyBullet class
-        // Since we don't have EnemyBullet yet, we'll just flash color
+        // Spread shot
+        const scene = this.scene as any;
+        if (scene.fireEnemyBullet) {
+            // 3-way shot
+            scene.fireEnemyBullet(this.x, this.y + 40, 0, 300);
+            scene.fireEnemyBullet(this.x, this.y + 40, -100, 280);
+            scene.fireEnemyBullet(this.x, this.y + 40, 100, 280);
+        }
+        
         this.setTint(0xff00ff);
         this.scene.time.delayedCall(200, () => this.clearTint());
-
-        // TODO: Spawn Enemy Bullets
     }
 }

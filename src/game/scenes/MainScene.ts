@@ -15,6 +15,7 @@ interface GameState {
 export class MainScene extends Phaser.Scene {
   private player!: Player;
   private bullets!: Phaser.Physics.Arcade.Group;
+  private enemyBullets!: Phaser.Physics.Arcade.Group;
   private enemies!: Phaser.Physics.Arcade.Group;
 
   private score: number = 0;
@@ -51,10 +52,30 @@ export class MainScene extends Phaser.Scene {
 
     soundManager.playBGM();
 
+    // --- Background ---
+    const bgTexture = `bg_stage${this.stage > 6 ? 6 : this.stage}`;
+    const bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, bgTexture).setOrigin(0);
+    // Scroll background
+    this.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: 1000,
+        repeat: -1,
+        onUpdate: (tween) => {
+            bg.tilePositionY -= 2; // Scroll up (move forward)
+        }
+    });
+
     // --- Object Pooling ---
     this.bullets = this.physics.add.group({
         classType: Bullet,
         maxSize: 30,
+        runChildUpdate: true
+    });
+
+    this.enemyBullets = this.physics.add.group({
+        classType: Bullet,
+        maxSize: 100,
         runChildUpdate: true
     });
 
@@ -72,6 +93,8 @@ export class MainScene extends Phaser.Scene {
     // --- Collisions ---
     this.physics.add.overlap(this.bullets, this.enemies, this.handleBulletEnemyCollision, undefined, this);
     this.physics.add.overlap(this.player, this.enemies, this.handlePlayerEnemyCollision, undefined, this);
+    this.physics.add.overlap(this.player, this.enemyBullets, this.handlePlayerBulletCollision, undefined, this);
+    this.physics.add.overlap(this.player, this.enemyBullets, this.handlePlayerBulletCollision, undefined, this);
 
     // --- UI ---
     this.createHUD();
@@ -122,6 +145,17 @@ export class MainScene extends Phaser.Scene {
       }
   }
 
+  public fireEnemyBullet(x: number, y: number, velocityX: number = 0, velocityY: number = 300) {
+      const bullet = this.enemyBullets.get(x, y);
+      if (bullet) {
+          bullet.enableBody(true, x, y, true, true);
+          bullet.setActive(true);
+          bullet.setVisible(true);
+          bullet.setVelocity(velocityX, velocityY);
+          bullet.setTint(0xff0000); // Red for enemy bullets
+      }
+  }
+
   public triggerBomb() {
       this.enemies.getChildren().forEach((child) => {
           const enemy = child as Enemy;
@@ -168,18 +202,26 @@ export class MainScene extends Phaser.Scene {
       this.add.text(this.scale.width/2, this.scale.height/2, "STAGE CLEAR", {fontSize: '32px', color: '#ffff00'}).setOrigin(0.5);
 
       // Save Progress
+      const nextStage = this.stage + 1;
       const saveData: GameState = {
           score: this.score,
           hp: this.player.hp,
           bombs: this.player.bombs,
-          stage: this.stage + 1 // Unlock next stage (logic wise)
+          stage: nextStage
       };
       localStorage.setItem('shachiku_save', JSON.stringify(saveData));
 
       this.time.delayedCall(3000, () => {
-           // Loop back to Stage 1 (or implement multiple stages)
-           // For now, restart with saved data (Stage 2... but we treat as loop for this scope)
-           this.scene.restart(saveData);
+           if (nextStage > 6) {
+               // All Clear
+               this.scene.start('GameOverScene', {
+                   score: this.score,
+                   stage: 6,
+                   reason: 'ALL CLEAR! 伝説の社畜'
+               });
+           } else {
+               this.scene.restart(saveData);
+           }
       });
   }
 
@@ -211,19 +253,72 @@ export class MainScene extends Phaser.Scene {
       }
   }
 
+  private handlePlayerBulletCollision(obj1: any, obj2: any) {
+      const player = obj1 as Player;
+      const bullet = obj2 as Bullet;
+
+      if (player.active && bullet.active) {
+          bullet.setActive(false);
+          bullet.setVisible(false);
+          player.takeDamage(10);
+          soundManager.playDamage();
+      }
+  }
+
+  // --- UI & Score ---
+
   // --- UI & Score ---
 
   private createHUD() {
-      this.scoreText = this.add.text(10, 10, '残業代: 0', { fontSize: '16px', color: '#fff' });
-      this.hpText = this.add.text(10, 30, 'メンタル: 100', { fontSize: '16px', color: '#fff' });
-      this.bombText = this.add.text(10, 50, '有給: 3', { fontSize: '16px', color: '#fff' });
-      this.stageText = this.add.text(this.scale.width - 80, 10, `Stage ${this.stage}`, { fontSize: '16px', color: '#fff' });
+      // Score
+      this.scoreText = this.add.text(10, 10, '残業代: 0', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      
+      // Health Bar
+      this.add.text(10, 35, 'メンタル:', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
+      this.add.rectangle(10, 55, 104, 14, 0xffffff).setOrigin(0); // Border
+      this.add.rectangle(12, 57, 100, 10, 0x000000).setOrigin(0); // Background
+      this.hpText = this.add.text(120, 35, '100%', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
+      
+      // Bomb
+      this.bombText = this.add.text(10, 80, '有給: 3', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      
+      // Stage
+      this.stageText = this.add.text(this.scale.width - 80, 10, `Stage ${this.stage}`, { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+
+      // Mobile Bomb Button
+      const bombBtn = this.add.circle(this.scale.width - 40, this.scale.height - 40, 30, 0xff0000).setInteractive();
+      bombBtn.setAlpha(0.6);
+      const bombIcon = this.add.text(this.scale.width - 40, this.scale.height - 40, '有給', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      
+      bombBtn.on('pointerdown', () => {
+          if (this.player.active) {
+              this.player.useBomb();
+          }
+      });
   }
 
   private updateHUD() {
       this.scoreText.setText(`残業代: ${this.score}`);
-      this.hpText.setText(`メンタル: ${this.player.hp}`);
       this.bombText.setText(`有給: ${this.player.bombs}`);
+      
+      // Update HP Bar
+      const hpPercent = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1);
+      this.hpText.setText(`${Math.floor(hpPercent * 100)}%`);
+      
+      // Redraw HP bar (simple way: clear and redraw, or just scale a rect)
+      // For simplicity, let's assume we have a rect reference. 
+      // Since we didn't store it, let's just use a graphic or simple rect.
+      // Better: Store the bar in a property.
+      if (!this.registry.get('hpBar')) {
+           this.registry.set('hpBar', this.add.rectangle(12, 57, 100, 10, 0x00ff00).setOrigin(0));
+      }
+      const bar = this.registry.get('hpBar') as Phaser.GameObjects.Rectangle;
+      bar.width = 100 * hpPercent;
+      
+      // Color change based on HP
+      if (hpPercent < 0.3) bar.fillColor = 0xff0000;
+      else if (hpPercent < 0.6) bar.fillColor = 0xffff00;
+      else bar.fillColor = 0x00ff00;
   }
 
   private addScore(amount: number) {
