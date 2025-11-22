@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { MainScene } from '../scenes/MainScene';
+import { BulletType } from './Bullet';
+
+export type WeaponType = 'NORMAL' | 'LASER' | 'FLAME';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -17,6 +20,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   public weaponLevel: number = 1;
   private maxWeaponLevel: number = 5;
+  public weaponType: WeaponType = 'NORMAL';
 
   private isFiring: boolean = false;
 
@@ -50,7 +54,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.hp <= 0) {
         this.setActive(false);
         this.setVisible(false);
-        // Let scene handle game over
         return;
     }
 
@@ -72,15 +75,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     else if (this.cursors.down.isDown || this.wasd.down.isDown) vy = speed;
 
     // Mouse/Touch (Follow pointer)
-    // We iterate through all pointers to find one that is valid for movement (not over UI)
     const pointers = [this.scene.input.pointer1, this.scene.input.pointer2];
     let movePointer = null;
 
     for (const p of pointers) {
         if (p && p.isDown) {
-            // Simple check: if pointer is in the bottom-left corner (Fire button area), ignore for movement
-            // Fire button is at (50, height-40), radius 30.
-            // Let's define a safe zone.
             const isOverFireBtn = p.x < 100 && p.y > this.scene.scale.height - 100;
             const isOverBombBtn = p.x > this.scene.scale.width - 100 && p.y > this.scene.scale.height - 100;
             
@@ -91,7 +90,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    // PC Mouse Hover (always active even if not down)
     if (!movePointer && !this.scene.sys.game.device.os.android && !this.scene.sys.game.device.os.iOS) {
         movePointer = this.scene.input.activePointer;
     }
@@ -111,18 +109,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private handleShooting(time: number) {
-    // Manual fire: Space, Z, or Left Click (PC only)
     const pointer = this.scene.input.activePointer;
-    
-    // On Mobile, we do NOT fire on simple touch (that's for movement). We use the button.
-    // On PC, we can fire on Click.
     const isMobile = this.scene.sys.game.device.os.android || this.scene.sys.game.device.os.iOS;
     const isClicking = !isMobile && pointer.isDown; 
     
     if (this.keySpace.isDown || this.keyZ.isDown || isClicking || this.isFiring) {
+        // Determine fire rate based on weapon
+        let currentFireRate = this.fireRate;
+        if (this.weaponType === 'FLAME') currentFireRate = 50; // Fast fire for flame
+        if (this.weaponType === 'LASER') currentFireRate = 300; // Slow heavy fire
+
         if (time > this.lastFired) {
             this.fireWeapon();
-            this.lastFired = time + this.fireRate;
+            this.lastFired = time + currentFireRate;
         }
     }
   }
@@ -131,11 +130,43 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.isFiring = status;
   }
 
+  public setWeaponType(type: WeaponType) {
+      this.weaponType = type;
+  }
+
   private fireWeapon() {
       const scene = this.scene as MainScene;
       const x = this.x;
       const y = this.y;
+      const level = this.weaponLevel;
 
+      if (this.weaponType === 'LASER') {
+          scene.fireBullet(x, y - 10, 'LASER', -90);
+          if (level >= 3) {
+              scene.fireBullet(x - 10, y, 'LASER', -100);
+              scene.fireBullet(x + 10, y, 'LASER', -80);
+          }
+          if (level >= 5) {
+              scene.fireBullet(x - 20, y + 10, 'LASER', -110);
+              scene.fireBullet(x + 20, y + 10, 'LASER', -70);
+          }
+          return;
+      }
+
+      if (this.weaponType === 'FLAME') {
+          scene.fireBullet(x, y - 20, 'FLAME', -90);
+          if (level >= 2) {
+               scene.fireBullet(x - 10, y - 10, 'FLAME', -100);
+               scene.fireBullet(x + 10, y - 10, 'FLAME', -80);
+          }
+          if (level >= 4) {
+               scene.fireBullet(x - 20, y, 'FLAME', -110);
+               scene.fireBullet(x + 20, y, 'FLAME', -70);
+          }
+          return;
+      }
+
+      // NORMAL WEAPON
       // Level 1: Single shot
       scene.fireBullet(x, y);
 
@@ -147,19 +178,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
       // Level 3: Spread
       if (this.weaponLevel >= 3) {
-           scene.fireBullet(x - 20, y + 20);
-           scene.fireBullet(x + 20, y + 20);
+           scene.fireBullet(x - 20, y + 20, 'NORMAL', -100);
+           scene.fireBullet(x + 20, y + 20, 'NORMAL', -80);
       }
       
       // Level 4: More spread
       if (this.weaponLevel >= 4) {
-           scene.fireBullet(x - 30, y + 30);
-           scene.fireBullet(x + 30, y + 30);
+           scene.fireBullet(x - 30, y + 30, 'NORMAL', -110);
+           scene.fireBullet(x + 30, y + 30, 'NORMAL', -70);
       }
 
       // Level 5: Max
       if (this.weaponLevel >= 5) {
-           // Maybe faster fire rate? Handled in handleShooting ideally, but here we can just add more bullets
            scene.fireBullet(x, y - 20);
       }
   }
