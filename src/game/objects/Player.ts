@@ -77,7 +77,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let movePointer = null;
 
     for (const p of pointers) {
-        if (p.isDown) {
+        if (p && p.isDown) {
             // Simple check: if pointer is in the bottom-left corner (Fire button area), ignore for movement
             // Fire button is at (50, height-40), radius 30.
             // Let's define a safe zone.
