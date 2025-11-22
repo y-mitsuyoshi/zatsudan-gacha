@@ -14,6 +14,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public maxHp: number = 100;
   public bombs: number = 3; // 有給休暇
 
+  public weaponLevel: number = 1;
+  private maxWeaponLevel: number = 5;
+
   constructor(scene: MainScene, x: number, y: number) {
     super(scene, x, y, 'player');
     scene.add.existing(this);
@@ -60,16 +63,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.cursors.up.isDown || this.wasd.up.isDown) vy = -speed;
     else if (this.cursors.down.isDown || this.wasd.down.isDown) vy = speed;
 
-    // Touch (Move towards pointer if active)
+    // Mouse/Touch (Follow pointer)
     const pointer = this.scene.input.activePointer;
-    if (pointer.isDown) {
-        const dist = Phaser.Math.Distance.Between(this.x, this.y, pointer.x, pointer.y);
+    // Move if pointer is within game area (simple check) or just always follow if active
+    // We want to follow without clicking for mouse, but maybe require touch for mobile?
+    // Phaser pointer is always active.
+    
+    // Check if it's mouse or touch
+    // For mouse, we want to follow. For touch, we usually drag.
+    // Let's just move towards pointer if distance is significant
+    
+    const dist = Phaser.Math.Distance.Between(this.x, this.y, pointer.x, pointer.y);
+    
+    // If keyboard is not being used, use pointer
+    if (vx === 0 && vy === 0) {
         if (dist > 10) {
             this.scene.physics.moveToObject(this, pointer, speed);
-            // physics.moveToObject sets velocity, so we return to avoid overwriting it below
             return;
         } else {
-            // Close enough, stop
             this.setVelocity(0, 0);
             return;
         }
@@ -79,14 +90,51 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private handleShooting(time: number) {
-    const pointer = this.scene.input.activePointer;
-    // Auto shoot on touch or Z key
-    if (this.keyZ.isDown || pointer.isDown) {
-        if (time > this.lastFired) {
-            (this.scene as MainScene).fireBullet(this.x, this.y);
-            this.lastFired = time + this.fireRate;
-        }
+    // Auto shoot always
+    if (time > this.lastFired) {
+        this.fireWeapon();
+        this.lastFired = time + this.fireRate;
     }
+  }
+
+  private fireWeapon() {
+      const scene = this.scene as MainScene;
+      const x = this.x;
+      const y = this.y;
+
+      // Level 1: Single shot
+      scene.fireBullet(x, y);
+
+      // Level 2: Double shot
+      if (this.weaponLevel >= 2) {
+          scene.fireBullet(x - 10, y + 10);
+          scene.fireBullet(x + 10, y + 10);
+      }
+
+      // Level 3: Spread
+      if (this.weaponLevel >= 3) {
+           // We need to implement angled shots in MainScene or Bullet
+           // For now, just more bullets
+           scene.fireBullet(x - 20, y + 20);
+           scene.fireBullet(x + 20, y + 20);
+      }
+      
+      // Level 4 & 5 could add more or change bullet type
+  }
+
+  public upgradeWeapon() {
+      if (this.weaponLevel < this.maxWeaponLevel) {
+          this.weaponLevel++;
+      }
+  }
+
+  public heal(amount: number) {
+      this.hp += amount;
+      if (this.hp > this.maxHp) this.hp = this.maxHp;
+  }
+
+  public addBomb() {
+      this.bombs++;
   }
 
   private handleBomb() {

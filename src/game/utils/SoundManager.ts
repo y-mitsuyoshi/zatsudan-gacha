@@ -71,6 +71,28 @@ export class SoundManager {
         osc.stop(this.ctx.currentTime + duration);
     }
 
+    public playPowerUp() {
+        if (!this.ctx || this.isMuted || !this.masterGain) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(880, this.ctx.currentTime + 0.1);
+        osc.frequency.linearRampToValueAtTime(1760, this.ctx.currentTime + 0.2);
+
+        gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+    }
+
     public playDamage() {
         if (!this.ctx || this.isMuted || !this.masterGain) return;
         this.resume();

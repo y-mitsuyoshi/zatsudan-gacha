@@ -110,5 +110,49 @@ export class PreloadScene extends Phaser.Scene {
     bullet.fillCircle(3, 3, 2);
     bullet.generateTexture('bullet', 10, 10);
     bullet.destroy();
+
+    // --- Items ---
+    // Score (Coin)
+    const itemScore = this.make.graphics({ x: 0, y: 0 });
+    itemScore.fillStyle(0xffd700, 1); // Gold
+    itemScore.fillCircle(10, 10, 10);
+    itemScore.fillStyle(0xffff00, 1);
+    itemScore.fillCircle(10, 10, 6);
+    itemScore.generateTexture('item_score', 20, 20);
+    itemScore.destroy();
+
+    // Powerup (P)
+    const itemPower = this.make.graphics({ x: 0, y: 0 });
+    itemPower.fillStyle(0xff0000, 1); // Red box
+    itemPower.fillRect(0, 0, 20, 20);
+    itemPower.lineStyle(2, 0xffffff);
+    itemPower.strokeRect(0, 0, 20, 20);
+    // P text would be nice but graphics is easier
+    itemPower.fillStyle(0xffffff, 1);
+    itemPower.fillRect(5, 5, 10, 10);
+    itemPower.generateTexture('item_powerup', 20, 20);
+    itemPower.destroy();
+
+    // Heal (Heart)
+    const itemHeal = this.make.graphics({ x: 0, y: 0 });
+    itemHeal.fillStyle(0xff69b4, 1); // Pink
+    itemHeal.fillCircle(6, 6, 6);
+    itemHeal.fillCircle(14, 6, 6);
+    itemHeal.beginPath();
+    itemHeal.moveTo(0, 6);
+    itemHeal.lineTo(10, 20);
+    itemHeal.lineTo(20, 6);
+    itemHeal.fillPath();
+    itemHeal.generateTexture('item_heal', 20, 20);
+    itemHeal.destroy();
+
+    // Bomb (B)
+    const itemBomb = this.make.graphics({ x: 0, y: 0 });
+    itemBomb.fillStyle(0x0000ff, 1); // Blue box
+    itemBomb.fillRect(0, 0, 20, 20);
+    itemBomb.fillStyle(0xffffff, 1);
+    itemBomb.fillCircle(10, 10, 5);
+    itemBomb.generateTexture('item_bomb', 20, 20);
+    itemBomb.destroy();
   }
 }

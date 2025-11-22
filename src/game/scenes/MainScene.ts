@@ -3,6 +3,7 @@ import { Player } from '../objects/Player';
 import { Bullet } from '../objects/Bullet';
 import { Enemy } from '../objects/Enemy';
 import { Boss } from '../objects/Boss';
+import { Item, ItemType } from '../objects/Item';
 import { soundManager } from '../utils/SoundManager';
 
 interface GameState {
@@ -17,6 +18,7 @@ export class MainScene extends Phaser.Scene {
   private bullets!: Phaser.Physics.Arcade.Group;
   private enemyBullets!: Phaser.Physics.Arcade.Group;
   private enemies!: Phaser.Physics.Arcade.Group;
+  private items!: Phaser.Physics.Arcade.Group;
 
   private score: number = 0;
   private stage: number = 1;
@@ -37,11 +39,6 @@ export class MainScene extends Phaser.Scene {
   init(data: Partial<GameState>) {
       this.score = data.score || 0;
       this.stage = data.stage || 1;
-      // HP and Bombs are set on Player init, but if we want to carry over:
-      // We'll pass them to player or set them after creation.
-      // For now, let's assume full HP on new stage?
-      // PRD says "Continue" -> "Each stage clear... save".
-      // Usually you keep status.
       this.registry.set('initialHp', data.hp !== undefined ? data.hp : 100);
       this.registry.set('initialBombs', data.bombs !== undefined ? data.bombs : 3);
   }
@@ -85,6 +82,12 @@ export class MainScene extends Phaser.Scene {
         runChildUpdate: true
     });
 
+    this.items = this.physics.add.group({
+        classType: Item,
+        maxSize: 20,
+        runChildUpdate: true
+    });
+
     // --- Player ---
     this.player = new Player(this, this.scale.width / 2, this.scale.height - 100);
     this.player.hp = this.registry.get('initialHp');
@@ -94,14 +97,14 @@ export class MainScene extends Phaser.Scene {
     this.physics.add.overlap(this.bullets, this.enemies, this.handleBulletEnemyCollision, undefined, this);
     this.physics.add.overlap(this.player, this.enemies, this.handlePlayerEnemyCollision, undefined, this);
     this.physics.add.overlap(this.player, this.enemyBullets, this.handlePlayerBulletCollision, undefined, this);
-    this.physics.add.overlap(this.player, this.enemyBullets, this.handlePlayerBulletCollision, undefined, this);
+    this.physics.add.overlap(this.player, this.items, this.handlePlayerItemCollision, undefined, this);
 
     // --- UI ---
     this.createHUD();
 
     // Show Stage Title
     const stageTitle = this.add.text(this.scale.width/2, this.scale.height/2, `Stage ${this.stage}\nCommuter Rush`, {
-        fontSize: '32px', color: '#fff', align: 'center'
+        fontSize: '32px', color: '#fff', align: 'center', stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5);
     this.time.delayedCall(2000, () => stageTitle.destroy());
   }
@@ -184,7 +187,10 @@ export class MainScene extends Phaser.Scene {
           // Pass stage info to scale difficulty (speed)
           enemy.spawn(x, -50, this.stage);
           enemy.off('died');
-          enemy.on('died', (score: number) => this.addScore(score));
+          enemy.on('died', (score: number) => {
+              this.addScore(score);
+              this.spawnItem(enemy.x, enemy.y);
+          });
       }
   }
 
@@ -198,8 +204,27 @@ export class MainScene extends Phaser.Scene {
       });
   }
 
+  private spawnItem(x: number, y: number) {
+      if (Math.random() < 0.3) { // 30% chance
+          const rand = Math.random();
+          let type: ItemType = 'SCORE';
+          if (rand < 0.5) type = 'SCORE';
+          else if (rand < 0.7) type = 'POWERUP';
+          else if (rand < 0.9) type = 'HEAL';
+          else type = 'BOMB';
+
+          const item = this.items.get(x, y, type);
+          if (item) {
+              item.setActive(true);
+              item.setVisible(true);
+              item.body.reset(x, y);
+              item.setVelocityY(100);
+          }
+      }
+  }
+
   private stageClear() {
-      this.add.text(this.scale.width/2, this.scale.height/2, "STAGE CLEAR", {fontSize: '32px', color: '#ffff00'}).setOrigin(0.5);
+      this.add.text(this.scale.width/2, this.scale.height/2, "STAGE CLEAR", {fontSize: '32px', color: '#ffff00', stroke: '#000', strokeThickness: 4}).setOrigin(0.5);
 
       // Save Progress
       const nextStage = this.stage + 1;
@@ -220,7 +245,12 @@ export class MainScene extends Phaser.Scene {
                    reason: 'ALL CLEAR! 伝説の社畜'
                });
            } else {
-               this.scene.restart(saveData);
+               // Seamless transition?
+               // Ideally we fade out and restart scene with new data
+               this.cameras.main.fade(1000, 0, 0, 0);
+               this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+                   this.scene.restart(saveData);
+               });
            }
       });
   }
@@ -265,7 +295,31 @@ export class MainScene extends Phaser.Scene {
       }
   }
 
-  // --- UI & Score ---
+  private handlePlayerItemCollision(obj1: any, obj2: any) {
+      const player = obj1 as Player;
+      const item = obj2 as Item;
+
+      if (player.active && item.active) {
+          item.destroy();
+          soundManager.playPowerUp();
+
+          switch (item.itemType) {
+              case 'SCORE':
+                  this.addScore(item.value);
+                  break;
+              case 'POWERUP':
+                  player.upgradeWeapon();
+                  this.addScore(500);
+                  break;
+              case 'HEAL':
+                  player.heal(item.value);
+                  break;
+              case 'BOMB':
+                  player.addBomb();
+                  break;
+          }
+      }
+  }
 
   // --- UI & Score ---
 
@@ -305,10 +359,7 @@ export class MainScene extends Phaser.Scene {
       const hpPercent = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1);
       this.hpText.setText(`${Math.floor(hpPercent * 100)}%`);
       
-      // Redraw HP bar (simple way: clear and redraw, or just scale a rect)
-      // For simplicity, let's assume we have a rect reference. 
-      // Since we didn't store it, let's just use a graphic or simple rect.
-      // Better: Store the bar in a property.
+      // Redraw HP bar
       if (!this.registry.get('hpBar')) {
            this.registry.set('hpBar', this.add.rectangle(12, 57, 100, 10, 0x00ff00).setOrigin(0));
       }
