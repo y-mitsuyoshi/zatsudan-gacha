@@ -32,6 +32,14 @@
         "destination": "/shachiku-sugoroku.html"
       },
       {
+        "source": "/shachiku-shooting",
+        "destination": "/shachiku-shooting.html"
+      },
+      {
+        "source": "/shachiku-shooting/",
+        "destination": "/shachiku-shooting.html"
+      },
+      {
         "source": "/station-sign-maker",
         "destination": "/station-sign-maker.html"
       },

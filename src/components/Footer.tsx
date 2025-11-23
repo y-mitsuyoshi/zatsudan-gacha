@@ -27,6 +27,12 @@ export const Footer: React.FC = () => {
       description: '目指せ！定時退社＆ボーナス支給',
       href: '/shachiku-sugoroku',
       emoji: '🏢'
+    },
+    {
+      title: '社畜シューティング',
+      description: 'ストレス社会で戦うあなたへ',
+      href: '/shachiku-shooting',
+      emoji: '🔫'
     }
   ];
 
