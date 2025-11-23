@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-export type BulletType = 'NORMAL' | 'LASER' | 'FLAME';
+export type BulletType = 'NORMAL' | 'LASER' | 'FLAME' | 'MISSILE' | 'SHOTGUN' | 'BEAM';
 
 export class Bullet extends Phaser.Physics.Arcade.Sprite {
     public bulletType: BulletType = 'NORMAL';
@@ -15,6 +15,7 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
         this.body!.reset(x, y);
         this.setActive(true);
         this.setVisible(true);
+        this.setDepth(30); // Ensure depth
         this.bulletType = type;
         this.isPlayerBullet = true;
 
@@ -47,6 +48,36 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
                 });
                 break;
 
+            case 'MISSILE':
+                this.setTexture('bullet'); // Placeholder, maybe tint it
+                this.setTint(0xff00ff);
+                this.damage = 3;
+                this.setVelocity(0, -200); // Start slow
+                // Homing logic in preUpdate
+                break;
+
+            case 'SHOTGUN':
+                this.setTexture('bullet');
+                this.setTint(0xffff00);
+                this.damage = 2;
+                const radShot = Phaser.Math.DegToRad(angle + Phaser.Math.Between(-20, 20));
+                this.setVelocity(Math.cos(radShot) * 600, Math.sin(radShot) * 600);
+                this.setScale(1.2);
+                // Short range
+                this.scene.time.delayedCall(300, () => {
+                    this.setActive(false);
+                    this.setVisible(false);
+                });
+                break;
+
+            case 'BEAM':
+                this.setTexture('bullet_laser');
+                this.setTint(0x00ffff);
+                this.damage = 0.5; // Tick damage
+                this.setScale(1, 4); // Long beam
+                this.setVelocityY(-1200);
+                break;
+
             case 'NORMAL':
             default:
                 this.setTexture('bullet');
@@ -77,6 +108,32 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
         if (this.y < -50 || this.y > this.scene.scale.height + 50 || this.x < -50 || this.x > this.scene.scale.width + 50) {
             this.setActive(false);
             this.setVisible(false);
+        }
+
+        if (this.active && this.bulletType === 'MISSILE' && this.isPlayerBullet) {
+            // Homing Logic
+            const enemies = (this.scene as any).enemies as Phaser.Physics.Arcade.Group;
+            let closest: any = null;
+            let minDist = 400; // Range
+
+            enemies.getChildren().forEach((enemy: any) => {
+                if (enemy.active) {
+                    const dist = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = enemy;
+                    }
+                }
+            });
+
+            if (closest) {
+                const angle = Phaser.Math.Angle.Between(this.x, this.y, closest.x, closest.y);
+                const currentAngle = this.body!.velocity.angle();
+                // Simple steering
+                const newAngle = Phaser.Math.Angle.RotateTo(currentAngle, angle, 0.1);
+                this.setVelocity(Math.cos(newAngle) * 400, Math.sin(newAngle) * 400);
+                this.setRotation(newAngle + Math.PI/2);
+            }
         }
     }
 }

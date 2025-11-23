@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-export type ItemType = 'SCORE' | 'POWERUP' | 'HEAL' | 'BOMB' | 'WEAPON_LASER' | 'WEAPON_FLAME';
+export type ItemType = 'SCORE' | 'POWERUP' | 'HEAL' | 'BOMB' | 'WEAPON_LASER' | 'WEAPON_FLAME' | 'WEAPON_MISSILE' | 'WEAPON_SHOTGUN' | 'WEAPON_BEAM';
 
 export class Item extends Phaser.Physics.Arcade.Sprite {
     public itemType: ItemType;
@@ -14,6 +14,9 @@ export class Item extends Phaser.Physics.Arcade.Sprite {
             case 'BOMB': texture = 'item_bomb'; break;
             case 'WEAPON_LASER': texture = 'item_weapon_laser'; break;
             case 'WEAPON_FLAME': texture = 'item_weapon_flame'; break;
+            case 'WEAPON_MISSILE': texture = 'item_weapon_missile'; break;
+            case 'WEAPON_SHOTGUN': texture = 'item_weapon_shotgun'; break;
+            case 'WEAPON_BEAM': texture = 'item_weapon_beam'; break;
         }
         super(scene, x, y, texture);
         this.itemType = type;

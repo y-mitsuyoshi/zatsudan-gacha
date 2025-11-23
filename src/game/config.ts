@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 360,
-  height: 640,
+  width: 600,
+  height: 1066,
   backgroundColor: '#2d2d2d',
   parent: 'game-container',
   physics: {

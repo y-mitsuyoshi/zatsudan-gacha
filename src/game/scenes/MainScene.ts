@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../objects/Player';
 import { Bullet } from '../objects/Bullet';
-import { Enemy } from '../objects/Enemy';
+import { Enemy, EnemyType } from '../objects/Enemy';
 import { Boss } from '../objects/Boss';
 import { Item, ItemType } from '../objects/Item';
 import { soundManager } from '../utils/SoundManager';
@@ -12,27 +12,57 @@ interface GameState {
     bombs: number;
     weaponLevel: number;
     stage: number;
-    weaponType?: 'NORMAL' | 'LASER' | 'FLAME';
+    weaponType?: 'NORMAL' | 'LASER' | 'FLAME' | 'MISSILE' | 'SHOTGUN' | 'BEAM';
+}
+
+interface StageConfig {
+    title: string;
+    spawnRate: number;
+    enemyTypes: EnemyType[];
 }
 
 // Stage Configuration
-const STAGE_CONFIG = [
-    { title: "Morning Commute\nRun for the Train!", spawnRate: 0.05 },
-    { title: "Morning Assembly\nListen to the Speech!", spawnRate: 0.08 },
-    { title: "Email Storm\nReply All!", spawnRate: 0.12 },
-    { title: "Middle Management\nApproval Hell!", spawnRate: 0.15 },
-    { title: "System Failure\nCritical Error!", spawnRate: 0.20 },
-    { title: "The Black Company\nFinal Showdown!", spawnRate: 0.30 }
+const STAGE_CONFIG: StageConfig[] = [
+    { 
+        title: "朝の通勤ラッシュ\n電車に駆け込め！", 
+        spawnRate: 0.02, // Very easy start
+        enemyTypes: ['COMMUTER']
+    },
+    { 
+        title: "朝礼\n社長の話を聞け！", 
+        spawnRate: 0.03, 
+        enemyTypes: ['COMMUTER', 'EMAIL']
+    },
+    { 
+        title: "メールの嵐\n全員に返信！", 
+        spawnRate: 0.03, // Reduced from 0.04
+        enemyTypes: ['EMAIL', 'PHONE', 'GHOST']
+    },
+    { 
+        title: "中間管理職\n承認地獄！", 
+        spawnRate: 0.04, // Reduced from 0.06
+        enemyTypes: ['PHONE', 'MANAGER', 'HEADHUNTER']
+    },
+    { 
+        title: "システム障害\n致命的なエラー！", 
+        spawnRate: 0.05, // Reduced from 0.08
+        enemyTypes: ['BUG', 'MANAGER', 'DRONE', 'GHOST']
+    },
+    { 
+        title: "ブラック企業\n最終決戦！", 
+        spawnRate: 0.06, // Reduced from 0.12
+        enemyTypes: ['BLACK_COMPANY', 'BUG', 'HEADHUNTER', 'MANAGER']
+    }
 ];
 
 const TITLES = [
-    "Intern",           // Start
-    "Regular Employee", // Clear Stage 1
-    "Chief",            // Clear Stage 2
-    "Manager",          // Clear Stage 3
-    "General Manager",  // Clear Stage 4
-    "Executive",        // Clear Stage 5
-    "President"         // Clear Stage 6
+    "インターン",           // Start
+    "正社員", // Clear Stage 1
+    "係長",            // Clear Stage 2
+    "課長",          // Clear Stage 3
+    "部長",  // Clear Stage 4
+    "役員",        // Clear Stage 5
+    "社長"         // Clear Stage 6
 ];
 
 export class MainScene extends Phaser.Scene {
@@ -78,8 +108,8 @@ export class MainScene extends Phaser.Scene {
     this.bossSpawned = false;
 
     // Difficulty Scaling
-    // More aggressive scaling
-    const difficultyMult = Math.pow(1.3, this.stage - 1);
+    // Gradual scaling: 1.0 -> 1.1 -> 1.2 ...
+    const difficultyMult = 1 + ((this.stage - 1) * 0.1);
 
     // Use Config or fallback
     const config = STAGE_CONFIG[this.stage - 1] || STAGE_CONFIG[STAGE_CONFIG.length - 1];
@@ -91,6 +121,7 @@ export class MainScene extends Phaser.Scene {
     // --- Background ---
     const bgTexture = `bg_stage${this.stage > 6 ? 6 : this.stage}`;
     const bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, bgTexture).setOrigin(0);
+    bg.setDepth(-10);
 
     this.tweens.addCounter({
         from: 0,
@@ -109,24 +140,28 @@ export class MainScene extends Phaser.Scene {
         maxSize: 50,
         runChildUpdate: true
     });
+    this.bullets.setDepth(30);
 
     this.enemyBullets = this.physics.add.group({
         classType: Bullet,
         maxSize: 200, // Bullet hell!
         runChildUpdate: true
     });
+    this.enemyBullets.setDepth(30);
 
     this.enemies = this.physics.add.group({
         classType: Enemy,
         maxSize: 100, // More enemies
         runChildUpdate: true
     });
+    this.enemies.setDepth(10);
 
     this.items = this.physics.add.group({
         classType: Item,
         maxSize: 30,
         runChildUpdate: true
     });
+    this.items.setDepth(5);
 
     // --- Player ---
     const initialHp = this.registry.get('initialHp');
@@ -135,6 +170,7 @@ export class MainScene extends Phaser.Scene {
     
     this.player = new Player(this, this.scale.width / 2, this.scale.height - 100, initialHp, initialBombs, initialWeaponLevel);
     this.player.setWeaponType(this.registry.get('initialWeaponType'));
+    this.player.setDepth(20);
 
     // --- Collisions ---
     this.physics.add.overlap(this.bullets, this.enemies, this.handleBulletEnemyCollision, undefined, this);
@@ -150,6 +186,7 @@ export class MainScene extends Phaser.Scene {
     const stageTitle = this.add.text(this.scale.width/2, this.scale.height/2, `Stage ${this.stage}\n${stageConfig.title}`, {
         fontSize: '32px', color: '#fff', align: 'center', stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5);
+    stageTitle.setDepth(100);
     this.time.delayedCall(3000, () => stageTitle.destroy());
   }
 
@@ -158,7 +195,7 @@ export class MainScene extends Phaser.Scene {
         this.scene.start('GameOverScene', {
             score: this.score,
             stage: this.stage,
-            reason: 'GAME OVER\nRetirement'
+            reason: 'ゲームオーバー\n(Game Over)'
         });
         return;
     }
@@ -183,11 +220,13 @@ export class MainScene extends Phaser.Scene {
 
   // --- Core Logic ---
 
-  public fireBullet(x: number, y: number, type: 'NORMAL' | 'LASER' | 'FLAME' = 'NORMAL', angle: number = -90) {
+  public fireBullet(x: number, y: number, type: 'NORMAL' | 'LASER' | 'FLAME' | 'MISSILE' | 'SHOTGUN' | 'BEAM' = 'NORMAL', angle: number = -90) {
       const bullet = this.bullets.get(x, y);
       if (bullet) {
           bullet.fire(x, y, type, angle);
           soundManager.playShoot();
+          // Recoil effect
+          this.cameras.main.shake(50, 0.002);
       }
   }
 
@@ -216,6 +255,7 @@ export class MainScene extends Phaser.Scene {
       this.enemyBullets.clear(true, true);
 
       soundManager.playExplosion();
+      this.cameras.main.shake(300, 0.02); // Big shake for bomb
 
       const flash = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffffff);
       flash.setOrigin(0);
@@ -232,7 +272,12 @@ export class MainScene extends Phaser.Scene {
       const x = Phaser.Math.Between(20, this.scale.width - 20);
       const enemy = this.enemies.get(x, -50);
       if (enemy) {
-          enemy.spawn(x, -50, this.stage);
+          // Pick random enemy type from current stage config
+          const config = STAGE_CONFIG[this.stage - 1] || STAGE_CONFIG[STAGE_CONFIG.length - 1];
+          const types = config.enemyTypes;
+          const type = types[Phaser.Math.Between(0, types.length - 1)];
+
+          enemy.spawn(x, -50, this.stage, type);
           
           enemy.off('died');
           enemy.on('died', (score: number) => {
@@ -253,7 +298,7 @@ export class MainScene extends Phaser.Scene {
       });
 
       // Boss warning
-      const warning = this.add.text(this.scale.width/2, this.scale.height/3, "WARNING\nBOSS APPROACHING", {
+      const warning = this.add.text(this.scale.width/2, this.scale.height/3, "警告\nボス接近中", {
           fontSize: '40px', color: '#ff0000', align: 'center', stroke: '#000', strokeThickness: 6
       }).setOrigin(0.5);
       this.tweens.add({
@@ -273,11 +318,14 @@ export class MainScene extends Phaser.Scene {
           let type: ItemType = 'SCORE';
 
           // Weapon drops (rare)
-          if (rand < 0.05) type = 'WEAPON_LASER';
-          else if (rand < 0.10) type = 'WEAPON_FLAME';
-          else if (rand < 0.4) type = 'SCORE';
-          else if (rand < 0.6) type = 'POWERUP';
-          else if (rand < 0.8) type = 'HEAL';
+          if (rand < 0.03) type = 'WEAPON_LASER';
+          else if (rand < 0.06) type = 'WEAPON_FLAME';
+          else if (rand < 0.09) type = 'WEAPON_MISSILE';
+          else if (rand < 0.12) type = 'WEAPON_SHOTGUN';
+          else if (rand < 0.15) type = 'WEAPON_BEAM';
+          else if (rand < 0.5) type = 'SCORE';
+          else if (rand < 0.7) type = 'POWERUP';
+          else if (rand < 0.9) type = 'HEAL';
           else type = 'BOMB';
 
           const item = this.items.get(x, y, type);
@@ -291,7 +339,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   private stageClear() {
-      this.add.text(this.scale.width/2, this.scale.height/2, "STAGE CLEAR", {fontSize: '32px', color: '#ffff00', stroke: '#000', strokeThickness: 4}).setOrigin(0.5);
+      this.add.text(this.scale.width/2, this.scale.height/2, "ステージクリア", {fontSize: '32px', color: '#ffff00', stroke: '#000', strokeThickness: 4}).setOrigin(0.5);
 
       const nextStage = this.stage + 1;
 
@@ -315,7 +363,7 @@ export class MainScene extends Phaser.Scene {
                this.scene.start('GameOverScene', {
                    score: this.score,
                    stage: 6,
-                   reason: 'ALL CLEAR!\nLegendary Salaryman'
+                   reason: '完全攻略！\n伝説の社畜 (Legendary Salaryman)'
                });
            } else {
                this.cameras.main.fade(1000, 0, 0, 0);
@@ -343,6 +391,14 @@ export class MainScene extends Phaser.Scene {
               bullet.setActive(false);
               bullet.setVisible(false);
               soundManager.playExplosion(); // Mini explosion sound
+              // Particle effect
+              const particles = this.add.particles(bullet.x, bullet.y, 'bullet', {
+                  speed: 100,
+                  scale: { start: 0.5, end: 0 },
+                  lifespan: 200,
+                  blendMode: 'ADD'
+              });
+              this.time.delayedCall(200, () => particles.destroy());
           } else {
                // Laser visual effect hit?
           }
@@ -375,6 +431,7 @@ export class MainScene extends Phaser.Scene {
           bullet.setVisible(false);
           player.takeDamage(10);
           soundManager.playDamage();
+          this.cameras.main.shake(200, 0.01);
       }
   }
 
@@ -406,6 +463,18 @@ export class MainScene extends Phaser.Scene {
                   break;
               case 'WEAPON_FLAME':
                   player.setWeaponType('FLAME');
+                  this.addScore(1000);
+                  break;
+              case 'WEAPON_MISSILE':
+                  player.setWeaponType('MISSILE');
+                  this.addScore(1000);
+                  break;
+              case 'WEAPON_SHOTGUN':
+                  player.setWeaponType('SHOTGUN');
+                  this.addScore(1000);
+                  break;
+              case 'WEAPON_BEAM':
+                  player.setWeaponType('BEAM');
                   this.addScore(1000);
                   break;
           }
