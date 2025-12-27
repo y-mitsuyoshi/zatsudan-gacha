@@ -21,6 +21,14 @@ export default function ShachikuJinroPage() {
       setLoading(false);
       return;
     }
+    
+    // すでにログインしているか確認
+    if (auth.currentUser) {
+      setUser(auth.currentUser);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (u) {
         setUser(u);
@@ -28,8 +36,10 @@ export default function ShachikuJinroPage() {
       } else {
         signInAnonymously(auth)
           .then((cred) => setUser(cred.user))
-          .catch((e) => console.error(e))
-          .finally(() => setLoading(false));
+          .catch((e) => {
+            console.error("Auth error:", e);
+            setLoading(false);
+          });
       }
     });
     return () => unsubscribe();
