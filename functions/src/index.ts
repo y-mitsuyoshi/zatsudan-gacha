@@ -84,6 +84,14 @@ function setCache(key: string, data: any): void {
   cache.set(key, {data, timestamp: Date.now()});
 }
 
+// Export Shachiku Jinro Functions
+import * as shachikuJinro from "./shachiku-jinro";
+export const createRoom = shachikuJinro.createRoom;
+export const joinRoom = shachikuJinro.joinRoom;
+export const startGame = shachikuJinro.startGame;
+export const submitAction = shachikuJinro.submitAction;
+export const nextPhase = shachikuJinro.nextPhase;
+
 export const gemini = onRequest(
   {
     timeoutSeconds: 30,
