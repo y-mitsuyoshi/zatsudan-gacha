@@ -33,6 +33,12 @@ export const Footer: React.FC = () => {
       description: 'ストレス社会で戦うあなたへ',
       href: '/shachiku-shooting',
       emoji: '🔫'
+    },
+    {
+      title: '社畜人狼',
+      description: '会社という名の戦場',
+      href: '/shachiku-jinro',
+      emoji: '🐺'
     }
   ];
 

@@ -1,5 +1,8 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAnalytics, isSupported, logEvent, Analytics } from 'firebase/analytics';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFunctions, Functions } from 'firebase/functions';
 
 // Firebase config は環境変数で提供する
 const firebaseConfig = {
@@ -15,6 +18,39 @@ const firebaseConfig = {
 let analytics: Analytics | null = null;
 let isInitializing = false;
 let isInitialized = false;
+let app: FirebaseApp | undefined;
+let db: Firestore | undefined;
+let auth: Auth | undefined;
+let functions: Functions | undefined;
+
+export function getFirebaseApp() {
+  if (!app) {
+     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  }
+  return app;
+}
+
+export function getFirebaseFirestore() {
+  if (!db) {
+    db = getFirestore(getFirebaseApp());
+  }
+  return db;
+}
+
+export function getFirebaseAuth() {
+  if (!auth) {
+    auth = getAuth(getFirebaseApp());
+  }
+  return auth;
+}
+
+export function getFirebaseFunctions() {
+  if (!functions) {
+    // Functionsのリージョンを必要に応じて設定 (例: asia-northeast1)
+    functions = getFunctions(getFirebaseApp(), 'us-central1');
+  }
+  return functions;
+}
 
 export async function initFirebaseAnalytics() {
   // サーバーサイドでは実行しない
@@ -30,8 +66,8 @@ export async function initFirebaseAnalytics() {
   isInitializing = true;
 
   try {
-    // Firebase Appの初期化
-    const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    // Firebase Appの初期化 (確実に行う)
+    getFirebaseApp();
     
     // Analytics がサポートされているかチェック
     const supported = await isSupported();
