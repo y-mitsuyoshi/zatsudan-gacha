@@ -48,6 +48,14 @@
         "destination": "/station-sign-maker.html"
       },
       {
+        "source": "/shachiku-jinro",
+        "destination": "/shachiku-jinro.html"
+      },
+      {
+        "source": "/shachiku-jinro/",
+        "destination": "/shachiku-jinro.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
