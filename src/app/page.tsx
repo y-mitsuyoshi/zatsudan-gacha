@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { callGeminiAPI } from '@/lib/api-config';
 import { themeData } from '@/lib/themeData';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
@@ -389,6 +390,28 @@ export default function Home() {
                         ]} />
                     </div>
                 )}
+
+                <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">🎮 他のゲームで遊ぶ</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Link href="/shachiku-jinro" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
+                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🐺</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜人狼</span>
+                        </Link>
+                        <Link href="/shachiku-sugoroku" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
+                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🏢</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜すごろく</span>
+                        </Link>
+                        <Link href="/isekai-status" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
+                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">⚔️</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">異世界ステータス</span>
+                        </Link>
+                        <Link href="/profile-maker" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
+                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">💖</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">プロフメーカー</span>
+                        </Link>
+                    </div>
+                </div>
 
                 <ShareButtons />
             </div>

@@ -18,7 +18,7 @@ function generateRoomId(): string {
   return result;
 }
 
-export const createRoom = onCall(async (request) => {
+export const createRoom = onCall({region: "us-central1"}, async (request) => {
   const {userName} = request.data;
   const uid = request.auth?.uid;
 
@@ -59,12 +59,16 @@ export const createRoom = onCall(async (request) => {
     updatedAt: Date.now(),
   };
 
-  await roomRef.set(roomData);
-
-  return {roomId};
+  try {
+    await roomRef.set(roomData);
+    return {roomId};
+  } catch (error) {
+    console.error("Error creating room:", error);
+    throw new HttpsError("internal", "Failed to create room.");
+  }
 });
 
-export const joinRoom = onCall(async (request) => {
+export const joinRoom = onCall({region: "us-central1"}, async (request) => {
   const {roomId, userName} = request.data;
   const uid = request.auth?.uid;
 
@@ -129,7 +133,7 @@ export const joinRoom = onCall(async (request) => {
   });
 });
 
-export const startGame = onCall(async (request) => {
+export const startGame = onCall({region: "us-central1"}, async (request) => {
   const {roomId} = request.data;
   const uid = request.auth?.uid;
 
@@ -228,7 +232,7 @@ export const startGame = onCall(async (request) => {
   });
 });
 
-export const submitAction = onCall(async (request) => {
+export const submitAction = onCall({region: "us-central1"}, async (request) => {
   const {roomId, actionType, targetId} = request.data;
   const uid = request.auth?.uid;
 
@@ -445,7 +449,7 @@ export const submitAction = onCall(async (request) => {
   });
 });
 
-export const nextPhase = onCall(async (request) => {
+export const nextPhase = onCall({region: "us-central1"}, async (request) => {
   const {roomId} = request.data;
   const uid = request.auth?.uid;
 
