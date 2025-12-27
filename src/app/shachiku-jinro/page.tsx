@@ -17,6 +17,10 @@ export default function ShachikuJinroPage() {
   // Authentication
   useEffect(() => {
     const auth = getFirebaseAuth();
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (u) {
         setUser(u);
@@ -36,6 +40,8 @@ export default function ShachikuJinroPage() {
     if (!user || !roomId) return;
 
     const db = getFirebaseFirestore();
+    if (!db) return;
+
     const unsub = onSnapshot(doc(db, 'shachiku_rooms', roomId), (doc) => {
       if (doc.exists()) {
         setRoom(doc.data() as Room);

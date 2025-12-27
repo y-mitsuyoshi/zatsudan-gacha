@@ -31,6 +31,10 @@ export function getFirebaseApp() {
 }
 
 export function getFirebaseFirestore() {
+  if (!firebaseConfig.apiKey) {
+    console.error('Firebase API key is not configured.');
+    return undefined;
+  }
   if (!db) {
     db = getFirestore(getFirebaseApp());
   }
@@ -38,6 +42,10 @@ export function getFirebaseFirestore() {
 }
 
 export function getFirebaseAuth() {
+  if (!firebaseConfig.apiKey) {
+    console.error('Firebase API key is not configured.');
+    return undefined;
+  }
   if (!auth) {
     auth = getAuth(getFirebaseApp());
   }
@@ -45,6 +53,10 @@ export function getFirebaseAuth() {
 }
 
 export function getFirebaseFunctions() {
+  if (!firebaseConfig.apiKey) {
+    console.error('Firebase API key is not configured.');
+    return undefined;
+  }
   if (!functions) {
     // Functionsのリージョンを必要に応じて設定 (例: asia-northeast1)
     functions = getFunctions(getFirebaseApp(), 'us-central1');

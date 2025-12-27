@@ -17,12 +17,14 @@ export default function Lobby({ user, currentRoomId, setRoomId, room }: LobbyPro
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const functions = getFirebaseFunctions();
-  const createRoomFn = httpsCallable(functions, 'createRoom');
-  const joinRoomFn = httpsCallable(functions, 'joinRoom');
-  const startGameFn = httpsCallable(functions, 'startGame');
-
   const handleCreateRoom = async () => {
+    const functions = getFirebaseFunctions();
+    if (!functions) {
+      setError('Firebase設定が見つかりません');
+      return;
+    }
+    const createRoomFn = httpsCallable(functions, 'createRoom');
+
     if (!userName) {
       setError('社員名を入力してください');
       return;
@@ -41,6 +43,13 @@ export default function Lobby({ user, currentRoomId, setRoomId, room }: LobbyPro
   };
 
   const handleJoinRoom = async () => {
+    const functions = getFirebaseFunctions();
+    if (!functions) {
+      setError('Firebase設定が見つかりません');
+      return;
+    }
+    const joinRoomFn = httpsCallable(functions, 'joinRoom');
+
     if (!userName || !inputRoomId) {
       setError('社員名とルームIDを入力してください');
       return;
@@ -59,6 +68,13 @@ export default function Lobby({ user, currentRoomId, setRoomId, room }: LobbyPro
   };
 
   const handleStartGame = async () => {
+    const functions = getFirebaseFunctions();
+    if (!functions) {
+      setError('Firebase設定が見つかりません');
+      return;
+    }
+    const startGameFn = httpsCallable(functions, 'startGame');
+
     if (!currentRoomId) return;
     setIsLoading(true);
     try {

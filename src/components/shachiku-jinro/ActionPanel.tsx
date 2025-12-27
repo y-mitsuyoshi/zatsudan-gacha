@@ -13,10 +13,6 @@ export default function ActionPanel({ room, myself }: ActionPanelProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const functions = getFirebaseFunctions();
-  const submitActionFn = httpsCallable(functions, 'submitAction');
-  const nextPhaseFn = httpsCallable(functions, 'nextPhase');
-
   // Helper to filter valid targets
   const getValidTargets = (action: ActionType) => {
     const players = Object.values(room.players).filter(p => p.isAlive);
@@ -44,6 +40,13 @@ export default function ActionPanel({ room, myself }: ActionPanelProps) {
 
   const handleAction = async (actionType: ActionType) => {
     if (!selectedTarget) return;
+
+    const functions = getFirebaseFunctions();
+    if (!functions) {
+      setMessage('Firebase設定が見つかりません');
+      return;
+    }
+    const submitActionFn = httpsCallable(functions, 'submitAction');
 
     setLoading(true);
     setMessage(null);
@@ -134,6 +137,13 @@ export default function ActionPanel({ room, myself }: ActionPanelProps) {
              <button
                className="mt-2 w-full bg-orange-500 text-white py-2 rounded shadow hover:bg-orange-600 transition"
                onClick={async () => {
+                 const functions = getFirebaseFunctions();
+                 if (!functions) {
+                   alert('Firebase設定が見つかりません');
+                   return;
+                 }
+                 const nextPhaseFn = httpsCallable(functions, 'nextPhase');
+
                  setLoading(true);
                  try {
                    await nextPhaseFn({ roomId: room.id });
