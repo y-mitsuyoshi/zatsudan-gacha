@@ -7,7 +7,8 @@ import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 export default function ExcuseGeneratorPage() {
     const [situation, setSituation] = useState('遅刻・寝坊');
     const [customSituation, setCustomSituation] = useState('');
-    const [tone, setTone] = useState('ユーモア・社畜風');
+    const [tone, setTone] = useState('ランダム（ガチャ）');
+    const [selectedToneDisplay, setSelectedToneDisplay] = useState('');
     const [details, setDetails] = useState('');
     const [excuse, setExcuse] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -19,11 +20,17 @@ export default function ExcuseGeneratorPage() {
     const generateExcuse = async () => {
         setIsLoading(true);
         setExcuse('');
+        setSelectedToneDisplay('');
         
         const finalSituation = situation === 'その他' ? customSituation : situation;
-        const finalTone = tone === 'ランダム（ガチャ）' 
-            ? tones[Math.floor(Math.random() * (tones.length - 1))] 
-            : tone;
+        
+        // Pick a random tone if "Random" is selected
+        let finalTone = tone;
+        if (tone === 'ランダム（ガチャ）') {
+            const availableTones = tones.filter(t => t !== 'ランダム（ガチャ）');
+            finalTone = availableTones[Math.floor(Math.random() * availableTones.length)];
+        }
+        setSelectedToneDisplay(finalTone);
 
         try {
             const res = await fetch('/api/excuse-generator', {
@@ -129,7 +136,14 @@ export default function ExcuseGeneratorPage() {
 
                     {excuse && (
                         <div className="mt-8 p-6 bg-indigo-50 dark:bg-gray-900/50 border border-indigo-200 dark:border-gray-700 rounded-xl">
-                            <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4">生成された言い訳：</h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">生成された言い訳：</h3>
+                                {selectedToneDisplay && (
+                                    <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded">
+                                        トーン：{selectedToneDisplay}
+                                    </span>
+                                )}
+                            </div>
                             <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap mb-4">{excuse}</p>
                             <button
                                 onClick={handleCopy}
