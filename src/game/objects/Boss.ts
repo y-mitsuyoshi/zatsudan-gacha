@@ -80,57 +80,37 @@ export class Boss extends Enemy {
     }
 
     preUpdate(time: number, delta: number) {
-        // DO NOT call super.preUpdate(time, delta) because it destroys the object if y > height
-        // Instead, we manually update the physics body and animations if needed
-        // But since we extend Arcade.Sprite, we need the physics update.
-        // The issue is Enemy.ts preUpdate has the check.
-        // So we bypass Enemy.preUpdate and go straight to Sprite.preUpdate if possible, 
-        // or just re-implement what we need.
-        
-        // Actually, we can just call the Phaser Sprite preUpdate directly if we cast to any or use prototype
-        // But safer is to just copy the necessary parts of Enemy.preUpdate minus the kill check.
-        
-        // Update physics/animation (Phaser internal)
-        if (this.anims) this.anims.update(time, delta);
-        if (this.body) (this.body as Phaser.Physics.Arcade.Body).update(delta);
+        // Bypass Enemy.preUpdate (which destroys objects that go past screen bottom)
+        // but still call Phaser's internal Sprite preUpdate for physics/animation
+        (Phaser.GameObjects.Sprite.prototype as any).preUpdate.call(this, time, delta);
 
-        // Enemy logic
-        // this.timeAlive += delta; // Private in Enemy, can't access easily without protected.
-        // Let's just manage our own timers.
-        
+        if (!this.active) return;
+
         // Entry movement
         if (this.y < this.startY) {
             if (this.body!.velocity.y === 0) this.setVelocityY(100);
         } else {
-            // Reached target Y area
-            
-            // Wander Logic
+            // Reached target Y area — wander
             this.moveTimer -= delta;
             if (this.moveTimer <= 0) {
-                // Pick a new random point
                 const targetX = Phaser.Math.Between(50, this.scene.scale.width - 50);
-                const targetY = Phaser.Math.Between(50, this.scene.scale.height * 0.6); // Stay in top 60%
+                const targetY = Phaser.Math.Between(80, this.scene.scale.height * 0.4);
                 
-                this.scene.physics.moveTo(this, targetX, targetY, 100);
-                
-                // Set time to move + wait
+                this.scene.physics.moveTo(this, targetX, targetY, 100 + (this.stage * 10));
                 this.moveTimer = Phaser.Math.Between(2000, 4000);
             }
-            
-            // Stop if close to target (simple check, or just let it drift)
-            // For smoother movement, we can just let moveTo handle velocity
         }
 
         // Clamp bounds
         if (this.x < 50) this.setVelocityX(Math.abs(this.body!.velocity.x));
         if (this.x > this.scene.scale.width - 50) this.setVelocityX(-Math.abs(this.body!.velocity.x));
-        if (this.y > this.scene.scale.height * 0.6) this.setVelocityY(-Math.abs(this.body!.velocity.y));
+        if (this.y < 30) this.setVelocityY(Math.abs(this.body!.velocity.y));
+        if (this.y > this.scene.scale.height * 0.5) this.setVelocityY(-Math.abs(this.body!.velocity.y));
 
         // Attack Logic
         this.attackTimer -= delta;
         if (this.attackTimer <= 0 && this.active && this.y >= 50) {
             this.attack();
-            // Attack rate
             this.attackTimer = Math.max(1500, 3000 - (this.stage * 300));
         }
     }

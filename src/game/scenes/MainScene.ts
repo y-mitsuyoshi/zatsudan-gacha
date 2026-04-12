@@ -25,7 +25,7 @@ interface StageConfig {
 const STAGE_CONFIG: StageConfig[] = [
     { 
         title: "朝の通勤ラッシュ\n電車に駆け込め！", 
-        spawnRate: 0.02, // Very easy start
+        spawnRate: 0.02,
         enemyTypes: ['COMMUTER']
     },
     { 
@@ -35,41 +35,41 @@ const STAGE_CONFIG: StageConfig[] = [
     },
     { 
         title: "メールの嵐\n全員に返信！", 
-        spawnRate: 0.03, // Reduced from 0.04
+        spawnRate: 0.03,
         enemyTypes: ['EMAIL', 'PHONE', 'GHOST']
     },
     { 
         title: "中間管理職\n承認地獄！", 
-        spawnRate: 0.04, // Reduced from 0.06
+        spawnRate: 0.04,
         enemyTypes: ['PHONE', 'MANAGER', 'HEADHUNTER']
     },
     { 
         title: "システム障害\n致命的なエラー！", 
-        spawnRate: 0.05, // Reduced from 0.08
+        spawnRate: 0.05,
         enemyTypes: ['BUG', 'MANAGER', 'DRONE', 'GHOST']
     },
     { 
         title: "ブラック企業\n最終決戦！", 
-        spawnRate: 0.06, // Reduced from 0.12
+        spawnRate: 0.06,
         enemyTypes: ['BLACK_COMPANY', 'BUG', 'HEADHUNTER', 'MANAGER']
     }
 ];
 
 const TITLES = [
-    "インターン",           // Start
-    "正社員", // Clear Stage 1
-    "係長",            // Clear Stage 2
-    "課長",          // Clear Stage 3
-    "部長",  // Clear Stage 4
-    "役員",        // Clear Stage 5
-    "社長"         // Clear Stage 6
+    "インターン",
+    "正社員",
+    "係長",
+    "課長",
+    "部長",
+    "役員",
+    "社長"
 ];
 
 export class MainScene extends Phaser.Scene {
-  private player!: Player;
+  public player!: Player;
   private bullets!: Phaser.Physics.Arcade.Group;
   private enemyBullets!: Phaser.Physics.Arcade.Group;
-  private enemies!: Phaser.Physics.Arcade.Group;
+  public enemies!: Phaser.Physics.Arcade.Group;
   private items!: Phaser.Physics.Arcade.Group;
 
   private score: number = 0;
@@ -77,12 +77,14 @@ export class MainScene extends Phaser.Scene {
 
   private scoreText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
+  private hpBar!: Phaser.GameObjects.Rectangle;
   private bombText!: Phaser.GameObjects.Text;
   private stageText!: Phaser.GameObjects.Text;
   private rankText!: Phaser.GameObjects.Text;
+  private weaponText!: Phaser.GameObjects.Text;
 
   private gameTime: number = 0;
-  private stageDuration: number = 45000; // Increased duration per stage
+  private stageDuration: number = 45000;
   private bossSpawned: boolean = false;
 
   // Difficulty Multipliers
@@ -108,7 +110,6 @@ export class MainScene extends Phaser.Scene {
     this.bossSpawned = false;
 
     // Difficulty Scaling
-    // Gradual scaling: 1.0 -> 1.1 -> 1.2 ...
     const difficultyMult = 1 + ((this.stage - 1) * 0.1);
 
     // Use Config or fallback
@@ -128,13 +129,12 @@ export class MainScene extends Phaser.Scene {
         to: 1,
         duration: 1000,
         repeat: -1,
-        onUpdate: (tween) => {
+        onUpdate: () => {
             bg.tilePositionY -= (2 + (this.stage * 0.5)) * this.enemySpeedMult;
         }
     });
 
     // --- Object Pooling ---
-    // Increased limits for "Rush" feel
     this.bullets = this.physics.add.group({
         classType: Bullet,
         maxSize: 50,
@@ -144,14 +144,14 @@ export class MainScene extends Phaser.Scene {
 
     this.enemyBullets = this.physics.add.group({
         classType: Bullet,
-        maxSize: 200, // Bullet hell!
+        maxSize: 200,
         runChildUpdate: true
     });
     this.enemyBullets.setDepth(30);
 
     this.enemies = this.physics.add.group({
         classType: Enemy,
-        maxSize: 100, // More enemies
+        maxSize: 100,
         runChildUpdate: true
     });
     this.enemies.setDepth(10);
@@ -211,8 +211,6 @@ export class MainScene extends Phaser.Scene {
             this.spawnEnemy();
         }
     } else if (!this.bossSpawned) {
-        // Kill all existing mobs before boss?
-        // Maybe not, keep the chaos.
         this.spawnBoss();
         this.bossSpawned = true;
     }
@@ -241,7 +239,6 @@ export class MainScene extends Phaser.Scene {
       this.enemies.getChildren().forEach((child) => {
           const enemy = child as Enemy;
           if (enemy.active) {
-              // Bosses take damage but don't die instantly
               if (enemy instanceof Boss) {
                   enemy.takeDamage(50);
               } else {
@@ -255,7 +252,7 @@ export class MainScene extends Phaser.Scene {
       this.enemyBullets.clear(true, true);
 
       soundManager.playExplosion();
-      this.cameras.main.shake(300, 0.02); // Big shake for bomb
+      this.cameras.main.shake(300, 0.02);
 
       const flash = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffffff);
       flash.setOrigin(0);
@@ -272,7 +269,6 @@ export class MainScene extends Phaser.Scene {
       const x = Phaser.Math.Between(20, this.scale.width - 20);
       const enemy = this.enemies.get(x, -50);
       if (enemy) {
-          // Pick random enemy type from current stage config
           const config = STAGE_CONFIG[this.stage - 1] || STAGE_CONFIG[STAGE_CONFIG.length - 1];
           const types = config.enemyTypes;
           const type = types[Phaser.Math.Between(0, types.length - 1)];
@@ -290,17 +286,20 @@ export class MainScene extends Phaser.Scene {
   private spawnBoss() {
       const boss = new Boss(this, this.scale.width / 2, -100);
       this.enemies.add(boss);
-      // Correctly pass the current stage to spawn
       boss.spawn(this.scale.width / 2, -100, this.stage);
       boss.on('died', (score: number) => {
           this.addScore(score);
           this.stageClear();
       });
 
+      // Boss HP bar
+      this.createBossHPBar(boss);
+
       // Boss warning
-      const warning = this.add.text(this.scale.width/2, this.scale.height/3, "警告\nボス接近中", {
+      const warning = this.add.text(this.scale.width/2, this.scale.height/3, "⚠ 警告 ⚠\nボス接近中", {
           fontSize: '40px', color: '#ff0000', align: 'center', stroke: '#000', strokeThickness: 6
       }).setOrigin(0.5);
+      warning.setDepth(100);
       this.tweens.add({
           targets: warning,
           alpha: 0,
@@ -308,6 +307,42 @@ export class MainScene extends Phaser.Scene {
           yoyo: true,
           repeat: 5,
           onComplete: () => warning.destroy()
+      });
+  }
+
+  private createBossHPBar(boss: Boss) {
+      const barWidth = 200;
+      const barHeight = 12;
+      const barX = this.scale.width / 2 - barWidth / 2;
+      const barY = 120;
+
+      const barBg = this.add.rectangle(barX, barY, barWidth + 4, barHeight + 4, 0x000000).setOrigin(0);
+      barBg.setDepth(50);
+      const barFill = this.add.rectangle(barX + 2, barY + 2, barWidth, barHeight, 0xff0000).setOrigin(0);
+      barFill.setDepth(51);
+      const bossLabel = this.add.text(this.scale.width / 2, barY - 14, 'BOSS', {
+          fontSize: '14px', color: '#ff4444', stroke: '#000', strokeThickness: 3
+      }).setOrigin(0.5);
+      bossLabel.setDepth(50);
+
+      // Update the bar each frame
+      const updateEvent = this.time.addEvent({
+          delay: 50,
+          loop: true,
+          callback: () => {
+              if (!boss.active) {
+                  barBg.destroy();
+                  barFill.destroy();
+                  bossLabel.destroy();
+                  updateEvent.destroy();
+                  return;
+              }
+              const ratio = Phaser.Math.Clamp(boss.hp / boss.maxHp, 0, 1);
+              barFill.width = barWidth * ratio;
+              if (ratio < 0.3) barFill.fillColor = 0xff0000;
+              else if (ratio < 0.6) barFill.fillColor = 0xffaa00;
+              else barFill.fillColor = 0xff4444;
+          }
       });
   }
 
@@ -328,24 +363,43 @@ export class MainScene extends Phaser.Scene {
           else if (rand < 0.9) type = 'HEAL';
           else type = 'BOMB';
 
-          const item = this.items.get(x, y, type);
+          const item = this.items.get(x, y) as Item | null;
           if (item) {
-              item.setActive(true);
-              item.setVisible(true);
-              item.body.reset(x, y);
-              item.setVelocityY(150);
+              item.spawn(x, y, type);
           }
       }
   }
 
   private stageClear() {
-      this.add.text(this.scale.width/2, this.scale.height/2, "ステージクリア", {fontSize: '32px', color: '#ffff00', stroke: '#000', strokeThickness: 4}).setOrigin(0.5);
+      const clearText = this.add.text(this.scale.width/2, this.scale.height/2, "ステージクリア！", {
+          fontSize: '36px', color: '#ffff00', stroke: '#000', strokeThickness: 4,
+          fontStyle: 'bold'
+      }).setOrigin(0.5);
+      clearText.setDepth(100);
+
+      // Animate the clear text
+      this.tweens.add({
+          targets: clearText,
+          scaleX: 1.2,
+          scaleY: 1.2,
+          duration: 500,
+          yoyo: true,
+          repeat: 2,
+          ease: 'Sine.easeInOut'
+      });
 
       const nextStage = this.stage + 1;
 
-      // Determine Title
       const titleIndex = Math.min(this.stage, TITLES.length - 1);
       const newTitle = TITLES[titleIndex];
+
+      // Show promotion
+      this.time.delayedCall(1500, () => {
+          const promo = this.add.text(this.scale.width/2, this.scale.height/2 + 50, `昇進: ${newTitle}`, {
+              fontSize: '24px', color: '#00ff00', stroke: '#000', strokeThickness: 3
+          }).setOrigin(0.5);
+          promo.setDepth(100);
+      });
 
       const saveData: GameState = {
           score: this.score,
@@ -381,16 +435,10 @@ export class MainScene extends Phaser.Scene {
       if (bullet.active && enemy.active) {
           enemy.takeDamage(bullet.damage);
 
-          // Laser doesn't destroy itself immediately (piercing), but we don't want it to kill the same enemy every frame
-          // Arcade Physics overlap runs every frame.
-          // To make laser pierce effectively without multi-hitting the same target instantly:
-          // We could use an immunity timer on enemy or check overlap only once.
-          // For simplicity: Normal bullets die. Laser bullets stay alive.
-
           if (bullet.bulletType !== 'LASER') {
               bullet.setActive(false);
               bullet.setVisible(false);
-              soundManager.playExplosion(); // Mini explosion sound
+              soundManager.playExplosion();
               // Particle effect
               const particles = this.add.particles(bullet.x, bullet.y, 'bullet', {
                   speed: 100,
@@ -399,8 +447,6 @@ export class MainScene extends Phaser.Scene {
                   blendMode: 'ADD'
               });
               this.time.delayedCall(200, () => particles.destroy());
-          } else {
-               // Laser visual effect hit?
           }
       }
   }
@@ -409,12 +455,11 @@ export class MainScene extends Phaser.Scene {
       const player = obj1 as Player;
       const enemy = obj2 as Enemy;
 
-      if (player.active && enemy.active) {
+      if (player.active && enemy.active && !player.invincible) {
           soundManager.playDamage();
           if (enemy instanceof Boss) {
                player.takeDamage(10);
                player.y += 50;
-               // Push back
           } else {
                enemy.die();
                player.takeDamage(15);
@@ -426,7 +471,7 @@ export class MainScene extends Phaser.Scene {
       const player = obj1 as Player;
       const bullet = obj2 as Bullet;
 
-      if (player.active && bullet.active) {
+      if (player.active && bullet.active && !player.invincible) {
           bullet.setActive(false);
           bullet.setVisible(false);
           player.takeDamage(10);
@@ -440,73 +485,119 @@ export class MainScene extends Phaser.Scene {
       const item = obj2 as Item;
 
       if (player.active && item.active) {
-          item.destroy();
+          item.setActive(false);
+          item.setVisible(false);
           soundManager.playPowerUp();
 
           switch (item.itemType) {
               case 'SCORE':
                   this.addScore(item.value);
+                  this.showPickupText(item.x, item.y, `+${item.value}`, '#ffff00');
                   break;
               case 'POWERUP':
                   player.upgradeWeapon();
                   this.addScore(500);
+                  this.showPickupText(item.x, item.y, 'POWER UP!', '#00ff00');
                   break;
               case 'HEAL':
                   player.heal(item.value);
+                  this.showPickupText(item.x, item.y, `+${item.value} HP`, '#00ffff');
                   break;
               case 'BOMB':
                   player.addBomb();
+                  this.showPickupText(item.x, item.y, '+1 有給', '#ff00ff');
                   break;
               case 'WEAPON_LASER':
                   player.setWeaponType('LASER');
                   this.addScore(1000);
+                  this.showPickupText(item.x, item.y, 'LASER!', '#00ffff');
                   break;
               case 'WEAPON_FLAME':
                   player.setWeaponType('FLAME');
                   this.addScore(1000);
+                  this.showPickupText(item.x, item.y, 'FLAME!', '#ff4500');
                   break;
               case 'WEAPON_MISSILE':
                   player.setWeaponType('MISSILE');
                   this.addScore(1000);
+                  this.showPickupText(item.x, item.y, 'MISSILE!', '#ff00ff');
                   break;
               case 'WEAPON_SHOTGUN':
                   player.setWeaponType('SHOTGUN');
                   this.addScore(1000);
+                  this.showPickupText(item.x, item.y, 'SHOTGUN!', '#ffff00');
                   break;
               case 'WEAPON_BEAM':
                   player.setWeaponType('BEAM');
                   this.addScore(1000);
+                  this.showPickupText(item.x, item.y, 'BEAM!', '#00ffff');
                   break;
           }
       }
   }
 
+  private showPickupText(x: number, y: number, text: string, color: string) {
+      const t = this.add.text(x, y, text, {
+          fontSize: '16px', color: color, stroke: '#000', strokeThickness: 3, fontStyle: 'bold'
+      }).setOrigin(0.5);
+      t.setDepth(60);
+      this.tweens.add({
+          targets: t,
+          y: y - 40,
+          alpha: 0,
+          duration: 800,
+          onComplete: () => t.destroy()
+      });
+  }
+
   // --- UI & Score ---
 
   private createHUD() {
+      const hudDepth = 40;
+
       // Rank
       const currentTitle = TITLES[Math.min(this.stage - 1, TITLES.length - 1)];
       this.rankText = this.add.text(10, 10, `役職: ${currentTitle}`, { fontSize: '14px', color: '#ffff00', stroke: '#000', strokeThickness: 3 });
+      this.rankText.setDepth(hudDepth);
 
       // Score
       this.scoreText = this.add.text(10, 30, '残業代: 0', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      this.scoreText.setDepth(hudDepth);
       
       // Health Bar
-      this.add.text(10, 55, 'メンタル:', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
-      this.add.rectangle(10, 75, 104, 14, 0xffffff).setOrigin(0);
-      this.add.rectangle(12, 77, 100, 10, 0x000000).setOrigin(0);
+      const hpLabel = this.add.text(10, 55, 'メンタル:', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
+      hpLabel.setDepth(hudDepth);
+      const hpBarBg = this.add.rectangle(10, 75, 104, 14, 0xffffff).setOrigin(0);
+      hpBarBg.setDepth(hudDepth);
+      this.add.rectangle(12, 77, 100, 10, 0x000000).setOrigin(0).setDepth(hudDepth);
+      this.hpBar = this.add.rectangle(12, 77, 100, 10, 0x00ff00).setOrigin(0);
+      this.hpBar.setDepth(hudDepth + 1);
       this.hpText = this.add.text(120, 55, '100%', { fontSize: '14px', color: '#fff', stroke: '#000', strokeThickness: 3 });
+      this.hpText.setDepth(hudDepth);
       
       // Bomb
       this.bombText = this.add.text(10, 95, '有給: 3', { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      this.bombText.setDepth(hudDepth);
+
+      // Weapon indicator
+      this.weaponText = this.add.text(10, 115, '武器: NORMAL', { fontSize: '14px', color: '#aaffaa', stroke: '#000', strokeThickness: 3 });
+      this.weaponText.setDepth(hudDepth);
       
       // Stage
-      this.stageText = this.add.text(this.scale.width - 100, 10, `Stage ${this.stage}`, { fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 });
+      this.stageText = this.add.text(this.scale.width - 10, 10, `Stage ${this.stage}`, { 
+          fontSize: '16px', color: '#fff', stroke: '#000', strokeThickness: 4 
+      }).setOrigin(1, 0);
+      this.stageText.setDepth(hudDepth);
 
       // Mobile Controls
-      const bombBtn = this.add.circle(this.scale.width - 40, this.scale.height - 40, 30, 0xff0000).setInteractive();
+      const btnSize = 35;
+      const btnY = this.scale.height - 50;
+
+      const bombBtn = this.add.circle(this.scale.width - 50, btnY, btnSize, 0xff0000).setInteractive();
       bombBtn.setAlpha(0.6);
-      this.add.text(this.scale.width - 40, this.scale.height - 40, '有給', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      bombBtn.setDepth(hudDepth);
+      const bombLabel = this.add.text(this.scale.width - 50, btnY, '有給', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      bombLabel.setDepth(hudDepth + 1);
       
       bombBtn.on('pointerdown', () => {
           if (this.player.active) {
@@ -514,9 +605,12 @@ export class MainScene extends Phaser.Scene {
           }
       });
 
-      const fireBtn = this.add.circle(50, this.scale.height - 40, 30, 0x0000ff).setInteractive();
+      // Fire button (for mobile - auto fire handles PC)
+      const fireBtn = this.add.circle(50, btnY, btnSize, 0x0000ff).setInteractive();
       fireBtn.setAlpha(0.6);
-      this.add.text(50, this.scale.height - 40, 'Fire', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      fireBtn.setDepth(hudDepth);
+      const fireLabel = this.add.text(50, btnY, 'Fire', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      fireLabel.setDepth(hudDepth + 1);
 
       fireBtn.on('pointerdown', () => {
           if (this.player.active) {
@@ -536,21 +630,18 @@ export class MainScene extends Phaser.Scene {
   }
 
   private updateHUD() {
-      this.scoreText.setText(`残業代: ${this.score}`);
+      this.scoreText.setText(`残業代: ${this.score.toLocaleString()}`);
       this.bombText.setText(`有給: ${this.player.bombs}`);
+      this.weaponText.setText(`武器: ${this.player.weaponType} Lv.${this.player.weaponLevel}`);
       
       const hpPercent = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1);
       this.hpText.setText(`${Math.floor(hpPercent * 100)}%`);
       
-      if (!this.registry.get('hpBar')) {
-           this.registry.set('hpBar', this.add.rectangle(12, 77, 100, 10, 0x00ff00).setOrigin(0));
-      }
-      const bar = this.registry.get('hpBar') as Phaser.GameObjects.Rectangle;
-      bar.width = 100 * hpPercent;
+      this.hpBar.width = 100 * hpPercent;
       
-      if (hpPercent < 0.3) bar.fillColor = 0xff0000;
-      else if (hpPercent < 0.6) bar.fillColor = 0xffff00;
-      else bar.fillColor = 0x00ff00;
+      if (hpPercent < 0.3) this.hpBar.fillColor = 0xff0000;
+      else if (hpPercent < 0.6) this.hpBar.fillColor = 0xffff00;
+      else this.hpBar.fillColor = 0x00ff00;
   }
 
   private addScore(amount: number) {

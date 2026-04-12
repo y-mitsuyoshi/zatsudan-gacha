@@ -15,9 +15,16 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
         this.body!.reset(x, y);
         this.setActive(true);
         this.setVisible(true);
-        this.setDepth(30); // Ensure depth
+        this.setDepth(30);
         this.bulletType = type;
         this.isPlayerBullet = true;
+
+        // Reset all visual state from previous usage (pool reuse safety)
+        this.setScale(1);
+        this.setAlpha(1);
+        this.setRotation(0);
+        this.clearTint();
+        this.setVelocity(0, 0);
 
         switch (type) {
             case 'LASER':
@@ -97,6 +104,13 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
         this.setVisible(true);
         this.isPlayerBullet = false;
         this.bulletType = 'NORMAL';
+
+        // Reset visual state from previous usage (pool reuse safety)
+        this.setScale(1);
+        this.setAlpha(1);
+        this.setRotation(0);
+        this.clearTint();
+
         this.setTexture('bullet');
         this.setTint(0xff0000);
         this.setVelocity(velocityX, velocityY);

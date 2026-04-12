@@ -23,6 +23,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public weaponType: WeaponType = 'NORMAL';
 
   private isFiring: boolean = false;
+  private autoFire: boolean = true; // Auto-fire enabled by default
+
+  // Invincibility state
+  private isInvincible: boolean = false;
+  private invincibleTimer: number = 0;
+  private readonly INVINCIBLE_DURATION: number = 1000; // 1 second
 
   constructor(scene: MainScene, x: number, y: number, initialHp: number = 100, initialBombs: number = 3, initialWeaponLevel: number = 1) {
     super(scene, x, y, 'player');
@@ -57,6 +63,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         return;
     }
 
+    // Update invincibility
+    if (this.isInvincible) {
+        this.invincibleTimer -= delta;
+        // Blinking effect
+        this.setAlpha(Math.sin(time * 0.02) > 0 ? 1 : 0.3);
+        if (this.invincibleTimer <= 0) {
+            this.isInvincible = false;
+            this.setAlpha(1);
+        }
+    }
+
     this.handleMovement();
     this.handleShooting(time);
     this.handleBomb();
@@ -86,40 +103,49 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         vy *= 0.707;
     }
 
-    // Mouse/Touch (Follow pointer) - Only if no keyboard input
+    // Mouse/Touch (Follow pointer) - Only when pointer is down (clicking/touching)
     if (vx === 0 && vy === 0) {
-        const pointers = [this.scene.input.pointer1, this.scene.input.pointer2];
-        let movePointer = null;
+        const isMobile = this.scene.sys.game.device.os.android || this.scene.sys.game.device.os.iOS;
 
-        for (const p of pointers) {
-            if (p && p.isDown) {
-                const isOverFireBtn = p.x < 100 && p.y > this.scene.scale.height - 100;
-                const isOverBombBtn = p.x > this.scene.scale.width - 100 && p.y > this.scene.scale.height - 100;
-                
-                if (!isOverFireBtn && !isOverBombBtn) {
-                    movePointer = p;
-                    break;
+        if (isMobile) {
+            // Mobile: use multi-touch pointers, exclude button areas
+            const pointers = [this.scene.input.pointer1, this.scene.input.pointer2];
+            let movePointer: Phaser.Input.Pointer | null = null;
+
+            for (const p of pointers) {
+                if (p && p.isDown) {
+                    const isOverFireBtn = p.x < 100 && p.y > this.scene.scale.height - 100;
+                    const isOverBombBtn = p.x > this.scene.scale.width - 100 && p.y > this.scene.scale.height - 100;
+                    
+                    if (!isOverFireBtn && !isOverBombBtn) {
+                        movePointer = p;
+                        break;
+                    }
                 }
             }
-        }
 
-        if (!movePointer && !this.scene.sys.game.device.os.android && !this.scene.sys.game.device.os.iOS) {
-            movePointer = this.scene.input.activePointer;
-        }
-
-        if (movePointer) {
-            // Direct follow for tighter control on PC
-            const dist = Phaser.Math.Distance.Between(this.x, this.y, movePointer.x, movePointer.y);
-            
-            if (dist > 5) {
-                // Lerp for smooth but fast movement
-                this.x = Phaser.Math.Linear(this.x, movePointer.x, 0.2);
-                this.y = Phaser.Math.Linear(this.y, movePointer.y, 0.2);
-                
-                // Keep player within bounds manually since we are bypassing velocity
-                this.x = Phaser.Math.Clamp(this.x, 20, this.scene.scale.width - 20);
-                this.y = Phaser.Math.Clamp(this.y, 20, this.scene.scale.height - 20);
-                return;
+            if (movePointer) {
+                const dist = Phaser.Math.Distance.Between(this.x, this.y, movePointer.x, movePointer.y);
+                if (dist > 5) {
+                    this.x = Phaser.Math.Linear(this.x, movePointer.x, 0.2);
+                    this.y = Phaser.Math.Linear(this.y, movePointer.y, 0.2);
+                    this.x = Phaser.Math.Clamp(this.x, 20, this.scene.scale.width - 20);
+                    this.y = Phaser.Math.Clamp(this.y, 20, this.scene.scale.height - 20);
+                    return;
+                }
+            }
+        } else {
+            // PC: Only follow mouse when left button is held down
+            const pointer = this.scene.input.activePointer;
+            if (pointer.isDown) {
+                const dist = Phaser.Math.Distance.Between(this.x, this.y, pointer.x, pointer.y);
+                if (dist > 5) {
+                    this.x = Phaser.Math.Linear(this.x, pointer.x, 0.2);
+                    this.y = Phaser.Math.Linear(this.y, pointer.y, 0.2);
+                    this.x = Phaser.Math.Clamp(this.x, 20, this.scene.scale.width - 20);
+                    this.y = Phaser.Math.Clamp(this.y, 20, this.scene.scale.height - 20);
+                    return;
+                }
             }
         }
     }
@@ -132,14 +158,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const isMobile = this.scene.sys.game.device.os.android || this.scene.sys.game.device.os.iOS;
     const isClicking = !isMobile && pointer.isDown; 
     
-    if (this.keySpace.isDown || this.keyZ.isDown || isClicking || this.isFiring) {
+    if (this.keySpace.isDown || this.keyZ.isDown || isClicking || this.isFiring || this.autoFire) {
         // Determine fire rate based on weapon
         let currentFireRate = this.fireRate;
-        if (this.weaponType === 'FLAME') currentFireRate = 50; // Fast fire for flame
-        if (this.weaponType === 'LASER') currentFireRate = 300; // Slow heavy fire
-        if (this.weaponType === 'MISSILE') currentFireRate = 400; // Slow
-        if (this.weaponType === 'SHOTGUN') currentFireRate = 600; // Very slow
-        if (this.weaponType === 'BEAM') currentFireRate = 100; // Continuous beam tick
+        if (this.weaponType === 'FLAME') currentFireRate = 50;
+        if (this.weaponType === 'LASER') currentFireRate = 300;
+        if (this.weaponType === 'MISSILE') currentFireRate = 400;
+        if (this.weaponType === 'SHOTGUN') currentFireRate = 600;
+        if (this.weaponType === 'BEAM') currentFireRate = 100;
 
         if (time > this.lastFired) {
             this.fireWeapon();
@@ -163,16 +189,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const level = this.weaponLevel;
 
       if (this.weaponType === 'LASER') {
-          // Laser: Fast, piercing (handled in collision), straight
           scene.fireBullet(x, y - 20, 'LASER', -90);
           
           if (level >= 2) {
-              // Double Laser
               scene.fireBullet(x - 10, y - 20, 'LASER', -90);
               scene.fireBullet(x + 10, y - 20, 'LASER', -90);
           }
           if (level >= 4) {
-              // Wide Laser
                scene.fireBullet(x - 20, y - 10, 'LASER', -95);
                scene.fireBullet(x + 20, y - 10, 'LASER', -85);
           }
@@ -180,8 +203,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
 
       if (this.weaponType === 'FLAME') {
-          // Flame: Short range, wide spread, high fire rate
-          const speed = 400;
           const angleSpread = 10 + (level * 2);
           
           scene.fireBullet(x, y - 20, 'FLAME', -90);
@@ -198,7 +219,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
 
       if (this.weaponType === 'MISSILE') {
-          // Missile: Homing, slow fire rate
           scene.fireBullet(x, y - 20, 'MISSILE', -90);
           if (level >= 3) {
               scene.fireBullet(x - 20, y - 10, 'MISSILE', -100);
@@ -212,7 +232,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
 
       if (this.weaponType === 'SHOTGUN') {
-          // Shotgun: Burst of short range bullets
           for(let i=0; i<3 + level; i++) {
               scene.fireBullet(x, y - 20, 'SHOTGUN', -90);
           }
@@ -220,7 +239,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
 
       if (this.weaponType === 'BEAM') {
-          // Beam: Continuous piercing
           scene.fireBullet(x, y - 40, 'BEAM', -90);
           if (level >= 3) {
                scene.fireBullet(x - 15, y - 40, 'BEAM', -90);
@@ -230,28 +248,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
 
       // NORMAL WEAPON
-      // Level 1: Single shot
       scene.fireBullet(x, y);
 
-      // Level 2: Double shot
       if (this.weaponLevel >= 2) {
           scene.fireBullet(x - 10, y + 10);
           scene.fireBullet(x + 10, y + 10);
       }
 
-      // Level 3: Spread
       if (this.weaponLevel >= 3) {
            scene.fireBullet(x - 20, y + 20, 'NORMAL', -100);
            scene.fireBullet(x + 20, y + 20, 'NORMAL', -80);
       }
       
-      // Level 4: More spread
       if (this.weaponLevel >= 4) {
            scene.fireBullet(x - 30, y + 30, 'NORMAL', -110);
            scene.fireBullet(x + 30, y + 30, 'NORMAL', -70);
       }
 
-      // Level 5: Max (Back shot or side shot)
       if (this.weaponLevel >= 5) {
            scene.fireBullet(x - 40, y + 10, 'NORMAL', -120);
            scene.fireBullet(x + 40, y + 10, 'NORMAL', -60);
@@ -287,7 +300,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   public takeDamage(amount: number) {
+      // Skip if currently invincible
+      if (this.isInvincible) return;
+
       this.hp -= amount;
       if (this.hp < 0) this.hp = 0;
+
+      // Activate invincibility
+      this.isInvincible = true;
+      this.invincibleTimer = this.INVINCIBLE_DURATION;
+  }
+
+  public get invincible(): boolean {
+      return this.isInvincible;
   }
 }
