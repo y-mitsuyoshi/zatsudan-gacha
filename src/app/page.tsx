@@ -410,6 +410,10 @@ export default function Home() {
                             <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">💖</span>
                             <span className="text-sm font-bold text-gray-700 dark:text-gray-300">プロフメーカー</span>
                         </Link>
+                        <Link href="/excuse-generator" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
+                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🙇‍♂️</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">言い訳ジェネレーター</span>
+                        </Link>
                     </div>
                 </div>
 
