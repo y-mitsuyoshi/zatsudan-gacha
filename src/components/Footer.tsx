@@ -39,6 +39,18 @@ export const Footer: React.FC = () => {
       description: '会社という名の戦場',
       href: '/shachiku-jinro',
       emoji: '🐺'
+    },
+    {
+      title: '究極の言い訳ジェネレーター',
+      description: 'AIが必死に考える、最高の言い逃れ',
+      href: '/excuse-generator',
+      emoji: '🙇‍♂️'
+    },
+    {
+      title: '駅名標メーカー',
+      description: 'あの有名な駅名標を、あなた専用に',
+      href: '/station-sign-maker',
+      emoji: '🚉'
     }
   ];
 

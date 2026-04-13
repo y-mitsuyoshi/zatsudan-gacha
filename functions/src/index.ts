@@ -205,3 +205,113 @@ export const gemini = onRequest(
     });
   }
 );
+
+export const excuseGenerator = onRequest(
+  {
+    timeoutSeconds: 30,
+    memory: "256MiB",
+    maxInstances: 10,
+    secrets: [geminiApiKey],
+  },
+  (request, response) => {
+    return new Promise<void>((resolve) => {
+      corsHandler(request, response, async () => {
+        try {
+          if (request.method !== "POST") {
+            response.status(405).json({error: "Method not allowed"});
+            resolve();
+            return;
+          }
+
+          const clientIP = request.ip || "unknown";
+
+          if (isRateLimited(clientIP)) {
+            logger.warn(`Rate limit exceeded for IP: ${clientIP}`);
+            response.status(429).json({error: "Too Many Requests"});
+            resolve();
+            return;
+          }
+
+          const {situation, tone, details} = request.body;
+          if (!situation || !tone) {
+            response.status(400).json({
+              error: "Situation and tone are required",
+            });
+            resolve();
+            return;
+          }
+
+          const apiKey = geminiApiKey.value();
+          if (!apiKey) {
+            logger.error("GEMINI_API_KEY is not configured");
+            response.status(500).json({error: "API key not configured"});
+            resolve();
+            return;
+          }
+
+          const prompt = `あなたは「究極の言い訳ジェネレーター」です。以下の条件に基づいて、メッセージアプリ等でそのまま送信できる最高に言い訳がましい、あるいは面白いテキストを生成してください。
+
+【条件】
+・シチュエーション: ${situation}
+・トーン: ${tone}
+・詳細情報: ${details || "特になし"}
+
+【指示】
+・指定されたトーン（文体）を完璧に再現してください。
+    - 「真面目・ビジネス用」: 丁寧で誠実そうに見えるが、巧みに責任を回避または軽減する論理的な文章。
+    - 「ユーモア・社畜風」: 自虐的で悲壮感漂う、つい同情したくなるような社畜特有の言い回し。
+    - 「異世界転生風」: 現代の出来事を無理やりファンタジー世界（魔法、ギルド、魔王など）のせいにした大掛かりな嘘。
+    - 「マッチョ風」: 筋肉、プロテイン、トレーニングを軸にした強気で暑苦しい文体。語尾は「ッス」「マッスル」など。
+    - 「ツンデレ風」: 「べ、別にお前のためにやったわけじゃないんだからね！」的な、素直になれない高飛車かつ照れ隠しな文体。
+    - 「文豪風」: 夏目漱石や太宰治を彷彿とさせる、無駄に詩的で憂鬱、かつ重々しい表現。
+    - 「猫風」: 語尾に「にゃ」「にゃん」をつけ、猫の視点や習性を交えた言い訳。
+    - 「ラップ風」: リズム感（韻）を重視し、Yo! Check it out! 的なノリで謝罪や言い訳をぶちかます。
+    - 「ギャル風」: 「まじ卍」「ぴえん」「てか」など、過剰なギャル語と絵文字を多用した軽いノリ。
+・言い訳のテキストのみを出力してください。
+・「トーン：〇〇」といったラベルや解説、前置きは一切不要です。`;
+
+          const chatHistory = [{role: "user", parts: [{text: prompt}]}];
+          const payload = {contents: chatHistory};
+
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+
+          const apiResponse = await fetch(apiUrl, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+          });
+
+          if (!apiResponse.ok) {
+            const errorBody = await apiResponse.text();
+            logger.error("Gemini API request failed:", errorBody);
+            throw new Error(`API Error: ${apiResponse.statusText}`);
+          }
+
+          const result = await apiResponse.json();
+
+          if (
+            result.candidates &&
+            result.candidates.length > 0 &&
+            result.candidates[0].content &&
+            result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0
+          ) {
+            const text = result.candidates[0].content.parts[0].text;
+            response.json({excuse: text});
+          } else {
+            logger.error("Invalid response structure from Gemini API:", result);
+            throw new Error("AIからの有効な回答がありませんでした。");
+          }
+        } catch (error) {
+          logger.error("Gemini API call failed:", error);
+          if (error instanceof Error) {
+            response.status(500).json({error: error.message});
+          } else {
+            response.status(500).json({error: "An unknown error occurred"});
+          }
+        }
+        resolve();
+      });
+    });
+  }
+);

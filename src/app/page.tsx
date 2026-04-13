@@ -354,6 +354,15 @@ export default function Home() {
                                         {digDeeperResults}
                                     </div>
                                 )}
+                                
+                                <div className="mt-4 text-center">
+                                    <Link 
+                                        href={`/excuse-generator?situation=${encodeURIComponent('雑談テーマが難しすぎて話せない')}&details=${encodeURIComponent('テーマは「' + currentTheme + '」でした')}`}
+                                        className="text-xs text-gray-400 hover:text-indigo-500 transition-colors flex items-center justify-center space-x-1"
+                                    >
+                                        <span>🙇‍♂️ このテーマで話すのは無理...（言い訳を作る）</span>
+                                    </Link>
+                                </div>
                             </div>
                         )}
 
