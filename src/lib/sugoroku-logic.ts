@@ -87,12 +87,14 @@ export const GAME_BOARD: BoardSquare[] = [
 // --- Achievements & Endings ---
 
 const ACHIEVEMENTS = {
-  'super-fast': { name: '超高速PDCA', description: '5ターン以内にゴールする。' },
+  'super-fast': { name: '超高速PDCA', description: '12ターン以内にゴールする。' },
   'no-rest': { name: '皆勤賞', description: '一度も休まずにゴールする。' },
-  'monday-hater': { name: '月曜撲滅委員会', description: '「月曜朝から…」マスに3回以上止まる。' },
-  'yaruki-master': { name: 'やる気の支配者', description: 'やる気を100に保ったままゴールする。' },
+  'monday-hater': { name: '月曜撲滅委員会', description: '「月曜朝から…」マスに2回以上止まる。' },
+  'yaruki-master': { name: 'やる気の支配者', description: 'やる気90以上でゴールする。' },
   'yaruki-zero': { name: '燃え尽き症候群', description: 'やる気がゼロになって1回以上休む。' },
 };
+
+export const ACHIEVEMENT_LIST = ACHIEVEMENTS;
 
 export const ENDINGS = {
     'legendary': { title: '伝説の社員', description: '完璧なパフォーマンスと高いやる気で、会社の歴史に名を刻む伝説の社員となった。' },
@@ -166,17 +168,22 @@ export const INITIAL_GAME_STATE: GameState = {
   path: [0],
   landedOnCounts: { 0: 1 },
   ending: null,
+  restCount: 0,
+  yarukiZeroCount: 0,
+  diceBoost: 0,
+  slowNextTurn: false,
 };
 
 // --- Game Functions ---
 
 export function createNewGame(formState: SetupFormState): GameState {
   const savedAchievements = loadAchievementsFromStorage();
+  const name = formState.name.trim().slice(0, 20) || '名無し社畜';
   return {
     ...INITIAL_GAME_STATE,
-    playerName: formState.name,
+    playerName: name,
     job: formState.job,
-    gameMessage: `${formState.name} (${formState.job}) の社畜ライフが今、始まる…！`,
+    gameMessage: `${name} (${formState.job}) の社畜ライフが今、始まる…！`,
     unlockedAchievements: savedAchievements,
   };
 }
@@ -185,12 +192,78 @@ export function rollDice(): number {
   return Math.floor(Math.random() * 6) + 1;
 }
 
+// --- Back-compat helpers: rest / yaruki-zero counts were stored in landedOnCounts[-1]/[-2] ---
+export function getRestCount(state: GameState): number {
+  return state.restCount ?? state.landedOnCounts[-1] ?? 0;
+}
+
+export function getYarukiZeroCount(state: GameState): number {
+  return state.yarukiZeroCount ?? state.landedOnCounts[-2] ?? 0;
+}
+
+function recordLanding(state: GameState, position: number): GameState {
+  const next = { ...state };
+  next.path = [...(next.path || []), position];
+  next.landedOnCounts = { ...(next.landedOnCounts || {}), [position]: ((next.landedOnCounts || {})[position] || 0) + 1 };
+  return next;
+}
+
+/** アイテム使用: energy-drink = 次ダイス+1~3 / paid-leave = 休み1回回復 */
+export function consumeItem(currentState: GameState, itemId: string): GameState {
+  const idx = currentState.items.findIndex((i) => i.id === itemId);
+  if (idx < 0) return currentState;
+  const next = { ...currentState, items: [...currentState.items] };
+  next.items.splice(idx, 1);
+
+  if (itemId === 'energy-drink') {
+    const boost = Math.floor(Math.random() * 3) + 1;
+    next.diceBoost = (next.diceBoost || 0) + boost;
+    next.gameMessage = `栄養ドリンクを飲んだ！次のサイコロ+${boost}！`;
+  } else if (itemId === 'paid-leave') {
+    if (next.isResting > 0) {
+      next.isResting = Math.max(0, next.isResting - 1);
+      next.gameMessage = '有給休暇申請書を使った！休みを1回回復！';
+    } else {
+      // 休み中でなければやる気回復として使う
+      next.yaruki = Math.min(100, next.yaruki + 15);
+      next.gameMessage = '有給でリフレッシュ！やる気が15回復！';
+    }
+  } else {
+    next.gameMessage = 'アイテムを使った。';
+  }
+  return next;
+}
+
 function applySquareEffect(state: GameState, square: BoardSquare): GameState {
   let newState = { ...state };
   const effect = square.effect;
 
+  // Position 5: job roulette (previously a dead square with effect null)
   if (!effect) {
-    newState.gameMessage = square.description;
+    if (square.position === 5) {
+      const roll = Math.random();
+      if (roll < 0.35) {
+        newState.pendingMoves = (newState.pendingMoves || 0) + 2;
+        newState.gameMessage = '職業の勘が冴えた！2マス進む！';
+      } else if (roll < 0.7) {
+        newState.yaruki = Math.min(100, newState.yaruki + 10);
+        newState.gameMessage = '同僚の活躍に刺激を受けた！やる気が10UP！';
+      } else {
+        newState.yaruki = Math.max(0, newState.yaruki - 5);
+        newState.gameMessage = '慣れない業務で少し疲れた…やる気が5DOWN。';
+      }
+    } else {
+      newState.gameMessage = square.description;
+    }
+    // Fall through to yaruki-zero check below
+    if (newState.yaruki <= 0) {
+      newState.yarukiZeroCount = (newState.yarukiZeroCount ?? newState.landedOnCounts[-2] ?? 0) + 1;
+      newState.landedOnCounts[-2] = (newState.landedOnCounts[-2] || 0) + 1;
+      newState.isResting += 1;
+      newState.gameMessage += '\nやる気がゼロになった...1回休み。';
+      newState.yaruki = 10;
+    }
+    newState.position = Math.max(0, Math.min(newState.position, BOARD_SIZE));
     return newState;
   }
 
@@ -205,12 +278,22 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
           newState.isResting += 1;
           message += ' 疲労で1回休み。';
         }
+        // 飲み会（position 21）: 翌ターンは1マス固定
+        if (square.position === 21) {
+          newState.slowNextTurn = true;
+          message += ' 二日酔いで次のターンは1マスしか進めない…。';
+        }
       }
       break;
     case 'move':
       if (typeof effect.value === 'number') {
         // Instead of setting position directly, add to pendingMoves
         newState.pendingMoves = (newState.pendingMoves || 0) + effect.value;
+        // Position 8 (PCフリーズ): 説明文通りやる気-10も適用
+        if (square.position === 8) {
+          newState.yaruki = Math.max(0, Math.min(100, newState.yaruki - 10));
+          message += '（やる気が10下がった）';
+        }
       }
       break;
     case 'rest':
@@ -485,12 +568,14 @@ function applySquareEffect(state: GameState, square: BoardSquare): GameState {
 
   // Check for yaruki penalty
   if (newState.yaruki <= 0) {
+    newState.yarukiZeroCount = (newState.yarukiZeroCount ?? newState.landedOnCounts[-2] ?? 0) + 1;
+    newState.landedOnCounts[-2] = (newState.landedOnCounts[-2] || 0) + 1;
     newState.isResting += 1;
     newState.gameMessage += '\nやる気がゼロになった...1回休み。';
     newState.yaruki = 10; // Recover a little yaruki
   }
 
-  newState.position = Math.min(newState.position, BOARD_SIZE);
+  newState.position = Math.max(0, Math.min(newState.position, BOARD_SIZE));
 
   return newState;
 }
@@ -501,94 +586,102 @@ export function checkEndGame(state: GameState): GameState {
     // Determine Ending based on multiple factors
     const yaruki = newState.yaruki;
     const turn = newState.turn;
-    const hasRestCount = (newState.landedOnCounts[-1] || 0);
-    const hasYarukiZeroCount = (newState.landedOnCounts[-2] || 0);
-    
-    // Legendary endings (very high performance)
-    if (yaruki >= 95 && turn <= 5) {
+    const restCount = getRestCount(newState);
+    const yarukiZeroCount = getYarukiZeroCount(newState);
+
+    // Order matters: legendary -> job/escape -> good -> average -> bad.
+    // Thresholds tuned so each band is reachable (avg clear ~17 turns).
+    if (yaruki >= 90 && turn <= 12 && restCount === 0) {
         newState.ending = 'legendary';
-    } else if (yaruki >= 90 && turn <= 8 && hasRestCount === 0) {
+    } else if (yaruki >= 85 && turn <= 14 && restCount <= 1) {
         newState.ending = 'promotion';
-    } else if (yaruki >= 85 && turn <= 10) {
+    } else if (yaruki >= 80 && turn <= 16) {
         newState.ending = 'mentor';
-    } else if (yaruki >= 80 && turn <= 7) {
-        newState.ending = 'specialist';
-    } else if (yaruki >= 80 && turn <= 12) {
+    } else if (yaruki >= 78 && turn <= 14) {
         newState.ending = 'innovator';
+    } else if (yaruki >= 80 && turn <= 12) {
+        newState.ending = 'specialist';
+    } else if (yaruki >= 75 && turn <= 18) {
+        newState.ending = newState.job === '営業' ? 'ace'
+          : newState.job === 'デザイナー' ? 'creator'
+          : 'leader';
     } else if (yaruki >= 75 && newState.job === '営業') {
         newState.ending = 'ace';
     } else if (yaruki >= 75 && newState.job === 'デザイナー') {
         newState.ending = 'creator';
-    } else if (yaruki >= 75 && turn <= 15) {
-        newState.ending = 'leader';
-    }
-    // Good endings (stable performance)
-    else if (yaruki >= 70 && yaruki < 85 && hasRestCount <= 2) {
+    } else if (yaruki >= 70 && restCount <= 2) {
         newState.ending = 'stable';
-    } else if (yaruki >= 65 && yaruki < 80 && hasRestCount <= 1) {
+    } else if (yaruki >= 65 && restCount <= 2) {
         newState.ending = 'balanced';
-    } else if (yaruki >= 60 && yaruki < 75 && turn <= 20) {
+    } else if (yaruki >= 60 && turn <= 22) {
         newState.ending = 'diligent';
-    } else if (yaruki >= 55 && yaruki < 70 && hasRestCount <= 3) {
+    } else if (yaruki >= 55 && restCount <= 4) {
         newState.ending = 'team-player';
-    } else if (yaruki >= 50 && yaruki < 65 && turn <= 25) {
+    } else if (yaruki >= 50 && turn <= 28) {
         newState.ending = 'steady';
-    } else if (yaruki >= 45 && yaruki < 60) {
+    } else if (yaruki >= 45) {
         newState.ending = 'consistent';
-    } else if (yaruki >= 40 && yaruki < 55) {
+    } else if (yaruki >= 40) {
         newState.ending = 'reliable';
     }
-    // Average endings (mediocre performance)
-    else if (yaruki >= 35 && yaruki < 50 && hasRestCount <= 5) {
+    // Average band
+    else if (yaruki >= 35 && restCount <= 6) {
         newState.ending = 'average';
-    } else if (yaruki >= 30 && yaruki < 45 && hasRestCount <= 7) {
+    } else if (yaruki >= 30 && restCount <= 8) {
         newState.ending = 'survivor';
-    } else if (yaruki >= 25 && yaruki < 40) {
+    } else if (yaruki >= 25) {
         newState.ending = 'mediocre';
-    } else if (yaruki >= 20 && yaruki < 35) {
+    } else if (yaruki >= 20) {
         newState.ending = 'routine';
-    } else if (yaruki >= 15 && yaruki < 30) {
+    } else if (yaruki >= 15) {
         newState.ending = 'ordinary';
     }
-    // Special "Escape" endings (low yaruki but specific conditions)
-    else if (yaruki < 20 && newState.job === 'エンジニア') {
+    // Escape endings (low yaruki, job-flavored new life)
+    else if (newState.job === 'エンジニア') {
         newState.ending = 'freelance';
-    } else if (yaruki < 20 && newState.job === '企画・マーケティング') {
+    } else if (newState.job === '企画・マーケティング') {
         newState.ending = 'entrepreneur';
-    } else if (yaruki < 20 && newState.job === '営業') {
+    } else if (newState.job === '営業') {
         newState.ending = 'investor';
-    } else if (yaruki < 20 && newState.job === '広報・PR') {
+    } else if (newState.job === '広報・PR') {
         newState.ending = 'influencer';
-    } else if (yaruki < 20 && newState.job === '人事・総務') {
+    } else if (newState.job === '人事・総務') {
         newState.ending = 'writer';
-    } else if (yaruki < 15 && turn >= 40) {
+    } else if (turn >= 40) {
         newState.ending = 'farmer'; // Took too long, decided to farm
-    } else if (yaruki < 15 && hasRestCount >= 5) {
+    } else if (restCount >= 5) {
         newState.ending = 'global'; // Rested a lot, decided to travel
     }
-    // Bad endings (poor performance) - Reduced frequency
-    else if (yaruki >= 10 && yaruki < 20 && hasYarukiZeroCount >= 3) {
-        newState.ending = 'burnout';
-    } else if (yaruki >= 5 && yaruki < 15 && turn >= 35) {
-        newState.ending = 'dropout';
-    } else if (yaruki >= 0 && yaruki < 10 && hasRestCount >= 8) {
-        newState.ending = 'overwork';
-    } else if (yaruki <= 0 && hasYarukiZeroCount >= 5) {
+    // Bad endings (poor performance)
+    else if (yarukiZeroCount >= 5) {
         newState.ending = 'breakdown';
+    } else if (yarukiZeroCount >= 3) {
+        newState.ending = 'burnout';
+    } else if (restCount >= 8) {
+        newState.ending = 'overwork';
+    } else if (turn >= 35) {
+        newState.ending = 'dropout';
+    } else if (newState.job === '法務・コンプラ') {
+        newState.ending = 'mental-break';
+    } else if (newState.job === '品質保証') {
+        newState.ending = 'stress-victim';
+    } else if (restCount >= 6) {
+        newState.ending = 'exhausted';
+    } else if (yaruki <= 10) {
         newState.ending = 'resignation';
-    } else if (yaruki <= 3 && hasYarukiZeroCount >= 5) {
+    } else if (turn >= 30) {
         newState.ending = 'collapse';
     } else {
         newState.ending = 'defeat';
     }
 
-    // Check Achievements
+    // Check Achievements (thresholds reachable: avg clear ~17 turns)
     const newlyUnlocked: string[] = [];
-    if (newState.turn <= 5) newlyUnlocked.push('super-fast');
-    if (hasRestCount === 0) newlyUnlocked.push('no-rest');
-    if ((newState.landedOnCounts[1] || 0) >= 3) newlyUnlocked.push('monday-hater');
-    if (newState.yaruki === 100) newlyUnlocked.push('yaruki-master');
-    if (hasYarukiZeroCount >= 1) newlyUnlocked.push('yaruki-zero');
+    if (newState.turn <= 12) newlyUnlocked.push('super-fast');
+    if (restCount === 0) newlyUnlocked.push('no-rest');
+    if ((newState.landedOnCounts[1] || 0) >= 2) newlyUnlocked.push('monday-hater');
+    if (newState.yaruki >= 90) newlyUnlocked.push('yaruki-master');
+    if (yarukiZeroCount >= 1) newlyUnlocked.push('yaruki-zero');
 
     newState.newlyUnlockedAchievements = newlyUnlocked;
 
@@ -609,18 +702,37 @@ export function takeTurn(currentState: GameState, diceValue?: number): GameState
   if (newState.isResting > 0) {
     newState.isResting -= 1;
     newState.gameMessage = `休み中... あと${newState.isResting}ターン休み。`;
-    // Track rests for achievements, using a special key like -1
+    // Track rests explicitly (and legacy key for compat)
+    newState.restCount = getRestCount(newState) + 1;
     newState.landedOnCounts[-1] = (newState.landedOnCounts[-1] || 0) + 1;
     // Ensure pendingMoves is 0 when resting to avoid UI bugs
     newState.pendingMoves = 0;
     return newState;
   }
 
-  const diceResult = diceValue ?? rollDice();
-  
+  let diceResult = diceValue ?? rollDice();
+
+  // 栄養ドリンクのブーストを消費
+  if (newState.diceBoost && newState.diceBoost > 0) {
+    diceResult = Math.min(6 + 3, diceResult + newState.diceBoost);
+    // ボードは60マスなので振りすぎ防止: 最大でも残りマス+余裕程度に
+    newState.diceBoost = 0;
+    newState.gameMessage = `栄養ドリンクパワーでサイコロが${diceResult}に！一マスずつ進みます。`;
+  }
+
+  // 飲み会の二日酔い: 次ターンは1マス固定
+  if (newState.slowNextTurn) {
+    diceResult = 1;
+    newState.slowNextTurn = false;
+    newState.gameMessage = `二日酔いで1マスしか進めない…。`;
+  } else if (!newState.gameMessage || !newState.gameMessage.includes('栄養ドリンクパワー')) {
+    newState.gameMessage = `サイコロで${diceResult}が出ました！一マスずつ進みます。`;
+  } else {
+    newState.gameMessage = `サイコロで${diceResult}が出ました！一マスずつ進みます。（ドリンク込み）`;
+  }
+
   // 段階的移動のためのプロパティを追加
   newState.pendingMoves = diceResult;
-  newState.gameMessage = `サイコロで${diceResult}が出ました！一マスずつ進みます。`;
   
   return newState;
 }
@@ -650,15 +762,22 @@ export function moveOneStep(currentState: GameState): GameState {
           audioManager.playSe('move'); // Play move sound
       }
   } else {
-      // Handle backward movement
-      newState.position -= 1;
+      // Handle backward movement (clamped at 0)
+      newState.position = Math.max(0, newState.position - 1);
       newState.pendingMoves += 1;
+      // 0まで戻ったら残りの後退を打ち切って無限ループ防止
+      if (newState.position === 0 && newState.pendingMoves < 0) {
+        newState.pendingMoves = 0;
+      }
       audioManager.playSe('move'); // Play move sound
   }
 
   // 中間マスの効果適用
   // Check if landed (pendingMoves is now 0)
   if (newState.pendingMoves === 0) {
+      // 軌跡・到達回数を記録（二次移動の着地も含む）
+      newState = recordLanding(newState, newState.position);
+
       // Check if we should ignore this event (because it's a secondary move)
       if (newState.ignoreNextEvent) {
           const currentSquare = GAME_BOARD.find(s => s.position === newState.position);
@@ -715,10 +834,8 @@ export function moveOneStep(currentState: GameState): GameState {
       }
   }
 
-  // Check for yaruki penalty achievement
-  if (newState.yaruki <= 0) {
-    newState.landedOnCounts[-2] = (newState.landedOnCounts[-2] || 0) + 1;
-  }
+  // yaruki-zero counting is done in applySquareEffect (which resets to 10),
+  // so no additional check here to avoid double counting.
 
   return newState;
 }

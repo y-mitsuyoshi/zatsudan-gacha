@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { GameState } from '@/types/sugoroku';
-import { takeTurn, moveOneStep, checkEndGame } from '@/lib/sugoroku-logic';
+import { takeTurn, moveOneStep, checkEndGame, consumeItem } from '@/lib/sugoroku-logic';
 import { GameBoard } from './GameBoard';
 import { YarukiGauge } from './YarukiGauge';
 import { ResultCard } from './ResultCard';
@@ -30,7 +30,8 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
 
   // Movement logic using useEffect for stability
   React.useEffect(() => {
-    let moveTimer: NodeJS.Timeout;
+    let moveTimer: NodeJS.Timeout | undefined;
+    let finishTimer: NodeJS.Timeout | undefined;
 
     // If waiting for event animation
     if (gameState.isEventWait) {
@@ -47,21 +48,24 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
         return () => clearTimeout(waitTimer);
     }
 
-    if (isMoving && gameState.pendingMoves && gameState.pendingMoves !== 0) {
+    const pending = gameState.pendingMoves || 0;
+    if (isMoving && pending !== 0) {
       moveTimer = setTimeout(() => {
         setGameState(prevState => moveOneStep(prevState));
-      }, 500); // Move every 500ms (train-like speed)
-    } else if (isMoving && (!gameState.pendingMoves || gameState.pendingMoves === 0)) {
+      }, 400); // Slightly faster for better tempo
+    } else if (isMoving && pending === 0) {
       // Movement finished
-      const finishTimer = setTimeout(() => {
+      finishTimer = setTimeout(() => {
         setIsMoving(false);
         setShowDice(false);
       }, 800);
-      return () => clearTimeout(finishTimer);
     }
 
-    return () => clearTimeout(moveTimer);
-  }, [gameState.pendingMoves, isMoving, gameState.isEventWait]);
+    return () => {
+      if (moveTimer) clearTimeout(moveTimer);
+      if (finishTimer) clearTimeout(finishTimer);
+    };
+  }, [gameState.pendingMoves, gameState.position, isMoving, gameState.isEventWait]);
 
   const toggleSound = () => {
       const muted = audioManager.toggleMute();
@@ -71,38 +75,56 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
       }
   };
 
+  const isRollingRef = React.useRef(false);
+  const diceValueRef = React.useRef(diceValue);
+  React.useEffect(() => { diceValueRef.current = diceValue; }, [diceValue]);
+
   const handleDiceRollComplete = () => {
     // Calculate new game state after dice animation completes
-    setTimeout(() => {
-      // Use ref to get the latest state
-      const currentGameState = gameStateRef.current;
-      setPreviousPosition(currentGameState.position);
-      
-      const newState = takeTurn(currentGameState, diceValue);
-      setGameState(newState);
-      setIsRolling(false);
-      
-      // Start step-by-step movement if there are pending moves
-      if (newState.pendingMoves && newState.pendingMoves > 0) {
-        setIsMoving(true);
-      } else {
-        // No movement needed (e.g. resting), hide dice
-        setTimeout(() => setShowDice(false), 1500);
-      }
-    }, 600);
+    // DiceComponent already waited 800ms, so proceed immediately (guard double-call)
+    const currentGameState = gameStateRef.current;
+    // 既にこのロールの処理済みなら二重実行しない
+    if (!isRollingRef.current) return;
+    isRollingRef.current = false;
+    setPreviousPosition(currentGameState.position);
+
+    const newState = takeTurn(currentGameState, diceValueRef.current);
+    setGameState(newState);
+    setIsRolling(false);
+
+    // Start step-by-step movement if there are pending moves
+    if (newState.pendingMoves && newState.pendingMoves !== 0) {
+      setIsMoving(true);
+    } else {
+      // No movement needed (e.g. resting), hide dice
+      setTimeout(() => setShowDice(false), 1500);
+    }
   };
 
   const handleTakeTurn = () => {
     if (isRolling || gameState.isFinished || isMoving || gameState.isEventWait) return;
+    const pending = gameState.pendingMoves || 0;
+    if (pending !== 0) return;
 
+    isRollingRef.current = true;
     setIsRolling(true);
     setShowDice(true);
     audioManager.playSe('roll'); // Play roll sound
-    
+
     // Generate dice value (1-6)
     const roll = Math.floor(Math.random() * 6) + 1;
     setDiceValue(roll);
   };
+
+  const handleUseItem = (itemId: string) => {
+    if (isRolling || isMoving || gameState.isFinished || gameState.isEventWait) return;
+    if ((gameState.pendingMoves || 0) !== 0) return;
+    setGameState(prev => consumeItem(prev, itemId));
+    audioManager.playSe('good');
+  };
+
+  const isBusy = isRolling || isMoving || (gameState.pendingMoves || 0) !== 0 || gameState.isEventWait;
+  const remaining = Math.max(0, 60 - gameState.position);
 
   if (gameState.isFinished) {
     return <ResultCard gameState={gameState} />;
@@ -168,19 +190,27 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
           <div className="mb-6">
             <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
               <span>START</span>
+              <span>残り{remaining}マス</span>
               <span>GOAL</span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 shadow-inner overflow-hidden">
               <div 
                 className="bg-gradient-to-r from-blue-400 to-purple-500 h-full rounded-full transition-all duration-500 relative"
-                style={{ width: `${Math.min((gameState.position / 60) * 100, 100)}%` }}
+                style={{ width: `${Math.max(0, Math.min((gameState.position / 60) * 100, 100))}%` }}
               >
                 <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
               </div>
             </div>
-            <div className="text-right text-xs font-bold text-purple-500 mt-1">
-              {Math.round((gameState.position / 60) * 100)}% 完了
+            <div className="flex justify-between text-xs font-bold text-purple-500 mt-1">
+              <span>{gameState.position}/60</span>
+              <span>{Math.round(Math.max(0, Math.min((gameState.position / 60) * 100, 100)))}% 完了</span>
             </div>
+            {(gameState.diceBoost || 0) > 0 && (
+              <div className="mt-1 text-xs font-bold text-orange-500">⚡ ドリンク効果中: 次のダイス+{gameState.diceBoost}</div>
+            )}
+            {gameState.slowNextTurn && (
+              <div className="mt-1 text-xs font-bold text-blue-500">🍺 二日酔い: 次は1マス固定</div>
+            )}
           </div>
 
           {/* Yaruki Gauge */}
@@ -205,22 +235,29 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
           {/* Items */}
           <div className="mb-6">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span>🎒</span> Items
+              <span>🎒</span> Items <span className="normal-case font-medium">(タップで使用)</span>
             </h3>
             <div className="flex flex-wrap gap-2">
               {gameState.items.length > 0 ? (
                 gameState.items.map((item, index) => (
-                  <div key={index} className="group relative cursor-help">
-                    <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center text-lg border border-yellow-200 dark:border-yellow-800 shadow-sm hover:scale-110 transition-transform">
-                      📦
+                  <button
+                    key={`${item.id}-${index}`}
+                    onClick={() => handleUseItem(item.id)}
+                    disabled={isBusy}
+                    title={`${item.name}: ${item.description}`}
+                    className="group relative cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center text-lg border border-yellow-200 dark:border-yellow-800 shadow-sm hover:scale-110 active:scale-95 transition-transform">
+                      {item.id === 'energy-drink' ? '🥤' : item.id === 'paid-leave' ? '📝' : '📦'}
                     </div>
                     {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
                       <div className="font-bold mb-1">{item.name}</div>
                       <div className="text-gray-300">{item.description}</div>
+                      <div className="text-yellow-300 mt-1 font-bold">タップで使う</div>
                       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
                     </div>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="text-xs text-gray-400 italic w-full text-center py-2 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
@@ -246,11 +283,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
 
             <button
                 onClick={handleTakeTurn}
-                disabled={isRolling || gameState.isFinished || isMoving || Boolean(gameState.pendingMoves && gameState.pendingMoves !== 0) || gameState.isEventWait}
+                disabled={isBusy || gameState.isFinished}
                 className={`
                   w-full relative overflow-hidden group
                   py-4 px-6 rounded-2xl font-black text-xl shadow-[0_6px_0_0_rgba(0,0,0,0.1)] active:shadow-none active:translate-y-[6px] transition-all
-                  ${isRolling || isMoving || (gameState.pendingMoves && gameState.pendingMoves !== 0) || gameState.isEventWait
+                  ${isBusy
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none translate-y-[6px]' 
                     : 'bg-gradient-to-b from-orange-400 to-orange-500 text-white hover:from-orange-300 hover:to-orange-400 shadow-orange-700'
                   }
@@ -259,9 +296,9 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   {isRolling ? '🎲 ...' : 
                    isMoving ? '🏃 ...' : 
-                   (gameState.pendingMoves && gameState.pendingMoves !== 0) ? '⏳ ...' :
+                   (gameState.pendingMoves || 0) !== 0 ? '⏳ ...' :
                    gameState.isEventWait ? '✨ ...' :
-                   gameState.isResting > 0 ? '😴 休み' :
+                   gameState.isResting > 0 ? `😴 休む (あと${gameState.isResting})` :
                    <><span>🎲</span> サイコロを振る</>}
                 </span>
                 
@@ -273,14 +310,19 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
             
             {/* Status Text */}
             <div className="text-center mt-3 min-h-[20px]">
-               {(isMoving || (gameState.pendingMoves && gameState.pendingMoves > 0)) && (
+               {(isMoving || (gameState.pendingMoves || 0) > 0) && (
                  <span className="text-xs font-bold text-blue-500 animate-pulse">
                    移動中... 残り{gameState.pendingMoves}マス
                  </span>
                )}
-               {gameState.isResting > 0 && (
+               {(gameState.pendingMoves || 0) < 0 && (
                  <span className="text-xs font-bold text-red-500 animate-pulse">
-                   あと{gameState.isResting}回休み
+                   後退中... 残り{Math.abs(gameState.pendingMoves || 0)}マス
+                 </span>
+               )}
+               {gameState.isResting > 0 && !isMoving && (
+                 <span className="text-xs font-bold text-red-500 animate-pulse">
+                   ボタンを押して休みを消化 (あと{gameState.isResting}回)
                  </span>
                )}
             </div>

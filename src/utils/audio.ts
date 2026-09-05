@@ -6,7 +6,8 @@ class AudioManager {
   private bgmOscillators: OscillatorNode[] = [];
   private bgmGain: GainNode | null = null;
   private isBgmPlaying: boolean = false;
-  private isMuted: boolean = false;
+  private isMuted: boolean = true;
+  private bgmTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -27,10 +28,11 @@ class AudioManager {
     this.isMuted = !this.isMuted;
     if (this.isMuted) {
       this.stopBgm();
-    } else {
-      // Resume BGM if it was supposed to be playing? 
-      // For now, just stop.
     }
+    return this.isMuted;
+  }
+
+  public get muted() {
     return this.isMuted;
   }
 
@@ -38,8 +40,13 @@ class AudioManager {
 
   public playSe(type: 'roll' | 'move' | 'good' | 'bad' | 'fanfare' | 'click') {
     if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (ctx.state === 'suspended') ctx.resume();
+    let ctx: AudioContext;
+    try {
+      ctx = this.getContext();
+    } catch {
+      return;
+    }
+    if (ctx.state === 'suspended') void ctx.resume();
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -135,21 +142,20 @@ class AudioManager {
 
   public playBgm() {
     if (this.isBgmPlaying || this.isMuted) return;
+    let ctx: AudioContext;
+    try {
+      ctx = this.getContext();
+    } catch {
+      return;
+    }
     this.isBgmPlaying = true;
-    const ctx = this.getContext();
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') void ctx.resume();
 
-    // Simple bassline loop
-    const tempo = 0.5; // seconds per beat
-    const notes = [261.63, 293.66, 329.63, 392.00]; // C D E G
-    
-    // We use a recursive function to schedule notes to create a loop
-    // Ideally we would use AudioWorklet or a proper scheduler, but setTimeout is okay for simple stuff
     this.scheduleBgmNote(0);
   }
 
   private scheduleBgmNote(index: number) {
-    if (!this.isBgmPlaying) return;
+    if (!this.isBgmPlaying || this.isMuted) return;
     
     const ctx = this.getContext();
     const now = ctx.currentTime;
@@ -184,17 +190,24 @@ class AudioManager {
     osc.stop(now + noteDuration);
     
     this.bgmOscillators.push(osc); // Keep track to stop if needed (though they stop themselves)
+    if (this.bgmOscillators.length > 32) {
+      this.bgmOscillators.splice(0, this.bgmOscillators.length - 32);
+    }
 
     // Schedule next note
-    setTimeout(() => {
+    if (this.bgmTimer) clearTimeout(this.bgmTimer);
+    this.bgmTimer = setTimeout(() => {
         this.scheduleBgmNote(index + 1);
     }, interval * 1000);
   }
 
   public stopBgm() {
     this.isBgmPlaying = false;
+    if (this.bgmTimer) {
+      clearTimeout(this.bgmTimer);
+      this.bgmTimer = null;
+    }
     // Oscillators stop automatically in this simple implementation
-    // But we could clear timeouts if we stored the timer ID
   }
 }
 

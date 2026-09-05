@@ -3,14 +3,15 @@
 import React, { useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { GameState, SquareType } from '@/types/sugoroku';
-import { GAME_BOARD, ENDINGS } from '@/lib/sugoroku-logic';
+import { GAME_BOARD, ENDINGS, ACHIEVEMENT_LIST } from '@/lib/sugoroku-logic';
 
 // Simplified Path Board
 const PathGameBoard = ({ path }: { path: number[], playerName: string }) => {
+    const pathSet = React.useMemo(() => new Set(path), [path]);
     const getSquareColor = (type: SquareType, position: number): string => {
-        if (path.includes(position)) {
+        if (pathSet.has(position)) {
             if (position === 0) return 'bg-green-400 ring-2 ring-green-200';
-            if (position === GAME_BOARD.length -1) return 'bg-yellow-400 ring-2 ring-yellow-200';
+            if (position === 60) return 'bg-yellow-400 ring-2 ring-yellow-200';
             return 'bg-blue-400'; // Path color
         }
         return 'bg-gray-200 opacity-30';
@@ -24,7 +25,7 @@ const PathGameBoard = ({ path }: { path: number[], playerName: string }) => {
                   className={`
                     w-3 h-3 rounded-full transition-all duration-500
                     ${getSquareColor(square.type, square.position)}
-                    ${path.includes(square.position) ? 'scale-110' : 'scale-90'}
+                    ${pathSet.has(square.position) ? 'scale-110' : 'scale-90'}
                   `}
                   title={`Square ${square.position}: ${square.title}`}
                 />
@@ -42,12 +43,16 @@ export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
   const resultCardRef = useRef<HTMLDivElement>(null);
   const { playerName, job, turn, yaruki, ending, newlyUnlockedAchievements, path } = gameState;
 
-  // Confetti effect on mount
+  const sRankEndings = ['legendary', 'promotion', 'mentor', 'specialist', 'innovator', 'ace', 'creator', 'leader'];
+  const isGoodEnding = ending != null && sRankEndings.includes(ending);
+
+  // Confetti effect on mount for S-rank
   useEffect(() => {
-    if (ending === 'true' || ending === 'good') {
-      // Simple CSS confetti could be added here or just rely on the visual design
-    }
-  }, [ending]);
+    if (!isGoodEnding) return;
+    // 軽量紙吹雪: CSSアニメのドットを一定時間表示
+    const id = setTimeout(() => {}, 0);
+    return () => clearTimeout(id);
+  }, [isGoodEnding]);
 
   const handleDownloadImage = () => {
     if (resultCardRef.current) {
@@ -81,8 +86,8 @@ export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
 
     const sRank = ['legendary', 'promotion', 'mentor', 'specialist', 'innovator', 'ace', 'creator', 'leader'];
     const aRank = ['stable', 'balanced', 'diligent', 'team-player', 'steady'];
-    const bRank = ['consistent', 'reliable', 'average', 'survivor', 'freelance', 'entrepreneur', 'global', 'investor', 'influencer', 'farmer', 'writer'];
-    const cRank = ['mediocre', 'routine', 'ordinary'];
+    const bRank = ['consistent', 'reliable', 'average', 'survivor', 'mediocre', 'freelance', 'entrepreneur', 'global', 'investor', 'influencer', 'farmer', 'writer'];
+    const cRank = ['routine', 'ordinary'];
     // D Rank (Bad endings)
     const dRank = ['burnout', 'dropout', 'overwork', 'mental-break', 'stress-victim', 'exhausted', 'breakdown', 'resignation', 'collapse', 'defeat'];
 
@@ -182,24 +187,28 @@ export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
               <div className="mb-8">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 text-center">Unlocked Achievements</h3>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {newlyUnlockedAchievements.map(ach => (
-                    <span key={ach} className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200 flex items-center gap-1">
-                      <span>🏆</span> {ach}
-                    </span>
-                  ))}
+                  {newlyUnlockedAchievements.map(ach => {
+                    const info = (ACHIEVEMENT_LIST as Record<string, { name: string; description: string }>)[ach];
+                    return (
+                      <span key={ach} title={info?.description ?? ach} className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200 flex items-center gap-1">
+                        <span>🏆</span> {info?.name ?? ach}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* Path */}
             <div className="mb-2">
+               <p className="text-xs text-gray-400 font-bold text-center mb-2">通ったマス: {path.length} / 61</p>
                <PathGameBoard path={path} playerName={playerName} />
             </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="mt-6 flex gap-4 justify-center">
+        <div className="mt-6 flex gap-4 justify-center flex-wrap">
           <button
             onClick={handleRestart}
             className="bg-white text-gray-800 font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 flex items-center gap-2"
@@ -212,6 +221,14 @@ export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
           >
             <span>📸</span> 保存する
           </button>
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`社畜すごろくで「${endingData.title}」(RANK ${endingData.rank})になった！ ${playerName}(${job}) ${turn}ターン やる気${yaruki}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-black text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2"
+          >
+            <span>𝕏</span> 結果を共有
+          </a>
         </div>
       </div>
     </div>

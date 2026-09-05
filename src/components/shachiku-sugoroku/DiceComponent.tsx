@@ -15,6 +15,11 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
 }) => {
   const [currentValue, setCurrentValue] = useState(1);
   const [showFinal, setShowFinal] = useState(false);
+  // onRollCompleteの参照変化でアニメ用タイマーがリセットされるのを防ぐ
+  const callbackRef = React.useRef(onRollComplete);
+  callbackRef.current = onRollComplete;
+  const finalRef = React.useRef(finalValue);
+  finalRef.current = finalValue;
 
   useEffect(() => {
     if (isRolling) {
@@ -25,9 +30,9 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
 
       const timeout = setTimeout(() => {
         clearInterval(interval);
-        setCurrentValue(finalValue);
+        setCurrentValue(finalRef.current);
         setShowFinal(true);
-        onRollComplete?.();
+        callbackRef.current?.();
       }, 800);
 
       return () => {
@@ -35,7 +40,8 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
         clearTimeout(timeout);
       };
     }
-  }, [isRolling, finalValue, onRollComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRolling]);
 
   const getDotPositions = (value: number) => {
     const positions = {

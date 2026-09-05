@@ -44,6 +44,11 @@ export interface GameState {
   pendingMoves?: number; // Number of moves left to complete step by step
   isEventWait?: boolean; // Whether to pause for event animation
   ignoreNextEvent?: boolean; // Whether to skip the event on the next landing (for secondary moves)
+  // --- Added: explicit counters & turn modifiers (replaces hacky -1/-2 keys) ---
+  restCount?: number; // Total turns spent resting
+  yarukiZeroCount?: number; // Times yaruki hit zero
+  diceBoost?: number; // Bonus added to next dice roll (from energy drink)
+  slowNextTurn?: boolean; // Next turn forced to 1 move (from nomikai)
 }
 
 // Defines the initial form state before the game starts

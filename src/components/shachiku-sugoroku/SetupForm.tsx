@@ -15,11 +15,12 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
     const { name, value } = e.target;
     setFormState(prevState => ({
       ...prevState,
-      [name]: value,
+      [name]: name === 'name' ? value.slice(0, 20) : value,
     }));
   };
 
-  const isSubmitDisabled = !formState.name.trim();
+  const trimmedName = formState.name.trim();
+  const isSubmitDisabled = trimmedName.length === 0;
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg h-fit">
@@ -30,6 +31,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
         onSubmit={(e) => {
           e.preventDefault();
           if (!isSubmitDisabled) {
+            setFormState(prev => ({ ...prev, name: prev.name.trim() }));
             onSubmit();
           }
         }}
@@ -46,9 +48,11 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
             value={formState.name}
             onChange={handleInputChange}
             placeholder="例: 山田 太郎"
+            maxLength={20}
             className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
             required
           />
+          <p className="text-xs text-gray-400 mt-1 text-right">{formState.name.length}/20</p>
         </div>
         <div>
           <label htmlFor="job" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

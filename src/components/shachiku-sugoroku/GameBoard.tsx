@@ -88,6 +88,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 }) => {
   const [showEventPopup, setShowEventPopup] = React.useState<{square: BoardSquare | null, show: boolean}>({square: null, show: false});
   const [movementPath, setMovementPath] = React.useState<number[]>([]);
+  // マス検索をO(1)に
+  const boardMap = React.useMemo(() => new Map(GAME_BOARD.map(s => [s.position, s])), []);
   
   React.useEffect(() => {
     if (isMoving && previousPosition !== position) {
@@ -110,8 +112,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
     // Show popup when waiting for event animation
     if (isEventWait) {
-        const currentSquare = GAME_BOARD.find(s => s.position === position);
-        if (currentSquare && currentSquare.effect) {
+        const currentSquare = boardMap.get(position);
+        if (currentSquare && (currentSquare.effect || currentSquare.type === 'goal')) {
             setShowEventPopup({square: currentSquare, show: true});
             // Auto hide is handled by parent removing isEventWait, but we can also auto hide here for safety
             const timer = setTimeout(() => setShowEventPopup({square: null, show: false}), 2500);
@@ -123,49 +125,39 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         setShowEventPopup({square: null, show: false});
     }
 
-  }, [position, isMoving, previousPosition, isEventWait]);
+  }, [position, isMoving, previousPosition, isEventWait, boardMap]);
 
-  // Responsive Snake Layout Logic
-  // We use CSS Grid with auto-fit/minmax for responsiveness, but to maintain the "snake" path visual,
-  // we need to be careful. A pure CSS grid snake is hard.
-  // Instead, we'll use a fixed column count that changes with breakpoints.
-  // Mobile: 5 cols, Desktop: 10 cols.
-  
-  const renderRows = (cols: number) => {
-      const rows = [];
-      const totalRows = Math.ceil(61 / cols); // Updated for 60 items (0-60 = 61 items)
+  // ポップアップ表示中は背景スクロールをロック
+  React.useEffect(() => {
+    if (showEventPopup.show) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = original; };
+    }
+  }, [showEventPopup.show]);
 
-      for (let row = 0; row < totalRows; row++) {
-        const rowSquares = [];
-        const startSquare = row * cols;
-        const endSquare = Math.min((row + 1) * cols - 1, 60);
-        
-        for (let squarePos = startSquare; squarePos <= endSquare; squarePos++) {
-          const square = GAME_BOARD.find(s => s.position === squarePos);
-          if (square) {
-            rowSquares.push(square);
-          }
-        }
-        
-        // Reverse even rows (0, 2, 4...) for snake effect? 
-        // Usually snake starts left->right (row 0), then right->left (row 1).
-        // So row 1, 3, 5 should be reversed.
-        const isReversed = row % 2 === 1;
-        if (isReversed) {
-          rowSquares.reverse();
-        }
-        
-        rows.push({ squares: rowSquares, isReversed, rowIndex: row });
+  // Responsive Snake Layout Logic (mobile 5 cols / desktop 10 cols)
+
+  const renderRowsCallback = React.useCallback((cols: number) => {
+    const rows = [];
+    const totalRows = Math.ceil(61 / cols);
+    for (let row = 0; row < totalRows; row++) {
+      const rowSquares = [];
+      const startSquare = row * cols;
+      const endSquare = Math.min((row + 1) * cols - 1, 60);
+      for (let squarePos = startSquare; squarePos <= endSquare; squarePos++) {
+        const square = boardMap.get(squarePos);
+        if (square) rowSquares.push(square);
       }
-      return rows;
-  };
+      const isReversed = row % 2 === 1;
+      if (isReversed) rowSquares.reverse();
+      rows.push({ squares: rowSquares, isReversed, rowIndex: row });
+    }
+    return rows;
+  }, [boardMap]);
 
-  // We render two versions and hide/show based on media query to ensure correct snake layout
-  // This is a bit heavy but ensures the visual path is correct for both sizes.
-  // Alternatively, we could use a resize observer, but CSS media queries are cleaner for SSR.
-  
-  const MobileRows = renderRows(5);
-  const DesktopRows = renderRows(10);
+  const MobileRows = React.useMemo(() => renderRowsCallback(5), [renderRowsCallback]);
+  const DesktopRows = React.useMemo(() => renderRowsCallback(10), [renderRowsCallback]);
 
   const BoardGrid = ({ rows, className }: { rows: any[], className: string }) => (
       <div className={`space-y-4 ${className}`}>
