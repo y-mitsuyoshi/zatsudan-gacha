@@ -1,275 +1,228 @@
-import { Room, Player, Role, ActionType } from '@/types/shachiku-jinro';
-import { getFirebaseFunctions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
-import { useState } from 'react';
+'use client';
+
+import { GameState, Player } from '@/types/shachiku-jinro';
+import { useState, useEffect } from 'react';
 
 interface ActionPanelProps {
-  room: Room;
+  gameState: GameState;
   myself: Player;
+  onVote: (targetId: string) => void;
+  onNightAction: (targetId: string) => void;
 }
 
-export default function ActionPanel({ room, myself }: ActionPanelProps) {
+export default function ActionPanel({ gameState, myself, onVote, onNightAction }: ActionPanelProps) {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
 
-  // Helper to filter valid targets
-  const getValidTargets = (action: ActionType) => {
-    const players = Object.values(room.players).filter(p => p.isAlive);
+  const { phase, players, votes, actions, dayCount } = gameState;
+  const alivePlayers = Object.values(players).filter(p => p.isAlive && p.id !== myself.id);
 
-    if (action === 'VOTE') {
-       return players.filter(p => p.id !== myself.id); // Cannot vote for self usually, or allowed? Usually allowed but let's prevent self-vote for sanity.
-    }
-    if (action === 'ATTACK') {
-       // Spy cannot attack other Spies (usually).
-       // But in our simplified logic, let's just show all except self.
-       // Or better: filter out known teammates if Mason/Spy?
-       // For now, allow attacking anyone except self.
-       return players.filter(p => p.id !== myself.id);
-    }
-    if (action === 'GUARD') {
-       // GA cannot guard self usually.
-       return players.filter(p => p.id !== myself.id);
-    }
-    if (action === 'DIVINE') {
-       // HR cannot divine self.
-       return players.filter(p => p.id !== myself.id);
-    }
-    return [];
-  };
+  // フェーズ/日数が変わったら選択状態をリセット(2日目以降投票不能になるバグの修正)
+  useEffect(() => {
+    setSelectedTarget(null);
+    setConfirmed(false);
+  }, [phase, dayCount]);
 
-  const handleAction = async (actionType: ActionType) => {
+  // Reset selection when phase changes
+  const handleConfirm = () => {
     if (!selectedTarget) return;
+    // 死亡者・自分への投票は無効
+    const target = players[selectedTarget];
+    if (!target || !target.isAlive || target.id === myself.id) return;
 
-    const functions = getFirebaseFunctions();
-    if (!functions) {
-      setMessage('Firebase設定が見つかりません');
-      return;
+    if (phase === 'DAY_VOTE') {
+      onVote(selectedTarget);
+    } else if (phase === 'NIGHT_ACTION') {
+      onNightAction(selectedTarget);
     }
-    const submitActionFn = httpsCallable(functions, 'submitAction');
 
-    setLoading(true);
-    setMessage(null);
-    try {
-      await submitActionFn({
-        roomId: room.id,
-        actionType,
-        targetId: selectedTarget
-      });
-      setMessage('完了しました');
-      setSelectedTarget(null);
-    } catch (e: any) {
-      console.error(e);
-      setMessage(e.message || 'エラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
+    setConfirmed(true);
+    setSelectedTarget(null);
   };
 
-  // Render logic based on phase and role
-  const phase = room.phase;
-  const role = myself.role;
-
-  // Day Conversation -> No actions usually, just "End Conversation" vote? Or just timer.
-  // Our plan says Timer auto-transitions? No, we need a trigger.
-  // Wait, in `submitAction` we handled VOTE and NIGHT actions.
-  // We need a way to transition from CONVERSATION -> VOTE.
-  // Usually this is timer based or "Ready" button.
-  // For this prototype, let's assume the Server/Timer handles it or Host can force it?
-  // Our `startGame` set a time limit. But we didn't implement a "time's up" trigger on server.
-  // Client needs to trigger it or we need a scheduled function (which is harder).
-  // Let's add a "End Discussion" button for Host.
-
-  // Actually, let's just skip to Vote phase logic for now.
-  // If phase is CONVERSATION, show timer and maybe "Skip to Vote" if Host.
-
+  // Day Conversation
   if (phase === 'DAY_CONVERSATION') {
-     // TODO: Implement "Skip to Vote"
-     return (
-       <div className="bg-white p-4 rounded-lg shadow border border-blue-200">
-         <p className="text-center text-slate-600 text-sm">
-           議論中です。怪しい社員を探してください。<br/>
-           時間は自動で進みます (が、今の実装では手動遷移が必要かも？)
-         </p>
-         {myself.isHost && (
-            <button className="mt-2 w-full py-2 bg-gray-200 text-gray-700 rounded text-xs">
-              (開発中: 議論を終了して投票へ - 未実装)
-            </button>
-         )}
-         {/*
-           HACK: Since we don't have a scheduled function,
-           we need a way to move to VOTE.
-           Let's use `submitAction` with a special type or just let players VOTE anytime?
-           Our backend expects phase == DAY_VOTE to accept votes.
-           We need a `changePhase` function.
-           For now, let's allow VOTING immediately if we want, or modify backend to allow vote during conversation?
-           No, that breaks the flow.
-
-           Let's assume the user will ask to fix this or I should add it now.
-           I'll add a quick "Start Vote" button for Host in Dashboard or here,
-           calling a new endpoint or reusing `submitAction`?
-           I can't change backend easily now without updating plan steps again.
-
-           Wait, looking at my backend `submitAction`, it ONLY handles `DAY_VOTE` and `NIGHT_ACTION`.
-           It does NOT handle `DAY_CONVERSATION` -> `DAY_VOTE`.
-           This is a logic gap.
-
-           I will add a client-side note about this.
-           Actually, the `startGame` sets phase to `DAY_CONVERSATION` with a time limit.
-           If I don't have a trigger, the game is stuck.
-
-           I will implement a "Force Next Phase" button for Host that calls a generic `nextPhase` or updates the doc directly? No, security rules block direct writes (assumed).
-
-           I will use `submitAction` with a dummy action or add a `nextPhase` function?
-           I'll stick to the plan: "submitAction... Implement phase transition logic".
-           Maybe I can add a `skipDiscussion` action to `submitAction` in a later patch if needed.
-
-           For now, I'll instruct the user that the game needs a timer trigger.
-           OR, I can make the `submitAction` implicitly handle phase changes if I modify it.
-
-           Let's just show "Discussion" text.
-         */}
-         <div className="mt-2 text-center text-xs text-red-400">
-            ※現在、時間の自動経過トリガーがありません。<br/>
-            (投票画面への遷移ロジックが不足しています)
-         </div>
-         {myself.isHost && (
-             <button
-               className="mt-2 w-full bg-orange-500 text-white py-2 rounded shadow hover:bg-orange-600 transition"
-               onClick={async () => {
-                 const functions = getFirebaseFunctions();
-                 if (!functions) {
-                   alert('Firebase設定が見つかりません');
-                   return;
-                 }
-                 const nextPhaseFn = httpsCallable(functions, 'nextPhase');
-
-                 setLoading(true);
-                 try {
-                   await nextPhaseFn({ roomId: room.id });
-                 } catch (e: any) {
-                   alert(e.message || "エラーが発生しました");
-                 } finally {
-                   setLoading(false);
-                 }
-               }}
-               disabled={loading}
-             >
-               {loading ? '処理中...' : '議論を終了して投票へ'}
-             </button>
-         )}
-       </div>
-     );
+    return (
+      <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl border border-amber-700/30 p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-2xl">☕</span>
+          <div>
+            <h3 className="font-bold text-amber-300 text-sm">議論中</h3>
+            <p className="text-xs text-gray-400">怪しい社員を見極めましょう</p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          議論が終わると投票が始まります。
+        </p>
+      </div>
+    );
   }
 
   // Voting Phase
   if (phase === 'DAY_VOTE') {
-     const hasVoted = room.votes && room.votes[myself.id];
-     const targets = getValidTargets('VOTE');
+    const hasVoted = votes[myself.id] || confirmed;
 
-     return (
-       <div className="bg-white p-4 rounded-lg shadow-lg border-2 border-red-100">
-         <h3 className="font-bold text-red-600 mb-2">解雇投票 (人事評価)</h3>
-         {hasVoted ? (
-            <div className="text-center py-4 text-slate-500">
-              <p>投票済みです。結果を待っています...</p>
-              <p className="text-xs mt-1">全員の投票が終わると開票されます。</p>
-            </div>
-         ) : (
-            <div>
-               <p className="text-sm text-slate-600 mb-3">
-                 会社に害をなすと思う社員を選んでください。
-               </p>
-               <div className="grid grid-cols-2 gap-2 mb-4">
-                 {targets.map(p => (
-                   <button
-                     key={p.id}
-                     onClick={() => setSelectedTarget(p.id)}
-                     className={`p-2 rounded border text-sm transition-colors
-                       ${selectedTarget === p.id
-                         ? 'bg-red-500 text-white border-red-600'
-                         : 'bg-white text-slate-700 border-slate-300 hover:bg-red-50'}`}
-                   >
-                     {p.name}
-                   </button>
-                 ))}
-               </div>
-               <button
-                 onClick={() => handleAction('VOTE')}
-                 disabled={!selectedTarget || loading}
-                 className="w-full py-3 bg-red-600 text-white font-bold rounded-lg shadow hover:bg-red-700 disabled:opacity-50"
-               >
-                 {loading ? '送信中...' : '投票確定'}
-               </button>
-            </div>
-         )}
-         {message && <p className="mt-2 text-center text-sm text-red-500">{message}</p>}
-       </div>
-     );
+    if (hasVoted) {
+      return (
+        <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl border border-red-700/30 p-4 text-center">
+          <span className="text-3xl">🗳️</span>
+          <p className="text-red-300 font-bold mt-2">投票完了</p>
+          <p className="text-xs text-gray-500 mt-1">他の社員の投票を待っています...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl border border-red-700/30 p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-2xl">⚖️</span>
+          <div>
+            <h3 className="font-bold text-red-300 text-sm">解雇投票</h3>
+            <p className="text-xs text-gray-400">解雇したい社員を選んでください</p>
+          </div>
+        </div>
+
+        {alivePlayers.length === 0 ? (
+          <p className="text-xs text-gray-500 text-center py-4">投票対象がいません。結果をお待ちください...</p>
+        ) : (
+        <>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {alivePlayers.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedTarget(p.id)}
+              className={`p-3 rounded-lg border text-sm text-left transition-all duration-200 ${
+                selectedTarget === p.id
+                  ? 'bg-red-600/40 text-white border-red-500 ring-1 ring-red-500 shadow-lg shadow-red-600/20'
+                  : 'bg-gray-900/40 text-gray-300 border-gray-700/50 hover:bg-gray-700/40 hover:border-gray-600'
+              }`}
+            >
+              <span className="font-medium">{p.name}</span>
+              {selectedTarget === p.id && (
+                <span className="block text-xs text-red-300 mt-0.5">✓ 選択中</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleConfirm}
+          disabled={!selectedTarget}
+          className="w-full py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold rounded-lg shadow-lg shadow-red-600/25 hover:shadow-red-600/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          投票確定
+        </button>
+        </>
+        )}
+      </div>
+    );
   }
 
-  // Night Action Phase
+  // Night Action
   if (phase === 'NIGHT_ACTION') {
-     // Check if role has action
-     let actionType: ActionType | null = null;
-     let actionName = '';
+    const role = myself.role;
+    const hasActed = actions[myself.id] || confirmed;
 
-     if (role === 'SPY') { actionType = 'ATTACK'; actionName = '解雇工作 (襲撃)'; }
-     else if (role === 'HR') { actionType = 'DIVINE'; actionName = '身辺調査 (占い)'; }
-     else if (role === 'GA') { actionType = 'GUARD'; actionName = '擁護 (護衛)'; }
+    // No night action for these roles
+    if (!['SPY', 'HR', 'GA'].includes(role)) {
+      return (
+        <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-indigo-800/30 p-4 text-center">
+          <span className="text-3xl">😴</span>
+          <p className="text-indigo-300 font-bold mt-2">残業なし</p>
+          <p className="text-xs text-gray-500 mt-1">あなたは夜に行動する役職ではありません。<br />朝が来るのを待ちましょう...</p>
+        </div>
+      );
+    }
 
-     if (!actionType) {
-        return (
-          <div className="bg-slate-800 text-slate-300 p-4 rounded-lg text-center">
-            <p className="mb-2 text-sm">あなたは夜に行動する役職ではありません。</p>
-            <p className="text-xs opacity-50">朝が来るのを待っています...</p>
+    if (hasActed) {
+      return (
+        <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-purple-700/30 p-4 text-center">
+          <span className="text-3xl">✅</span>
+          <p className="text-purple-300 font-bold mt-2">アクション完了</p>
+          <p className="text-xs text-gray-500 mt-1">結果は朝に判明します...</p>
+        </div>
+      );
+    }
+
+    const actionInfo = getActionInfo(role);
+
+    return (
+      <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-purple-700/30 p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-2xl">{actionInfo.icon}</span>
+          <div>
+            <h3 className="font-bold text-purple-300 text-sm">{actionInfo.title}</h3>
+            <p className="text-xs text-gray-400">{actionInfo.description}</p>
           </div>
-        );
-     }
+        </div>
 
-     const hasActed = room.actions && room.actions[myself.id];
-     const targets = getValidTargets(actionType);
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {alivePlayers.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedTarget(p.id)}
+              className={`p-3 rounded-lg border text-sm text-left transition-all duration-200 ${
+                selectedTarget === p.id
+                  ? 'bg-purple-600/40 text-white border-purple-500 ring-1 ring-purple-500 shadow-lg shadow-purple-600/20'
+                  : 'bg-gray-900/60 text-gray-300 border-gray-700/50 hover:bg-gray-800/60 hover:border-gray-600'
+              }`}
+            >
+              <span className="font-medium">{p.name}</span>
+              {selectedTarget === p.id && (
+                <span className="block text-xs text-purple-300 mt-0.5">✓ 選択中</span>
+              )}
+            </button>
+          ))}
+        </div>
 
-     return (
-       <div className="bg-slate-800 text-white p-4 rounded-lg shadow-lg border border-slate-600">
-         <h3 className="font-bold text-purple-300 mb-2">{actionName}</h3>
-         {hasActed ? (
-            <div className="text-center py-4 text-slate-400">
-              <p>アクション済みです。</p>
-              <p className="text-xs mt-1">他の社員の行動を待っています...</p>
-            </div>
-         ) : (
-            <div>
-               <p className="text-sm text-slate-300 mb-3">
-                 対象を選択してください。
-               </p>
-               <div className="grid grid-cols-2 gap-2 mb-4">
-                 {targets.map(p => (
-                   <button
-                     key={p.id}
-                     onClick={() => setSelectedTarget(p.id)}
-                     className={`p-2 rounded border text-sm transition-colors
-                       ${selectedTarget === p.id
-                         ? 'bg-purple-600 text-white border-purple-500'
-                         : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'}`}
-                   >
-                     {p.name}
-                   </button>
-                 ))}
-               </div>
-               <button
-                 onClick={() => handleAction(actionType!)}
-                 disabled={!selectedTarget || loading}
-                 className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 disabled:opacity-50"
-               >
-                 {loading ? '送信中...' : '実行'}
-               </button>
-            </div>
-         )}
-          {message && <p className="mt-2 text-center text-sm text-purple-300">{message}</p>}
-       </div>
-     );
+        <button
+          onClick={handleConfirm}
+          disabled={!selectedTarget}
+          className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-lg shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          {actionInfo.buttonText}
+        </button>
+      </div>
+    );
+  }
+
+  // Vote result or Night result - show waiting
+  if (phase === 'VOTE_RESULT' || phase === 'NIGHT_RESULT') {
+    return null;
   }
 
   return null;
+}
+
+function getActionInfo(role: string) {
+  switch (role) {
+    case 'SPY':
+      return {
+        icon: '🗡️',
+        title: '解雇工作（襲撃）',
+        description: '今夜解雇する社員を選んでください',
+        buttonText: '襲撃実行',
+      };
+    case 'HR':
+      return {
+        icon: '🔍',
+        title: '身辺調査（占い）',
+        description: '素性を調べたい社員を選んでください',
+        buttonText: '調査開始',
+      };
+    case 'GA':
+      return {
+        icon: '🛡️',
+        title: '擁護（護衛）',
+        description: '守りたい社員を選んでください',
+        buttonText: '護衛開始',
+      };
+    default:
+      return {
+        icon: '❓',
+        title: 'アクション',
+        description: '',
+        buttonText: '実行',
+      };
+  }
 }

@@ -1,83 +1,108 @@
-import { Room, Player, Role, getRoleName, getRoleDescription } from '@/types/shachiku-jinro';
-import { User } from 'firebase/auth';
+'use client';
+
+import { Player, Phase, WinnerType, getRoleName, getRoleEmoji } from '@/types/shachiku-jinro';
 
 interface PlayerCardProps {
   player: Player;
   isSelf: boolean;
-  gamePhase: Room['phase'];
-  winner?: Room['winner'];
+  gamePhase: Phase;
+  winner: WinnerType;
+  wasExecuted?: boolean;
+  wasAttacked?: boolean;
 }
 
-export default function PlayerCard({ player, isSelf, gamePhase, winner }: PlayerCardProps) {
+export default function PlayerCard({ player, isSelf, gamePhase, winner, wasExecuted, wasAttacked }: PlayerCardProps) {
   const isDead = !player.isAlive;
 
-  // Role should be hidden unless:
-  // 1. It's the player themselves (and game started)
-  // 2. The game is over
-  // 3. The player is dead (usually revealed, but depends on rules. Let's reveal on death for simplicity or keep hidden if "Ghost" rules apply. Standard Jinro reveals on death? No, usually distinct. Let's reveal on Game Over mostly, or if Client logic allows checking `roleRevealed` flag if we had one from server).
-  // Note: The Firestore `room` data fetched by client currently contains ALL roles because we didn't implement a separate subcollection or filtered view for security in this simplified version.
-  // In a real app, we MUST filter this on backend. For this prototype, we just hide it in UI.
-
-  // "Cheating" prevention in UI only for now:
+  // Show role when: self view (always), or game over
   const shouldShowRole = isSelf || gamePhase === 'GAME_OVER';
+
+  // Visual emphasis for recently affected players
+  const isHighlighted = wasExecuted || wasAttacked;
 
   return (
     <div className={`
-      relative p-3 rounded-lg border-2 shadow-sm transition-all duration-300
-      ${isDead ? 'bg-gray-200 border-gray-300 opacity-75 grayscale' : 'bg-white border-blue-100'}
-      ${isSelf ? 'ring-2 ring-blue-400 ring-offset-2' : ''}
+      relative rounded-xl border transition-all duration-500 overflow-hidden
+      ${isDead
+        ? 'bg-gray-900/60 border-gray-800/50 opacity-60'
+        : isSelf
+          ? 'bg-gray-800/80 border-blue-500/40 ring-1 ring-blue-500/30 shadow-lg shadow-blue-500/10'
+          : 'bg-gray-800/60 border-gray-700/40'
+      }
+      ${isHighlighted ? 'ring-2 ring-red-500 shadow-lg shadow-red-500/30 animate-shake' : ''}
     `}>
-      {/* Badge / Status */}
-      <div className="flex justify-between items-start mb-2">
-        <div className={`
-          w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-          ${isDead ? 'bg-gray-500 text-white' : 'bg-green-500 text-white'}
-        `}>
-          {isDead ? '退' : '勤'}
+      {/* Self indicator */}
+      {isSelf && !isDead && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500" />
+      )}
+
+      <div className="p-2.5">
+        {/* Status + Host badge */}
+        <div className="flex justify-between items-start mb-1.5">
+          <div className={`
+            w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold
+            ${isDead
+              ? 'bg-red-900/50 text-red-400 border border-red-800/50'
+              : 'bg-green-900/50 text-green-400 border border-green-800/50'
+            }
+          `}>
+            {isDead ? '✕' : '◉'}
+          </div>
+          {player.isAI && !isDead && (
+            <span className="text-[9px] bg-gray-700/50 text-gray-500 px-1 py-0.5 rounded border border-gray-700/30">
+              AI
+            </span>
+          )}
         </div>
-        {player.isHost && (
-          <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded border border-orange-200">
-            主催
-          </span>
+
+        {/* Name */}
+        <div className="text-center mb-1.5">
+          <p className={`font-bold text-xs truncate ${isDead ? 'line-through text-gray-600' : 'text-gray-200'}`}>
+            {player.name}
+          </p>
+          {isSelf && (
+            <p className="text-[10px] text-blue-400 font-medium">あなた</p>
+          )}
+        </div>
+
+        {/* Role (visible for self or game over) */}
+        {shouldShowRole && (
+          <div className={`
+            mt-1.5 p-1.5 rounded-md text-center
+            ${isDead ? 'bg-gray-800/60' : 'bg-gray-900/50'}
+          `}>
+            <span className="text-sm">{getRoleEmoji(player.role)}</span>
+            <p className="font-bold text-[10px] text-gray-300 mt-0.5">{getRoleName(player.role)}</p>
+          </div>
+        )}
+
+        {/* Hidden role (unknown) */}
+        {!shouldShowRole && !isDead && (
+          <div className="mt-1.5 p-1.5 rounded-md bg-gray-900/40 text-center">
+            <span className="text-sm">❓</span>
+            <p className="text-[10px] text-gray-600 font-mono">???</p>
+          </div>
+        )}
+
+        {/* Dead but role not revealed */}
+        {!shouldShowRole && isDead && (
+          <div className="mt-1.5 p-1.5 rounded-md bg-red-950/40 text-center border border-red-900/30">
+            <span className="text-sm">💀</span>
+            <p className="text-[10px] text-red-500 font-bold">解雇</p>
+          </div>
         )}
       </div>
 
-      {/* Name */}
-      <div className="mb-2 text-center">
-        <p className={`font-bold truncate text-sm ${isDead ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-          {player.name}
-        </p>
-        {isSelf && <p className="text-[10px] text-blue-500 font-medium">(あなた)</p>}
-      </div>
-
-      {/* Role Reveal (Self or End) */}
-      {shouldShowRole && (
-        <div className={`
-          mt-2 p-2 rounded text-center text-xs
-          ${isDead ? 'bg-gray-300' : 'bg-slate-100'}
-        `}>
-          <p className="font-bold text-slate-700">{getRoleName(player.role)}</p>
-          {isSelf && gamePhase !== 'GAME_OVER' && (
-             <p className="text-[10px] text-slate-500 mt-1 leading-tight text-left">
-               {getRoleDescription(player.role)}
-             </p>
-          )}
-        </div>
-      )}
-
-      {/* Unknown Role State */}
-      {!shouldShowRole && !isDead && (
-        <div className="mt-2 p-2 rounded bg-slate-50 text-center">
-          <p className="text-xs text-slate-400 font-mono">???</p>
-        </div>
-      )}
-
-      {/* Dead State */}
-      {!shouldShowRole && isDead && (
-        <div className="mt-2 p-2 rounded bg-red-50 text-center">
-          <p className="text-xs text-red-400 font-bold">解雇</p>
-        </div>
-      )}
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }

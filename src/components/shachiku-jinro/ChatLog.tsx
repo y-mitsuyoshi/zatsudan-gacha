@@ -1,56 +1,58 @@
+'use client';
+
 import { GameLog, Player } from '@/types/shachiku-jinro';
 import { useEffect, useRef } from 'react';
 
 interface ChatLogProps {
   logs: GameLog[];
   players: Record<string, Player>;
+  myId?: string;
+  conversations: { playerId: string; message: string }[];
 }
 
-export default function ChatLog({ logs, players }: ChatLogProps) {
+export default function ChatLog({ logs, players, myId, conversations }: ChatLogProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+  }, [conversations]);
+
+  // Only show chat-type messages and conversations
+  const chatLogs = logs.filter(l => l.type === 'CHAT');
 
   return (
-    <div className="h-64 overflow-y-auto p-4 bg-slate-50 space-y-3">
-      {logs.length === 0 && (
-        <p className="text-center text-gray-400 text-sm py-4">履歴はありません</p>
+    <div className="h-48 overflow-y-auto p-3 space-y-2.5 bg-gray-900/30">
+      {conversations.length === 0 && chatLogs.length === 0 && (
+        <p className="text-center text-gray-600 text-xs py-6">議論はまだ始まっていません...</p>
       )}
 
-      {logs.map((log) => {
-        const isSystem = log.type === 'SYSTEM' || log.type === 'RESULT';
+      {conversations.map((conv, idx) => {
+        const player = players[conv.playerId];
+        if (!player) return null;
 
-        if (isSystem) {
-          return (
-            <div key={log.id} className="flex justify-center my-2">
-              <span className={`
-                px-3 py-1 rounded-full text-xs font-bold shadow-sm
-                ${log.type === 'RESULT'
-                  ? 'bg-red-100 text-red-700 border border-red-200'
-                  : 'bg-blue-100 text-blue-700 border border-blue-200'}
-              `}>
-                {log.message}
-              </span>
-            </div>
-          );
-        }
-
-        const player = log.playerId ? players[log.playerId] : null;
-        const playerName = player ? player.name : 'Unknown';
+        const isSelf = conv.playerId === myId;
 
         return (
-          <div key={log.id} className="flex flex-col items-start">
-             <div className="flex items-baseline space-x-2">
-               <span className="font-bold text-sm text-slate-700">{playerName}</span>
-               <span className="text-[10px] text-slate-400">
-                 {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-               </span>
-             </div>
-             <div className="bg-white p-2 rounded-r-lg rounded-bl-lg border border-slate-200 shadow-sm text-sm text-slate-800 mt-1 max-w-[90%]">
-               {log.message}
-             </div>
+          <div key={`conv-${idx}`} className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] ${isSelf ? 'order-1' : ''}`}>
+              <div className={`flex items-baseline gap-1.5 mb-0.5 ${isSelf ? 'justify-end' : ''}`}>
+                <span className="text-xs font-semibold text-gray-400">
+                  {player.name}
+                </span>
+                {!player.isAlive && (
+                  <span className="text-[10px] text-red-500">(退職済)</span>
+                )}
+              </div>
+              <div className={`
+                px-3 py-2 rounded-xl text-sm leading-relaxed
+                ${isSelf
+                  ? 'bg-blue-600/30 text-blue-200 rounded-br-sm border border-blue-700/30'
+                  : 'bg-gray-800/80 text-gray-300 rounded-bl-sm border border-gray-700/30'
+                }
+              `}>
+                {conv.message}
+              </div>
+            </div>
           </div>
         );
       })}
