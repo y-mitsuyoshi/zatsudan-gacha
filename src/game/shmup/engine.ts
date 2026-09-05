@@ -19,6 +19,9 @@ export interface HudSnapshot {
   bossName: string;
   kills: number;
   graze: number;
+  fps: number;
+  pb: number;
+  eb: number;
 }
 
 export interface RunResult {
@@ -36,6 +39,7 @@ export type EngineEvent =
   | { type: 'hud'; hud: HudSnapshot }
   | { type: 'banner'; title: string; sub?: string }
   | { type: 'gameover'; result: RunResult }
+  | { type: 'error'; message: string }
   | { type: 'autopause' };
 
 export interface EngineOptions {
@@ -80,6 +84,7 @@ const MAX_EN = 48;
 const MAX_PT = 220;
 const MAX_TX = 24;
 const MAX_IT = 24;
+const STEP = 1 / 60;
 
 function dist2(ax: number, ay: number, bx: number, by: number): number {
   const dx = ax - bx;
@@ -141,6 +146,11 @@ export class ShmupEngine {
   private flashColor = '#ffffff';
   private scroll = 0;
   private hudT = 0;
+  private fps = 60;
+  private acc = 0;
+  private errorReported = false;
+  private bgGrad: CanvasGradient | null = null;
+  private bgGradH = 0;
   private shakeEnabled: boolean;
   private time = 0;
 
@@ -235,7 +245,11 @@ export class ShmupEngine {
 
   start(): void {
     this.sprites = buildSprites();
-    this.bg = buildBackground(this.stageIdx, VIEW_W, VIEW_H);
+    try {
+      (window as unknown as { __shmup?: ShmupEngine }).__shmup = this;
+    } catch {
+      /* ignore */
+    }    this.bg = buildBackground(this.stageIdx, VIEW_W, VIEW_H);
     this.startedAt = performance.now();
     const st = STAGES[this.stageIdx];
     this.sound.unlock();
@@ -243,15 +257,36 @@ export class ShmupEngine {
     this.onEvent({ type: 'banner', title: `Stage ${this.stage}`, sub: st ? `${st.name} — ${st.sub}` : '' });
     this.pushHud();
     this.last = performance.now();
+    this.acc = 0;
     const frame = (now: number) => {
       if (this.destroyed) return;
       this.raf = requestAnimationFrame(frame);
-      let dt = (now - this.last) / 1000;
-      this.last = now;
-      if (dt > 0.05) dt = 0.05;
-      if (dt <= 0) return;
-      if (!this.paused) this.step(dt);
-      this.render();
+      try {
+        let dt = (now - this.last) / 1000;
+        this.last = now;
+        if (!(dt > 0)) return;
+        if (dt > 0.25) dt = 0.25;
+        this.fps = this.fps * 0.95 + (1 / dt) * 0.05;
+        if (!this.paused) {
+          // fixed-timestep simulation: game speed stays correct on any device
+          this.acc += dt;
+          let n = 0;
+          while (this.acc >= STEP && n < 4) {
+            this.step(STEP);
+            this.acc -= STEP;
+            n++;
+          }
+          if (n === 4) this.acc = 0;
+        }
+        this.render();
+      } catch (err) {
+        if (!this.errorReported) {
+          this.errorReported = true;
+          this.paused = true;
+          this.sound.stopBgm();
+          this.onEvent({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+        }
+      }
     };
     this.raf = requestAnimationFrame(frame);
   }
@@ -294,6 +329,31 @@ export class ShmupEngine {
 
   setShake(on: boolean): void {
     this.shakeEnabled = on;
+  }
+
+  /** Live diagnostics (used by automated checks and the on-screen debug line). */
+  getStats(): {
+    pb: number; eb: number; en: number; items: number; particles: number;
+    phase: string; score: number; fireT: number; weapon: WeaponId;
+    hasSprites: boolean; fps: number; px: number; py: number;
+  } {
+    let pb = 0;
+    let eb = 0;
+    let en = 0;
+    let items = 0;
+    let particles = 0;
+    for (const b of this.pbullets) if (b.alive) pb++;
+    for (const b of this.ebullets) if (b.alive) eb++;
+    for (const e of this.enemies) if (e.alive) en++;
+    for (const i of this.items) if (i.alive) items++;
+    for (const p of this.particles) if (p.alive) particles++;
+    return {
+      pb, eb, en, items, particles,
+      phase: this.phase, score: this.score,
+      fireT: Math.round(this.fireT * 1000) / 1000, weapon: this.weapon,
+      hasSprites: !!this.sprites, fps: Math.round(this.fps * 10) / 10,
+      px: Math.round(this.px), py: Math.round(this.py),
+    };
   }
 
   useBomb(): void {
@@ -533,6 +593,7 @@ export class ShmupEngine {
       for (const [ox, ang] of streams) {
         const s = this.allocPB();
         if (!s) break;
+        s.alive = true;
         s.x = this.px + ox;
         s.y = this.py - 24;
         s.vx = Math.sin(ang) * 660;
@@ -547,6 +608,7 @@ export class ShmupEngine {
       for (const a of angs) {
         const s = this.allocPB();
         if (!s) break;
+        s.alive = true;
         s.x = this.px;
         s.y = this.py - 24;
         s.vx = Math.sin(a) * 580;
@@ -560,6 +622,7 @@ export class ShmupEngine {
       for (let i = 0; i < n; i++) {
         const s = this.allocPB();
         if (!s) break;
+        s.alive = true;
         s.x = this.px + (i - (n - 1) / 2) * 16;
         s.y = this.py - 20;
         s.vx = (i - (n - 1) / 2) * 40;
@@ -569,6 +632,9 @@ export class ShmupEngine {
         s.retarget = 0;
       }
     }
+    // muzzle flash: two white sparks so every shot reads clearly
+    this.spawnParticle(this.px - 4, this.py - 26, -40, -220, 0.1, 3, '#ffffff');
+    this.spawnParticle(this.px + 4, this.py - 26, 40, -220, 0.1, 3, '#ffffff');
     this.sound.shoot();
   }
 
@@ -1187,6 +1253,10 @@ export class ShmupEngine {
 
   private pushHud(): void {
     const b = this.boss;
+    let pb = 0;
+    let eb = 0;
+    for (const x of this.pbullets) if (x.alive) pb++;
+    for (const x of this.ebullets) if (x.alive) eb++;
     this.onEvent({
       type: 'hud',
       hud: {
@@ -1205,6 +1275,9 @@ export class ShmupEngine {
         bossName: (STAGES[b.idx]?.boss ?? 'ボス') as string,
         kills: this.kills,
         graze: this.grazeCount,
+        fps: Math.round(this.fps),
+        pb,
+        eb,
       },
     });
   }
@@ -1224,7 +1297,16 @@ export class ShmupEngine {
     }
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#000';
+    // full-bleed backdrop so fullscreen letterboxing looks intentional
+    if (!this.bgGrad || this.bgGradH !== bh) {
+      const gg = ctx.createLinearGradient(0, 0, 0, ch);
+      gg.addColorStop(0, '#070714');
+      gg.addColorStop(0.5, '#0b0b1c');
+      gg.addColorStop(1, '#05050c');
+      this.bgGrad = gg;
+      this.bgGradH = bh;
+    }
+    ctx.fillStyle = this.bgGrad;
     ctx.fillRect(0, 0, cw, ch);
 
     const s = Math.min(cw / VIEW_W, ch / VIEW_H);
@@ -1338,7 +1420,7 @@ export class ShmupEngine {
           }
         } else {
           const img = sp.playerBullets[bl.kind === 1 ? 1 : 0];
-          if (img) ctx.drawImage(img, bl.x - 8, bl.y - 8, 16, 16);
+          if (img) ctx.drawImage(img, bl.x - 9, bl.y - 17, 18, 34);
         }
       }
       // player

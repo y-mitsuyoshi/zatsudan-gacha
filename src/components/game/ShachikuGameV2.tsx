@@ -19,6 +19,7 @@ const DEFAULT_HUD: HudSnapshot = {
   score: 0, combo: 0, maxCombo: 0, stage: 1, hp: 100, maxHp: 100,
   bombs: 2, weapon: 'rensa', weaponLevel: 1, bossActive: false,
   bossHp: 0, bossMax: 1, bossName: '', kills: 0, graze: 0,
+  fps: 60, pb: 0, eb: 0,
 };
 
 export default function ShachikuGameV2() {
@@ -39,6 +40,7 @@ export default function ShachikuGameV2() {
   const [hasContinue, setHasContinue] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [shared, setShared] = useState(false);
+  const [fatal, setFatal] = useState<string | null>(null);
 
   useEffect(() => {
     const s = loadSettings();
@@ -74,6 +76,7 @@ export default function ShachikuGameV2() {
       const id = ++runId.current;
       setResult(null);
       setShared(false);
+      setFatal(null);
       setBanner(null);
       setHud({ ...DEFAULT_HUD, weapon, score: opts?.score ?? 0, stage: opts?.stage ?? 1 });
       const engine = new ShmupEngine({
@@ -101,6 +104,9 @@ export default function ShachikuGameV2() {
             setScreen('result');
           } else if (e.type === 'autopause') {
             setScreen((s) => (s === 'playing' ? 'paused' : s));
+          } else if (e.type === 'error') {
+            setFatal(e.message);
+            setScreen('paused');
           }
         },
       });
@@ -179,13 +185,27 @@ export default function ShachikuGameV2() {
     <div className="relative flex h-dvh w-full flex-col items-center justify-center bg-black text-white">
       <div
         ref={wrapRef}
-        className="relative h-full w-full overflow-hidden bg-[#05050c] sm:max-h-[860px] sm:max-w-[430px] sm:rounded-2xl sm:border sm:border-white/10"
+        className="relative h-full w-full overflow-hidden bg-[#05050c]"
       >
         <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full touch-none select-none" />
 
+        {/* fatal error surfaced from the engine (never fail silently) */}
+        {fatal && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/85 p-6 text-center">
+            <div className="text-2xl font-black text-red-400">エラーが発生しました</div>
+            <div className="max-w-sm break-all font-mono text-xs text-gray-300">{fatal}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-xl bg-green-500 px-6 py-3 font-black hover:bg-green-400"
+            >
+              ↻ 再読み込み
+            </button>
+          </div>
+        )}
+
         {/* HUD */}
         {(screen === 'playing' || screen === 'paused') && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 p-2">
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 w-full max-w-[520px] -translate-x-1/2 p-2">
             <div className="flex items-start justify-between gap-2">
               <div className="rounded-lg bg-black/60 px-2.5 py-1.5 text-xs backdrop-blur-sm">
                 <div className="font-bold text-yellow-300">Stage {hud.stage} ・ {titleForStage(hud.stage)}</div>
@@ -249,16 +269,21 @@ export default function ShachikuGameV2() {
 
         {/* touch bomb button */}
         {screen === 'playing' && (
-          <button
-            onPointerDown={(e) => {
-              e.preventDefault();
-              engineRef.current?.useBomb();
-            }}
-            aria-label="有給ボム"
-            className="absolute bottom-6 right-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-pink-300/60 bg-pink-600/70 text-xs font-bold shadow-lg backdrop-blur-sm active:scale-95"
-          >
-            📄<br />有給
-          </button>
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 w-full max-w-[520px] -translate-x-1/2">
+            <div className="absolute bottom-1.5 left-2 font-mono text-[10px] text-white/40">
+              {hud.fps}fps 弾{hud.pb} 敵弾{hud.eb}
+            </div>
+            <button
+              onPointerDown={(e) => {
+                e.preventDefault();
+                engineRef.current?.useBomb();
+              }}
+              aria-label="有給ボム"
+              className="pointer-events-auto absolute bottom-6 right-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-pink-300/60 bg-pink-600/70 text-xs font-bold shadow-lg backdrop-blur-sm active:scale-95"
+            >
+              📄<br />有給
+            </button>
+          </div>
         )}
 
         {/* title */}
