@@ -3,8 +3,8 @@
 export const VIEW_W = 480;
 export const VIEW_H = 800;
 
-export type WeaponId = 'rensa' | 'kakusan' | 'tsuibi';
-export type EnemyId = 'commuter' | 'mail' | 'phone' | 'manager' | 'bug' | 'black';
+export type WeaponId = 'rensa' | 'kakusan' | 'tsuibi' | 'laser';
+export type EnemyId = 'commuter' | 'mail' | 'phone' | 'manager' | 'bug' | 'black' | 'dasher' | 'printer';
 
 export interface WeaponDef {
   id: WeaponId;
@@ -16,6 +16,7 @@ export const WEAPONS: WeaponDef[] = [
   { id: 'rensa', name: '連射', desc: '高速の太い弾。ボスに強い' },
   { id: 'kakusan', name: '拡散', desc: '5方向ワイド。雑魚一掃' },
   { id: 'tsuibi', name: '追尾', desc: '誘導弾。回避に集中できる' },
+  { id: 'laser', name: 'レーザー', desc: '貫通2連ビーム。一列粉砕' },
 ];
 
 export interface SpellDef {
@@ -48,7 +49,7 @@ export const STAGES: StageDef[] = [
   {
     name: '朝礼', sub: '社長の話を聞け！', boss: '紙の山', accent: '#ffd257',
     top: '#1c2430', bottom: '#4a5568', duration: 27,
-    enemies: ['commuter', 'mail'],
+    enemies: ['commuter', 'mail', 'dasher'],
     spells: [
       { name: '紙吹雪「稟議乱舞」', sub: 'ランダムシャワー' },
       { name: '奥義「ハンコ三連」', sub: '狙撃3バースト' },
@@ -57,7 +58,7 @@ export const STAGES: StageDef[] = [
   {
     name: 'メールの嵐', sub: '全員に返信！', boss: '激怒クレーマー', accent: '#7fe7ff',
     top: '#0f2f52', bottom: '#3f7fc1', duration: 28,
-    enemies: ['mail', 'phone', 'commuter'],
+    enemies: ['mail', 'phone', 'commuter', 'dasher'],
     spells: [
       { name: '怒号「無限リング」', sub: '全方位12連' },
       { name: '絶叫「着信地獄」', sub: '二重螺旋' },
@@ -66,7 +67,7 @@ export const STAGES: StageDef[] = [
   {
     name: '中間管理職', sub: '承認地獄！', boss: '課長', accent: '#ffab4a',
     top: '#3a1c00', bottom: '#7a3c10', duration: 29,
-    enemies: ['phone', 'manager', 'mail'],
+    enemies: ['phone', 'manager', 'mail', 'printer'],
     spells: [
       { name: '査定「赤点連打」', sub: '高速3点バースト' },
       { name: '圧力「会議延長」', sub: '遅延リング＋狙撃' },
@@ -75,7 +76,7 @@ export const STAGES: StageDef[] = [
   {
     name: 'システム障害', sub: '致命的なエラー！', boss: 'サーバ室', accent: '#4dffa6',
     top: '#02120a', bottom: '#0b3d24', duration: 30,
-    enemies: ['bug', 'manager', 'phone'],
+    enemies: ['bug', 'manager', 'phone', 'printer', 'dasher'],
     spells: [
       { name: '障害「データ豪雨」', sub: '垂直の雨' },
       { name: '復旧「ロールバック」', sub: '逆回転スパイラル' },
@@ -84,7 +85,7 @@ export const STAGES: StageDef[] = [
   {
     name: 'ブラック企業', sub: '最終決戦！', boss: 'CEO', accent: '#ff5d5d',
     top: '#26060a', bottom: '#5c1010', duration: 32,
-    enemies: ['black', 'bug', 'manager'],
+    enemies: ['black', 'bug', 'manager', 'printer', 'dasher'],
     spells: [
       { name: '支配「無限残業」', sub: '三重螺旋＋狙撃' },
       { name: '最終決裁「過労死」', sub: '全方位怒涛' },

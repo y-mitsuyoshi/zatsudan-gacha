@@ -304,7 +304,7 @@ export default function DanmakuGame() {
             </h1>
             <p className="text-sm text-gray-300">WebGL弾幕STG — 残機制・チェイン・グレイズ・<br />スペルカード取得でハイスコアを狙え！</p>
 
-            <div className="grid w-full max-w-sm grid-cols-3 gap-2">
+            <div className="grid w-full max-w-sm grid-cols-2 gap-2">
               {WEAPONS.map((w) => (
                 <button
                   key={w.id}
@@ -376,7 +376,7 @@ export default function DanmakuGame() {
                 <p>🖱️ <b>移動(マウス)</b>: カーソルに自機が追従（クリック不要）。右ボタン押下で低速精密＋当たり判定表示</p>
                 <p>👆 <b>移動(タッチ)</b>: ドラッグで相対移動。指の下に自機が隠れません</p>
                 <p>⌨️ <b>移動(キー)</b>: WASD・矢印（Shiftで低速精密＋当たり判定表示）</p>
-                <p>🔫 <b>攻撃</b>: 自動連射。Cキーで武器切替、オプション機が援護</p>
+                <p>🔫 <b>攻撃</b>: 自動連射。Cキーで武器切替（連射・拡散・追尾・レーザー）、オプション機が援護</p>
                 <p>💣 <b>ボム</b>: Xキー / 右下ボタン。弾消し＋大ダメージ＋無敵</p>
                 <p>✨ <b>グレイズ</b>: 弾をギリギリでかわして加算</p>
                 <p>🔥 <b>チェイン</b>: 連続撃破で倍率UP。ゲージが切れる前に撃破を続けよう。被弾でリセット</p>

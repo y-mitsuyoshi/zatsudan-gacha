@@ -322,18 +322,34 @@ export class DanmakuEngine {
   private toLogical(cx: number, cy: number): { x: number; y: number } | null {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return null;
-    // world is contain-fitted: height 800 always visible; width = max(480, 800*aspect)
+    // mirror DanmakuView.resize: height 800 always visible; wider/narrower
+    // screens extend the visible world. Y axis: sim y=0 is screen top.
     const aspect = rect.width / rect.height;
-    const worldW = Math.max(480, 800 * aspect);
+    let halfW = 400 * aspect;
+    let halfH = 400;
+    if (halfW < 240) {
+      halfW = 240;
+      halfH = 240 / Math.max(0.01, aspect);
+    }
     return {
-      x: ((cx - rect.left) / rect.width - 0.5) * worldW + 240,
-      y: (0.5 - (cy - rect.top) / rect.height) * 800 + 400,
+      x: 240 - halfW + ((cx - rect.left) / rect.width) * 2 * halfW,
+      y: 400 - halfH + ((cy - rect.top) / rect.height) * 2 * halfH,
     };
   }
 
   private stepSim(dt: number): void {
     const k = this.keys;
     const touching = this.touchId !== null;
+    const kb = k.has('ArrowLeft') || k.has('KeyA') || k.has('ArrowRight') || k.has('KeyD')
+      || k.has('ArrowUp') || k.has('KeyW') || k.has('ArrowDown') || k.has('KeyS');
+    if (kb) {
+      // re-sync pointer targets so the ship doesn't snap back to a stale
+      // cursor/finger position when the keys are released
+      this.mouseX = this.sim.px;
+      this.mouseY = this.sim.py;
+      this.touchTX = this.sim.px;
+      this.touchTY = this.sim.py;
+    }
     const input: InputState = {
       left: k.has('ArrowLeft') || k.has('KeyA'),
       right: k.has('ArrowRight') || k.has('KeyD'),

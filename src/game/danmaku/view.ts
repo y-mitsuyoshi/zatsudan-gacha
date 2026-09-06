@@ -134,7 +134,7 @@ export class DanmakuView {
 
     const et = enemyTextures();
     for (const [kind, t] of Object.entries(et)) {
-      this.enemyMeshes[kind] = mkInst(t, 20, false, 3);
+      this.enemyMeshes[kind] = mkInst(t, 24, false, 3);
     }
     const it = itemTextures();
     for (const [kind, t] of Object.entries(it)) {
@@ -300,7 +300,8 @@ export class DanmakuView {
       const rot = Math.atan2(bl.vx, -bl.vy);
       if (bl.kind === 0) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 20, 38, rot, 1, 0.68, 0.16);
       else if (bl.kind === 1) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 22, 32, rot, 0.3, 0.85, 1);
-      else this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 18, 30, rot, 0.75, 0.45, 1);
+      else if (bl.kind === 2) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 18, 30, rot, 0.75, 0.45, 1);
+      else this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 26, 46, rot, 0.45, 1, 0.55);
     }
     this.flush(this.pbMesh, n);
 
@@ -324,13 +325,13 @@ export class DanmakuView {
       if (!mesh) continue;
       const i = counts[e.kind] ?? 0;
       counts[e.kind] = i + 1;
-      if (i >= 20) continue;
+      if (i >= 24) continue;
       const pulse = e.tele > 0 ? 1 + 0.14 * Math.sin(time * 30) : 1;
       const s = (e.r * 2 + 12) * pulse;
       this.writeInst(mesh, i, WORLD_X(e.x), WORLD_Y(e.y), s, s, 0, 1, 1, 1);
     }
     for (const [kind, mesh] of Object.entries(this.enemyMeshes)) {
-      this.flush(mesh, Math.min(20, counts[kind] ?? 0));
+      this.flush(mesh, Math.min(24, counts[kind] ?? 0));
     }
 
     // items grouped by kind

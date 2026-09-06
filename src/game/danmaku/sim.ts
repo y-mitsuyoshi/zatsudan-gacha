@@ -7,7 +7,7 @@ import { STAGES, EXTENDS, rankFor, difficultyDef, type Difficulty, type EnemyId,
 
 export type Phase = 'fly' | 'warn' | 'boss' | 'interval' | 'over';
 
-export interface PBullet { alive: boolean; x: number; y: number; vx: number; vy: number; dmg: number; kind: number; retarget: number; }
+export interface PBullet { alive: boolean; x: number; y: number; vx: number; vy: number; dmg: number; kind: number; retarget: number; pierce: number; }
 export interface EBullet { alive: boolean; x: number; y: number; vx: number; vy: number; big: boolean; grazed: boolean; }
 export interface Enemy {
   alive: boolean; kind: EnemyId; x: number; y: number; x0: number;
@@ -23,7 +23,7 @@ export interface BossState {
   alive: boolean; idx: number; x: number; y: number; hp: number; maxHp: number;
   t: number; atkT: number; tele: number; pending: number; angle: number;
   burst: number; burstT: number; summonT: number; flash: number; entered: boolean;
-  spellActive: boolean; spellClean: boolean;
+  spellActive: boolean; spellClean: boolean; spellShown: boolean[];
 }
 
 export interface RunResult {
@@ -46,11 +46,13 @@ const ENEMY_DEFS: Record<EnemyId, { hp: number; speed: number; score: number; r:
   manager: { hp: 15, speed: 88, score: 550, r: 16, elite: true },
   bug: { hp: 9, speed: 68, score: 450, r: 15, elite: true },
   black: { hp: 26, speed: 98, score: 1100, r: 17, elite: true },
+  dasher: { hp: 6, speed: 150, score: 350, r: 14, elite: false },
+  printer: { hp: 22, speed: 42, score: 800, r: 18, elite: true },
 };
 
-export const MAX_PB = 160;
-export const MAX_EB = 320;
-export const MAX_EN = 48;
+export const MAX_PB = 224;
+export const MAX_EB = 448;
+export const MAX_EN = 64;
 export const MAX_PT = 384;
 export const MAX_TX = 12;
 export const MAX_IT = 24;
@@ -124,6 +126,7 @@ export class DanmakuSim {
     alive: false, idx: 0, x: 240, y: -80, hp: 1, maxHp: 1,
     t: 0, atkT: 2, tele: 0, pending: 0, angle: 0, burst: 0, burstT: 0,
     summonT: 7, flash: 0, entered: false, spellActive: false, spellClean: true,
+    spellShown: [false, false],
   };
 
   pbullets: PBullet[] = [];
@@ -136,7 +139,7 @@ export class DanmakuSim {
   events: SimEvent[] = [];
 
   constructor() {
-    for (let i = 0; i < MAX_PB; i++) this.pbullets.push({ alive: false, x: 0, y: 0, vx: 0, vy: 0, dmg: 1, kind: 0, retarget: 0 });
+    for (let i = 0; i < MAX_PB; i++) this.pbullets.push({ alive: false, x: 0, y: 0, vx: 0, vy: 0, dmg: 1, kind: 0, retarget: 0, pierce: 0 });
     for (let i = 0; i < MAX_EB; i++) this.ebullets.push({ alive: false, x: 0, y: 0, vx: 0, vy: 0, big: false, grazed: false });
     for (let i = 0; i < MAX_EN; i++) this.enemies.push({ alive: false, kind: 'commuter', x: 0, y: 0, x0: 0, hp: 1, maxHp: 1, t: 0, fireT: 0, tele: 0, speed: 90, score: 100, r: 15 });
     for (let i = 0; i < MAX_PT; i++) this.particles.push({ alive: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, size: 2, color: 0xffffff });
@@ -258,8 +261,8 @@ export class DanmakuSim {
       this.stageT += dt;
       this.spawnT -= dt;
       const st = STAGES[this.stageIdx];
-      const interval = Math.max(0.34, 0.9 - this.stage * 0.05) / ((1 + this.loop * 0.2) * this.spawnRateMult);
-      const cap = Math.min(20, 9 + this.stage);
+      const interval = Math.max(0.3, 0.84 - this.stage * 0.05) / ((1 + this.loop * 0.2) * this.spawnRateMult);
+      const cap = Math.min(26, 11 + this.stage);
       if (this.spawnT <= 0 && st) {
         this.spawnT = interval;
         let alive = 0;
@@ -317,11 +320,11 @@ export class DanmakuSim {
     slot.x = slot.x0;
     slot.y = -30;
     slot.t = 0;
-    slot.hp = slot.maxHp = Math.max(1, Math.round(def.hp * mult * 0.62 * this.eHpMult));
+    slot.hp = slot.maxHp = Math.max(1, Math.round(def.hp * mult * 0.68 * this.eHpMult));
     slot.speed = def.speed * Math.min(1.35, 1 + this.stage * 0.02);
     slot.score = Math.round(def.score * (1 + this.loop * 0.5));
     slot.r = def.r;
-    slot.fireT = (1.2 + Math.random() * 1.6) * this.fireIntMult;
+    slot.fireT = (1.0 + Math.random() * 1.4) * this.fireIntMult;
     slot.tele = 0;
   }
 
@@ -342,7 +345,8 @@ export class DanmakuSim {
     b.flash = 0;
     b.spellActive = false;
     b.spellClean = true;
-    b.maxHp = b.hp = Math.round((122 + this.stage * 34) * (1 + this.loop * 0.9) * this.bossHpMult);
+    b.spellShown = [false, false];
+    b.maxHp = b.hp = Math.round((130 + this.stage * 36) * (1 + this.loop * 0.9) * this.bossHpMult);
   }
 
   // ---------------- player ----------------
@@ -389,7 +393,7 @@ export class DanmakuSim {
     return this.pbullets.find((b) => !b.alive) ?? null;
   }
 
-  private emitPB(x: number, y: number, vx: number, vy: number, dmg: number, kind: number): void {
+  private emitPB(x: number, y: number, vx: number, vy: number, dmg: number, kind: number, pierce = 0): void {
     const s = this.allocPB();
     if (!s) return;
     s.alive = true;
@@ -400,6 +404,7 @@ export class DanmakuSim {
     s.dmg = dmg;
     s.kind = kind;
     s.retarget = 0;
+    s.pierce = pierce;
   }
 
   private fireWeapon(): void {
@@ -425,7 +430,7 @@ export class DanmakuSim {
       }
       this.emitPB(this.px - ox, this.py - 6, -60, -620, 0.6, 1);
       this.emitPB(this.px + ox, this.py - 6, 60, -620, 0.6, 1);
-    } else {
+    } else if (this.weapon === 'tsuibi') {
       this.fireT = 0.29;
       const n = 1 + Math.floor(lvl / 2);
       for (let i = 0; i < n; i++) {
@@ -433,6 +438,19 @@ export class DanmakuSim {
           this.px + (i - (n - 1) / 2) * 16, this.py - 22,
           (i - (n - 1) / 2) * 46, -500, 1.3 + (lvl - 1) * 0.2, 2,
         );
+      }
+      this.emitPB(this.px - ox, this.py - 6, 0, -640, 0.6, 0);
+      this.emitPB(this.px + ox, this.py - 6, 0, -640, 0.6, 0);
+    } else {
+      // laser: twin piercing beams that punch through enemy lines
+      this.fireT = Math.max(0.12, 0.2 - lvl * 0.014);
+      const dmg = 2.1 + (lvl - 1) * 0.35;
+      const pierce = 1 + Math.floor(lvl / 2);
+      const spread = lvl >= 3 ? [-0.04, 0.04] : [0];
+      for (const dx of [-11, 11]) {
+        for (const a of spread) {
+          this.emitPB(this.px + dx, this.py - 28, Math.sin(a) * 780, -Math.cos(a) * 780, dmg, 3, pierce);
+        }
       }
       this.emitPB(this.px - ox, this.py - 6, 0, -640, 0.6, 0);
       this.emitPB(this.px + ox, this.py - 6, 0, -640, 0.6, 0);
@@ -468,8 +486,11 @@ export class DanmakuSim {
   }
 
   cycleWeapon(): WeaponId {
-    this.weapon = this.weapon === 'rensa' ? 'kakusan' : this.weapon === 'kakusan' ? 'tsuibi' : 'rensa';
-    this.addText(this.px, this.py - 44, this.weapon === 'rensa' ? '連射！' : this.weapon === 'kakusan' ? '拡散！' : '追尾！', '#7fe7ff');
+    this.weapon = this.weapon === 'rensa' ? 'kakusan'
+      : this.weapon === 'kakusan' ? 'tsuibi'
+        : this.weapon === 'tsuibi' ? 'laser' : 'rensa';
+    this.addText(this.px, this.py - 44,
+      this.weapon === 'rensa' ? '連射！' : this.weapon === 'kakusan' ? '拡散！' : this.weapon === 'laser' ? 'レーザー！' : '追尾！', '#7fe7ff');
     return this.weapon;
   }
 
@@ -504,6 +525,7 @@ export class DanmakuSim {
   private updatePBullets(dt: number): void {
     for (const b of this.pbullets) {
       if (!b.alive) continue;
+      if (b.kind === 3 && b.retarget > 0) b.retarget -= dt;
       if (b.kind === 2) {
         b.retarget -= dt;
         if (b.retarget <= 0) {
@@ -584,6 +606,25 @@ export class DanmakuSim {
           e.y += (e.t % 2 < 1.2 ? sp * 0.5 : sp * 1.9) * dt;
           e.x = e.x0 + Math.sin(e.t * 2.6) * 88;
           break;
+        case 'dasher':
+          // dives toward the player's x, then streaks down past them
+          if (e.y < 110) {
+            e.y += sp * dt;
+            e.x = e.x0 + Math.sin(e.t * 5) * 14;
+          } else {
+            e.y += sp * 1.7 * dt;
+            const dx = Math.max(-1, Math.min(1, (this.px - e.x) / 60));
+            e.x += dx * 150 * dt;
+          }
+          break;
+        case 'printer':
+          // lumbers down, parks high, and sways while printing bullets
+          if (e.y < 180) e.y += sp * dt;
+          else {
+            e.y += Math.sin(e.t * 1.6) * 14 * dt;
+            e.x = e.x0 + Math.sin(e.t * 1.1) * 60;
+          }
+          break;
       }
       e.x = Math.min(466, Math.max(14, e.x));
       if (e.y > 840) {
@@ -596,7 +637,7 @@ export class DanmakuSim {
         e.tele -= dt;
         if (e.tele <= 0) {
           this.enemyFire(e);
-          e.fireT = (2 + Math.random() * 1.6 - Math.min(0.8, this.stage * 0.05)) * this.fireIntMult;
+          e.fireT = (1.8 + Math.random() * 1.4 - Math.min(0.8, this.stage * 0.05)) * this.fireIntMult;
         }
         continue;
       }
@@ -605,14 +646,14 @@ export class DanmakuSim {
         if (def.elite) e.tele = 0.45;
         else {
           this.enemyFire(e);
-          e.fireT = (2.2 + Math.random() * 1.6) * this.fireIntMult;
+          e.fireT = (2.0 + Math.random() * 1.4) * this.fireIntMult;
         }
       }
     }
   }
 
   private enemyFire(e: Enemy): void {
-    const bs = Math.min(285, 168 + this.stage * 9 + this.loop * 15) * this.bMult;
+    const bs = Math.min(300, 178 + this.stage * 10 + this.loop * 16) * this.bMult;
     switch (e.kind) {
       case 'commuter':
         this.fireEB(e.x, e.y + 14, 0, bs, false);
@@ -646,6 +687,22 @@ export class DanmakuSim {
         const [vx, vy] = this.aimAt(e.x, e.y, bs * 1.2);
         this.fireEB(e.x, e.y + 14, vx, vy, true);
         this.spread(e.x, e.y + 14, vx, vy, 0.25, false);
+        break;
+      }
+      case 'dasher': {
+        if (e.y > 140 && e.y < 520) {
+          const [vx, vy] = this.aimAt(e.x, e.y, bs * 1.1);
+          this.spread(e.x, e.y + 12, vx, vy, 0.2, false);
+        }
+        break;
+      }
+      case 'printer': {
+        // 5-way downward fan plus one aimed shot down the middle
+        for (const a of [-0.42, -0.21, 0, 0.21, 0.42]) {
+          this.fireEB(e.x, e.y + 16, Math.sin(a) * bs, Math.cos(a) * bs, false);
+        }
+        const [vx, vy] = this.aimAt(e.x, e.y, bs * 1.05);
+        this.fireEB(e.x, e.y + 16, vx, vy, true);
         break;
       }
     }
@@ -718,7 +775,7 @@ export class DanmakuSim {
       if (b.tele <= 0) {
         this.finishSpellWindow();
         this.bossFire(b, b.pending, enraged);
-        b.atkT = ((enraged ? 1.5 : 2.3) + Math.random() * 0.6) * this.fireIntMult;
+        b.atkT = ((enraged ? 1.35 : 2.05) + Math.random() * 0.55) * this.fireIntMult;
       }
       return;
     }
@@ -728,9 +785,15 @@ export class DanmakuSim {
       b.tele = 0.6;
       b.spellActive = true;
       b.spellClean = true;
-      const st = STAGES[b.idx];
-      const spell = st?.spells[b.pending % 2];
-      if (spell) this.events.push({ type: 'spell', name: spell.name, sub: spell.sub });
+      // announce each spell card only once per fight; repeats are telegraphed
+      // by the boss flash alone instead of a fullscreen banner
+      const key = b.pending % 2;
+      if (!b.spellShown[key]) {
+        b.spellShown[key] = true;
+        const st = STAGES[b.idx];
+        const spell = st?.spells[key];
+        if (spell) this.events.push({ type: 'spell', name: spell.name, sub: spell.sub });
+      }
     }
   }
 
@@ -745,7 +808,7 @@ export class DanmakuSim {
   }
 
   private bossFire(b: BossState, variant: number, enraged: boolean): void {
-    const bs = (enraged ? 1.15 : 1) * (210 + this.loop * 18) * this.bMult;
+    const bs = (enraged ? 1.15 : 1) * (222 + this.loop * 19) * this.bMult;
     const idx = b.idx;
     const gapAim = Math.atan2(this.py - (b.y + 40), this.px - b.x) + 0.55;
     if (idx === 0) {
@@ -769,7 +832,7 @@ export class DanmakuSim {
         b.burstT = 0;
       }
     } else if (idx === 2) {
-      this.ringFire(b.x, b.y + 30, variant === 0 ? 12 : 8, bs, b.angle, false, gapAim, 0.3);
+      this.ringFire(b.x, b.y + 30, variant === 0 ? 14 : 8, bs, b.angle, false, gapAim, 0.3);
       b.angle += 0.42;
       if (enraged) {
         const [vx, vy] = this.aimAt(b.x, b.y + 44, bs * 1.2);
@@ -791,12 +854,12 @@ export class DanmakuSim {
         this.spread(b.x, b.y + 44, vx, vy, 0.28, true);
       }
     } else {
-      for (let i = 0; i < 6; i++) {
-        const a = b.angle + (i / 6) * Math.PI * 2;
+      for (let i = 0; i < 7; i++) {
+        const a = b.angle + (i / 7) * Math.PI * 2;
         this.fireEB(b.x, b.y + 30, Math.cos(a) * bs * 0.9, Math.sin(a) * bs * 0.9, false);
       }
-      for (let i = 0; i < 6; i++) {
-        const a = -b.angle * 0.7 + (i / 6) * Math.PI * 2;
+      for (let i = 0; i < 7; i++) {
+        const a = -b.angle * 0.7 + (i / 7) * Math.PI * 2;
         this.fireEB(b.x, b.y + 30, Math.cos(a) * bs * 0.7, Math.sin(a) * bs * 0.7, false);
       }
       b.angle += 0.55;
@@ -857,18 +920,28 @@ export class DanmakuSim {
         const rr = e.r + pr;
         if (Math.abs(e.x - pb.x) > rr || Math.abs(e.y - pb.y) > rr) continue;
         if (d2(e.x, e.y, pb.x, pb.y) > rr * rr) continue;
-        pb.alive = false;
-        consumed = true;
+        // laser ticks: one damage instance per 0.09s per bolt
+        if (pb.kind === 3 && pb.retarget > 0) continue;
         this.damageEnemy(e, pb.dmg, true);
-        break;
+        if (pb.pierce > 0) {
+          pb.pierce--;
+          if (pb.kind === 3) pb.retarget = 0.09;
+        } else {
+          pb.alive = false;
+          consumed = true;
+          break;
+        }
       }
       if (consumed) continue;
       const b = this.boss;
       if (b.alive && b.entered) {
         const rr = 46 + pr;
         if (Math.abs(b.x - pb.x) <= rr && Math.abs(b.y - pb.y) <= rr && d2(b.x, b.y, pb.x, pb.y) <= rr * rr) {
-          pb.alive = false;
-          this.damageBoss(pb.dmg);
+          if (!(pb.kind === 3 && pb.retarget > 0)) {
+            this.damageBoss(pb.dmg);
+            if (pb.kind === 3) pb.retarget = 0.09;
+          }
+          if (pb.pierce <= 0) pb.alive = false;
         }
       }
     }
@@ -937,6 +1010,10 @@ export class DanmakuSim {
     const st = STAGES[b.idx];
     const value = Math.round(8000 * (this.stageIdx + 1) * (1 + this.loop * 0.5));
     this.finishSpellWindow();
+    // remaining minions go down with the boss (score + bursts, no drops)
+    for (const e of this.enemies) {
+      if (e.alive) this.damageEnemy(e, 9999, false);
+    }
     this.addScore(value);
     this.chain += 8;
     this.chainT = 4;

@@ -353,6 +353,68 @@ export function enemyTextures(): Record<string, THREE.CanvasTexture> {
     ctx.fillStyle = '#ffe14d';
     ctx.fillRect(23, 11, 2, 4);
   }, 48));
+  out.dasher = tex(enemyBase((ctx, S) => {
+    disc(ctx, S, '#3a2a1a', '#ffcf4d');
+    // briefcase body
+    ctx.fillStyle = '#6b4a1f';
+    rr(ctx, 11, 18, 24, 18, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#2a1c08';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(11, 18, 24, 18);
+    // handle
+    ctx.strokeStyle = '#2a1c08';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(18, 18);
+    ctx.lineTo(18, 13);
+    ctx.lineTo(28, 13);
+    ctx.lineTo(28, 18);
+    ctx.stroke();
+    // tie (rushing salaryman)
+    ctx.fillStyle = '#d23b3b';
+    ctx.beginPath();
+    ctx.moveTo(23, 22);
+    ctx.lineTo(20, 30);
+    ctx.lineTo(23, 35);
+    ctx.lineTo(26, 30);
+    ctx.closePath();
+    ctx.fill();
+    // speed lines
+    ctx.strokeStyle = '#ffcf4d';
+    ctx.lineWidth = 2;
+    for (const x of [8, 38]) {
+      ctx.beginPath();
+      ctx.moveTo(x, 14);
+      ctx.lineTo(x, 34);
+      ctx.stroke();
+    }
+  }, 46));
+  out.printer = tex(enemyBase((ctx, S) => {
+    disc(ctx, S, '#2a2a33', '#b39dff');
+    // printer body
+    ctx.fillStyle = '#3f3f4d';
+    rr(ctx, 10, 16, 28, 20, 3);
+    ctx.fill();
+    ctx.fillStyle = '#23232c';
+    ctx.fillRect(10, 24, 28, 5);
+    // paper coming out
+    ctx.fillStyle = '#f2f2f2';
+    ctx.fillRect(17, 29, 14, 12);
+    ctx.strokeStyle = '#9a9a9a';
+    ctx.lineWidth = 1.2;
+    for (let y = 32; y <= 38; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(19, y);
+      ctx.lineTo(29, y);
+      ctx.stroke();
+    }
+    // glowing button
+    ctx.fillStyle = '#4dffa6';
+    ctx.beginPath();
+    ctx.arc(33, 20, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  }, 48));
   return out;
 }
 
