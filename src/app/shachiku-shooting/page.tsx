@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ShachikuGame = dynamic(() => import('@/components/game/ShachikuGameV2'), {
+const ShachikuGame = dynamic(() => import('@/components/game/DanmakuGame'), {
   ssr: false,
   loading: () => (
     <div className="flex h-dvh w-full items-center justify-center bg-black text-white">出社準備中…</div>

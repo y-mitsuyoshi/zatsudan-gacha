@@ -1,4 +1,4 @@
-import type { WeaponId } from './config';
+import type { WeaponId } from '../danmaku/config';
 
 const PREFIX = 'shachiku-shooting-v2:';
 
