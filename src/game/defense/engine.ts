@@ -134,6 +134,7 @@ export class DefenseEngine {
   private bossRef: Enemy | null = null;
   private bossMinionT = 0;
   private bossSlamT = 0;
+  private slamCount = 0;
   private barrelT = 4;
   private podT = 12;
   private shopOpen = false;
@@ -208,6 +209,16 @@ export class DefenseEngine {
     this.shocks = [];
     this.bossRef = null;
     this.trauma = 0;
+    this.time = 0;
+    this.fps = 60;
+    this.hudT = 0;
+    // player state reset
+    this.turretX = VIEW_W / 2;
+    this.aimX = VIEW_W / 2;
+    this.aimY = 200;
+    this.fireT = 0;
+    this.muzzle = 0;
+    this.keyDir = 0;
     this.running = true;
     this.last = performance.now();
     cancelAnimationFrame(this.raf);
@@ -294,6 +305,7 @@ export class DefenseEngine {
     this.bossRef = null;
     this.bossMinionT = 0;
     this.bossSlamT = 6;
+    this.slamCount = 0;
     this.waveActive = true;
     this.barrelT = 3;
     this.podT = 10;
@@ -470,14 +482,10 @@ export class DefenseEngine {
         this.score += bonus;
         this.coins += 20 + this.wave * 5;
         this.sound.waveClear();
-        if (this.wave >= this.course.waves && this.endless >= 0 && this.shopOpen === false) {
+        if (this.wave >= this.course.waves && this.endless === 0) {
           // campaign final cleared → shop with victory flag (player can stop or go endless)
-          if (this.endless === 0) {
-            this.victory = true;
-            this.openShop(true);
-          } else {
-            this.openShop(false);
-          }
+          this.victory = true;
+          this.openShop(true);
         } else {
           this.openShop(false);
         }
@@ -593,7 +601,12 @@ export class DefenseEngine {
   private bossSlam(): void {
     const boss = this.bossRef;
     if (!boss || boss.dead) return;
-    this.cb.onBanner('⚠️ 社長の喝！！', '定時の壁に大ダメージ');
+    this.slamCount++;
+    if (this.slamCount === 1) {
+      this.cb.onBanner('⚠️ 社長の喝！！', '定時の壁に大ダメージ');
+    } else {
+      this.floaters.push({ x: boss.x, y: boss.y + 60, text: '社長の喝！！', color: '#ef4444', life: 1.2, max: 1.2 });
+    }
     this.shocks.push({ x: boss.x, y: boss.y + 40, r: 10, max: 200, life: 0.6, maxLife: 0.6, color: '#ef4444' });
     this.damageWall(30 * this.diff.dmgMul);
     this.trauma = Math.min(1, this.trauma + 0.6);
@@ -705,7 +718,8 @@ export class DefenseEngine {
     let bd = Infinity;
     for (const e of this.enemies) {
       if (e.dead) continue;
-      const d = Math.abs(e.x - ax) + e.y * 0.4;
+      // 壁に最も近い（= 最も危険な）敵を優先
+      const d = Math.abs(e.x - ax) + (BARRICADE_Y - e.y) * 0.5;
       if (d < bd) {
         bd = d;
         best = e;
@@ -875,8 +889,15 @@ export class DefenseEngine {
     this.enemies = this.enemies.filter((e) => !e.dead);
   }
 
-  private explodeVisual(x: number, y: number, radius: number, color: string): void {
-    this.shocks.push({ x, y, r: 8, max: radius, life: 0.35, maxLife: 0.35, color });
+  /** roundRect with fallback for older WebViews. */
+  private rr(x: number, y: number, w: number, h: number, r: number): void {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, r);
+    else ctx.rect(x, y, w, h);
+  }
+
+  private explodeVisual(x: number, y: number, radius: number, color: string): void {    this.shocks.push({ x, y, r: 8, max: radius, life: 0.35, maxLife: 0.35, color });
     this.burst(x, y, color, 16, 240);
     this.burst(x, y, '#ffffff', 8, 160);
   }
@@ -1281,13 +1302,11 @@ export class DefenseEngine {
       ctx.rotate(Math.sin(br.spin) * 0.35);
       // 差し入れ段ボール
       ctx.fillStyle = '#a16207';
-      ctx.beginPath();
-      ctx.roundRect(-17, -17, 34, 34, 5);
+      this.rr(-17, -17, 34, 34, 5);
       ctx.fill();
       ctx.strokeStyle = glow;
       ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.roundRect(-17, -17, 34, 34, 5);
+      this.rr(-17, -17, 34, 34, 5);
       ctx.stroke();
       ctx.fillStyle = '#713f12';
       ctx.fillRect(-17, -3, 34, 6);
@@ -1318,14 +1337,12 @@ export class DefenseEngine {
       ctx.arc(0, 0, 30, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#064e3b';
-      ctx.beginPath();
-      ctx.roundRect(-20, -24, 40, 48, 10);
+      this.rr(-20, -24, 40, 48, 10);
       ctx.fill();
       ctx.strokeStyle = '#4ade80';
       ctx.lineWidth = 2.5;
       ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ctx.roundRect(-20, -24, 40, 48, 10);
+      this.rr(-20, -24, 40, 48, 10);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.font = '20px sans-serif';

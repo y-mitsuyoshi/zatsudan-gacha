@@ -184,6 +184,19 @@ export default function BarricadeDefenseGame() {
 
   useEffect(() => () => destroyEngine(), [destroyEngine]);
 
+  // タブ切り替え・最小化で自動一時停止
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden && screenRef.current === 'playing') {
+        engineRef.current?.setPaused(true);
+        soundRef.current?.suspend();
+        changeScreen('paused');
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [changeScreen]);
+
   // ---- input ----
   const toLogical = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -645,7 +658,7 @@ function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; dif
       <h2 className={`mt-1 text-2xl font-black ${result.victory ? 'text-yellow-300' : 'text-red-400'}`}>
         {result.victory ? '定時退社成功！' : '過労でダウン…'}
       </h2>
-      <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}</p>
+      <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}{result.endless > 0 ? ` ＋ ♾️${result.endless}` : ''}</p>
       <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">スコア</p><p className="text-lg font-black text-yellow-300">{result.score.toLocaleString()}</p></div>
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">耐えたWAVE</p><p className="text-lg font-black">{result.wave}</p></div>

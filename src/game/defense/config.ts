@@ -88,7 +88,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   brute: { kind: 'brute', name: '鬼上司', hp: 170, speed: 34, damage: 34, score: 250, coins: 12, radius: 22, color: '#f97316', emoji: '👹' },
   shield: { kind: 'shield', name: 'ダラダラ会議', hp: 110, speed: 44, damage: 20, score: 200, coins: 9, radius: 17, color: '#38bdf8', emoji: '📊' },
   kamikaze: { kind: 'kamikaze', name: '炎上案件', hp: 30, speed: 130, damage: 55, score: 150, coins: 7, radius: 12, color: '#f472b6', emoji: '🔥' },
-  boss: { kind: 'boss', name: '社長', hp: 2600, speed: 26, damage: 60, score: 3000, coins: 150, radius: 40, color: '#ef4444', emoji: '👔' },
+  boss: { kind: 'boss', name: '社長', hp: 2200, speed: 26, damage: 60, score: 3000, coins: 150, radius: 40, color: '#ef4444', emoji: '👔' },
 };
 
 export type CourseId = 'city' | 'desert' | 'snow';
