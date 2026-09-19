@@ -19,7 +19,7 @@ const DEFAULT_HUD: HudSnapshot = {
   score: 0, coins: 0, wave: 1, totalWaves: 5, endless: 0, combo: 0,
   weapon: 'pistol', weaponT: 0, baseHp: 100, baseMax: 100,
   wallHp: 140, wallMax: 140, allies: 0, kills: 0,
-  bossHp: 0, bossMax: 0, fps: 60, waveActive: false,
+  bossHp: 0, bossMax: 0, fps: 60, waveActive: false, distLeft: 0, distTotal: 1,
 };
 
 const ENEMY_ORDER: EnemyKind[] = ['runner', 'walker', 'brute', 'shield', 'kamikaze', 'boss'];
@@ -342,7 +342,7 @@ export default function BarricadeDefenseGame() {
       <div className="w-full max-w-[520px]">
         {/* header */}
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="text-lg font-black tracking-wide">💼 社畜ディフェンス</h1>
+          <h1 className="text-lg font-black tracking-wide">🚃 社畜通勤サバイバー</h1>
           <div className="flex gap-2">
             <button onClick={toggleMute} className="rounded-lg bg-white/10 px-2 py-1 text-sm" aria-label="ミュート切替">
               {muted ? '🔇' : '🔊'}
@@ -360,17 +360,17 @@ export default function BarricadeDefenseGame() {
         {(screen === 'playing' || screen === 'paused' || screen === 'shop') && (
           <div className="mb-2 rounded-xl bg-white/5 p-2 text-xs">
             <div className="mb-1 flex items-center justify-between font-bold">
-              <span>WAVE {hud.wave}/{hud.totalWaves}{hud.endless > 0 ? ` ∞${hud.endless}` : ''}</span>
+              <span>🏢 あと{hud.distLeft}m{hud.endless > 0 ? ` ∞${hud.endless}` : ''}</span>
               <span className="text-yellow-300">SCORE {hud.score.toLocaleString()}</span>
               <span className="text-amber-300">💴 {hud.coins}</span>
             </div>
             <div className="mb-1 flex items-center gap-2">
-              <span className="w-14 shrink-0">🧱 定時</span>
+              <span className="w-14 shrink-0">🛡️ ガード</span>
               <Bar value={hud.wallHp} max={hud.wallMax} className="bg-orange-500" />
               <span className="w-12 shrink-0 text-right">{hud.wallHp}</span>
             </div>
             <div className="mb-1 flex items-center gap-2">
-              <span className="w-14 shrink-0">🏠 自宅</span>
+              <span className="w-14 shrink-0">❤️ 体力</span>
               <Bar value={hud.baseHp} max={hud.baseMax} className="bg-blue-500" />
               <span className="w-12 shrink-0 text-right">{hud.baseHp}</span>
             </div>
@@ -380,7 +380,7 @@ export default function BarricadeDefenseGame() {
             </div>
             {hud.bossMax > 0 && (
               <div className="mt-1 flex items-center gap-2">
-                <span className="w-14 shrink-0">👔 社長</span>
+                <span className="w-14 shrink-0">🚃 満員電車</span>
                 <Bar value={hud.bossHp} max={hud.bossMax} className="bg-red-500" />
               </div>
             )}
@@ -432,7 +432,7 @@ export default function BarricadeDefenseGame() {
           )}
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">
-          照準をドラッグ／タップで操作（自動射撃）・差し入れ段ボールを撃つと武器変化や残業代・SOSカプセルを撃つと同期が増加
+          左右ドラッグで移動（自動前進・自動射撃）・緑ゲートを選んで強化・🎁段ボールを撃つと武器変化・SOSを撃つと同期が増加
         </p>
       </div>
     </div>
@@ -457,11 +457,11 @@ function TitleOverlay(props: {
   const achCount = prog.achievements.length;
   return (
     <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-black/85 via-black/75 to-black/90 p-4">
-      <p className="text-center text-4xl">💼🧱</p>
-      <h2 className="mt-1 text-center text-2xl font-black text-yellow-300">社畜ディフェンス</h2>
-      <p className="mt-1 text-center text-xs text-gray-300">定時退社を阻む残業の大群を撃退せよ！差し入れで武器チェンジ、同期を救出、定時の壁を守り抜け！</p>
+      <p className="text-center text-4xl">🚃💼</p>
+      <h2 className="mt-1 text-center text-2xl font-black text-yellow-300">社畜通勤サバイバー</h2>
+      <p className="mt-1 text-center text-xs text-gray-300">満員ラッシュを突破して会社へ！緑ゲートで強化、段ボールで武器GET、同期を救出せよ！</p>
 
-      <p className="mb-1 mt-4 text-xs font-bold text-gray-300">■ 勤務地選択</p>
+      <p className="mb-1 mt-4 text-xs font-bold text-gray-300">■ 路線選択</p>
       <div className="grid grid-cols-3 gap-2">
         {COURSE_ORDER.map((c) => {
           const def = COURSES[c];
@@ -475,7 +475,7 @@ function TitleOverlay(props: {
             >
               <span className="text-2xl">{locked ? '🔒' : def.icon}</span>
               <p className="text-xs font-bold">{def.name}</p>
-              <p className="text-[10px] text-gray-400">{def.waves}WAVE</p>
+              <p className="text-[10px] text-gray-400">{def.waves * 100}m</p>
             </button>
           );
         })}
@@ -516,11 +516,13 @@ function TitleOverlay(props: {
 
       {showHelp && (
         <div className="mt-2 rounded-xl bg-white/10 p-3 text-[11px] leading-relaxed">
-          <p>✏️ <b>操作</b>: 指やマウスで照準を移動。シャーペンは自動で発射。</p>
-          <p>📦 <b>差し入れ段ボール</b>を撃つと… 武器GET(スタンプ連打/書類/正論/退職届/冷たい視線)・⚡お局の雷・💴残業代・🧱壁補修のいずれかが発動！</p>
-          <p>🆘 <b>SOSカプセル</b>を撃つと同期が参戦(最大{MAX_ALLIES}人)。同期は自動援護してくれる。</p>
-          <p>🧱 残業が<b>定時の壁</b>に到達すると壁を攻撃。壁が壊れると<b>自宅</b>に直行！自宅HPが0で過労ダウン。</p>
-          <p>🛒 WAVEクリア毎にショップで強化。最終WAVE踏破で定時退社→次の勤務地解放＆エンドレス残業へ。</p>
+          <p>🚃 <b>操作</b>: 左右にドラッグで移動。自動で前進＆自動射撃（3D）。</p>
+          <p>🟢 <b>ゲート選択</b>: 緑は強化（火力×2・連射UP・同期+1等）、赤は弱体化。体当たりする側を選べ！</p>
+          <p>🎁 <b>差し入れ段ボール</b>を撃つと… 武器GET(名刺/カバン/定期/特急/冷房)・⚡お局の雷・💴残業代・🛡️ガード回復！</p>
+          <p>🆘 <b>SOSケージ</b>を撃つと同期が参戦(最大{MAX_ALLIES}人)。同期は自動援護。</p>
+          <p>🚃 <b>満員電車（ボス）</b>は倒すと大量ボーナス。倒せなくても逃げ切りOK！</p>
+          <p>❤️ 群衆にぶつかると🛡️ガード→❤️体力の順に減少。体力0で過労ダウン。</p>
+          <p>🏢 会社に到着で出社成功→次の路線解放＆エンドレス残業へ。</p>
           <p>💾 スコア・解放・へそくり・図鑑・実績は自動セーブ。</p>
         </div>
       )}
@@ -605,9 +607,9 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4">
       <h2 className="text-center text-xl font-black text-yellow-300">
-        {shop.victory ? '🏆 定時退社達成！' : `✅ WAVE ${shop.wave} 耐えた！`}
+        {shop.victory ? '🏆 定時出社達成！' : `✅ 中間報告！`}
       </h2>
-      <p className="mt-1 text-center text-sm text-amber-300">所持 💴{shop.coins} ／ 定時 {shop.wallHp}/{shop.wallMax} ／ 自宅 {shop.baseHp}/{shop.baseMax} ／ 同期 {shop.allies}/{MAX_ALLIES}</p>
+      <p className="mt-1 text-center text-sm text-amber-300">所持 💴{shop.coins} ／ ガード {shop.wallHp}/{shop.wallMax} ／ 体力 {shop.baseHp}/{shop.baseMax} ／ 同期 {shop.allies}/{MAX_ALLIES}</p>
       <div className="mt-3 space-y-2">
         {SHOP.map((item) => {
           const cost = shop.costs[item.id] ?? 0;
@@ -656,12 +658,12 @@ function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; dif
     <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4 text-center">
       <p className="text-5xl">{result.victory ? '🏆' : '💀'}</p>
       <h2 className={`mt-1 text-2xl font-black ${result.victory ? 'text-yellow-300' : 'text-red-400'}`}>
-        {result.victory ? '定時退社成功！' : '過労でダウン…'}
+        {result.victory ? '定時出社成功！' : '過労でダウン…'}
       </h2>
       <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}{result.endless > 0 ? ` ＋ ♾️${result.endless}` : ''}</p>
       <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">スコア</p><p className="text-lg font-black text-yellow-300">{result.score.toLocaleString()}</p></div>
-        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">耐えたWAVE</p><p className="text-lg font-black">{result.wave}</p></div>
+        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">走破距離</p><p className="text-lg font-black">{result.dist}m</p></div>
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">撃破数</p><p className="text-lg font-black">{result.kills}</p></div>
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">最大連撃</p><p className="text-lg font-black">{result.maxCombo}</p></div>
       </div>
