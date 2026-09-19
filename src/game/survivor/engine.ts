@@ -11,6 +11,29 @@ import {
   type WeaponId, type PassiveId, type EnemyKind, type Difficulty,
 } from './config';
 import type { SurvivorSound } from './audio';
+import { drawSprite, type SpriteName } from './sprites';
+
+/** Enemy kind -> dot絵 sprite. */
+const KIND_SPRITE: Record<EnemyKind, SpriteName> = {
+  mail: 'mail',
+  doc: 'doc',
+  claim: 'claim',
+  overtime: 'moon',
+  nomikai: 'beer',
+  bossMid: 'boss',
+  hr: 'hr',
+  audit: 'eye',
+  exec: 'devil',
+  senmu: 'ogre',
+  president: 'crown',
+};
+
+const PICKUP_SPRITE = {
+  heal: 'heal',
+  magnet: 'magnet',
+  bomb: 'bomb',
+  chest: 'chest',
+} as const satisfies Record<string, SpriteName>;
 
 /* ---------------- public types ---------------- */
 
@@ -1145,6 +1168,8 @@ export class SurvivorEngine {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     ctx.save();
     ctx.scale(dpr, dpr);
+    // crisp dot絵: never smooth scaled sprites
+    ctx.imageSmoothingEnabled = false;
     const W = VIEW_W; const H = VIEW_H;
 
     let sx = 0; let sy = 0;
@@ -1192,9 +1217,12 @@ export class SurvivorEngine {
           ctx.fillStyle = 'rgba(255,255,255,0.08)';
           ctx.fillRect(dx + 8, dy + 6, 24, 14);
           if (h > 0.4) {
-            ctx.font = '16px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🪴', dx + 62, dy + 26);
+            // pixel plant
+            ctx.fillStyle = '#15803d';
+            ctx.fillRect(dx + 58, dy + 18, 4, 10);
+            ctx.fillStyle = '#4ade80';
+            ctx.fillRect(dx + 56, dy + 12, 3, 8);
+            ctx.fillRect(dx + 62, dy + 14, 3, 7);
           }
         }
       }
@@ -1224,8 +1252,7 @@ export class SurvivorEngine {
       ctx.arc(x, y, 5, 0, Math.PI * 2);
       ctx.fill();
     }
-    // pickups
-    ctx.textAlign = 'center';
+    // pickups (dot絵)
     for (const p of this.pickups) {
       const x = sx2(p.x); const y = sy2(p.y) + Math.sin(p.bob * 4) * 3;
       if (x < -30 || y < -30 || x > W + 30 || y > H + 30) continue;
@@ -1235,8 +1262,7 @@ export class SurvivorEngine {
         ctx.arc(x, y, 20, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.font = '26px sans-serif';
-      ctx.fillText(p.kind === 'heal' ? '🍱' : p.kind === 'magnet' ? '🧲' : p.kind === 'bomb' ? '💥' : '🎁', x, y + 9);
+      drawSprite(ctx, PICKUP_SPRITE[p.kind], x, y, 26);
     }
 
     // explosions / stamps
@@ -1263,7 +1289,7 @@ export class SurvivorEngine {
       ctx.stroke();
     }
 
-    // enemies
+    // enemies (dot絵)
     for (const e of this.enemies) {
       const x = sx2(e.x); const y = sy2(e.y);
       if (x < -60 || y < -60 || x > W + 60 || y > H + 60) continue;
@@ -1272,11 +1298,9 @@ export class SurvivorEngine {
       ctx.beginPath();
       ctx.ellipse(x, y + e.radius * 0.8, e.radius * 0.8, e.radius * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
-      // body
-      ctx.fillStyle = e.color;
-      ctx.beginPath();
-      ctx.arc(x, y, e.radius, 0, Math.PI * 2);
-      ctx.fill();
+      // sprite body
+      const size = e.boss ? 54 : e.elite ? 44 : Math.round(e.radius * 2.6);
+      drawSprite(ctx, KIND_SPRITE[e.kind], x, y, size, { white: e.flash > 0 });
       if (e.elite) {
         ctx.strokeStyle = '#fde047';
         ctx.lineWidth = 3;
@@ -1291,14 +1315,6 @@ export class SurvivorEngine {
         ctx.arc(x, y, e.radius + 5 + Math.sin(this.time * 6) * 2, 0, Math.PI * 2);
         ctx.stroke();
       }
-      if (e.flash > 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.beginPath();
-        ctx.arc(x, y, e.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.font = `${Math.round(e.radius * 1.25)}px sans-serif`;
-      ctx.fillText(e.icon, x, y + e.radius * 0.45);
       if ((e.elite || e.boss) && e.hp < e.maxHp) {
         const w = e.radius * 2;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -1321,55 +1337,32 @@ export class SurvivorEngine {
       ctx.fill();
     }
 
-    // projectiles
+    // projectiles (dot絵)
     for (const p of this.projs) {
       const x = sx2(p.x); const y = sy2(p.y);
       if (p.kind === 'shuriken') {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(Math.atan2(p.vy, p.vx));
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(-9, -5, 18, 10);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(-2, -5, 4, 10);
-        ctx.restore();
+        drawSprite(ctx, 'paper', x, y, 18);
       } else if (p.kind === 'coffee') {
-        ctx.fillStyle = '#b45309';
-        ctx.beginPath();
-        ctx.arc(x, y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fcd34d';
-        ctx.beginPath();
-        ctx.arc(x - 2, y - 2, 3, 0, Math.PI * 2);
-        ctx.fill();
+        drawSprite(ctx, 'coffee', x, y, 16);
       } else if (p.kind === 'boomerang') {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(p.age * 12);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(-12, -4, 24, 8);
-        ctx.restore();
-        ctx.font = '12px sans-serif';
-        ctx.fillText('💳', x, y + 4);
+        drawSprite(ctx, 'card', x, y, 20);
       } else {
-        ctx.font = '16px sans-serif';
-        ctx.fillText('📞', x, y + 6);
+        drawSprite(ctx, 'phone', x, y, 16);
       }
     }
 
-    // player barrier orbs
+    // player barrier orbs (dot絵付箋)
     const barrier = this.weapons.find((w) => w.id === 'barrier');
     if (barrier && this.hp > 0) {
       const orbs = 1 + Math.ceil(barrier.lv / 2);
       const radius = 66 + 5 * barrier.lv;
-      ctx.font = '20px sans-serif';
       for (let i = 0; i < orbs; i++) {
         const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
-        ctx.fillText('🗒️', this.px - camX + Math.cos(a) * radius, this.py - camY + Math.sin(a) * radius + 7);
+        drawSprite(ctx, 'note', this.px - camX + Math.cos(a) * radius, this.py - camY + Math.sin(a) * radius, 20);
       }
     }
 
-    // player
+    // player (dot絵社畜・2コマ歩行)
     if (this.hp > 0) {
       const x = this.px - camX; const y = this.py - camY;
       const blink = this.iframes > 0 && Math.floor(this.time * 16) % 2 === 0;
@@ -1384,13 +1377,9 @@ export class SurvivorEngine {
       ctx.arc(x, y, this.magnetR(), 0, Math.PI * 2);
       ctx.stroke();
       if (!blink) {
-        ctx.fillStyle = '#1e3a8a';
-        ctx.beginPath();
-        ctx.arc(x, y, 16, 0, Math.PI * 2);
-        ctx.fill();
-        const bob = Math.abs(Math.sin(this.walkPhase)) * 2;
-        ctx.font = '26px sans-serif';
-        ctx.fillText('🧑‍💼', x, y + 9 - bob);
+        const moving = Math.hypot(this.moveX, this.moveY) > 0.1;
+        const frame = moving && Math.floor(this.walkPhase) % 2 === 1 ? 'player1' : 'player0';
+        drawSprite(ctx, frame, x, y - 2, 38);
       }
     }
 

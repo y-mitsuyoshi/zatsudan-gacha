@@ -53,6 +53,12 @@ export const Footer: React.FC = () => {
       emoji: '🏢'
     },
     {
+      title: '社畜スパイラル',
+      description: '渦巻く業務の列からコアを守る15ウェーブ',
+      href: '/shachiku-spiral',
+      emoji: '🌀'
+    },
+    {
       title: '究極の言い訳ジェネレーター',
       description: 'AIが必死に考える、最高の言い逃れ',
       href: '/excuse-generator',

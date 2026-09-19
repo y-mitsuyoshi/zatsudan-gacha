@@ -1,0 +1,472 @@
+/**
+ * 社畜サバイバー — pixel-art sprites.
+ * Hand-drawn dot絵, cached to offscreen canvases and blitted with smoothing off.
+ * Palette keys are single chars; '.' = transparent.
+ */
+
+export type SpriteName =
+  | 'player0' | 'player1'
+  | 'mail' | 'doc' | 'claim' | 'moon' | 'beer'
+  | 'boss' | 'hr' | 'eye' | 'devil' | 'ogre' | 'crown'
+  | 'heal' | 'magnet' | 'bomb' | 'chest'
+  | 'paper' | 'coffee' | 'card' | 'phone' | 'note';
+
+const PAL: Record<string, string> = {
+  K: '#14141f',
+  W: '#ffffff',
+  L: '#cbd5e1',
+  G: '#64748b',
+  D: '#334155',
+  S: '#ffd9b3',
+  s: '#e8a06c',
+  H: '#2d2a32',
+  B: '#1e3a8a',
+  b: '#16295e',
+  R: '#ef4444',
+  r: '#991b1b',
+  Y: '#fde047',
+  E: '#f59e0b',
+  O: '#fb923c',
+  N: '#92400e',
+  n: '#78350f',
+  U: '#3b82f6',
+  u: '#1d4ed8',
+  C: '#22d3ee',
+  P: '#f472b6',
+  p: '#be185d',
+  V: '#8b5cf6',
+  v: '#5b21b6',
+  M: '#4ade80',
+  m: '#15803d',
+  T: '#14b8a6',
+};
+
+const PLAYER_TOP = [
+  '................',
+  '.....KKKKKK.....',
+  '....KHHHHHHK....',
+  '....KHHHHHHK....',
+  '....KSSSSSSK....',
+  '....KSKSSKSK....',
+  '....KSSSSSSK....',
+  '.....KSSSSK.....',
+  '....KBBBBBBK....',
+  '...KBBBWWBBBK...',
+  '...KBBWRRWBBK...',
+  '...KBBWRRWBBK...',
+  '...KBBBWWBBBK...',
+  '...KBBBBBBBBK...',
+];
+
+const SPRITES: Record<SpriteName, string[]> = {
+  player0: [
+    ...PLAYER_TOP,
+    '....KKK..KKK....',
+    '....KNN..KNN....',
+  ],
+  player1: [
+    ...PLAYER_TOP,
+    '.....KKKKKK.....',
+    '.....KNNNNK.....',
+  ],
+  mail: [
+    '................',
+    '................',
+    '................',
+    '...KKKKKKKKKK...',
+    '..KWWWWWWWWWWK..',
+    '..KWKWWWWWWKWK..',
+    '..KWWKWWWWKWWK..',
+    '..KWWWKWWKWWWK..',
+    '..KWWWWKKWWWWK..',
+    '..KWWWWWWWWWWK..',
+    '..KWWWWWWWWWWK..',
+    '..KRRWWWWWWUUK..',
+    '..KKKKKKKKKKKK..',
+    '................',
+    '................',
+    '................',
+  ],
+  doc: [
+    '................',
+    '................',
+    '................',
+    '..KKKK..........',
+    '..KYYYK.........',
+    '..KYYYYKKKKKKKK.',
+    '..KYYYYYYYYYYYK.',
+    '..KYYYYYYYYYYYK.',
+    '..KYOOOOOOOOOYK.',
+    '..KYYYYYYYYYYYK.',
+    '..KYYYYYYYYYYYK.',
+    '..KYYYYYYYYYYYK.',
+    '..KKKKKKKKKKKKK.',
+    '................',
+    '................',
+    '................',
+  ],
+  claim: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '...KK...........',
+    '..KPPK..........',
+    '..KPPPKKKKKK....',
+    '..KPPPPPPPPPK...',
+    '..KPPPPPPPPPPK..',
+    '..KPPPPPPPPPPK..',
+    '..KPPPKKKKKK....',
+    '..KPPK...KK.....',
+    '...KK....KK.....',
+    '................',
+    '................',
+    '................',
+  ],
+  moon: [
+    '................',
+    '................',
+    '................',
+    '......KKKK......',
+    '....KKWWWWK.....',
+    '...KWWWWWWK.....',
+    '...KWYWWWK......',
+    '..KWWWWWK.......',
+    '..KWWWWK........',
+    '..KWWWWK........',
+    '..KWWWWWK.......',
+    '...KWYWWWK......',
+    '...KWWWWWWK.....',
+    '....KKWWWWK.....',
+    '......KKKK......',
+    '................',
+  ],
+  beer: [
+    '................',
+    '................',
+    '................',
+    '....KKKKKK......',
+    '...KWWWWWWK.....',
+    '...KWWWWWWKK....',
+    '...KOOOOOOK...KK.',
+    '...KOOOOOOK....K.',
+    '...KOOOOOOK....K.',
+    '...KOOOOOOK...KK.',
+    '...KOOOOOOKK.....',
+    '....KKKKKK.......',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  boss: [
+    '................',
+    '.....KKKKKK.....',
+    '....KHHHHHHK....',
+    '....KHHHHHHK....',
+    '....KSSSSSSK....',
+    '....KRRSSRRK....',
+    '....KSKSSKSK....',
+    '....KSSSSSSK....',
+    '.....KRRRRK.....',
+    '....KGGGGGGK....',
+    '...KGGWWGGGGK...',
+    '...KGGWRRWGGK...',
+    '...KGGWRRWGGK...',
+    '...KGGGGGGGGK...',
+    '....KKK..KKK....',
+    '....KNN..KNN....',
+  ],
+  hr: [
+    '................',
+    '....KKKKKKKK....',
+    '...KNNNNNNNNK...',
+    '...KNSSSSSSNK...',
+    '...KNSSSSSSNK...',
+    '...KNKSKKSKNK...',
+    '...KNSSSSSSNK...',
+    '...KNSSSSSSNK...',
+    '....KNSSSSNK....',
+    '...KNTTTTTTNK...',
+    '...KNTTTTTTNK...',
+    '...KNTTWWTTNK...',
+    '...KNTTTTTTNK...',
+    '...KNNNNNNNNK...',
+    '....KKK..KKK....',
+    '....KNN..KNN....',
+  ],
+  eye: [
+    '................',
+    '................',
+    '................',
+    '....KKKKKKKK....',
+    '..KKWWWWWWWWKK..',
+    '.KWWWWWWWWWWWWK.',
+    '.KWWWUUUUUUWWWK.',
+    '.KWWUUKKKKUUKWK.',
+    '.KWWUUKKKKUUKWK.',
+    '.KWWWUUUUUUWWWK.',
+    '.KWWWWWWWWWWWWK.',
+    '..KKWWWWWWWWKK..',
+    '....KKKKKKKK....',
+    '................',
+    '................',
+    '................',
+  ],
+  devil: [
+    '................',
+    '..YY........YY..',
+    '..KYK......KYK..',
+    '..KVVK....KVVK..',
+    '...KVVVVVVVVK...',
+    '...KVVVVVVVVK...',
+    '...KVRVVVRVVK...',
+    '...KVVVVVVVVK...',
+    '....KVWWWWVK....',
+    '....KVVVVVVK....',
+    '.....KVVVVK.....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  ogre: [
+    '................',
+    '..YY........YY..',
+    '..KYK......KYK..',
+    '...KRRRRRRRRK...',
+    '...KRRRRRRRRK...',
+    '...KRKRRRRKRK...',
+    '...KRRRRRRRRK...',
+    '....KRWWWWRK....',
+    '....KRRRRRRK....',
+    '.....KRRRRK.....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  crown: [
+    '.K..K..K..K..K..',
+    '.KYK.KYK.KYK.K..',
+    '..KYYYYYYYYYYK..',
+    '..KYKRRKRRKYRK..',
+    '....KSSSSSSK....',
+    '....KSKSSKSK....',
+    '....KSSSSSSK....',
+    '.....KRRRRK.....',
+    '....KBBBBBBK....',
+    '...KBBEEEEBBK...',
+    '...KBBBBBBBBK...',
+    '...KBBBBBBBBK...',
+    '....KKKKKKKK....',
+    '................',
+    '................',
+    '................',
+  ],
+  heal: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '...KKKKKKKKKK...',
+    '..KNNNNNNNNNNK..',
+    '..KNWWWWWWWWNK..',
+    '..KNWWPRRWWWNK..',
+    '..KNWWWWWWWWNK..',
+    '..KNMMGGMMGGNK..',
+    '..KNNNNNNNNNNK..',
+    '...KKKKKKKKKK...',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  magnet: [
+    '................',
+    '................',
+    '................',
+    '...KK....KK.....',
+    '..KRRK..KRRK....',
+    '..KRRK..KRRK....',
+    '..KRRK..KRRK....',
+    '..KRRK..KRRK....',
+    '..KRRK..KRRK....',
+    '..KRRKKKKRRK....',
+    '..KWWKRRKWWK....',
+    '..KWKKRRKKWK....',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  bomb: [
+    '................',
+    '................',
+    '.........KK.....',
+    '........KYK.....',
+    '......KKKK......',
+    '....KKKKKKKK....',
+    '...KDDDDDDDDK...',
+    '..KDDWWWDDDDDK..',
+    '..KDDWDDDDDDDK..',
+    '..KDDDDDDDDDDK..',
+    '..KDDDDDDDDDDK..',
+    '...KKKKKKKKKK...',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  chest: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '...KKKKKKKKKK...',
+    '..KOOOOOOOOOOK..',
+    '..KONNNNNNNNOK..',
+    '..KKKKYYYYKKKK..',
+    '..KNNNNYYNNNNK..',
+    '..KNNNNYYNNNNK..',
+    '..KNNNNYYNNNNK..',
+    '..KKKKKKKKKKKK..',
+    '................',
+    '................',
+    '................',
+  ],
+  paper: [
+    '............',
+    '............',
+    '..KKKKKKKK..',
+    '..KWWWWWWK..',
+    '..KWGGGGWK..',
+    '..KWWWWWWK..',
+    '..KWGGGGWK..',
+    '..KWWWWWWK..',
+    '..KWGGGGWK..',
+    '..KKKKKKKK..',
+    '............',
+    '............',
+  ],
+  coffee: [
+    '............',
+    '............',
+    '............',
+    '..KKKKKK....',
+    '..KWWWWK....',
+    '..KOOOOOK...',
+    '..KOOOOOKK..',
+    '..KOOOOOK.K.',
+    '..KOOOOOK.K.',
+    '..KOOOOOKK..',
+    '...KKKKKK...',
+    '............',
+  ],
+  card: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '.KKKKKKKKKK.',
+    '.KYYYYYYYYK.',
+    '.KYUDDDDUYK.',
+    '.KYYYYYYYYK.',
+    '.KKKKKKKKKK.',
+    '............',
+    '............',
+    '............',
+  ],
+  phone: [
+    '............',
+    '............',
+    '..KK....KK..',
+    '..KDK..KDK..',
+    '..KDK..KDK..',
+    '..KDKKKKDK..',
+    '...KDDDDK...',
+    '....KDDK....',
+    '............',
+    '............',
+    '............',
+    '............',
+  ],
+  note: [
+    '................',
+    '................',
+    '................',
+    '..KKKKKKKKKKKK..',
+    '..KYYYYYYYYYYK..',
+    '..KYGGGGGGGGYK..',
+    '..KYYYYYYYYYYK..',
+    '..KYGGGGGGGGYK..',
+    '..KYYYYYYYYYYK..',
+    '..KYYYYYYYDDDK..',
+    '..KYYYYYYYDDDK..',
+    '..KKKKKKKKKKKK..',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+};
+
+const cache = new Map<string, HTMLCanvasElement | null>();
+
+function build(name: SpriteName, white: boolean): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const rows = SPRITES[name];
+  const h = rows.length;
+  let w = 0;
+  for (const r of rows) w = Math.max(w, r.length);
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, w);
+  cv.height = Math.max(1, h);
+  const ctx = cv.getContext('2d');
+  if (!ctx) return null;
+  for (let y = 0; y < rows.length; y++) {
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      if (ch === '.' || ch === ' ') continue;
+      ctx.fillStyle = white ? '#ffffff' : (PAL[ch] ?? '#ff00ff');
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  return cv;
+}
+
+/**
+ * Draw a sprite centered at (cx, cy) with target height `size` px.
+ * Positions are snapped to integers for a crisp dot絵 look.
+ */
+export function drawSprite(
+  ctx: CanvasRenderingContext2D,
+  name: SpriteName,
+  cx: number,
+  cy: number,
+  size: number,
+  opts?: { flip?: boolean; white?: boolean; alpha?: number },
+): void {
+  const key = opts?.white ? `${name}#w` : name;
+  let cv = cache.get(key);
+  if (cv === undefined) {
+    cv = build(name, opts?.white === true);
+    cache.set(key, cv);
+  }
+  if (!cv) return;
+  const h = Math.max(1, Math.round(size));
+  const w = Math.max(1, Math.round((size * cv.width) / cv.height));
+  const x = Math.round(cx);
+  const y = Math.round(cy);
+  ctx.save();
+  if (opts?.alpha !== undefined) ctx.globalAlpha = opts.alpha;
+  ctx.translate(x, y);
+  if (opts?.flip) ctx.scale(-1, 1);
+  ctx.drawImage(cv, -Math.floor(w / 2), -Math.floor(h / 2), w, h);
+  ctx.restore();
+}
