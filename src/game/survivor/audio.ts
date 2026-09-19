@@ -98,6 +98,11 @@ export class SurvivorSound {
     this.tone(180, 0.18, 'sawtooth', 0.09, -100);
   }
 
+  dash(): void {
+    if (this.throttle('dash', 300)) return;
+    this.tone(280, 0.14, 'sine', 0.07, 620);
+  }
+
   levelup(): void {
     this.tone(523, 0.12, 'triangle', 0.08);
     window.setTimeout(() => this.tone(659, 0.12, 'triangle', 0.08), 90);

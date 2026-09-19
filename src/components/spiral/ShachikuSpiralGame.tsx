@@ -6,7 +6,10 @@ import { SpiralSound } from '@/game/spiral/audio';
 import {
   loadSettings, saveSettings, loadRecords, saveRecord, loadProgress, saveProgress,
   loadStats, applyRunToStats, loadAch, checkAchievements, claimAchievement, ACHIEVEMENTS,
-  type SpiralRecord, type SpiralStats, type AchState,
+  applyRunToEncy, encyChains, encyUpgrades, encyCompletion,
+  earnedTitles, bestTitle,
+  todayMissions, loadDaily, applyRunToDaily, claimMission,
+  type SpiralRecord, type SpiralStats, type AchState, type DailyState,
 } from '@/game/spiral/storage';
 import {
   DIFFICULTIES, DIFFICULTY_ORDER, META_UPGRADES, FINAL_WAVE, formatTime,
@@ -14,7 +17,7 @@ import {
 } from '@/game/spiral/config';
 
 type Screen = 'title' | 'playing' | 'build' | 'paused' | 'result';
-type TitleTab = 'play' | 'power' | 'ach';
+type TitleTab = 'play' | 'power' | 'dex' | 'daily' | 'ach';
 
 const DEFAULT_HUD: HudSnapshot = {
   hp: 120, maxHp: 120, wave: 1, totalWaves: FINAL_WAVE,
@@ -61,6 +64,7 @@ export default function ShachikuSpiralGame() {
   const [metaLv, setMetaLv] = useState<Record<string, number>>({ atk: 0, hp: 0, rate: 0 });
   const [stats, setStats] = useState<SpiralStats>({ runs: 0, wins: 0, bestWave: 0, totalSegs: 0, maxScore: 0 });
   const [ach, setAch] = useState<AchState>({ unlocked: {}, claimed: {} });
+  const [daily, setDaily] = useState<DailyState>({ date: '', progress: {}, claimed: {} });
   const [runMeta, setRunMeta] = useState<{ difficulty: Difficulty }>({ difficulty: 'normal' });
 
   useEffect(() => {
@@ -72,6 +76,7 @@ export default function ShachikuSpiralGame() {
     setMetaLv({ ...p.meta });
     setStats(loadStats());
     setAch(loadAch());
+    setDaily(loadDaily());
   }, []);
 
   const showBanner = useCallback((title: string, sub: string) => {
@@ -112,6 +117,9 @@ export default function ShachikuSpiralGame() {
     setMetaLv({ ...p.meta });
     const s = applyRunToStats(r);
     setStats(s);
+    applyRunToEncy(r);
+    applyRunToDaily(r);
+    setDaily(loadDaily());
     const fresh = checkAchievements(s, r);
     setAch(loadAch());
     setFreshAch(fresh.map((a) => a.id));
@@ -260,6 +268,7 @@ export default function ShachikuSpiralGame() {
     setResult(null);
     setStats(loadStats());
     setAch(loadAch());
+    setDaily(loadDaily());
     const p = loadProgress();
     setBank(p.coins);
     setMetaLv({ ...p.meta });
@@ -317,6 +326,21 @@ export default function ShachikuSpiralGame() {
     }
   }, []);
 
+  const claimDailyReward = useCallback((id: string) => {
+    const reward = claimMission(id);
+    if (reward > 0) {
+      const p = loadProgress();
+      p.coins += reward;
+      saveProgress(p);
+      setBank(p.coins);
+      setDaily(loadDaily());
+    }
+  }, []);
+
+  const title = bestTitle();
+  const comp = encyCompletion();
+  const missions = todayMissions();
+
   return (
     <div className="flex min-h-dvh w-full flex-col items-center bg-[#0a0e1f] px-2 py-4 text-white">
       <div className="w-full max-w-[680px]">
@@ -324,6 +348,7 @@ export default function ShachikuSpiralGame() {
           <h1 className="text-lg font-black tracking-wide">🌀 社畜スパイラル</h1>
           <div className="flex items-center gap-2">
             <span className="rounded-lg bg-white/10 px-2 py-1 text-xs">🪙 {bank.toLocaleString()}</span>
+            <span className="rounded-lg bg-white/10 px-2 py-1 text-xs">{title.icon} {title.name}</span>
             <button onClick={toggleMute} className="rounded-lg bg-white/10 px-2 py-1 text-sm" aria-label="ミュート切替">
               {muted ? '🔇' : '🔊'}
             </button>
@@ -388,10 +413,12 @@ export default function ShachikuSpiralGame() {
               tab={tab} setTab={setTab}
               difficulty={difficulty} setDifficulty={setDifficulty}
               records={records} stats={stats}
-              ach={ach} bank={bank} metaLv={metaLv}
+              ach={ach} daily={daily} missions={missions}
+              bank={bank} metaLv={metaLv} comp={comp}
               onStart={() => startRun(difficulty)}
               onBuyMeta={buyMeta}
               onClaimAch={claimAchReward}
+              onClaimDaily={claimDailyReward}
             />
           )}
 
@@ -456,15 +483,21 @@ function TitleOverlay(props: {
   tab: TitleTab; setTab: (t: TitleTab) => void;
   difficulty: Difficulty; setDifficulty: (d: Difficulty) => void;
   records: SpiralRecord[]; stats: SpiralStats;
-  ach: AchState; bank: number; metaLv: Record<string, number>;
+  ach: AchState; daily: DailyState;
+  missions: { id: string; name: string; icon: string; desc: string; target: number; reward: number }[];
+  bank: number; metaLv: Record<string, number>;
+  comp: { chains: number; chainsTotal: number; upgrades: number; upgradesTotal: number };
   onStart: () => void;
   onBuyMeta: (id: string) => void;
   onClaimAch: (id: string) => void;
+  onClaimDaily: (id: string) => void;
 }) {
   const { tab, setTab } = props;
   const tabs: { id: TitleTab; label: string }[] = [
     { id: 'play', label: '🏢 出勤' },
     { id: 'power', label: '💪 強化' },
+    { id: 'dex', label: '📖 図鑑' },
+    { id: 'daily', label: '📅 日課' },
     { id: 'ach', label: '🏆 実績' },
   ];
   return (
@@ -474,7 +507,7 @@ function TitleOverlay(props: {
       <p className="mt-1 text-center text-xs text-gray-300">
         中央のコアを守れ！渦巻く業務の列が迫る全15ウェーブ・タワーディフェンス
       </p>
-      <div className="mx-auto mt-3 flex max-w-[480px] gap-1">
+      <div className="mx-auto mt-3 flex max-w-[480px] gap-1 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -488,6 +521,8 @@ function TitleOverlay(props: {
       <div className="mx-auto mt-3 max-w-[480px]">
         {tab === 'play' && <PlayTab {...props} />}
         {tab === 'power' && <PowerTab bank={props.bank} metaLv={props.metaLv} onBuyMeta={props.onBuyMeta} />}
+        {tab === 'dex' && <DexTab />}
+        {tab === 'daily' && <DailyTab daily={props.daily} missions={props.missions} onClaim={props.onClaimDaily} />}
         {tab === 'ach' && <AchTab ach={props.ach} onClaim={props.onClaimAch} />}
       </div>
     </div>
@@ -497,9 +532,11 @@ function TitleOverlay(props: {
 function PlayTab(props: {
   difficulty: Difficulty; setDifficulty: (d: Difficulty) => void;
   stats: SpiralStats; records: SpiralRecord[];
+  comp: { chains: number; chainsTotal: number; upgrades: number; upgradesTotal: number };
   onStart: () => void;
 }) {
-  const { difficulty, setDifficulty, stats, records, onStart } = props;
+  const { difficulty, setDifficulty, stats, records, comp, onStart } = props;
+  const titles = earnedTitles();
   return (
     <div>
       <p className="mb-1 text-xs font-bold text-gray-300">■ 本日の渦の激しさ</p>
@@ -528,6 +565,9 @@ function PlayTab(props: {
         <div className="rounded-lg bg-white/5 p-2"><p className="text-gray-400">最高W</p><p className="text-base font-black">{stats.bestWave}</p></div>
         <div className="rounded-lg bg-white/5 p-2"><p className="text-gray-400">切断</p><p className="text-base font-black">{stats.totalSegs.toLocaleString()}</p></div>
       </div>
+      <p className="mt-2 text-center text-[11px] text-gray-300">
+        {titles[titles.length - 1]?.icon} {titles[titles.length - 1]?.name} ／ 図鑑⛓️ {comp.chains}/{comp.chainsTotal}・🔧 {comp.upgrades}/{comp.upgradesTotal}
+      </p>
       {records.length > 0 && (
         <div className="mt-2">
           <p className="mb-1 text-xs font-bold text-gray-300">■ 最高記録</p>
@@ -543,6 +583,7 @@ function PlayTab(props: {
         <p>🕹️ <b>操作</b>: ドラッグ／矢印キーでコアを移動（黄色破線内）。攻撃は全自動。</p>
         <p>⛓️ 列は<b>先頭📧から崩れる</b>。体の数字はHP。先頭を集中攻撃！</p>
         <p>🌊 WAVE制圧ごとに3択強化。W5上司・W10役員・W15社長に注意！</p>
+        <p className="mt-1 text-gray-400">※登場する会社・人物はすべてフィクションのオリジナル作品です</p>
       </div>
     </div>
   );
@@ -607,6 +648,70 @@ function AchTab(props: { ach: AchState; onClaim: (id: string) => void }) {
 }
 
 /* ---------------- result ---------------- */
+
+function DexTab() {
+  const chains = encyChains();
+  const upgrades = encyUpgrades();
+  return (
+    <div>
+      <p className="mb-1 text-xs font-bold text-gray-300">■ 業務列図鑑（崩壊させた列が登録される）</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {chains.map((e) => (
+          <div key={e.kind} className={`rounded-lg p-2 text-center text-[11px] ${e.found ? 'bg-white/10' : 'bg-white/5 opacity-50'}`}>
+            <p className="text-2xl">{e.found ? e.icon : '❓'}</p>
+            <p className="font-bold">{e.found ? e.name : '？？？'}{e.boss && e.found ? '👑' : ''}</p>
+            <p className="text-gray-400">{e.kills}列</p>
+          </div>
+        ))}
+      </div>
+      <p className="mb-1 mt-3 text-xs font-bold text-gray-300">■ 強化図鑑（使った強化が登録される）</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {upgrades.map((w) => (
+          <div key={w.id} className={`rounded-lg p-2 text-[11px] ${w.found ? 'bg-white/10' : 'bg-white/5 opacity-50'}`}>
+            <p className="font-bold">{w.found ? `${w.icon} ${w.name}` : '❓ ？？？'}</p>
+            <p className="text-gray-400">{w.found ? w.desc : '未入手'}</p>
+            <p className="text-gray-400">最高Lv: {w.maxLv}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DailyTab(props: {
+  daily: DailyState;
+  missions: { id: string; name: string; icon: string; desc: string; target: number; reward: number }[];
+  onClaim: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] text-gray-300">毎日0時に更新！出勤して達成しよう。</p>
+      {props.missions.map((m) => {
+        const prog = Math.min(m.target, props.daily.progress[m.id] ?? 0);
+        const done = prog >= m.target;
+        const cl = props.daily.claimed[m.id] === true;
+        return (
+          <div key={m.id} className="rounded-lg bg-white/10 p-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-bold">{m.icon} {m.name}</p>
+              {cl ? (
+                <span className="text-gray-400">受取済</span>
+              ) : done ? (
+                <button onClick={() => props.onClaim(m.id)} className="rounded-lg bg-yellow-500 px-3 py-1.5 font-bold text-black">
+                  🪙{m.reward}受取
+                </button>
+              ) : (
+                <span className="text-gray-300">{prog}/{m.target}</span>
+              )}
+            </div>
+            <p className="text-gray-400">{m.desc}</p>
+            <Bar value={prog} max={m.target} className="bg-amber-400" />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function ResultOverlay(props: {
   result: RunResult; freshAch: string[]; records: SpiralRecord[];

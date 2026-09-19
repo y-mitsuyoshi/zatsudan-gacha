@@ -3,6 +3,7 @@
  */
 
 import type { Difficulty } from './config';
+import { CHAINS, UPGRADES } from './config';
 import type { RunResult } from './engine';
 
 const K = {
@@ -11,6 +12,8 @@ const K = {
   progress: 'shachiku-spiral-progress/v1',
   stats: 'shachiku-spiral-stats/v1',
   ach: 'shachiku-spiral-ach/v1',
+  ency: 'shachiku-spiral-ency/v1',
+  daily: 'shachiku-spiral-daily/v1',
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -179,4 +182,183 @@ export function claimAchievement(id: string): number {
   st.claimed[id] = true;
   write(K.ach, st);
   return def.reward;
+}
+
+/* ---------------- encyclopedia ---------------- */
+
+export interface EncyData {
+  chains: Record<string, number>;
+  upgrades: Record<string, number>;
+}
+
+export function loadEncy(): EncyData {
+  return read<EncyData>(K.ency, { chains: {}, upgrades: {} });
+}
+
+export function applyRunToEncy(r: RunResult): EncyData {
+  const e = loadEncy();
+  for (const [k, v] of Object.entries(r.chainKills)) {
+    e.chains[k] = (e.chains[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(r.upgradeLevels)) {
+    e.upgrades[k] = Math.max(e.upgrades[k] ?? 0, v);
+  }
+  write(K.ency, e);
+  return e;
+}
+
+export interface EncyChainEntry {
+  kind: string; name: string; icon: string; kills: number; found: boolean; boss: boolean;
+}
+
+export function encyChains(): EncyChainEntry[] {
+  const e = loadEncy();
+  return Object.values(CHAINS).map((d) => ({
+    kind: d.kind, name: d.name, icon: d.icon,
+    kills: e.chains[d.kind] ?? 0, found: (e.chains[d.kind] ?? 0) > 0, boss: d.boss,
+  }));
+}
+
+export interface EncyUpgradeEntry {
+  id: string; name: string; icon: string; desc: string; maxLv: number; found: boolean;
+}
+
+export function encyUpgrades(): EncyUpgradeEntry[] {
+  const e = loadEncy();
+  return Object.values(UPGRADES).map((d) => ({
+    id: d.id, name: d.name, icon: d.icon, desc: d.desc,
+    maxLv: e.upgrades[d.id] ?? 0, found: (e.upgrades[d.id] ?? 0) > 0,
+  }));
+}
+
+export function encyCompletion(): { chains: number; chainsTotal: number; upgrades: number; upgradesTotal: number } {
+  const c = encyChains();
+  const u = encyUpgrades();
+  return {
+    chains: c.filter((x) => x.found).length,
+    chainsTotal: c.length,
+    upgrades: u.filter((x) => x.found).length,
+    upgradesTotal: u.length,
+  };
+}
+
+/* ---------------- titles ---------------- */
+
+export interface TitleDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  check: (s: SpiralStats) => boolean;
+}
+
+export const TITLES: TitleDef[] = [
+  { id: '新人', name: '新人', icon: '🌱', desc: '出勤おめでとう', check: () => true },
+  { id: '中堅', name: '中堅社員', icon: '💼', desc: 'WAVE5に到達', check: (s) => s.bestWave >= 5 },
+  { id: '皆勤', name: '皆勤賞', icon: '🏅', desc: '累計10出勤', check: (s) => s.runs >= 10 },
+  { id: '制圧者', name: '渦の制圧者', icon: '🎉', desc: '全15ウェーブ踏破', check: (s) => s.wins >= 1 },
+  { id: '残業王', name: '残業王', icon: '🌙', desc: '累計3000節を切断', check: (s) => s.totalSegs >= 3000 },
+  { id: 'スパイラル神', name: 'スパイラル神', icon: '👑', desc: '図鑑コンプ＋全踏破', check: (s) => {
+    const c = encyCompletion();
+    return s.wins >= 1 && c.chains >= c.chainsTotal && c.upgrades >= c.upgradesTotal;
+  } },
+];
+
+export function earnedTitles(): TitleDef[] {
+  const s = loadStats();
+  return TITLES.filter((t) => {
+    try {
+      return t.check(s);
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function bestTitle(): TitleDef {
+  const earned = earnedTitles();
+  return earned[earned.length - 1] ?? TITLES[0];
+}
+
+/* ---------------- daily missions ---------------- */
+
+export interface MissionDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  target: number;
+  reward: number;
+  metric: (r: RunResult) => number;
+  accumulate: boolean;
+}
+
+const MISSION_POOL: MissionDef[] = [
+  { id: 'wave6', name: '午前を耐えろ', icon: '🕘', desc: 'WAVE6に到達', target: 6, reward: 150, metric: (r) => r.wave, accumulate: false },
+  { id: 'seg300', name: '切断300節', icon: '✂️', desc: '体節を300切断(累計)', target: 300, reward: 150, metric: (r) => r.segs, accumulate: true },
+  { id: 'coins150', name: '残業代稼ぎ', icon: '🪙', desc: '残業代🪙150稼ぐ(累計)', target: 150, reward: 120, metric: (r) => r.coins, accumulate: true },
+  { id: 'chains8', name: '列崩し8本', icon: '⛓️', desc: '列を8つ崩壊(累計)', target: 8, reward: 150, metric: (r) => r.chains, accumulate: true },
+  { id: 'wave11', name: '午後も耐えろ', icon: '🕒', desc: 'WAVE11に到達', target: 11, reward: 200, metric: (r) => r.wave, accumulate: false },
+];
+
+export interface DailyState {
+  date: string;
+  progress: Record<string, number>;
+  claimed: Record<string, boolean>;
+}
+
+export function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function seededPick(seed: number, n: number): MissionDef[] {
+  let s = seed;
+  const rnd = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+  const pool = [...MISSION_POOL];
+  const out: MissionDef[] = [];
+  while (out.length < n && pool.length > 0) {
+    out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+  }
+  return out;
+}
+
+export function todayMissions(): MissionDef[] {
+  const key = todayKey();
+  let seed = 0;
+  for (const c of key) seed = (seed * 31 + c.charCodeAt(0)) & 0x7fffffff;
+  return seededPick(seed, 3);
+}
+
+export function loadDaily(): DailyState {
+  const fresh: DailyState = { date: todayKey(), progress: {}, claimed: {} };
+  const st = read<DailyState>(K.daily, fresh);
+  if (st.date !== todayKey()) return fresh;
+  return st;
+}
+
+export function applyRunToDaily(r: RunResult): DailyState {
+  const st = loadDaily();
+  for (const m of todayMissions()) {
+    const v = m.metric(r);
+    if (m.accumulate) {
+      st.progress[m.id] = Math.min(m.target, (st.progress[m.id] ?? 0) + v);
+    } else {
+      st.progress[m.id] = Math.min(m.target, Math.max(st.progress[m.id] ?? 0, v));
+    }
+  }
+  write(K.daily, st);
+  return st;
+}
+
+export function claimMission(id: string): number {
+  const st = loadDaily();
+  const m = todayMissions().find((x) => x.id === id);
+  if (!m || st.claimed[id] || (st.progress[id] ?? 0) < m.target) return 0;
+  st.claimed[id] = true;
+  write(K.daily, st);
+  return m.reward;
 }

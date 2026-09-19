@@ -47,6 +47,8 @@ export interface HudSnapshot {
   weapons: HudWeapon[]; passives: HudPassive[];
   bossName: string; bossHp: number; bossMax: number;
   endless: boolean;
+  dashCd: number; dashMax: number;
+  xpBoostT: number; coinBoostT: number;
 }
 
 export interface LevelChoice {
@@ -155,6 +157,8 @@ export class SurvivorEngine {
   private last = 0;
   private running = false;
   private destroyed = false;
+  /** generation counter: stale loops exit, only the newest loop runs */
+  private activeGen = 0;
 
   private paused = false;
   private levelPending = false;
@@ -177,6 +181,15 @@ export class SurvivorEngine {
   private level = 1; private xp = 0; private xpNext = xpForLevel(1);
   private iframes = 0;
   private moveX = 0; private moveY = 0;
+  private lastDirX = 1; private lastDirY = 0;
+  // dash (original action: burst move + brief iframes)
+  private dashCd = 0; private dashT = 0;
+  private dashDx = 1; private dashDy = 0;
+  private static readonly DASH_MAX = 2.5;
+  // random office events (original system)
+  private nextEventT = 80;
+  private xpBoostT = 0;
+  private coinBoostT = 0;
   private weapons: OwnedWeapon[] = [];
   private passives: OwnedPassive[] = [];
   private pendingLevels = 0;
@@ -235,35 +248,61 @@ export class SurvivorEngine {
     this.parts = []; this.nums = [];
     this.spawnT = 0.5; this.bossIdx = 0;
     this.chests = 0; this.gemsCollected = 0; this.killsByKind = {};
+    this.dashCd = 0; this.dashT = 0;
+    this.nextEventT = 80; this.xpBoostT = 0; this.coinBoostT = 0;
     this.paused = false; this.levelPending = false; this.over = false; this.endless = false;
     this.endlessRamp = 1;
     this.last = performance.now();
     if (!this.running) {
       this.running = true;
-      const loop = (now: number) => {
-        if (this.destroyed) return;
-        const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
-        this.last = now;
-        if (!this.paused && !this.levelPending && !this.over) this.update(dt);
-        this.render();
-        this.hudT += dt;
-        if (this.hudT >= 0.12) { this.hudT = 0; this.emitHud(); }
-        this.raf = requestAnimationFrame(loop);
-      };
-      this.raf = requestAnimationFrame(loop);
+      this.registerLoop();
     }
     this.emitHud();
     this.ev.onBanner('🏢 出社！', '定時まで生き残れ！やる気を集めて強化しよう');
   }
 
+  private loop = (now: number, gen: number): void => {
+    if (gen !== this.activeGen || this.destroyed) return;
+    const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
+    this.last = now;
+    if (!this.paused && !this.levelPending && !this.over) this.update(dt);
+    this.render();
+    this.hudT += dt;
+    if (this.hudT >= 0.12) { this.hudT = 0; this.emitHud(); }
+    this.raf = requestAnimationFrame((n) => this.loop(n, gen));
+  };
+
+  private registerLoop(): void {
+    this.activeGen += 1;
+    const gen = this.activeGen;
+    this.last = performance.now();
+    this.raf = requestAnimationFrame((n) => this.loop(n, gen));
+  }
+
   destroy(): void {
     this.destroyed = true;
+    this.activeGen += 1;
     cancelAnimationFrame(this.raf);
     this.running = false;
   }
 
   setPaused(p: boolean): void { this.paused = p; }
   setMove(x: number, y: number): void { this.moveX = x; this.moveY = y; }
+
+  /** Dash toward current input (or last direction). Brief burst + iframes. */
+  setDash(): void {
+    if (this.paused || this.levelPending || this.over || this.dashCd > 0) return;
+    let dx = this.moveX; let dy = this.moveY;
+    if (Math.hypot(dx, dy) < 0.1) { dx = this.lastDirX; dy = this.lastDirY; }
+    const len = Math.hypot(dx, dy) || 1;
+    this.dashDx = dx / len;
+    this.dashDy = dy / len;
+    this.dashT = 0.22;
+    this.dashCd = SurvivorEngine.DASH_MAX;
+    this.iframes = Math.max(this.iframes, 0.32);
+    this.sound.dash();
+    this.burst(this.px, this.py, '#67e8f9', 10, 260);
+  }
 
   continueEndless(): void {
     if (!this.over) return;
@@ -440,18 +479,60 @@ export class SurvivorEngine {
       return;
     }
 
-    // movement
+    // movement (dash overrides)
     const mx = this.moveX; const my = this.moveY;
     const len = Math.hypot(mx, my);
-    if (len > 0.01) {
+    if (len > 0.1) {
+      this.lastDirX = mx / len;
+      this.lastDirY = my / len;
+    }
+    if (this.dashT > 0) {
+      this.dashT -= dt;
+      const sp = this.speed() * 2.7;
+      this.px += this.dashDx * sp * dt;
+      this.py += this.dashDy * sp * dt;
+      this.walkPhase += dt * 22;
+      if (Math.random() < 0.6) this.burst(this.px, this.py, '#67e8f9', 1, 60);
+    } else if (len > 0.01) {
       const sp = this.speed();
       this.px += (mx / Math.max(1, len)) * sp * dt * Math.min(1, len);
       this.py += (my / Math.max(1, len)) * sp * dt * Math.min(1, len);
       this.walkPhase += dt * 10;
     }
+    if (this.dashCd > 0) this.dashCd -= dt;
     if (this.iframes > 0) this.iframes -= dt;
+    if (this.xpBoostT > 0) this.xpBoostT -= dt;
+    if (this.coinBoostT > 0) this.coinBoostT -= dt;
     const rg = this.regen();
     if (rg > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + rg * dt);
+
+    // random office events (original)
+    if (!this.endless && t >= this.nextEventT && t < RUN_SECONDS - 20) {
+      this.nextEventT = t + 75 + Math.random() * 30;
+      const roll = Math.random();
+      if (roll < 0.34) {
+        // coffee break: vacuum everything + heal
+        for (const g of this.gems) {
+          g.vx = (this.px - g.x) * 4;
+          g.vy = (this.py - g.y) * 4;
+        }
+        for (const c of this.coinPs) {
+          c.vx = (this.px - c.x) * 4;
+          c.vy = (this.py - c.y) * 4;
+        }
+        this.hp = Math.min(this.maxHp, this.hp + 20);
+        this.ev.onBanner('☕ コーヒーブレイク！', 'やる気と残業代を一気に回収＋HP回復');
+        this.sound.heal();
+      } else if (roll < 0.67) {
+        this.xpBoostT = 30;
+        this.ev.onBanner('📈 査定タイム！', '30秒間やる気2倍！稼ぎ時だ');
+        this.sound.chest();
+      } else {
+        this.coinBoostT = 30;
+        this.ev.onBanner('💰 残業割り増し！', '30秒間残業代2倍！稼ぎ時だ');
+        this.sound.chest();
+      }
+    }
 
     // boss schedule
     while (this.bossIdx < BOSS_SCHEDULE.length && t >= BOSS_SCHEDULE[this.bossIdx].atSec) {
@@ -994,7 +1075,7 @@ export class SurvivorEngine {
       g.y += g.vy * dt;
       if (d2 < 26 * 26) {
         this.gems.splice(i, 1);
-        this.gainXp(Math.round(g.val * this.diff.xpMul));
+        this.gainXp(Math.round(g.val * this.diff.xpMul * (this.xpBoostT > 0 ? 2 : 1)));
         this.sound.pickup();
       }
     }
@@ -1014,8 +1095,9 @@ export class SurvivorEngine {
       c.y += c.vy * dt;
       if (d2 < 26 * 26) {
         this.coinPs.splice(i, 1);
-        this.coins += c.val;
-        this.score += c.val * 5;
+        const v = c.val * (this.coinBoostT > 0 ? 2 : 1);
+        this.coins += v;
+        this.score += v * 5;
         this.sound.coin();
       }
     }
@@ -1158,6 +1240,8 @@ export class SurvivorEngine {
       passives: this.passives.map((p) => ({ id: p.id, icon: passiveDefOf(p.id).icon, lv: p.lv })),
       bossName, bossHp, bossMax,
       endless: this.endless,
+      dashCd: Math.max(0, this.dashCd), dashMax: SurvivorEngine.DASH_MAX,
+      xpBoostT: Math.max(0, this.xpBoostT), coinBoostT: Math.max(0, this.coinBoostT),
     });
   }
 

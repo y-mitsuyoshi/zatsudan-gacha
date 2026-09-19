@@ -27,7 +27,16 @@ const DEFAULT_HUD: HudSnapshot = {
   time: 0, kills: 0, score: 0, coins: 0,
   weapons: [], passives: [],
   bossName: '', bossHp: 0, bossMax: 0, endless: false,
+  dashCd: 0, dashMax: 2.5, xpBoostT: 0, coinBoostT: 0,
 };
+
+function rankOf(r: { victory: boolean; difficulty: string; time: number; level: number; kills: number }): string {
+  if (r.victory && r.difficulty === 'hard') return 'S';
+  if (r.victory) return 'A';
+  if (r.time >= 420) return 'B';
+  if (r.time >= 240) return 'C';
+  return 'D';
+}
 
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
   return (
@@ -189,6 +198,10 @@ export default function ShachikuSurvivorGame() {
         e.preventDefault();
         keysRef.current.add(m);
         pushMove();
+      }
+      if ((e.key === 'Shift' || e.key === ' ') && screenRef.current === 'playing') {
+        e.preventDefault();
+        engineRef.current?.setDash();
       }
       if ((e.key === 'Escape' || e.key.toLowerCase() === 'p')) {
         if (screenRef.current === 'playing') pauseGame();
@@ -384,6 +397,12 @@ export default function ShachikuSurvivorGame() {
               <span className="w-16 shrink-0">💪 Lv{hud.level}</span>
               <Bar value={hud.xp} max={hud.xpNext} className="bg-cyan-400" />
             </div>
+            {(hud.xpBoostT > 0 || hud.coinBoostT > 0) && (
+              <div className="mb-1 flex gap-1 text-[11px] font-bold">
+                {hud.xpBoostT > 0 && <span className="rounded bg-green-600/60 px-1.5 py-0.5">📈 査定中 {Math.ceil(hud.xpBoostT)}s</span>}
+                {hud.coinBoostT > 0 && <span className="rounded bg-yellow-600/60 px-1.5 py-0.5">💰 割増中 {Math.ceil(hud.coinBoostT)}s</span>}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-1">
               {hud.weapons.map((w) => (
                 <span key={w.id} title={`Lv${w.lv}`} className="rounded bg-white/10 px-1 py-0.5 text-sm">{w.icon}<span className="text-[10px]">{w.lv}</span></span>
@@ -445,14 +464,33 @@ export default function ShachikuSurvivorGame() {
           )}
 
           {screen === 'paused' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 p-4">
               <p className="text-2xl font-black">⏸ 休憩中…</p>
-              <p className="text-xs text-gray-300">WASD/矢印キー or ドラッグで移動（自動攻撃）</p>
+              <p className="text-xs text-gray-300">WASD/矢印キー or ドラッグで移動（自動攻撃）・Shift/スペースでダッシュ</p>
+              <div className="flex max-w-[420px] flex-wrap items-center justify-center gap-1">
+                {hud.weapons.map((w) => (
+                  <span key={w.id} className="rounded bg-white/10 px-1.5 py-1 text-base">{w.icon}<span className="text-[10px]">{w.lv}</span></span>
+                ))}
+                <span className="mx-1 text-gray-500">|</span>
+                {hud.passives.map((p) => (
+                  <span key={p.id} className="rounded bg-white/10 px-1.5 py-1 text-base">{p.icon}<span className="text-[10px]">{p.lv}</span></span>
+                ))}
+              </div>
               <button onClick={resumeGame} className="rounded-xl bg-green-600 px-8 py-3 font-bold">▶ 業務再開</button>
               <button onClick={quitToTitle} className="rounded-xl bg-white/15 px-8 py-3 font-bold">タイトルに戻る</button>
             </div>
           )}
 
+          {screen === 'playing' && (
+            <button
+              onClick={() => engineRef.current?.setDash()}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`absolute bottom-3 right-3 rounded-full px-4 py-3 text-lg font-black shadow-lg ${hud.dashCd <= 0 ? 'bg-cyan-500 text-black' : 'bg-white/15 text-gray-300'}`}
+              aria-label="ダッシュ"
+            >
+              {hud.dashCd <= 0 ? '💨' : `${hud.dashCd.toFixed(1)}`}
+            </button>
+          )}
           {screen === 'result' && result && (
             <ResultOverlay
               result={result}
@@ -577,9 +615,10 @@ function PlayTab(props: {
         </div>
       )}
       <div className="mt-2 rounded-xl bg-white/10 p-3 text-[11px] leading-relaxed">
-        <p>🕹️ <b>操作</b>: WASD/矢印 or ドラッグで移動。攻撃は全自動。</p>
+        <p>🕹️ <b>操作</b>: WASD/矢印 or ドラッグで移動。攻撃は全自動。Shift/スペースでダッシュ！</p>
         <p>💪 やる気を集めてレベルアップ！3択から武器・パッシブを選べ。</p>
         <p>👔 課長→役員→専務→社長が襲来。🎁宝箱・🍱差し入れも活用！</p>
+        <p className="mt-1 text-gray-400">※登場する会社・人物はすべてフィクションのオリジナル作品です</p>
       </div>
     </div>
   );
@@ -772,6 +811,9 @@ function ResultOverlay(props: {
       <h2 className={`mt-1 text-2xl font-black ${result.victory ? 'text-yellow-300' : 'text-red-400'}`}>
         {result.victory ? '定時退社！！' : '過労死…'}
       </h2>
+      <p className="mx-auto mt-2 inline-block rounded-xl border-2 border-yellow-300 px-4 py-1 text-3xl font-black text-yellow-300">
+        {rankOf(result)}ランク
+      </p>
       <p className="text-xs text-gray-300">{DIFFICULTIES[result.difficulty]?.name} × {formatTime(result.time)}勤務</p>
       <div className="mx-auto mt-3 grid max-w-[340px] grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">スコア</p><p className="text-lg font-black text-yellow-300">{result.score.toLocaleString()}</p></div>

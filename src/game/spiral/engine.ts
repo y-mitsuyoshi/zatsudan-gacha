@@ -56,6 +56,8 @@ export interface RunResult {
   coins: number;
   difficulty: Difficulty;
   timeSec: number;
+  chainKills: Record<string, number>;
+  upgradeLevels: Record<string, number>;
 }
 
 export interface StartOpts {
@@ -124,7 +126,8 @@ export class SpiralEngine {
   private last = 0;
   private running = false;
   private destroyed = false;
-  private loopOn = false;
+  /** generation counter: stale loops exit, resume always takes over */
+  private activeGen = 0;
 
   private paused = false;
   private phase: 'build' | 'wave' | 'over' = 'build';
@@ -171,6 +174,9 @@ export class SpiralEngine {
   private queue: SpawnReq[] = [];
   private hudT = 0;
   private shakeT = 0; private shakeMag = 0;
+  /** hit-stop freeze timer (boss kills feel weighty) */
+  private hitStopT = 0;
+  private chainKills: Record<string, number> = {};
 
   constructor(canvas: HTMLCanvasElement, sound: SpiralSound, ev: EngineEvents) {
     this.canvas = canvas;
@@ -218,47 +224,57 @@ export class SpiralEngine {
     this.chains = []; this.projs = []; this.coinPs = [];
     this.beams = []; this.rings = []; this.parts = []; this.nums = [];
     this.queue = [];
+    this.hitStopT = 0;
+    this.chainKills = {};
     this.paused = false; this.over = false; this.endless = false;
     this.phase = 'build';
     this.last = performance.now();
     if (!this.running) {
       this.running = true;
-      this.loopOn = true;
-      this.raf = requestAnimationFrame(this.loop);
+      this.registerLoop();
     }
     this.emitBuild();
     this.emitHud();
     this.ev.onBanner('🌀 渦が迫る！', '強化を選んで出勤しよう');
   }
 
-  private loop = (now: number): void => {
-    if (this.destroyed) {
-      this.loopOn = false;
-      return;
-    }
+  private loop = (now: number, gen: number): void => {
+    if (gen !== this.activeGen || this.destroyed) return;
     const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
     this.last = now;
+    if (this.hitStopT > 0) {
+      // hit-stop: render the impact frame, skip simulation
+      this.hitStopT -= dt;
+      this.render();
+      this.raf = requestAnimationFrame((n) => this.loop(n, gen));
+      return;
+    }
     if (!this.paused && !this.over && this.phase === 'wave') this.update(dt);
     else if (!this.paused && !this.over && this.phase === 'build') this.updateBuildFx(dt);
     this.render();
     this.hudT += dt;
     if (this.hudT >= 0.12) { this.hudT = 0; this.emitHud(); }
-    this.raf = requestAnimationFrame(this.loop);
+    this.raf = requestAnimationFrame((n) => this.loop(n, gen));
   };
 
-  /** Re-register the rAF loop if it was lost (safe: no double loops). */
-  resumeLoop(): void {
-    if (this.destroyed || this.loopOn) return;
+  private registerLoop(): void {
+    this.activeGen += 1;
+    const gen = this.activeGen;
     this.last = performance.now();
-    this.loopOn = true;
-    this.raf = requestAnimationFrame(this.loop);
+    this.raf = requestAnimationFrame((n) => this.loop(n, gen));
+  }
+
+  /** Re-register the rAF loop (stale loops exit via generation check). */
+  resumeLoop(): void {
+    if (this.destroyed) return;
+    this.registerLoop();
   }
 
   destroy(): void {
     this.destroyed = true;
+    this.activeGen += 1;
     cancelAnimationFrame(this.raf);
     this.running = false;
-    this.loopOn = false;
   }
 
   setPaused(p: boolean): void { this.paused = p; }
@@ -711,6 +727,7 @@ export class SpiralEngine {
       }
       this.chains.splice(ci, 1);
       this.chainsKilled += 1;
+      this.chainKills[c.kind] = (this.chainKills[c.kind] ?? 0) + 1;
       this.sound.segDown();
       this.burst(c.segs[0]?.x ?? this.px, c.segs[0]?.y ?? this.py, '#fde047', 16, 260);
       // head always drops coins
@@ -718,6 +735,7 @@ export class SpiralEngine {
       for (let i = 0; i < n; i++) this.dropCoin(c.segs[0]?.x ?? CENTER, c.segs[0]?.y ?? CENTER, c.coins);
       if (c.boss) {
         this.coins += 50;
+        this.hitStopT = 0.14;
         this.ev.onBanner('🎁 大物撃破！', `+🪙50 — ${c.name}を切り崩した！`);
       }
       this.shake(0.25, c.boss ? 8 : 4);
@@ -823,11 +841,16 @@ export class SpiralEngine {
   private finishRun(victory: boolean): void {
     this.over = true;
     this.phase = 'over';
+    const upgradeLevels: Record<string, number> = {};
+    for (const id of Object.keys(this.levels) as UpgradeId[]) {
+      if (this.levels[id] > 0) upgradeLevels[id] = this.levels[id];
+    }
     const result: RunResult = {
       victory, wave: this.wave,
       segs: this.segsKilled, chains: this.chainsKilled,
       score: Math.round(this.score), coins: this.coins,
       difficulty: this.diff.id, timeSec: Math.floor(this.runTime),
+      chainKills: { ...this.chainKills }, upgradeLevels,
     };
     if (victory) this.sound.victory();
     else this.sound.defeat();
