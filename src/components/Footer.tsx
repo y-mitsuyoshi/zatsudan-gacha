@@ -41,10 +41,10 @@ export const Footer: React.FC = () => {
       emoji: '🐺'
     },
     {
-      title: 'バリケードディフェンス',
-      description: '前方大群を撃退！壁と仲間で守る防衛STG',
+      title: '社畜ディフェンス',
+      description: '定時退社を守れ！残業の大群を撃退する防衛STG',
       href: '/barricade-defense',
-      emoji: '🧱'
+      emoji: '💼'
     },
     {
       title: '究極の言い訳ジェネレーター',

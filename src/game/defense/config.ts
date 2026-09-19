@@ -1,14 +1,14 @@
 /**
- * Barricade Defense — game tuning data.
+ * 社畜ディフェンス 〜定時退社防衛戦〜 — game tuning data.
  * Playfield is a fixed logical space (W x H); the engine scales it to canvas.
  */
 
 export const VIEW_W = 480;
 export const VIEW_H = 800;
 
-/** Y of the barricade wall. Enemies stop here and chew through it. */
+/** Y of the barricade wall (定時の壁). Enemies stop here and chew through it. */
 export const BARRICADE_Y = 620;
-/** Y of the base line. If the wall is down, enemies march on and damage the base. */
+/** Y of the base line (自宅). If the wall is down, enemies march on and damage it. */
 export const BASE_Y = 730;
 /** Y of the player turret. */
 export const TURRET_Y = 700;
@@ -34,32 +34,32 @@ export interface WeaponDef {
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
   pistol: {
-    id: 'pistol', name: 'ピストル', icon: '🔫', desc: '初期装備。堅実な連射。',
+    id: 'pistol', name: 'シャーペン', icon: '✏️', desc: '相棒のシャーペンで応戦。',
     damage: 12, interval: 0.22, count: 1, spread: 0.03, speed: 620,
     pierce: 0, splash: 0, slow: 0, duration: Infinity, color: '#fde047',
   },
   smg: {
-    id: 'smg', name: 'SMG', icon: '🔥', desc: '超連射！弾幕で薙ぎ払え。',
+    id: 'smg', name: 'スタンプ連打', icon: '🖊️', desc: '承認の嵐で薙ぎ払え。',
     damage: 8, interval: 0.09, count: 1, spread: 0.09, speed: 640,
     pierce: 0, splash: 0, slow: 0, duration: 14, color: '#fb923c',
   },
   shotgun: {
-    id: 'shotgun', name: 'ショットガン', icon: '💥', desc: '近距離で絶大な5連散弾。',
+    id: 'shotgun', name: '書類ばらまき', icon: '📄', desc: '紙の弾幕でまとめて一掃。',
     damage: 9, interval: 0.55, count: 5, spread: 0.34, speed: 560,
     pierce: 0, splash: 0, slow: 0, duration: 14, color: '#f87171',
   },
   rifle: {
-    id: 'rifle', name: 'ライフル', icon: '🎯', desc: '貫通弾で一列粉砕。',
+    id: 'rifle', name: 'ド正論', icon: '📢', desc: '貫通するド正論で一列粉砕。',
     damage: 26, interval: 0.42, count: 1, spread: 0.01, speed: 900,
     pierce: 3, splash: 0, slow: 0, duration: 14, color: '#67e8f9',
   },
   launcher: {
-    id: 'launcher', name: 'ランチャー', icon: '🚀', desc: '着弾爆発で範囲殲滅。',
+    id: 'launcher', name: '退職届', icon: '💌', desc: '着弾と共に爆発する覚悟。',
     damage: 30, interval: 0.8, count: 1, spread: 0.02, speed: 430,
     pierce: 0, splash: 90, slow: 0, duration: 14, color: '#c084fc',
   },
   freeze: {
-    id: 'freeze', name: 'フリーズガン', icon: '❄️', desc: '敵を鈍足化させる冷気弾。',
+    id: 'freeze', name: '冷たい視線', icon: '🥶', desc: '上司を凍らせる目線。',
     damage: 7, interval: 0.16, count: 1, spread: 0.08, speed: 540,
     pierce: 1, splash: 0, slow: 0.5, duration: 14, color: '#a5f3fc',
   },
@@ -83,12 +83,12 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: Record<EnemyKind, EnemyDef> = {
-  runner: { kind: 'runner', name: 'ダッシャー', hp: 22, speed: 95, damage: 10, score: 50, coins: 3, radius: 13, color: '#4ade80', emoji: '👾' },
-  walker: { kind: 'walker', name: 'ウォーカー', hp: 55, speed: 52, damage: 16, score: 100, coins: 5, radius: 16, color: '#facc15', emoji: '👹' },
-  brute: { kind: 'brute', name: 'ブルート', hp: 170, speed: 34, damage: 34, score: 250, coins: 12, radius: 22, color: '#f97316', emoji: '🦍' },
-  shield: { kind: 'shield', name: 'シールド', hp: 110, speed: 44, damage: 20, score: 200, coins: 9, radius: 17, color: '#38bdf8', emoji: '🛡️' },
-  kamikaze: { kind: 'kamikaze', name: 'カミカゼ', hp: 30, speed: 130, damage: 55, score: 150, coins: 7, radius: 12, color: '#f472b6', emoji: '💣' },
-  boss: { kind: 'boss', name: 'ウォーロード', hp: 2600, speed: 26, damage: 60, score: 3000, coins: 150, radius: 40, color: '#ef4444', emoji: '👿' },
+  runner: { kind: 'runner', name: '至急メール', hp: 22, speed: 95, damage: 10, score: 50, coins: 3, radius: 13, color: '#4ade80', emoji: '📩' },
+  walker: { kind: 'walker', name: '残業', hp: 55, speed: 52, damage: 16, score: 100, coins: 5, radius: 16, color: '#facc15', emoji: '💼' },
+  brute: { kind: 'brute', name: '鬼上司', hp: 170, speed: 34, damage: 34, score: 250, coins: 12, radius: 22, color: '#f97316', emoji: '👹' },
+  shield: { kind: 'shield', name: 'ダラダラ会議', hp: 110, speed: 44, damage: 20, score: 200, coins: 9, radius: 17, color: '#38bdf8', emoji: '📊' },
+  kamikaze: { kind: 'kamikaze', name: '炎上案件', hp: 30, speed: 130, damage: 55, score: 150, coins: 7, radius: 12, color: '#f472b6', emoji: '🔥' },
+  boss: { kind: 'boss', name: '社長', hp: 2600, speed: 26, damage: 60, score: 3000, coins: 150, radius: 40, color: '#ef4444', emoji: '👔' },
 };
 
 export type CourseId = 'city' | 'desert' | 'snow';
@@ -106,15 +106,15 @@ export interface CourseDef {
 
 export const COURSES: Record<CourseId, CourseDef> = {
   city: {
-    id: 'city', name: '市街地', icon: '🏙️', desc: '全5WAVE。基本の戦場。',
+    id: 'city', name: '本社ビル', icon: '🏢', desc: '全5WAVE。まずは定時を目指せ。',
     waves: 5, sky: ['#0b1026', '#1e2a5a'], ground: '#1f2937',
   },
   desert: {
-    id: 'desert', name: '砂漠', icon: '🏜️', desc: '全6WAVE。高速敵が増加。',
+    id: 'desert', name: '地方支社', icon: '🏭', desc: '全6WAVE。至急メールが増加。',
     waves: 6, sky: ['#1a0f2e', '#5a2a1e'], ground: '#3f2d1c',
   },
   snow: {
-    id: 'snow', name: '雪原', icon: '❄️', desc: '全7WAVE。硬い敵＋ボス強化。',
+    id: 'snow', name: '深夜の本社', icon: '🌃', desc: '全7WAVE。硬い敵＋社長強化。',
     waves: 7, sky: ['#0a1628', '#1e3a5a'], ground: '#243447',
   },
 };
@@ -134,9 +134,9 @@ export interface DifficultyDef {
 }
 
 export const DIFFICULTIES: Record<Difficulty, DifficultyDef> = {
-  easy: { id: 'easy', name: 'やさしい', icon: '🌱', hpMul: 0.7, speedMul: 0.85, dmgMul: 0.7, countMul: 0.8, scoreMul: 0.8, desc: '敵が弱い。初めてに。' },
-  normal: { id: 'normal', name: 'ふつう', icon: '🔥', hpMul: 1, speedMul: 1, dmgMul: 1, countMul: 1, scoreMul: 1, desc: '標準バランス。' },
-  hard: { id: 'hard', name: 'つらい', icon: '💀', hpMul: 1.5, speedMul: 1.12, dmgMul: 1.4, countMul: 1.25, scoreMul: 1.5, desc: '高スコア狙い上級者向け。' },
+  easy: { id: 'easy', name: '定時', icon: '🌱', hpMul: 0.7, speedMul: 0.85, dmgMul: 0.7, countMul: 0.8, scoreMul: 0.8, desc: 'ほぼ定時。初めてに。' },
+  normal: { id: 'normal', name: '残業', icon: '🔥', hpMul: 1, speedMul: 1, dmgMul: 1, countMul: 1, scoreMul: 1, desc: '標準的な残業量。' },
+  hard: { id: 'hard', name: '過労死ライン', icon: '💀', hpMul: 1.5, speedMul: 1.12, dmgMul: 1.4, countMul: 1.25, scoreMul: 1.5, desc: '高スコア狙い社畜向け。' },
 };
 
 export const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
@@ -197,12 +197,51 @@ export interface ShopItem {
 }
 
 export const SHOP: ShopItem[] = [
-  { id: 'repair', name: 'バリケード修理', icon: '🧱', desc: '壁HPを全回復', cost: () => 40 },
-  { id: 'wall', name: 'バリケード強化', icon: '🛡️', desc: '壁最大HP +40', cost: (lv) => 60 + lv * 40 },
-  { id: 'power', name: '火力アップ', icon: '⚡', desc: '全武器ダメージ +15%', cost: (lv) => 80 + lv * 60 },
-  { id: 'ally', name: '仲間を雇う', icon: '🤝', desc: '自動射撃の仲間+1 (最大3)', cost: () => 120 },
-  { id: 'heal', name: '拠点修理', icon: '❤️', desc: '拠点HPを全回復', cost: () => 50 },
+  { id: 'repair', name: '定時の壁を修理', icon: '🧱', desc: '壁HPを全回復', cost: () => 40 },
+  { id: 'wall', name: '定時の壁を強化', icon: '🛡️', desc: '壁最大HP +40', cost: (lv) => 60 + lv * 40 },
+  { id: 'power', name: '反骨心アップ', icon: '⚡', desc: '全武器ダメージ +15%', cost: (lv) => 80 + lv * 60 },
+  { id: 'ally', name: '同期を呼ぶ', icon: '🤝', desc: '自動援護の同期+1 (最大3)', cost: () => 120 },
+  { id: 'heal', name: 'プライベート回復', icon: '🏠', desc: '自宅HPを全回復', cost: () => 50 },
 ];
 
 export const MAX_ALLIES = 3;
 export const ALLY_HP = 3;
+
+/* ---------------- やりこみ: 実績・恒久強化 ---------------- */
+
+export interface AchievementDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+}
+
+export const ACHIEVEMENTS: AchievementDef[] = [
+  { id: 'first_run', name: '初出社', icon: '📝', desc: '初めて出社した' },
+  { id: 'first_win', name: '定時退社', icon: '🏆', desc: 'コースをクリアした' },
+  { id: 'boss', name: '社長撃破', icon: '👔', desc: '社長を倒した' },
+  { id: 'nakama', name: '同期3人', icon: '🤝', desc: '同期を3人集めた' },
+  { id: 'combo50', name: '50連撃', icon: '🔥', desc: '50連撃を達成した' },
+  { id: 'combo100', name: '100連撃', icon: '💯', desc: '100連撃を達成した' },
+  { id: 'scorer', name: '1万pt', icon: '💰', desc: '1万スコアを稼いだ' },
+  { id: 'all_course', name: '全国制覇', icon: '🗾', desc: '全3コースをクリアした' },
+  { id: 'endless', name: '終わらぬ残業', icon: '♾️', desc: 'エンドレスに突入した' },
+  { id: 'veteran', name: 'ベテラン社畜', icon: '💼', desc: '10回出社した' },
+  { id: 'slayer', name: '残業キラー', icon: '⚔️', desc: '累計1000撃破した' },
+  { id: 'rich', name: 'へそくり長者', icon: '💴', desc: 'へそくり1000貯めた' },
+];
+
+export interface PerkDef {
+  id: 'power' | 'wall' | 'base';
+  name: string;
+  icon: string;
+  desc: string;
+  max: number;
+  cost: (level: number) => number;
+}
+
+export const PERKS: PerkDef[] = [
+  { id: 'power', name: '反骨心', icon: '💢', desc: '攻撃+4%/Lv', max: 10, cost: (lv) => 100 * (lv + 1) },
+  { id: 'wall', name: '壁補強', icon: '🧱', desc: '定時の壁+10/Lv', max: 10, cost: (lv) => 80 * (lv + 1) },
+  { id: 'base', name: '私生活充実', icon: '🏠', desc: '自宅HP+5/Lv', max: 10, cost: (lv) => 80 * (lv + 1) },
+];

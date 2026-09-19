@@ -50,6 +50,10 @@ export interface RunResult {
   kills: number;
   coins: number;
   maxCombo: number;
+  bossKills: number;
+  maxAllies: number;
+  endless: number;
+  killsByKind: Record<EnemyKind, number>;
 }
 
 interface Bullet { x: number; y: number; vx: number; vy: number; dmg: number; pierce: number; splash: number; slow: number; color: string; r: number; ally: boolean; life: number; }
@@ -115,6 +119,10 @@ export class DefenseEngine {
   private wallHp = 140;
   private victory = false;
   private over = false;
+  private perksDmg = 1;
+  private killsByKind: Record<EnemyKind, number> = { runner: 0, walker: 0, brute: 0, shield: 0, kamikaze: 0, boss: 0 };
+  private bossKills = 0;
+  private maxAlliesEver = 0;
 
   // wave state
   private waveActive = false;
@@ -163,10 +171,11 @@ export class DefenseEngine {
     this.cb = cb;
   }
 
-  start(course: CourseDef, diff: DifficultyDef, opts?: { shake?: boolean }): void {
+  start(course: CourseDef, diff: DifficultyDef, opts?: { shake?: boolean; perksDmg?: number; wallMax?: number; baseMax?: number }): void {
     this.course = course;
     this.diff = diff;
     this.shakeEnabled = opts?.shake !== false;
+    this.perksDmg = opts?.perksDmg ?? 1;
     this.score = 0;
     this.coins = 20;
     this.wave = 0;
@@ -179,10 +188,13 @@ export class DefenseEngine {
     this.weaponT = 0;
     this.powerLv = 0;
     this.wallLv = 0;
-    this.baseMax = 100;
-    this.baseHp = 100;
-    this.wallMax = 140;
-    this.wallHp = 140;
+    this.baseMax = opts?.baseMax ?? 100;
+    this.baseHp = this.baseMax;
+    this.wallMax = (opts?.wallMax ?? 140);
+    this.wallHp = this.wallMax;
+    this.killsByKind = { runner: 0, walker: 0, brute: 0, shield: 0, kamikaze: 0, boss: 0 };
+    this.bossKills = 0;
+    this.maxAlliesEver = 0;
     this.victory = false;
     this.over = false;
     this.shopOpen = false;
@@ -286,10 +298,10 @@ export class DefenseEngine {
     this.barrelT = 3;
     this.podT = 10;
     if (plan.isBoss) {
-      this.cb.onBanner(`WAVE ${this.wave} — ボス襲来`, '巨大な敵が接近中！ドラム缶と仲間を活用せよ');
+      this.cb.onBanner(`WAVE ${this.wave} — 社長出社`, '残業の大群が定時を阻む！差し入れと同期を活用せよ');
     } else {
       const label = this.endless > 0 ? `WAVE ${this.wave} +∞${this.endless}` : `WAVE ${this.wave} / ${total}`;
-      this.cb.onBanner(label, '敵の大群が前方から接近中！');
+      this.cb.onBanner(label, '残業の大群が定時を阻みに来た！');
     }
     this.running = true;
     this.last = performance.now();
@@ -305,12 +317,13 @@ export class DefenseEngine {
   private addAlly(): void {
     const id = this.nextId++;
     this.allies.push({ id, slot: this.allies.length, cd: 0.3 });
-    this.floaters.push({ x: VIEW_W / 2, y: TURRET_Y - 70, text: '仲間参戦！', color: '#4ade80', life: 1.4, max: 1.4 });
+    this.maxAlliesEver = Math.max(this.maxAlliesEver, this.allies.length);
+    this.floaters.push({ x: VIEW_W / 2, y: TURRET_Y - 70, text: '同期参戦！', color: '#4ade80', life: 1.4, max: 1.4 });
     this.sound.rescue();
   }
 
   private powerMult(): number {
-    return 1 + this.powerLv * 0.15;
+    return (1 + this.powerLv * 0.15) * this.perksDmg;
   }
 
   // ---------------- loop ----------------
@@ -408,6 +421,10 @@ export class DefenseEngine {
       kills: this.kills,
       coins: Math.floor(this.coins),
       maxCombo: this.maxCombo,
+      bossKills: this.bossKills,
+      maxAllies: this.maxAlliesEver,
+      endless: this.endless,
+      killsByKind: { ...this.killsByKind },
     });
   }
 
@@ -425,7 +442,7 @@ export class DefenseEngine {
       if (this.weaponT <= 0) {
         this.weapon = 'pistol';
         this.weaponT = 0;
-        this.floaters.push({ x: this.turretX, y: TURRET_Y - 50, text: '武器が戻った', color: '#94a3b8', life: 1, max: 1 });
+        this.floaters.push({ x: this.turretX, y: TURRET_Y - 50, text: 'シャーペンに戻った', color: '#94a3b8', life: 1, max: 1 });
       }
     }
     // turret movement
@@ -576,7 +593,7 @@ export class DefenseEngine {
   private bossSlam(): void {
     const boss = this.bossRef;
     if (!boss || boss.dead) return;
-    this.cb.onBanner('⚠️ ボスが地響きを起こす！', 'バリケードに大ダメージ');
+    this.cb.onBanner('⚠️ 社長の喝！！', '定時の壁に大ダメージ');
     this.shocks.push({ x: boss.x, y: boss.y + 40, r: 10, max: 200, life: 0.6, maxLife: 0.6, color: '#ef4444' });
     this.damageWall(30 * this.diff.dmgMul);
     this.trauma = Math.min(1, this.trauma + 0.6);
@@ -611,7 +628,7 @@ export class DefenseEngine {
       sway: rand(0, Math.PI * 2),
       dead: false,
     });
-    this.floaters.push({ x: VIEW_W / 2, y: 200, text: '🆘 助けを求める仲間！撃って救出！', color: '#4ade80', life: 2, max: 2 });
+    this.floaters.push({ x: VIEW_W / 2, y: 200, text: '🆘 同期がSOS！撃って救出！', color: '#4ade80', life: 2, max: 2 });
   }
 
   // ---------------- firing ----------------
@@ -766,7 +783,7 @@ export class DefenseEngine {
             } else {
               this.coins += 30;
               this.score += 200;
-              this.floaters.push({ x: p.x, y: p.y, text: '+30コイン', color: '#fde047', life: 1.2, max: 1.2 });
+              this.floaters.push({ x: p.x, y: p.y, text: '+30 残業代', color: '#fde047', life: 1.2, max: 1.2 });
             }
           }
           break;
@@ -792,6 +809,8 @@ export class DefenseEngine {
   private killEnemy(e: Enemy): void {
     const def = ENEMIES[e.kind];
     this.kills++;
+    this.killsByKind[e.kind]++;
+    if (e.kind === 'boss') this.bossKills++;
     this.combo++;
     this.comboT = 3;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -815,7 +834,7 @@ export class DefenseEngine {
     if (e.kind === 'boss') {
       this.bossRef = null;
       this.trauma = 1;
-      this.floaters.push({ x: e.x, y: e.y - 40, text: 'ボス撃破！！', color: '#fde047', life: 2, max: 2 });
+      this.floaters.push({ x: e.x, y: e.y - 40, text: '社長撃破！！', color: '#fde047', life: 2, max: 2 });
     }
   }
 
@@ -828,17 +847,17 @@ export class DefenseEngine {
       this.floaters.push({ x: br.x, y: br.y - 10, text: `${w.icon} ${w.name} GET！`, color: '#fde047', life: 1.6, max: 1.6 });
       this.sound.pickup();
     } else if (br.kind === 'bomb') {
-      this.floaters.push({ x: br.x, y: br.y - 10, text: '💥 誘爆！', color: '#fb923c', life: 1.2, max: 1.2 });
+      this.floaters.push({ x: br.x, y: br.y - 10, text: '💥 お局の雷！', color: '#fb923c', life: 1.2, max: 1.2 });
       this.explode(br.x, br.y, 135, 130 * this.powerMult(), '#fb923c');
       this.trauma = Math.min(1, this.trauma + 0.55);
       this.sound.boom();
     } else if (br.kind === 'coin') {
       this.coins += 25;
-      this.floaters.push({ x: br.x, y: br.y - 10, text: '+25コイン 🪙', color: '#fde047', life: 1.2, max: 1.2 });
+      this.floaters.push({ x: br.x, y: br.y - 10, text: '+25 残業代💴', color: '#fde047', life: 1.2, max: 1.2 });
       this.sound.pickup();
     } else {
       this.wallHp = Math.min(this.wallMax, this.wallHp + 55);
-      this.floaters.push({ x: br.x, y: br.y - 10, text: '🧱 壁+55修理！', color: '#38bdf8', life: 1.2, max: 1.2 });
+      this.floaters.push({ x: br.x, y: br.y - 10, text: '🧱 壁+55！後輩が補修！', color: '#38bdf8', life: 1.2, max: 1.2 });
       this.sound.pickup();
     }
   }
@@ -944,7 +963,7 @@ export class DefenseEngine {
     this.wallHp -= d;
     if (this.wallHp <= 0) {
       this.wallHp = 0;
-      this.cb.onBanner('🧱 バリケード崩壊！', '敵が拠点に迫っている！');
+      this.cb.onBanner('🧱 定時の壁崩壊！', '残業がプライベートに迫っている！');
       this.trauma = Math.min(1, this.trauma + 0.6);
       this.sound.boom();
       // release attackers forward
@@ -1145,7 +1164,7 @@ export class DefenseEngine {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`🏠 拠点 ${Math.ceil(this.baseHp)}`, VIEW_W / 2, BASE_Y + 27);
+    ctx.fillText(`🏠 自宅 ${Math.ceil(this.baseHp)}`, VIEW_W / 2, BASE_Y + 27);
     ctx.textAlign = 'left';
   }
 
@@ -1260,19 +1279,20 @@ export class DefenseEngine {
       ctx.save();
       ctx.translate(br.x, br.y);
       ctx.rotate(Math.sin(br.spin) * 0.35);
-      ctx.fillStyle = '#7c2d12';
+      // 差し入れ段ボール
+      ctx.fillStyle = '#a16207';
       ctx.beginPath();
-      ctx.roundRect(-16, -20, 32, 40, 6);
+      ctx.roundRect(-17, -17, 34, 34, 5);
       ctx.fill();
       ctx.strokeStyle = glow;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.roundRect(-16, -20, 32, 40, 6);
+      ctx.roundRect(-17, -17, 34, 34, 5);
       ctx.stroke();
-      ctx.fillStyle = '#fdba74';
-      ctx.fillRect(-16, -6, 32, 4);
-      ctx.fillRect(-16, 6, 32, 4);
-      const icon = br.kind === 'weapon' ? WEAPONS[br.weapon].icon : br.kind === 'bomb' ? '💥' : br.kind === 'coin' ? '🪙' : '🧱';
+      ctx.fillStyle = '#713f12';
+      ctx.fillRect(-17, -3, 34, 6);
+      ctx.fillRect(-3, -17, 6, 34);
+      const icon = br.kind === 'weapon' ? WEAPONS[br.weapon].icon : br.kind === 'bomb' ? '⚡' : br.kind === 'coin' ? '💴' : '🧱';
       ctx.font = '18px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(icon, 0, 7);
@@ -1313,7 +1333,7 @@ export class DefenseEngine {
       ctx.fillText('🙋', 0, 2);
       ctx.font = 'bold 11px sans-serif';
       ctx.fillStyle = '#a7f3d0';
-      ctx.fillText('HELP', 0, 20);
+      ctx.fillText('SOS', 0, 20);
       ctx.textAlign = 'left';
       ctx.restore();
       const frac = clamp(p.hp / p.maxHp, 0, 1);

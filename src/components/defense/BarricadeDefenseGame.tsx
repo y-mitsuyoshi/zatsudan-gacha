@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DefenseEngine, type HudSnapshot, type ShopSnapshot, type RunResult } from '@/game/defense/engine';
 import { DefenseSound } from '@/game/defense/audio';
 import {
-  WEAPONS, COURSES, COURSE_ORDER, DIFFICULTIES, DIFFICULTY_ORDER, SHOP, MAX_ALLIES,
-  type CourseId, type Difficulty,
+  WEAPONS, ENEMIES, COURSES, COURSE_ORDER, DIFFICULTIES, DIFFICULTY_ORDER, SHOP, MAX_ALLIES,
+  ACHIEVEMENTS, PERKS,
+  type CourseId, type Difficulty, type EnemyKind,
 } from '@/game/defense/config';
 import {
   loadSettings, saveSettings, loadRecords, saveRecord, loadProgress, saveProgress,
-  type RecordEntry,
+  type RecordEntry, type Progress,
 } from '@/game/defense/storage';
 
 type Screen = 'title' | 'playing' | 'shop' | 'paused' | 'result';
@@ -21,12 +22,41 @@ const DEFAULT_HUD: HudSnapshot = {
   bossHp: 0, bossMax: 0, fps: 60, waveActive: false,
 };
 
+const ENEMY_ORDER: EnemyKind[] = ['runner', 'walker', 'brute', 'shield', 'kamikaze', 'boss'];
+
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
       <div className={`h-full rounded-full transition-all ${className}`} style={{ width: `${Math.max(0, Math.min(100, (value / max) * 100))}%` }} />
     </div>
   );
+}
+
+/** 実績アンロック判定。新規解除のID一覧を返す。 */
+function evalAchievements(r: RunResult, p: Progress, records: RecordEntry[]): string[] {
+  const has = new Set(p.achievements);
+  const give: string[] = [];
+  const grant = (id: string, cond: boolean) => {
+    if (cond && !has.has(id)) {
+      give.push(id);
+      has.add(id);
+    }
+  };
+  grant('first_run', true);
+  grant('first_win', r.victory);
+  grant('boss', r.bossKills > 0);
+  grant('nakama', r.maxAllies >= MAX_ALLIES);
+  grant('combo50', r.maxCombo >= 50);
+  grant('combo100', r.maxCombo >= 100);
+  grant('scorer', r.score >= 10000);
+  grant('endless', r.endless > 0);
+  grant('veteran', p.totalRuns >= 10);
+  grant('slayer', p.totalKills >= 1000);
+  grant('rich', p.coins >= 1000);
+  const won = new Set(records.filter((x) => x.victory).map((x) => x.course));
+  grant('all_course', won.size >= 3);
+  if (give.length > 0) p.achievements = Array.from(has);
+  return give;
 }
 
 export default function BarricadeDefenseGame() {
@@ -53,6 +83,8 @@ export default function BarricadeDefenseGame() {
   const [shake, setShake] = useState(true);
   const [records, setRecords] = useState<RecordEntry[]>([]);
   const [bank, setBank] = useState(0);
+  const [prog, setProg] = useState<Progress | null>(null);
+  const [newAch, setNewAch] = useState<string[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [runMeta, setRunMeta] = useState<{ course: CourseId; difficulty: Difficulty }>({ course: 'city', difficulty: 'normal' });
 
@@ -62,6 +94,7 @@ export default function BarricadeDefenseGame() {
     setShake(s.shake);
     setRecords(loadRecords());
     const p = loadProgress();
+    setProg(p);
     setBank(p.coins);
     if (!p.unlocked.includes(course)) setCourse('city');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,19 +115,34 @@ export default function BarricadeDefenseGame() {
     const entry: RecordEntry = {
       score: r.score, course: c, difficulty: d, wave: r.wave, victory: r.victory, date: Date.now(),
     };
-    setRecords(saveRecord(entry));
+    const updated = saveRecord(entry);
+    setRecords(updated);
     const p = loadProgress();
     p.coins += r.coins;
+    p.totalKills += r.kills;
+    p.totalRuns += 1;
+    p.endlessBest = Math.max(p.endlessBest, r.endless);
+    for (const k of ENEMY_ORDER) {
+      const n = r.killsByKind[k] ?? 0;
+      if (n > 0) p.codex[k] = (p.codex[k] ?? 0) + n;
+    }
     if (r.victory) {
       const idx = COURSE_ORDER.indexOf(c);
       const next = COURSE_ORDER[idx + 1];
       if (next && !p.unlocked.includes(next)) p.unlocked.push(next);
     }
+    const unlocked = evalAchievements(r, p, updated);
     saveProgress(p);
+    setProg(p);
     setBank(p.coins);
+    setNewAch(unlocked);
+    if (unlocked.length > 0) {
+      const names = unlocked.map((id) => ACHIEVEMENTS.find((a) => a.id === id)?.name ?? id).join('・');
+      showBanner('🏅 実績解除！', names);
+    }
     setResult(r);
     changeScreen('result');
-  }, [changeScreen]);
+  }, [changeScreen, showBanner]);
 
   const startRun = useCallback((c: CourseId, d: Difficulty) => {
     const canvas = canvasRef.current;
@@ -102,8 +150,10 @@ export default function BarricadeDefenseGame() {
     destroyEngine();
     if (!soundRef.current) soundRef.current = new DefenseSound();
     const sound = soundRef.current;
-    sound.setMuted(loadSettings().muted);
+    const st = loadSettings();
+    sound.setMuted(st.muted);
     sound.unlock();
+    const p = loadProgress();
     // backing store
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = 480 * dpr;
@@ -122,8 +172,14 @@ export default function BarricadeDefenseGame() {
     setRunMeta({ course: c, difficulty: d });
     setResult(null);
     setShop(null);
+    setNewAch([]);
     changeScreen('playing');
-    engine.start(COURSES[c], DIFFICULTIES[d], { shake: loadSettings().shake });
+    engine.start(COURSES[c], DIFFICULTIES[d], {
+      shake: st.shake,
+      perksDmg: 1 + p.powerBonus * 0.04,
+      wallMax: 140 + p.wallBonus * 10,
+      baseMax: 100 + p.baseBonus * 5,
+    });
   }, [destroyEngine, finishRun, showBanner, changeScreen]);
 
   useEffect(() => () => destroyEngine(), [destroyEngine]);
@@ -212,6 +268,23 @@ export default function BarricadeDefenseGame() {
     }
   }, []);
 
+  const buyPerk = useCallback((id: 'power' | 'wall' | 'base') => {
+    const p = loadProgress();
+    const perk = PERKS.find((x) => x.id === id);
+    if (!perk) return;
+    const lv = id === 'power' ? p.powerBonus : id === 'wall' ? p.wallBonus : p.baseBonus;
+    if (lv >= perk.max || p.coins < perk.cost(lv)) return;
+    p.coins -= perk.cost(lv);
+    if (id === 'power') p.powerBonus++;
+    else if (id === 'wall') p.wallBonus++;
+    else p.baseBonus++;
+    saveProgress(p);
+    setProg(p);
+    setBank(p.coins);
+    soundRef.current?.unlock();
+    soundRef.current?.pickup();
+  }, []);
+
   const resumeFromShop = useCallback(() => {
     setShop(null);
     changeScreen('playing');
@@ -244,10 +317,11 @@ export default function BarricadeDefenseGame() {
     destroyEngine();
     setShop(null);
     setResult(null);
+    setProg(loadProgress());
+    setBank(loadProgress().coins);
     changeScreen('title');
   }, [destroyEngine, changeScreen]);
 
-  const progress = loadProgressSafe();
   const w = WEAPONS[hud.weapon];
 
   return (
@@ -255,7 +329,7 @@ export default function BarricadeDefenseGame() {
       <div className="w-full max-w-[520px]">
         {/* header */}
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="text-lg font-black tracking-wide">🧱 バリケードディフェンス</h1>
+          <h1 className="text-lg font-black tracking-wide">💼 社畜ディフェンス</h1>
           <div className="flex gap-2">
             <button onClick={toggleMute} className="rounded-lg bg-white/10 px-2 py-1 text-sm" aria-label="ミュート切替">
               {muted ? '🔇' : '🔊'}
@@ -275,15 +349,15 @@ export default function BarricadeDefenseGame() {
             <div className="mb-1 flex items-center justify-between font-bold">
               <span>WAVE {hud.wave}/{hud.totalWaves}{hud.endless > 0 ? ` ∞${hud.endless}` : ''}</span>
               <span className="text-yellow-300">SCORE {hud.score.toLocaleString()}</span>
-              <span className="text-amber-300">🪙 {hud.coins}</span>
+              <span className="text-amber-300">💴 {hud.coins}</span>
             </div>
             <div className="mb-1 flex items-center gap-2">
-              <span className="w-14 shrink-0">🧱 壁</span>
+              <span className="w-14 shrink-0">🧱 定時</span>
               <Bar value={hud.wallHp} max={hud.wallMax} className="bg-orange-500" />
               <span className="w-12 shrink-0 text-right">{hud.wallHp}</span>
             </div>
             <div className="mb-1 flex items-center gap-2">
-              <span className="w-14 shrink-0">🏠 拠点</span>
+              <span className="w-14 shrink-0">🏠 自宅</span>
               <Bar value={hud.baseHp} max={hud.baseMax} className="bg-blue-500" />
               <span className="w-12 shrink-0 text-right">{hud.baseHp}</span>
             </div>
@@ -293,7 +367,7 @@ export default function BarricadeDefenseGame() {
             </div>
             {hud.bossMax > 0 && (
               <div className="mt-1 flex items-center gap-2">
-                <span className="w-14 shrink-0">👿 ボス</span>
+                <span className="w-14 shrink-0">👔 社長</span>
                 <Bar value={hud.bossHp} max={hud.bossMax} className="bg-red-500" />
               </div>
             )}
@@ -316,11 +390,12 @@ export default function BarricadeDefenseGame() {
             </div>
           )}
 
-          {screen === 'title' && <TitleOverlay
+          {screen === 'title' && prog && <TitleOverlay
             course={course} setCourse={setCourse} difficulty={difficulty} setDifficulty={setDifficulty}
-            bank={bank} records={records} progressUnlocked={progress.unlocked}
+            bank={bank} records={records} prog={prog}
             showHelp={showHelp} setShowHelp={setShowHelp}
             onStart={() => startRun(course, difficulty)}
+            onBuyPerk={buyPerk}
           />}
 
           {screen === 'shop' && shop && (
@@ -329,57 +404,55 @@ export default function BarricadeDefenseGame() {
 
           {screen === 'paused' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
-              <p className="text-2xl font-black">⏸ 一時停止中</p>
-              <button onClick={resumeGame} className="rounded-xl bg-green-600 px-8 py-3 font-bold">▶ 再開する</button>
+              <p className="text-2xl font-black">⏸ 休憩中（サボり中）</p>
+              <button onClick={resumeGame} className="rounded-xl bg-green-600 px-8 py-3 font-bold">▶ 業務に戻る</button>
               <button onClick={quitToTitle} className="rounded-xl bg-white/15 px-8 py-3 font-bold">タイトルに戻る</button>
             </div>
           )}
 
           {screen === 'result' && result && (
             <ResultOverlay
-              result={result} meta={runMeta} records={records}
+              result={result} meta={runMeta} records={records} newAch={newAch}
               onRetry={() => startRun(runMeta.course, runMeta.difficulty)}
               onTitle={quitToTitle}
             />
           )}
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">
-          照準をドラッグ／タップで操作（自動射撃）・ドラム缶を撃つと武器変化や爆発・HELPカプセルを撃つと仲間が増加
+          照準をドラッグ／タップで操作（自動射撃）・差し入れ段ボールを撃つと武器変化や残業代・SOSカプセルを撃つと同期が増加
         </p>
       </div>
     </div>
   );
 }
 
-function loadProgressSafe(): { unlocked: CourseId[] } {
-  try {
-    return loadProgress();
-  } catch {
-    return { unlocked: ['city'] };
-  }
-}
-
 /* ---------------- title ---------------- */
+
+type HandbookTab = 'none' | 'perk' | 'ach' | 'codex';
 
 function TitleOverlay(props: {
   course: CourseId; setCourse: (c: CourseId) => void;
   difficulty: Difficulty; setDifficulty: (d: Difficulty) => void;
-  bank: number; records: RecordEntry[]; progressUnlocked: CourseId[];
+  bank: number; records: RecordEntry[]; prog: Progress;
   showHelp: boolean; setShowHelp: (v: boolean) => void;
   onStart: () => void;
+  onBuyPerk: (id: 'power' | 'wall' | 'base') => void;
 }) {
-  const { course, setCourse, difficulty, setDifficulty, bank, records, progressUnlocked, showHelp, setShowHelp, onStart } = props;
+  const { course, setCourse, difficulty, setDifficulty, bank, records, prog, showHelp, setShowHelp, onStart, onBuyPerk } = props;
+  const [tab, setTab] = useState<HandbookTab>('none');
+  const toggle = (t: HandbookTab) => setTab((prev) => (prev === t ? 'none' : t));
+  const achCount = prog.achievements.length;
   return (
     <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-black/85 via-black/75 to-black/90 p-4">
-      <p className="text-center text-4xl">🧱🔫</p>
-      <h2 className="mt-1 text-center text-2xl font-black text-yellow-300">バリケードディフェンス</h2>
-      <p className="mt-1 text-center text-xs text-gray-300">前方から迫る大群を撃て！ドラム缶で武器チェンジ、仲間を救出、壁を守り抜け！</p>
+      <p className="text-center text-4xl">💼🧱</p>
+      <h2 className="mt-1 text-center text-2xl font-black text-yellow-300">社畜ディフェンス</h2>
+      <p className="mt-1 text-center text-xs text-gray-300">定時退社を阻む残業の大群を撃退せよ！差し入れで武器チェンジ、同期を救出、定時の壁を守り抜け！</p>
 
-      <p className="mb-1 mt-4 text-xs font-bold text-gray-300">■ コース選択</p>
+      <p className="mb-1 mt-4 text-xs font-bold text-gray-300">■ 勤務地選択</p>
       <div className="grid grid-cols-3 gap-2">
         {COURSE_ORDER.map((c) => {
           const def = COURSES[c];
-          const locked = !progressUnlocked.includes(c);
+          const locked = !prog.unlocked.includes(c);
           return (
             <button
               key={c}
@@ -395,7 +468,7 @@ function TitleOverlay(props: {
         })}
       </div>
 
-      <p className="mb-1 mt-3 text-xs font-bold text-gray-300">■ 難易度</p>
+      <p className="mb-1 mt-3 text-xs font-bold text-gray-300">■ 働き方</p>
       <div className="grid grid-cols-3 gap-2">
         {DIFFICULTY_ORDER.map((d) => {
           const def = DIFFICULTIES[d];
@@ -413,21 +486,85 @@ function TitleOverlay(props: {
       </div>
 
       <button onClick={onStart} className="mt-4 w-full rounded-xl bg-red-600 py-3 text-lg font-black shadow-lg">
-        🚀 出撃する
+        🚀 出社する
       </button>
       <div className="mt-2 flex items-center justify-between text-xs text-gray-300">
-        <span>🏦 貯金: 🪙{bank}</span>
-        <button onClick={() => setShowHelp(!showHelp)} className="rounded-lg bg-white/10 px-3 py-1">❓ 遊び方</button>
+        <span>🏦 へそくり: 💴{bank}</span>
+        <span>⚔️{prog.totalKills}撃破・{prog.totalRuns}出社</span>
+      </div>
+
+      <p className="mb-1 mt-3 text-xs font-bold text-gray-300">■ 社畜手帳（やりこみ）</p>
+      <div className="grid grid-cols-4 gap-2 text-xs">
+        <button onClick={() => setShowHelp(!showHelp)} className={`rounded-lg px-2 py-2 font-bold ${showHelp ? 'bg-indigo-600' : 'bg-white/10'}`}>❓<br />遊び方</button>
+        <button onClick={() => toggle('perk')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'perk' ? 'bg-indigo-600' : 'bg-white/10'}`}>💪<br />強化</button>
+        <button onClick={() => toggle('ach')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'ach' ? 'bg-indigo-600' : 'bg-white/10'}`}>🏅<br />実績{achCount}/{ACHIEVEMENTS.length}</button>
+        <button onClick={() => toggle('codex')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'codex' ? 'bg-indigo-600' : 'bg-white/10'}`}>📖<br />図鑑</button>
       </div>
 
       {showHelp && (
         <div className="mt-2 rounded-xl bg-white/10 p-3 text-[11px] leading-relaxed">
-          <p>🔫 <b>操作</b>: 指やマウスで照準を移動。銃は自動で発射。</p>
-          <p>🛢️ <b>ドラム缶</b>を撃つと… 武器GET(SMG/散弾/ライフル/ランチャー/冷凍)・💥誘爆・🪙コイン・🧱壁修理のいずれかが発動！</p>
-          <p>🙋 <b>HELPカプセル</b>を撃つと仲間が参戦(最大{MAX_ALLIES}人)。仲間は自動射撃してくれる。</p>
-          <p>🧱 敵が<b>バリケード</b>に到達すると壁を攻撃。壁が壊れると<b>拠点</b>に直行！拠点HPが0で敗北。</p>
-          <p>🛒 WAVEクリア毎にショップで強化。最終WAVE踏破でコースクリア→次のコース解放＆エンドレス突入可。</p>
-          <p>💾 スコア・解放状況・貯金は自動セーブ。</p>
+          <p>✏️ <b>操作</b>: 指やマウスで照準を移動。シャーペンは自動で発射。</p>
+          <p>📦 <b>差し入れ段ボール</b>を撃つと… 武器GET(スタンプ連打/書類/正論/退職届/冷たい視線)・⚡お局の雷・💴残業代・🧱壁補修のいずれかが発動！</p>
+          <p>🆘 <b>SOSカプセル</b>を撃つと同期が参戦(最大{MAX_ALLIES}人)。同期は自動援護してくれる。</p>
+          <p>🧱 残業が<b>定時の壁</b>に到達すると壁を攻撃。壁が壊れると<b>自宅</b>に直行！自宅HPが0で過労ダウン。</p>
+          <p>🛒 WAVEクリア毎にショップで強化。最終WAVE踏破で定時退社→次の勤務地解放＆エンドレス残業へ。</p>
+          <p>💾 スコア・解放・へそくり・図鑑・実績は自動セーブ。</p>
+        </div>
+      )}
+
+      {tab === 'perk' && (
+        <div className="mt-2 space-y-2">
+          {PERKS.map((perk) => {
+            const lv = perk.id === 'power' ? prog.powerBonus : perk.id === 'wall' ? prog.wallBonus : prog.baseBonus;
+            const maxed = lv >= perk.max;
+            const cost = perk.cost(lv);
+            const afford = bank >= cost;
+            return (
+              <div key={perk.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/10 p-2 text-xs">
+                <div>
+                  <p className="font-bold">{perk.icon} {perk.name} Lv{lv}/{perk.max}</p>
+                  <p className="text-gray-300">{perk.desc}</p>
+                </div>
+                <button
+                  disabled={maxed || !afford}
+                  onClick={() => onBuyPerk(perk.id)}
+                  className={`shrink-0 rounded-lg px-3 py-2 font-bold ${!maxed && afford ? 'bg-green-600' : 'bg-white/10 opacity-50'}`}
+                >
+                  {maxed ? 'MAX' : `💴${cost}`}
+                </button>
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-gray-400">※ へそくり（残業代）で恒久強化。出社ごとに効果発動。</p>
+        </div>
+      )}
+
+      {tab === 'ach' && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {ACHIEVEMENTS.map((a) => {
+            const got = prog.achievements.includes(a.id);
+            return (
+              <div key={a.id} className={`rounded-xl p-2 text-xs ${got ? 'bg-yellow-300/15 border border-yellow-300/50' : 'bg-white/5 opacity-50'}`}>
+                <p className="font-bold">{a.icon} {got ? a.name : '？？？'}</p>
+                <p className="text-[10px] text-gray-300">{got ? a.desc : 'まだ解除されていない'}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tab === 'codex' && (
+        <div className="mt-2 space-y-1">
+          {ENEMY_ORDER.map((k) => {
+            const def = ENEMIES[k];
+            const n = prog.codex[k] ?? 0;
+            return (
+              <div key={k} className="flex items-center justify-between rounded-lg bg-white/5 px-2 py-1 text-[11px]">
+                <span>{def.emoji} {n > 0 ? def.name : '？？？'}</span>
+                <span className="font-bold text-yellow-300">{n > 0 ? `${n}撃破` : '未確認'}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -455,9 +592,9 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4">
       <h2 className="text-center text-xl font-black text-yellow-300">
-        {shop.victory ? '🏆 コースクリア！' : `✅ WAVE ${shop.wave} クリア！`}
+        {shop.victory ? '🏆 定時退社達成！' : `✅ WAVE ${shop.wave} 耐えた！`}
       </h2>
-      <p className="mt-1 text-center text-sm text-amber-300">所持 🪙{shop.coins} ／ 壁 {shop.wallHp}/{shop.wallMax} ／ 拠点 {shop.baseHp}/{shop.baseMax} ／ 仲間 {shop.allies}/{MAX_ALLIES}</p>
+      <p className="mt-1 text-center text-sm text-amber-300">所持 💴{shop.coins} ／ 定時 {shop.wallHp}/{shop.wallMax} ／ 自宅 {shop.baseHp}/{shop.baseMax} ／ 同期 {shop.allies}/{MAX_ALLIES}</p>
       <div className="mt-3 space-y-2">
         {SHOP.map((item) => {
           const cost = shop.costs[item.id] ?? 0;
@@ -478,7 +615,7 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
                 onClick={() => onBuy(item.id)}
                 className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold ${afford && !maxed ? 'bg-green-600' : 'bg-white/10 opacity-50'}`}
               >
-                {maxed ? 'MAX' : `🪙${cost}`}
+                {maxed ? 'MAX' : `💴${cost}`}
               </button>
             </div>
           );
@@ -486,12 +623,12 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
       </div>
       {shop.victory ? (
         <div className="mt-3 space-y-2">
-          <button onClick={onEndless} className="w-full rounded-xl bg-purple-600 py-3 font-black">♾️ エンドレスに突入する</button>
-          <button onClick={onFinish} className="w-full rounded-xl bg-yellow-500 py-3 font-black text-black">📝 結果を見て終了</button>
+          <button onClick={onEndless} className="w-full rounded-xl bg-purple-600 py-3 font-black">♾️ 終わらぬ残業に突入する</button>
+          <button onClick={onFinish} className="w-full rounded-xl bg-yellow-500 py-3 font-black text-black">📝 勤怠を付けて帰宅</button>
         </div>
       ) : (
         <button onClick={onNext} className="mt-3 w-full rounded-xl bg-red-600 py-3 font-black">
-          ⚔️ WAVE {shop.endless > 0 ? `${shop.wave} +∞${shop.endless + 1}` : shop.wave + 1} へ出撃
+          ⚔️ WAVE {shop.endless > 0 ? `${shop.wave} +∞${shop.endless + 1}` : shop.wave + 1} へ出社
         </button>
       )}
     </div>
@@ -500,24 +637,33 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
 
 /* ---------------- result ---------------- */
 
-function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; difficulty: Difficulty }; records: RecordEntry[]; onRetry: () => void; onTitle: () => void }) {
-  const { result, meta, records, onRetry, onTitle } = props;
+function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; difficulty: Difficulty }; records: RecordEntry[]; newAch: string[]; onRetry: () => void; onTitle: () => void }) {
+  const { result, meta, records, newAch, onRetry, onTitle } = props;
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4 text-center">
       <p className="text-5xl">{result.victory ? '🏆' : '💀'}</p>
       <h2 className={`mt-1 text-2xl font-black ${result.victory ? 'text-yellow-300' : 'text-red-400'}`}>
-        {result.victory ? '作戦成功！' : '拠点陥落…'}
+        {result.victory ? '定時退社成功！' : '過労でダウン…'}
       </h2>
       <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}</p>
       <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">スコア</p><p className="text-lg font-black text-yellow-300">{result.score.toLocaleString()}</p></div>
-        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">到達WAVE</p><p className="text-lg font-black">{result.wave}</p></div>
+        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">耐えたWAVE</p><p className="text-lg font-black">{result.wave}</p></div>
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">撃破数</p><p className="text-lg font-black">{result.kills}</p></div>
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">最大連撃</p><p className="text-lg font-black">{result.maxCombo}</p></div>
       </div>
-      <p className="mt-2 text-xs text-amber-300">🪙{result.coins} を貯金に加算しました</p>
+      <p className="mt-2 text-xs text-amber-300">💴{result.coins} をへそくりに加算しました</p>
+      {newAch.length > 0 && (
+        <div className="mx-auto mt-2 max-w-[300px] rounded-xl border border-yellow-300/50 bg-yellow-300/10 p-2 text-xs">
+          <p className="font-bold text-yellow-300">🏅 実績解除！</p>
+          {newAch.map((id) => {
+            const a = ACHIEVEMENTS.find((x) => x.id === id);
+            return <p key={id}>{a ? `${a.icon} ${a.name} — ${a.desc}` : id}</p>;
+          })}
+        </div>
+      )}
       <div className="mt-3 space-y-2">
-        <button onClick={onRetry} className="w-full rounded-xl bg-red-600 py-3 font-black">🔁 もう一度出撃</button>
+        <button onClick={onRetry} className="w-full rounded-xl bg-red-600 py-3 font-black">🔁 もう一度出社</button>
         <button onClick={onTitle} className="w-full rounded-xl bg-white/15 py-3 font-black">タイトルに戻る</button>
       </div>
       {records.length > 0 && (
