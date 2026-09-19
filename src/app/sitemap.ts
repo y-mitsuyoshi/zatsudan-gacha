@@ -45,6 +45,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: 'https://zatsudan-gacha.web.app/barricade-defense',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
       url: 'https://zatsudan-gacha.web.app/shachiku-jinro',
       lastModified: new Date(),
       changeFrequency: 'monthly',
