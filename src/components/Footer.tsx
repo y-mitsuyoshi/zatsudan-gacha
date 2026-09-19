@@ -47,6 +47,12 @@ export const Footer: React.FC = () => {
       emoji: '💼'
     },
     {
+      title: '社畜サバイバー',
+      description: '18時まで生き残る10分サバイバル',
+      href: '/shachiku-survivor',
+      emoji: '🏢'
+    },
+    {
       title: '究極の言い訳ジェネレーター',
       description: 'AIが必死に考える、最高の言い逃れ',
       href: '/excuse-generator',
