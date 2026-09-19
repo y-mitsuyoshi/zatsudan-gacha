@@ -103,7 +103,7 @@ interface Proj {
 
 interface EnemyProj { x: number; y: number; vx: number; vy: number; dmg: number; radius: number; life: number }
 
-interface Gem { x: number; y: number; vx: number; vy: number; val: number }
+interface Gem { x: number; y: number; vx: number; vy: number; val: number; age: number }
 interface CoinP { x: number; y: number; vx: number; vy: number; val: number }
 interface Pickup { x: number; y: number; kind: 'heal' | 'magnet' | 'bomb' | 'chest'; bob: number }
 interface Ring { x: number; y: number; r: number; maxR: number; dmg: number; knock: number; width: number; color: string; hit: Set<Enemy> }
@@ -137,6 +137,8 @@ export class SurvivorEngine {
   private levelPending = false;
   private over = false;
   private endless = false;
+  /** 0..1 spawn pressure ramp after entering endless (fair restart) */
+  private endlessRamp = 1;
 
   // run state
   private time = 0;
@@ -148,7 +150,7 @@ export class SurvivorEngine {
 
   // player
   private px = 0; private py = 0;
-  private hp = 100; private maxHp = 100;
+  private hp = 120; private maxHp = 120;
   private level = 1; private xp = 0; private xpNext = xpForLevel(1);
   private iframes = 0;
   private moveX = 0; private moveY = 0;
@@ -194,10 +196,13 @@ export class SurvivorEngine {
     this.meta = { dmgMul: opts.dmgMul, maxHpBonus: opts.maxHpBonus, speedMul: opts.speedMul, magnetMul: opts.magnetMul };
     this.time = 0; this.kills = 0; this.score = 0; this.coins = 0;
     this.px = 0; this.py = 0;
-    this.maxHp = 100 + opts.maxHpBonus;
+    this.maxHp = 120 + opts.maxHpBonus;
     this.hp = this.maxHp;
     this.level = 1; this.xp = 0; this.xpNext = xpForLevel(1);
     this.iframes = 0;
+    this.moveX = 0; this.moveY = 0;
+    this.barrierAngle = 0; this.walkPhase = 0;
+    this.hudT = 0; this.shakeT = 0;
     this.weapons = [{ id: 'shuriken', lv: 1, cd: 0.4 }];
     this.passives = [];
     this.pendingLevels = 0; this.rerollLeft = 1; this.banishLeft = 1;
@@ -208,6 +213,7 @@ export class SurvivorEngine {
     this.spawnT = 0.5; this.bossIdx = 0;
     this.chests = 0; this.gemsCollected = 0; this.killsByKind = {};
     this.paused = false; this.levelPending = false; this.over = false; this.endless = false;
+    this.endlessRamp = 1;
     this.last = performance.now();
     if (!this.running) {
       this.running = true;
@@ -241,7 +247,22 @@ export class SurvivorEngine {
     this.over = false;
     this.endless = true;
     this.hp = this.maxHp;
-    this.bossIdx = 0;
+    // schedule bosses were already spawned (or skipped); endless uses periodic reinforcements
+    this.bossIdx = BOSS_SCHEDULE.length;
+    // fair restart: clear the floor (leftover bosses included) & bullets, brief breather.
+    // Endless then escalates fresh via the director + periodic reinforcements.
+    this.enemies = [];
+    this.eprojs = [];
+    this.iframes = 2;
+    this.endlessRamp = 0;
+    this.spawnT = 2;
+    // pre-seed a scattered field far away (avoids a synchronized kill-ring)
+    for (let i = 0; i < 36; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const r = 900 + Math.random() * 600;
+      const kind = this.pickTrashKind();
+      this.enemies.push(this.makeEnemy(kind, this.px + Math.cos(ang) * r, this.py + Math.sin(ang) * r, false, false));
+    }
     this.ev.onBanner('♾️ 残業突入！', '終わらない残業…どこまで耐えられるか');
     this.emitHud();
   }
@@ -253,7 +274,7 @@ export class SurvivorEngine {
   }
   private dmgMul(): number { return (1 + 0.08 * this.passiveLv('power')) * this.meta.dmgMul; }
   private speed(): number { return 215 * (1 + 0.06 * this.passiveLv('shoes')) * this.meta.speedMul; }
-  private magnetR(): number { return 95 * (1 + 0.25 * this.passiveLv('magnet')) * this.meta.magnetMul; }
+  private magnetR(): number { return 120 * (1 + 0.25 * this.passiveLv('magnet')) * this.meta.magnetMul; }
   private regen(): number { return 0.8 * this.passiveLv('care'); }
   private cdr(): number { return Math.pow(0.94, this.passiveLv('watch')); }
 
@@ -425,11 +446,15 @@ export class SurvivorEngine {
     }
 
     // director
+    if (this.endless && this.endlessRamp < 1) {
+      this.endlessRamp = Math.min(1, this.endlessRamp + dt / 30);
+    }
+    const ramp = this.endless ? Math.max(0.25, this.endlessRamp) : 1;
     this.spawnT -= dt;
     if (this.spawnT <= 0 && this.enemies.length < MAX_ENEMIES) {
-      const interval = Math.max(0.22, 1.05 - t * 0.0013) / this.diff.countMul;
+      const interval = Math.max(0.22, 1.05 - t * 0.0013) / this.diff.countMul / ramp;
       this.spawnT = interval * rand(0.7, 1.2);
-      const batch = 1 + Math.floor(t / 75);
+      const batch = Math.max(1, Math.round((1 + Math.floor(t / 75)) * ramp));
       for (let i = 0; i < batch; i++) this.spawnTrash();
     }
 
@@ -454,7 +479,8 @@ export class SurvivorEngine {
     return (1 + t * 0.011 + Math.pow(t / 60, 1.6) * 0.25) * this.diff.hpMul;
   }
   private dmgScale(): number {
-    return (1 + this.time * 0.0018) * this.diff.dmgMul;
+    // damage grows much slower than HP: endless stays skill-based, not one-shot
+    return (1 + this.time * 0.0009) * this.diff.dmgMul;
   }
 
   private spawnPos(): { x: number; y: number } {
@@ -481,10 +507,12 @@ export class SurvivorEngine {
     const d = ENEMIES[kind];
     const hs = this.hpScale() * (elite ? 7 : 1) * (boss ? 1 : 1);
     const hp = d.hp * hs;
+    // bosses scale less aggressively on contact damage so stacked bosses stay fair
+    const dmgMulBoss = boss ? 0.75 : 1;
     return {
       o: true, kind, x, y, hp, maxHp: hp,
       spd: d.speed * rand(0.9, 1.1) * Math.min(1.3, 1 + this.time * 0.0004),
-      dmg: d.damage * this.dmgScale() * (elite ? 1.3 : 1),
+      dmg: d.damage * this.dmgScale() * (elite ? 1.3 : 1) * dmgMulBoss,
       xp: d.xp * (elite ? 5 : 1), coins: d.coins * (elite ? 5 : 1),
       radius: d.radius * (elite ? 1.35 : 1) * (boss ? 1.15 : 1),
       icon: d.icon, color: d.color,
@@ -499,7 +527,7 @@ export class SurvivorEngine {
     if (this.enemies.length >= MAX_ENEMIES) return;
     const kind = this.pickTrashKind();
     const p = this.spawnPos();
-    const elite = this.time > 120 && Math.random() < (this.time > 300 ? 0.06 : 0.04);
+    const elite = this.time > 120 && Math.random() < (this.time > 300 ? 0.08 : 0.05);
     this.enemies.push(this.makeEnemy(kind, p.x, p.y, elite, false));
   }
 
@@ -550,7 +578,7 @@ export class SurvivorEngine {
           if (!tgt) { w.cd = 0.1; break; }
           w.cd = 1.05 * cdr;
           const n = 1 + Math.floor((w.lv + 1) / 3);
-          const { dmg } = this.critRoll(11 * (1 + 0.28 * (w.lv - 1)) * dm);
+          const dmg = 11 * (1 + 0.28 * (w.lv - 1)) * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -571,7 +599,7 @@ export class SurvivorEngine {
           if (!tgt) { w.cd = 0.1; break; }
           w.cd = 1.5 * cdr;
           const n = 2 + Math.floor(w.lv / 2);
-          const { dmg } = this.critRoll(8 * (1 + 0.28 * (w.lv - 1)) * dm);
+          const dmg = 8 * (1 + 0.28 * (w.lv - 1)) * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -597,7 +625,7 @@ export class SurvivorEngine {
           if (!tgt) { w.cd = 0.15; break; }
           w.cd = 2.2 * cdr;
           const n = 1 + Math.floor(w.lv / 3);
-          const { dmg } = this.critRoll(15 * (1 + 0.3 * (w.lv - 1)) * dm);
+          const dmg = 15 * (1 + 0.3 * (w.lv - 1)) * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -618,7 +646,7 @@ export class SurvivorEngine {
           const tgt = this.randomEnemyWithin(460);
           const tx = tgt ? tgt.x : this.px + rand(-200, 200);
           const ty = tgt ? tgt.y : this.py + rand(-200, 200);
-          const { dmg } = this.critRoll(32 * (1 + 0.3 * (w.lv - 1)) * dm);
+          const dmg = 32 * (1 + 0.3 * (w.lv - 1)) * dm;
           this.booms.push({
             x: tx, y: ty, r: 85 + 9 * w.lv, dmg, t: 0, dur: 0.35, knock: 260, hit: new Set(),
           });
@@ -629,7 +657,7 @@ export class SurvivorEngine {
         case 'hanko': {
           if (w.cd > 0) break;
           w.cd = Math.max(1.4, 3.2 - 0.15 * w.lv) * cdr;
-          const { dmg } = this.critRoll(26 * (1 + 0.3 * (w.lv - 1)) * dm);
+          const dmg = 26 * (1 + 0.3 * (w.lv - 1)) * dm;
           this.booms.push({
             x: this.px, y: this.py, r: 120 + 12 * w.lv, dmg, t: 0, dur: 0.3, knock: 340, hit: new Set(),
           });
@@ -643,7 +671,7 @@ export class SurvivorEngine {
           if (!tgt) { w.cd = 0.15; break; }
           w.cd = 1.9 * cdr;
           const n = 1 + Math.floor(w.lv / 2);
-          const { dmg } = this.critRoll(13 * (1 + 0.28 * (w.lv - 1)) * dm);
+          const dmg = 13 * (1 + 0.28 * (w.lv - 1)) * dm;
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
             const a = rand(0, Math.PI * 2);
@@ -660,7 +688,7 @@ export class SurvivorEngine {
         case 'bell': {
           if (w.cd > 0) break;
           w.cd = Math.max(2.2, 5.2 - 0.3 * w.lv) * cdr;
-          const { dmg } = this.critRoll(22 * (1 + 0.32 * (w.lv - 1)) * dm);
+          const dmg = 22 * (1 + 0.32 * (w.lv - 1)) * dm;
           this.rings.push({
             x: this.px, y: this.py, r: 30, maxR: 190 + 22 * w.lv,
             dmg, knock: 430, width: 30, color: '#fde047', hit: new Set(),
@@ -833,7 +861,7 @@ export class SurvivorEngine {
       const rr = e.radius + pr;
       if (dist2(e.x, e.y, this.px, this.py) < rr * rr && e.hitCd <= 0 && this.iframes <= 0) {
         e.hitCd = 0.8;
-        this.iframes = 0.5;
+        this.iframes = 0.6;
         this.hp -= Math.max(1, Math.round(e.dmg));
         this.sound.hurt();
         this.burst(this.px, this.py, '#ef4444', 10, 200);
@@ -856,7 +884,7 @@ export class SurvivorEngine {
         const rr = p.radius + 14;
         if (dist2(p.x, p.y, this.px, this.py) < rr * rr) {
           dead = true;
-          this.iframes = 0.5;
+          this.iframes = 0.6;
           this.hp -= Math.max(1, Math.round(p.dmg));
           this.sound.hurt();
           this.burst(this.px, this.py, '#ef4444', 8, 180);
@@ -894,7 +922,7 @@ export class SurvivorEngine {
       const big = e.xp >= 15;
       const n = big ? Math.min(5, 1 + Math.floor(e.xp / 20)) : 1;
       for (let i = 0; i < n; i++) {
-        this.gems.push({ x: e.x + rand(-10, 10), y: e.y + rand(-10, 10), vx: rand(-60, 60), vy: rand(-60, 60), val: Math.ceil(e.xp / n) });
+        this.gems.push({ x: e.x + rand(-10, 10), y: e.y + rand(-10, 10), vx: rand(-60, 60), vy: rand(-60, 60), val: Math.ceil(e.xp / n), age: 0 });
       }
     }
     if (Math.random() < 0.35) {
@@ -926,10 +954,13 @@ export class SurvivorEngine {
     // gems
     for (let i = this.gems.length - 1; i >= 0; i--) {
       const g = this.gems[i];
+      g.age += dt;
       const d2 = dist2(g.x, g.y, this.px, this.py);
-      if (d2 < mr2) {
+      // old gems fly to the player: no XP is ever stranded (catch-up)
+      const attracted = d2 < mr2 || g.age > 25;
+      if (attracted) {
         const d = Math.max(1, Math.sqrt(d2));
-        const pull = 700 * (1 - d / (mr + 1)) + 200;
+        const pull = g.age > 25 ? 1400 : 700 * (1 - d / (mr + 1)) + 200;
         g.vx += ((this.px - g.x) / d) * pull * dt * 4;
         g.vy += ((this.py - g.y) / d) * pull * dt * 4;
       } else {

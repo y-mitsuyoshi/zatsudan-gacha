@@ -117,13 +117,13 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: Record<EnemyKind, EnemyDef> = {
-  mail: { kind: 'mail', name: '未読メール', icon: '📧', hp: 14, speed: 95, damage: 8, xp: 1, coins: 1, radius: 13, color: '#60a5fa', fromMin: 0, weight: 10, ranged: false, splitter: false, score: 10 },
-  doc: { kind: 'doc', name: '資料の山', icon: '📁', hp: 52, speed: 46, damage: 14, xp: 3, coins: 2, radius: 17, color: '#f59e0b', fromMin: 0, weight: 6, ranged: false, splitter: false, score: 20 },
-  claim: { kind: 'claim', name: 'クレーム', icon: '📢', hp: 22, speed: 132, damage: 10, xp: 2, coins: 1, radius: 12, color: '#f472b6', fromMin: 1, weight: 6, ranged: false, splitter: false, score: 15 },
-  overtime: { kind: 'overtime', name: '残業', icon: '🌙', hp: 38, speed: 112, damage: 12, xp: 3, coins: 2, radius: 13, color: '#818cf8', fromMin: 3, weight: 6, ranged: false, splitter: false, score: 20 },
-  nomikai: { kind: 'nomikai', name: '強制飲み会', icon: '🍺', hp: 66, speed: 70, damage: 12, xp: 5, coins: 3, radius: 16, color: '#fbbf24', fromMin: 2, weight: 4, ranged: false, splitter: true, score: 30 },
-  bossMid: { kind: 'bossMid', name: '上司', icon: '👔', hp: 190, speed: 62, damage: 20, xp: 10, coins: 8, radius: 20, color: '#ef4444', fromMin: 2, weight: 2.5, ranged: false, splitter: false, score: 80 },
-  hr: { kind: 'hr', name: '人事', icon: '👩‍💼', hp: 80, speed: 56, damage: 10, xp: 7, coins: 5, radius: 15, color: '#2dd4bf', fromMin: 4, weight: 3, ranged: true, splitter: false, score: 60 },
+  mail: { kind: 'mail', name: '未読メール', icon: '📧', hp: 14, speed: 95, damage: 8, xp: 2, coins: 1, radius: 13, color: '#60a5fa', fromMin: 0, weight: 10, ranged: false, splitter: false, score: 10 },
+  doc: { kind: 'doc', name: '資料の山', icon: '📁', hp: 52, speed: 46, damage: 14, xp: 4, coins: 2, radius: 17, color: '#f59e0b', fromMin: 0, weight: 6, ranged: false, splitter: false, score: 20 },
+  claim: { kind: 'claim', name: 'クレーム', icon: '📢', hp: 22, speed: 132, damage: 10, xp: 3, coins: 1, radius: 12, color: '#f472b6', fromMin: 1, weight: 6, ranged: false, splitter: false, score: 15 },
+  overtime: { kind: 'overtime', name: '残業', icon: '🌙', hp: 38, speed: 112, damage: 12, xp: 4, coins: 2, radius: 13, color: '#818cf8', fromMin: 3, weight: 6, ranged: false, splitter: false, score: 20 },
+  nomikai: { kind: 'nomikai', name: '強制飲み会', icon: '🍺', hp: 66, speed: 70, damage: 12, xp: 6, coins: 3, radius: 16, color: '#fbbf24', fromMin: 2, weight: 4, ranged: false, splitter: true, score: 30 },
+  bossMid: { kind: 'bossMid', name: '上司', icon: '👔', hp: 190, speed: 62, damage: 20, xp: 12, coins: 8, radius: 20, color: '#ef4444', fromMin: 2, weight: 2.5, ranged: false, splitter: false, score: 80 },
+  hr: { kind: 'hr', name: '人事', icon: '👩‍💼', hp: 80, speed: 56, damage: 10, xp: 8, coins: 5, radius: 15, color: '#2dd4bf', fromMin: 4, weight: 3, ranged: true, splitter: false, score: 60 },
   audit: { kind: 'audit', name: '監査', icon: '👁️', hp: 340, speed: 76, damage: 25, xp: 16, coins: 12, radius: 22, color: '#c084fc', fromMin: 6, weight: 2, ranged: false, splitter: false, score: 150 },
   exec: { kind: 'exec', name: '役員', icon: '😈', hp: 900, speed: 66, damage: 28, xp: 40, coins: 40, radius: 26, color: '#dc2626', fromMin: 99, weight: 0, ranged: true, splitter: false, score: 800 },
   senmu: { kind: 'senmu', name: '専務', icon: '👹', hp: 1600, speed: 70, damage: 32, xp: 60, coins: 70, radius: 28, color: '#991b1b', fromMin: 99, weight: 0, ranged: true, splitter: false, score: 1500 },

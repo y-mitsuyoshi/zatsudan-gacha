@@ -23,7 +23,7 @@ type Screen = 'title' | 'playing' | 'levelup' | 'paused' | 'result';
 type TitleTab = 'play' | 'power' | 'dex' | 'ach' | 'daily';
 
 const DEFAULT_HUD: HudSnapshot = {
-  hp: 100, maxHp: 100, level: 1, xp: 0, xpNext: 8,
+  hp: 120, maxHp: 120, level: 1, xp: 0, xpNext: 8,
   time: 0, kills: 0, score: 0, coins: 0,
   weapons: [], passives: [],
   bossName: '', bossHp: 0, bossMax: 0, endless: false,
