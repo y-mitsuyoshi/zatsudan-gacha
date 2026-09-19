@@ -55,8 +55,8 @@ function ExcuseGeneratorContent() {
 
     // Initialize from search params
     useEffect(() => {
-        const initialSituation = searchParams.get('situation');
-        const initialDetails = searchParams.get('details');
+        const initialSituation = searchParams?.get('situation');
+        const initialDetails = searchParams?.get('details');
 
         if (initialSituation) {
             if (situations.includes(initialSituation)) {

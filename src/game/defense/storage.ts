@@ -114,7 +114,10 @@ export function loadProgress(): Progress {
   try {
     const p = JSON.parse(raw) as Partial<Progress>;
     const unlocked = Array.isArray(p.unlocked)
-      ? (p.unlocked as unknown[]).filter((c): c is CourseId => c === 'city' || c === 'desert' || c === 'snow')
+      ? (p.unlocked as unknown[]).filter(
+          (c): c is CourseId =>
+            c === 'city' || c === 'desert' || c === 'snow' || c === 'rain' || c === 'tunnel',
+        )
       : (['city'] as CourseId[]);
     if (!unlocked.includes('city')) unlocked.unshift('city');
     const achievements = Array.isArray(p.achievements)

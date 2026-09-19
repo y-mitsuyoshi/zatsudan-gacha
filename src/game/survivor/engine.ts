@@ -7,33 +7,13 @@ import {
   VIEW_W, VIEW_H, RUN_SECONDS, MAX_ENEMIES, MAX_PROJECTILES, MAX_PARTICLES,
   MAX_DMG_NUMBERS, MAX_GEMS, WEAPON_ORDER, PASSIVE_ORDER, ENEMIES, BOSS_SCHEDULE,
   DIFFICULTIES, xpForLevel, MAX_WEAPON_SLOTS, MAX_PASSIVE_SLOTS,
-  WEAPONS, PASSIVES,
-  type WeaponId, type PassiveId, type EnemyKind, type Difficulty,
+  WEAPONS, PASSIVES, STAGES,
+  type WeaponId, type PassiveId, type EnemyKind, type Difficulty, type StageId,
 } from './config';
 import type { SurvivorSound } from './audio';
-import { drawSprite, type SpriteName } from './sprites';
-
-/** Enemy kind -> dot絵 sprite. */
-const KIND_SPRITE: Record<EnemyKind, SpriteName> = {
-  mail: 'mail',
-  doc: 'doc',
-  claim: 'claim',
-  overtime: 'moon',
-  nomikai: 'beer',
-  bossMid: 'boss',
-  hr: 'hr',
-  audit: 'eye',
-  exec: 'devil',
-  senmu: 'ogre',
-  president: 'crown',
-};
-
-const PICKUP_SPRITE = {
-  heal: 'heal',
-  magnet: 'magnet',
-  bomb: 'bomb',
-  chest: 'chest',
-} as const satisfies Record<string, SpriteName>;
+import { getPixelSprite } from './pixelSprites';
+import { checkEvolution } from './evolutions';
+import { TraumaScreenShake, HitStopManager, DamageNumberPool } from '@/game/common/juice';
 
 /* ---------------- public types ---------------- */
 
@@ -84,6 +64,7 @@ export interface RunResult {
 
 export interface StartOpts {
   difficulty: Difficulty;
+  stage?: StageId;
   dmgMul: number;
   maxHpBonus: number;
   speedMul: number;
@@ -121,9 +102,13 @@ interface Enemy {
 interface Proj {
   x: number; y: number; vx: number; vy: number;
   dmg: number; radius: number; pierce: number; life: number;
-  kind: 'shuriken' | 'coffee' | 'boomerang' | 'missile';
+  kind: 'shuriken' | 'coffee' | 'boomerang' | 'missile' | 'contract_storm' | 'caffeine_geyser' | 'gold_exchange';
   color: string; blast: number; homing: number; age: number;
   hit: Set<Enemy>;
+}
+
+interface Pool {
+  x: number; y: number; r: number; dmg: number; life: number; maxLife: number; tickCd: number;
 }
 
 interface EnemyProj { x: number; y: number; vx: number; vy: number; dmg: number; radius: number; life: number }
@@ -173,6 +158,7 @@ export class SurvivorEngine {
   private score = 0;
   private coins = 0;
   private diff = DIFFICULTIES.normal;
+  private stage = STAGES.honsha;
   private meta = { dmgMul: 1, maxHpBonus: 0, speedMul: 1, magnetMul: 1 };
 
   // player
@@ -198,6 +184,12 @@ export class SurvivorEngine {
   private banned = new Set<string>();
   private barrierAngle = 0;
   private walkPhase = 0;
+  private facingLeft = false;
+
+  // juice & visual enhancements
+  private traumaShake = new TraumaScreenShake();
+  private hitstop = new HitStopManager();
+  private damageNumberPool = new DamageNumberPool(128);
 
   // world
   private enemies: Enemy[] = [];
@@ -208,6 +200,7 @@ export class SurvivorEngine {
   private pickups: Pickup[] = [];
   private rings: Ring[] = [];
   private booms: Boom[] = [];
+  private pools: Pool[] = [];
   private parts: Particle[] = [];
   private nums: DmgNum[] = [];
   private spawnT = 0;
@@ -229,6 +222,7 @@ export class SurvivorEngine {
 
   start(opts: StartOpts): void {
     this.diff = DIFFICULTIES[opts.difficulty];
+    this.stage = STAGES[opts.stage ?? 'honsha'];
     this.meta = { dmgMul: opts.dmgMul, maxHpBonus: opts.maxHpBonus, speedMul: opts.speedMul, magnetMul: opts.magnetMul };
     this.time = 0; this.kills = 0; this.score = 0; this.coins = 0;
     this.px = 0; this.py = 0;
@@ -237,14 +231,19 @@ export class SurvivorEngine {
     this.level = 1; this.xp = 0; this.xpNext = xpForLevel(1);
     this.iframes = 0;
     this.moveX = 0; this.moveY = 0;
+    this.facingLeft = false;
     this.barrierAngle = 0; this.walkPhase = 0;
     this.hudT = 0; this.shakeT = 0;
+    this.traumaShake.reset();
+    this.hitstop.reset();
+    this.damageNumberPool.clear();
     this.weapons = [{ id: 'shuriken', lv: 1, cd: 0.4 }];
     this.passives = [];
     this.pendingLevels = 0; this.rerollLeft = 1; this.banishLeft = 1;
     this.banned = new Set();
     this.enemies = []; this.projs = []; this.eprojs = []; this.gems = [];
     this.coinPs = []; this.pickups = []; this.rings = []; this.booms = [];
+    this.pools = [];
     this.parts = []; this.nums = [];
     this.spawnT = 0.5; this.bossIdx = 0;
     this.chests = 0; this.gemsCollected = 0; this.killsByKind = {};
@@ -258,7 +257,7 @@ export class SurvivorEngine {
       this.registerLoop();
     }
     this.emitHud();
-    this.ev.onBanner('🏢 出社！', '定時まで生き残れ！やる気を集めて強化しよう');
+    this.ev.onBanner('出社！', '定時まで生き残れ！やる気を集めて強化しよう');
   }
 
   private loop = (now: number, gen: number): void => {
@@ -287,7 +286,17 @@ export class SurvivorEngine {
   }
 
   setPaused(p: boolean): void { this.paused = p; }
-  setMove(x: number, y: number): void { this.moveX = x; this.moveY = y; }
+  setMove(x: number, y: number): void {
+    const safeX = Number.isFinite(x) ? x : 0;
+    const safeY = Number.isFinite(y) ? y : 0;
+    this.moveX = safeX;
+    this.moveY = safeY;
+    if (safeX < 0) {
+      this.facingLeft = true;
+    } else if (safeX > 0) {
+      this.facingLeft = false;
+    }
+  }
 
   /** Dash toward current input (or last direction). Brief burst + iframes. */
   setDash(): void {
@@ -325,7 +334,7 @@ export class SurvivorEngine {
       const kind = this.pickTrashKind();
       this.enemies.push(this.makeEnemy(kind, this.px + Math.cos(ang) * r, this.py + Math.sin(ang) * r, false, false));
     }
-    this.ev.onBanner('♾️ 残業突入！', '終わらない残業…どこまで耐えられるか');
+    this.ev.onBanner('[無限] 残業突入！', '終わらない残業…どこまで耐えられるか');
     this.emitHud();
   }
 
@@ -375,15 +384,15 @@ export class SurvivorEngine {
     while (picks.length < 3) {
       picks.push(
         picks.length === pool.length
-          ? { kind: 'bonus', id: `heal${picks.length}`, name: '社食弁当', icon: '🍱', desc: 'HPを50%回復', toLv: 0, isNew: false }
-          : { kind: 'bonus', id: `coins${picks.length}`, name: '臨時ボーナス', icon: '💰', desc: '残業代 +50', toLv: 0, isNew: false },
+          ? { kind: 'bonus', id: `heal${picks.length}`, name: '社食弁当', icon: 'heal', desc: 'HPを50%回復', toLv: 0, isNew: false }
+          : { kind: 'bonus', id: `coins${picks.length}`, name: '臨時ボーナス', icon: 'coin', desc: '残業代 +50', toLv: 0, isNew: false },
       );
     }
     // ensure fallback variety
     if (pool.length === 0) {
-      picks[0] = { kind: 'bonus', id: 'heal0', name: '社食弁当', icon: '🍱', desc: 'HPを50%回復', toLv: 0, isNew: false };
-      picks[1] = { kind: 'bonus', id: 'coins1', name: '臨時ボーナス', icon: '💰', desc: '残業代 +50', toLv: 0, isNew: false };
-      picks[2] = { kind: 'bonus', id: 'heal2', name: '栄養ドリンク', icon: '🥤', desc: 'HPを全回復', toLv: 0, isNew: false };
+      picks[0] = { kind: 'bonus', id: 'heal0', name: '社食弁当', icon: 'heal', desc: 'HPを50%回復', toLv: 0, isNew: false };
+      picks[1] = { kind: 'bonus', id: 'coins1', name: '臨時ボーナス', icon: 'coin', desc: '残業代 +50', toLv: 0, isNew: false };
+      picks[2] = { kind: 'bonus', id: 'heal2', name: '栄養ドリンク', icon: 'bomb', desc: 'HPを全回復', toLv: 0, isNew: false };
     }
     return picks;
   }
@@ -470,6 +479,14 @@ export class SurvivorEngine {
   /* ----- update ----- */
 
   private update(dt: number): void {
+    const { frozen } = this.hitstop.update(dt);
+    this.traumaShake.update(dt);
+    this.damageNumberPool.update(dt);
+
+    if (frozen) {
+      return;
+    }
+
     this.time += dt;
     const t = this.time;
 
@@ -521,15 +538,15 @@ export class SurvivorEngine {
           c.vy = (this.py - c.y) * 4;
         }
         this.hp = Math.min(this.maxHp, this.hp + 20);
-        this.ev.onBanner('☕ コーヒーブレイク！', 'やる気と残業代を一気に回収＋HP回復');
+        this.ev.onBanner('【休憩】コーヒーブレイク！', 'やる気と残業代を一気に回収＋HP回復');
         this.sound.heal();
       } else if (roll < 0.67) {
         this.xpBoostT = 30;
-        this.ev.onBanner('📈 査定タイム！', '30秒間やる気2倍！稼ぎ時だ');
+        this.ev.onBanner('【査定】査定タイム！', '30秒間やる気2倍！稼ぎ時だ');
         this.sound.chest();
       } else {
         this.coinBoostT = 30;
-        this.ev.onBanner('💰 残業割り増し！', '30秒間残業代2倍！稼ぎ時だ');
+        this.ev.onBanner('【割増】残業割り増し！', '30秒間残業代2倍！稼ぎ時だ');
         this.sound.chest();
       }
     }
@@ -541,12 +558,12 @@ export class SurvivorEngine {
       this.spawnBoss(b.kind);
       this.ev.onBanner(b.title, b.sub);
       this.sound.boss();
-      this.shake(0.4, 6);
+      this.traumaShake.addTrauma(0.5);
     }
     // endless extra bosses
     if (this.endless && Math.floor(t) % 90 === 0 && Math.floor(t - dt) % 90 !== 0) {
       this.spawnBoss(Math.random() < 0.5 ? 'exec' : 'senmu');
-      this.ev.onBanner('⚠️ 増援役員！', '残業はまだ終わらない…');
+      this.ev.onBanner('【警報】増援役員！', '残業はまだ終わらない…');
     }
 
     // director
@@ -556,7 +573,7 @@ export class SurvivorEngine {
     const ramp = this.endless ? Math.max(0.25, this.endlessRamp) : 1;
     this.spawnT -= dt;
     if (this.spawnT <= 0 && this.enemies.length < MAX_ENEMIES) {
-      const interval = Math.max(0.22, 1.05 - t * 0.0013) / this.diff.countMul / ramp;
+      const interval = Math.max(0.22, 1.05 - t * 0.0013) / this.diff.countMul / this.stage.spawnMul / ramp;
       this.spawnT = interval * rand(0.7, 1.2);
       const batch = Math.max(1, Math.round((1 + Math.floor(t / 75)) * ramp));
       for (let i = 0; i < batch; i++) this.spawnTrash();
@@ -564,6 +581,7 @@ export class SurvivorEngine {
 
     this.updateWeapons(dt);
     this.updateProjs(dt);
+    this.updatePools(dt);
     this.updateEnemies(dt);
     this.updateEprojs(dt);
     this.updatePickups(dt);
@@ -580,7 +598,7 @@ export class SurvivorEngine {
 
   private hpScale(): number {
     const t = this.time;
-    return (1 + t * 0.011 + Math.pow(t / 60, 1.6) * 0.25) * this.diff.hpMul;
+    return (1 + t * 0.011 + Math.pow(t / 60, 1.6) * 0.25) * this.diff.hpMul * this.stage.hpMul;
   }
   private dmgScale(): number {
     // damage grows much slower than HP: endless stays skill-based, not one-shot
@@ -615,13 +633,14 @@ export class SurvivorEngine {
     const dmgMulBoss = boss ? 0.75 : 1;
     return {
       o: true, kind, x, y, hp, maxHp: hp,
-      spd: d.speed * rand(0.9, 1.1) * Math.min(1.3, 1 + this.time * 0.0004),
+      spd: d.speed * rand(0.9, 1.1) * Math.min(1.3, 1 + this.time * 0.0004) * this.stage.speedMul,
       dmg: d.damage * this.dmgScale() * (elite ? 1.3 : 1) * dmgMulBoss,
-      xp: d.xp * (elite ? 5 : 1), coins: d.coins * (elite ? 5 : 1),
+      xp: d.xp * (elite ? 5 : 1) * this.stage.xpMul,
+      coins: d.coins * (elite ? 5 : 1) * this.stage.coinMul,
       radius: d.radius * (elite ? 1.35 : 1) * (boss ? 1.15 : 1),
       icon: d.icon, color: d.color,
       hitCd: 0, flash: 0, kx: 0, ky: 0,
-      elite, boss, ranged: d.ranged, splitter: d.splitter, score: d.score * (elite ? 5 : 1) * (boss ? 3 : 1),
+      elite, boss, ranged: d.ranged, splitter: d.splitter, score: d.score * (elite ? 5 : 1) * (boss ? 3 : 1) * this.stage.scoreMul,
       shootCd: rand(1, 2.5), dashCd: rand(3, 5), dashT: 0, summonCd: 4,
       barrierCd: 0, boomHit: 0,
     };
@@ -800,12 +819,160 @@ export class SurvivorEngine {
           this.sound.hit();
           break;
         }
+        case 'contract_storm': {
+          if (w.cd > 0) break;
+          const tgt = this.nearestEnemy(600);
+          if (!tgt) { w.cd = 0.1; break; }
+          w.cd = 0.65 * cdr;
+          const dmg = 24 * dm;
+          const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
+          for (let i = 0; i < 4; i++) {
+            if (this.projs.length >= MAX_PROJECTILES) break;
+            const a = base + (i - 1.5) * 0.22;
+            this.projs.push({
+              x: this.px, y: this.py,
+              vx: Math.cos(a) * 640, vy: Math.sin(a) * 640,
+              dmg, radius: 12, pierce: 999, life: 1.8,
+              kind: 'contract_storm', color: '#f8fafc', blast: 0, homing: 0, age: 0, hit: new Set(),
+            });
+          }
+          this.sound.shoot();
+          break;
+        }
+        case 'caffeine_geyser': {
+          if (w.cd > 0) break;
+          const tgt = this.nearestEnemy(520);
+          if (!tgt) { w.cd = 0.1; break; }
+          w.cd = 0.9 * cdr;
+          const dmg = 22 * dm;
+          const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
+          const angles = [base - 0.2, base, base + 0.2, base + Math.PI - 0.15, base + Math.PI + 0.15];
+          for (const a of angles) {
+            if (this.projs.length >= MAX_PROJECTILES) break;
+            this.projs.push({
+              x: this.px, y: this.py,
+              vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,
+              dmg, radius: 14, pierce: 999, life: 1.3,
+              kind: 'caffeine_geyser', color: '#78350f', blast: 0, homing: 0, age: 0, hit: new Set(),
+            });
+          }
+          this.sound.shoot();
+          break;
+        }
+        case 'kanban_barrier': {
+          this.barrierAngle += dt * 3.8;
+          break;
+        }
+        case 'gold_exchange': {
+          if (w.cd > 0) break;
+          const tgt = this.nearestEnemy(560);
+          if (!tgt) { w.cd = 0.15; break; }
+          w.cd = 1.8 * cdr;
+          const dmg = 42 * dm;
+          const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
+          for (let i = 0; i < 4; i++) {
+            if (this.projs.length >= MAX_PROJECTILES) break;
+            const a = base + (i * Math.PI) / 2;
+            this.projs.push({
+              x: this.px, y: this.py,
+              vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
+              dmg, radius: 16, pierce: 999, life: 2.2,
+              kind: 'gold_exchange', color: '#facc15', blast: 0, homing: 1, age: 0, hit: new Set(),
+            });
+          }
+          this.sound.shoot();
+          break;
+        }
+        case 'taurine_supernova': {
+          if (w.cd > 0) break;
+          w.cd = 1.6 * cdr;
+          const dmg = 45 * dm;
+          for (let c = 0; c < 3; c++) {
+            const tgt = this.randomEnemyWithin(480);
+            const tx = tgt ? tgt.x + rand(-20, 20) : this.px + rand(-180, 180);
+            const ty = tgt ? tgt.y + rand(-20, 20) : this.py + rand(-180, 180);
+            this.pools.push({
+              x: tx, y: ty, r: 75, dmg: dmg * 0.35, life: 4.0, maxLife: 4.0, tickCd: 0.1,
+            });
+            this.burst(tx, ty, '#84cc16', 12, 140);
+          }
+          this.sound.shoot();
+          break;
+        }
+        case 'emergency_hotline': {
+          if (w.cd > 0) break;
+          w.cd = 0.85 * cdr;
+          const tgt = this.nearestEnemy(600);
+          if (!tgt) break;
+          const dmg = 50 * dm;
+          this.booms.push({
+            x: tgt.x, y: tgt.y, r: 110, dmg, t: 0, dur: 0.25, knock: 300, hit: new Set(),
+          });
+          this.burst(tgt.x, tgt.y, '#38bdf8', 18, 240);
+          this.sound.shoot();
+          break;
+        }
+        case 'imperial_seal': {
+          if (w.cd > 0) break;
+          w.cd = 2.2 * cdr;
+          const dmg = 80 * dm;
+          const radius = 240;
+          this.booms.push({
+            x: this.px, y: this.py, r: radius, dmg, t: 0, dur: 0.45, knock: 450, hit: new Set(),
+          });
+          this.burst(this.px, this.py, '#dc2626', 28, 300);
+          this.traumaShake.addTrauma(0.5);
+          for (const e of this.enemies) {
+            if (dist2(this.px, this.py, e.x, e.y) < radius * radius) {
+              e.hitCd = 1.0;
+            }
+          }
+          this.sound.hit();
+          break;
+        }
+        case 'grand_chime': {
+          if (w.cd > 0) break;
+          w.cd = 3.5 * cdr;
+          const dmg = 60 * dm;
+          this.rings.push({
+            x: this.px, y: this.py, r: 40, maxR: 360,
+            dmg, knock: 500, width: 45, color: '#fde047', hit: new Set(),
+          });
+          this.traumaShake.addTrauma(0.4);
+          for (const e of this.enemies) {
+            if (!e.boss) {
+              e.hitCd = 1.5;
+              e.kx = 0;
+              e.ky = 0;
+            }
+          }
+          this.sound.hit();
+          break;
+        }
       }
     }
 
-    // barrier damage
+    // barrier & kanban barrier damage
+    const kanban = this.weapons.find((w) => w.id === 'kanban_barrier');
     const barrier = this.weapons.find((w) => w.id === 'barrier');
-    if (barrier) {
+    if (kanban) {
+      const orbs = 4;
+      const radius = 95;
+      const dmg = 42 * dm;
+      for (let i = 0; i < orbs; i++) {
+        const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
+        const ox = this.px + Math.cos(a) * radius;
+        const oy = this.py + Math.sin(a) * radius;
+        for (const e of this.enemies) {
+          if (e.barrierCd > 0) continue;
+          if (dist2(ox, oy, e.x, e.y) < (24 + e.radius) * (24 + e.radius)) {
+            e.barrierCd = 0.25;
+            this.damageEnemy(e, dmg, 220, ox, oy, false);
+            this.burst(ox, oy, '#38bdf8', 4, 100);
+          }
+        }
+      }
+    } else if (barrier) {
       const orbs = 1 + Math.ceil(barrier.lv / 2);
       const radius = 66 + 5 * barrier.lv;
       const dmg = (9 + 4 * barrier.lv) * dm;
@@ -854,16 +1021,41 @@ export class SurvivorEngine {
     }
   }
 
+  private updatePools(dt: number): void {
+    for (let i = this.pools.length - 1; i >= 0; i--) {
+      const p = this.pools[i];
+      p.life -= dt;
+      p.tickCd -= dt;
+      if (p.tickCd <= 0) {
+        p.tickCd = 0.25;
+        const r2 = p.r * p.r;
+        for (const e of this.enemies) {
+          if (dist2(p.x, p.y, e.x, e.y) < r2) {
+            this.damageEnemy(e, p.dmg, 20, p.x, p.y, true);
+            e.kx *= 0.5;
+            e.ky *= 0.5;
+          }
+        }
+      }
+      if (p.life <= 0) {
+        this.pools.splice(i, 1);
+      }
+    }
+  }
+
   private updateProjs(dt: number): void {
     for (let i = this.projs.length - 1; i >= 0; i--) {
       const p = this.projs[i];
       p.age += dt;
       p.life -= dt;
-      if (p.kind === 'boomerang' && p.age > 0.45) {
+      if ((p.kind === 'boomerang' || p.kind === 'gold_exchange') && p.age > 0.4) {
         const a = Math.atan2(this.py - p.y, this.px - p.x);
-        const sp = 460;
+        const sp = p.kind === 'gold_exchange' ? 520 : 460;
         p.vx += (Math.cos(a) * sp - p.vx) * Math.min(1, 5 * dt);
         p.vy += (Math.sin(a) * sp - p.vy) * Math.min(1, 5 * dt);
+        if (p.kind === 'gold_exchange' && Math.random() < 0.15) {
+          this.burst(p.x, p.y, '#facc15', 1, 30);
+        }
       } else if (p.kind === 'missile') {
         const tgt = this.nearestTo(p.x, p.y, 500);
         if (tgt) {
@@ -912,7 +1104,7 @@ export class SurvivorEngine {
   }
 
   private updateEnemies(dt: number): void {
-    const pr = 16;
+    const pr = 8;
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
       if (e.flash > 0) e.flash -= dt;
@@ -969,29 +1161,79 @@ export class SurvivorEngine {
         this.hp -= Math.max(1, Math.round(e.dmg));
         this.sound.hurt();
         this.burst(this.px, this.py, '#ef4444', 10, 200);
-        this.shake(0.25, 5);
+        this.hitstop.triggerMs(20);
+        this.traumaShake.addTrauma(0.4);
         if (this.hp <= 0) { this.hp = 0; }
       }
     }
-    // separation (cheap: only push overlapping pairs within grid... simple O(n) jitter for perf)
-    // skip full separation; knockback + contact is enough.
+
+    // soft circle-circle swarm separation without stacking death balls or NaN singularities
+    const numEnemies = this.enemies.length;
+    for (let a = 0; a < numEnemies; a++) {
+      const e1 = this.enemies[a];
+      for (let b = a + 1; b < numEnemies; b++) {
+        const e2 = this.enemies[b];
+        let sepX = e2.x - e1.x;
+        let sepY = e2.y - e1.y;
+        const minDist = e1.radius + e2.radius;
+        const d2 = sepX * sepX + sepY * sepY;
+        if (d2 < minDist * minDist) {
+          let dist = Math.sqrt(d2);
+          if (dist < 0.001) {
+            const ang = Math.random() * Math.PI * 2;
+            sepX = Math.cos(ang);
+            sepY = Math.sin(ang);
+            dist = 1;
+          }
+          const overlap = minDist - dist;
+          const push = overlap * 0.5 * Math.min(1, 10 * dt);
+          const nx = sepX / dist;
+          const ny = sepY / dist;
+          e1.x -= nx * push;
+          e1.y -= ny * push;
+          e2.x += nx * push;
+          e2.y += ny * push;
+        }
+      }
+    }
   }
 
   private updateEprojs(dt: number): void {
+    const kanban = this.weapons.find((w) => w.id === 'kanban_barrier');
     for (let i = this.eprojs.length - 1; i >= 0; i--) {
       const p = this.eprojs[i];
       p.life -= dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       let dead = p.life <= 0;
+
+      // kanban barrier intercepts enemy projectiles
+      if (!dead && kanban) {
+        const orbs = 4;
+        const radius = 95;
+        for (let k = 0; k < orbs; k++) {
+          const a = this.barrierAngle + (k * Math.PI * 2) / orbs;
+          const ox = this.px + Math.cos(a) * radius;
+          const oy = this.py + Math.sin(a) * radius;
+          if (dist2(p.x, p.y, ox, oy) < (p.radius + 22) * (p.radius + 22)) {
+            dead = true;
+            this.burst(p.x, p.y, '#38bdf8', 6, 120);
+            this.sound.hit();
+            break;
+          }
+        }
+      }
+
       if (!dead && this.iframes <= 0) {
-        const rr = p.radius + 14;
+        const rr = p.radius + 8;
         if (dist2(p.x, p.y, this.px, this.py) < rr * rr) {
           dead = true;
           this.iframes = 0.6;
           this.hp -= Math.max(1, Math.round(p.dmg));
           this.sound.hurt();
           this.burst(this.px, this.py, '#ef4444', 8, 180);
+          this.hitstop.triggerMs(20);
+          this.traumaShake.addTrauma(0.4);
         }
       }
       if (dead) this.eprojs.splice(i, 1);
@@ -1006,9 +1248,18 @@ export class SurvivorEngine {
     const d = Math.max(1, Math.hypot(e.x - fromX, e.y - fromY));
     e.kx += ((e.x - fromX) / d) * knock;
     e.ky += ((e.y - fromY) / d) * knock;
-    if (this.nums.length < MAX_DMG_NUMBERS) {
-      this.nums.push({ x: e.x + rand(-8, 8), y: e.y - e.radius - 4, val: Math.round(final), life: 0.6, crit });
+
+    if (crit || e.boss || final >= 30) {
+      this.hitstop.triggerMs(25);
     }
+
+    this.damageNumberPool.spawn(
+      e.x + rand(-8, 8),
+      e.y - e.radius - 4,
+      Math.round(final),
+      crit ? 'crit' : 'normal'
+    );
+
     if (!silent) this.sound.hit();
     if (e.hp <= 0) this.killEnemy(e);
   }
@@ -1021,6 +1272,11 @@ export class SurvivorEngine {
     this.score += Math.round(e.score * this.diff.scoreMul);
     this.sound.kill();
     this.burst(e.x, e.y, e.color, e.boss ? 30 : 8, e.boss ? 320 : 170);
+
+    if (e.boss) {
+      this.hitstop.triggerMs(120);
+      this.traumaShake.addTrauma(0.6);
+    }
     // drops
     if (this.gems.length < MAX_GEMS) {
       const big = e.xp >= 15;
@@ -1123,34 +1379,58 @@ export class SurvivorEngine {
   private collectPickup(kind: Pickup['kind']): void {
     if (kind === 'heal') {
       this.hp = Math.min(this.maxHp, this.hp + 25);
-      this.ev.onBanner('🍱 差し入れ！', 'HPが25回復した');
+      this.ev.onBanner('【支給】差し入れ！', 'HPが25回復した');
       this.sound.heal();
     } else if (kind === 'magnet') {
       for (const g of this.gems) {
         g.vx = (this.px - g.x) * 3;
         g.vy = (this.py - g.y) * 3;
       }
-      this.ev.onBanner('🧲 定期券パワー！', 'やる気を一気に引き寄せた');
+      this.ev.onBanner('【吸引】定期券パワー！', 'やる気を一気に引き寄せた');
       this.sound.pickup();
     } else if (kind === 'bomb') {
-      this.ev.onBanner('💥 全部壊したれ！', '画面内の敵に大ダメージ！');
+      this.ev.onBanner('【爆破】全部壊したれ！', '画面内の敵に大ダメージ！');
       const targets = [...this.enemies];
       for (const e of targets) this.damageEnemy(e, 160 * this.dmgMul(), 300, this.px, this.py, true);
-      this.shake(0.4, 8);
+      this.traumaShake.addTrauma(0.5);
       this.sound.chest();
     } else {
-      // chest: coins + random upgrade
+      // chest: check evolution first!
       this.chests += 1;
+      const weaponsMap = new Map<string, number>(this.weapons.map((w) => [w.id, w.lv]));
+      const passivesMap = new Map<string, number>(this.passives.map((p) => [p.id, p.lv]));
+      const recipe = checkEvolution(weaponsMap, passivesMap);
+
+      if (recipe) {
+        // Evolve base weapon!
+        const baseIdx = this.weapons.findIndex((w) => w.id === recipe.baseWeaponId);
+        if (baseIdx >= 0) {
+          this.weapons[baseIdx] = {
+            id: recipe.evolvedId as WeaponId,
+            lv: 1,
+            cd: 0.2,
+          };
+          this.hitstop.triggerMs(120);
+          this.traumaShake.addTrauma(0.7);
+          this.ev.onBanner(`【進化】${recipe.name}`, `${recipe.flavor} ${recipe.desc}`);
+          this.sound.boss();
+          this.burst(this.px, this.py, '#facc15', 35, 300);
+          this.score += 2000;
+          return;
+        }
+      }
+
+      // normal chest: coins + random upgrade
       const bonus = 30 + Math.floor(this.time / 10);
       this.coins += bonus;
       const upgradable = this.weapons.filter((w) => w.lv < weaponDefOf(w.id).maxLv);
       if (upgradable.length > 0 && (this.weapons.length < MAX_WEAPON_SLOTS || Math.random() < 0.8)) {
         const w = upgradable[Math.floor(Math.random() * upgradable.length)];
         w.lv += 1;
-        this.ev.onBanner('🎁 宝箱！', `${weaponDefOf(w.id).name}がLv${w.lv}にアップ！ +🪙${bonus}`);
+        this.ev.onBanner('【宝箱】強化獲得！', `${weaponDefOf(w.id).name}がLv${w.lv}にアップ！ +${bonus}コイン`);
       } else {
         this.hp = Math.min(this.maxHp, this.hp + 40);
-        this.ev.onBanner('🎁 宝箱！', `HPが40回復！ +🪙${bonus}`);
+        this.ev.onBanner('【宝箱】社食支給！', `HPが40回復！ +${bonus}コイン`);
       }
       this.score += 500;
       this.sound.chest();
@@ -1252,25 +1532,27 @@ export class SurvivorEngine {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     ctx.save();
     ctx.scale(dpr, dpr);
-    // crisp dot絵: never smooth scaled sprites
+    // crisp pixel art: never smooth scaled sprites
     ctx.imageSmoothingEnabled = false;
     const W = VIEW_W; const H = VIEW_H;
 
-    let sx = 0; let sy = 0;
+    const traumaOffset = this.traumaShake.getOffset();
+    let sx = traumaOffset.offsetX;
+    let sy = traumaOffset.offsetY;
     if (this.shakeT > 0) {
-      sx = rand(-this.shakeMag, this.shakeMag);
-      sy = rand(-this.shakeMag, this.shakeMag);
+      sx += rand(-this.shakeMag, this.shakeMag);
+      sy += rand(-this.shakeMag, this.shakeMag);
     }
     const camX = this.px - W / 2 + sx;
     const camY = this.py - H / 2 + sy;
 
     // floor
     const night = Math.max(0, Math.min(1, (this.time - 420) / 180));
-    ctx.fillStyle = night > 0.5 ? '#0d1226' : '#141a2e';
+    ctx.fillStyle = night > 0.5 ? '#0d1226' : this.stage.floor;
     ctx.fillRect(0, 0, W, H);
 
     // grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = this.stage.grid;
     ctx.lineWidth = 1;
     const grid = 80;
     const x0 = Math.floor(camX / grid) * grid;
@@ -1315,28 +1597,40 @@ export class SurvivorEngine {
     const sx2 = (x: number) => x - camX;
     const sy2 = (y: number) => y - camY;
 
-    // gems
+    // pools (taurine_supernova)
+    for (const pool of this.pools) {
+      const x = sx2(pool.x); const y = sy2(pool.y);
+      const alpha = Math.min(0.6, (pool.life / pool.maxLife) * 0.7);
+      ctx.fillStyle = `rgba(132, 204, 22, ${alpha * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(x, y, pool.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(217, 249, 157, ${alpha * 0.8})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, pool.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // faceted diamond gems
     for (const g of this.gems) {
       const x = sx2(g.x); const y = sy2(g.y);
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-      ctx.fillStyle = g.val >= 15 ? '#f87171' : g.val >= 5 ? '#60a5fa' : '#4ade80';
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(Math.PI / 4);
-      const s = g.val >= 15 ? 7 : 5;
-      ctx.fillRect(-s / 2, -s / 2, s, s);
-      ctx.restore();
+      const gemName = g.val >= 30 ? 'gem_gold' : g.val >= 15 ? 'gem_red' : g.val >= 5 ? 'gem_blue' : 'gem_green';
+      const sprite = getPixelSprite(gemName, 0, false);
+      const s = g.val >= 30 ? 18 : g.val >= 15 ? 14 : g.val >= 5 ? 12 : 10;
+      ctx.drawImage(sprite, Math.round(x - s / 2), Math.round(y - s / 2), s, s);
     }
+
     // coins
     for (const c of this.coinPs) {
       const x = sx2(c.x); const y = sy2(c.y);
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fill();
+      const sprite = getPixelSprite('coin', 0, false);
+      ctx.drawImage(sprite, Math.round(x - 7), Math.round(y - 7), 14, 14);
     }
-    // pickups (dot絵)
+
+    // pickups (pixel art)
     for (const p of this.pickups) {
       const x = sx2(p.x); const y = sy2(p.y) + Math.sin(p.bob * 4) * 3;
       if (x < -30 || y < -30 || x > W + 30 || y > H + 30) continue;
@@ -1346,7 +1640,8 @@ export class SurvivorEngine {
         ctx.arc(x, y, 20, 0, Math.PI * 2);
         ctx.fill();
       }
-      drawSprite(ctx, PICKUP_SPRITE[p.kind], x, y, 26);
+      const sprite = getPixelSprite(p.kind, 0, false);
+      ctx.drawImage(sprite, Math.round(x - 14), Math.round(y - 14), 28, 28);
     }
 
     // explosions / stamps
@@ -1373,7 +1668,8 @@ export class SurvivorEngine {
       ctx.stroke();
     }
 
-    // enemies (dot絵)
+    // enemies (16-bit retro pixel art with 2-frame animation and hit-flash)
+    const animFrame = Math.floor(this.time * 4) % 2;
     for (const e of this.enemies) {
       const x = sx2(e.x); const y = sy2(e.y);
       if (x < -60 || y < -60 || x > W + 60 || y > H + 60) continue;
@@ -1384,7 +1680,11 @@ export class SurvivorEngine {
       ctx.fill();
       // sprite body
       const size = e.boss ? 54 : e.elite ? 44 : Math.round(e.radius * 2.6);
-      drawSprite(ctx, KIND_SPRITE[e.kind], x, y, size, { white: e.flash > 0 });
+      const spriteName = e.flash > 0 ? `${e.kind}_white` : e.kind;
+      const flip = e.kx < 0 || (this.px < e.x);
+      const sprite = getPixelSprite(spriteName, animFrame, flip);
+      ctx.drawImage(sprite, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+
       if (e.elite) {
         ctx.strokeStyle = '#fde047';
         ctx.lineWidth = 3;
@@ -1421,32 +1721,51 @@ export class SurvivorEngine {
       ctx.fill();
     }
 
-    // projectiles (dot絵)
+    // projectiles (16-bit retro pixel art)
     for (const p of this.projs) {
       const x = sx2(p.x); const y = sy2(p.y);
-      if (p.kind === 'shuriken') {
-        drawSprite(ctx, 'paper', x, y, 18);
-      } else if (p.kind === 'coffee') {
-        drawSprite(ctx, 'coffee', x, y, 16);
-      } else if (p.kind === 'boomerang') {
-        drawSprite(ctx, 'card', x, y, 20);
-      } else {
-        drawSprite(ctx, 'phone', x, y, 16);
+      let spriteName: string;
+      let size = 18;
+      switch (p.kind) {
+        case 'shuriken': spriteName = 'shuriken'; size = 18; break;
+        case 'coffee': spriteName = 'coffee'; size = 16; break;
+        case 'boomerang': spriteName = 'boomerang'; size = 20; break;
+        case 'missile': spriteName = 'phone'; size = 16; break;
+        case 'contract_storm': spriteName = 'contract_storm'; size = 22; break;
+        case 'caffeine_geyser': spriteName = 'caffeine_geyser'; size = 24; break;
+        case 'gold_exchange': spriteName = 'gold_exchange'; size = 24; break;
+        default: spriteName = 'shuriken'; size = 16; break;
       }
+      const sprite = getPixelSprite(spriteName, 0, false);
+      ctx.drawImage(sprite, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
     }
 
-    // player barrier orbs (dot絵付箋)
+    // player barrier orbs & kanban boards
+    const kanban = this.weapons.find((w) => w.id === 'kanban_barrier');
     const barrier = this.weapons.find((w) => w.id === 'barrier');
-    if (barrier && this.hp > 0) {
-      const orbs = 1 + Math.ceil(barrier.lv / 2);
-      const radius = 66 + 5 * barrier.lv;
+    if (kanban && this.hp > 0) {
+      const orbs = 4;
+      const radius = 95;
+      const sprite = getPixelSprite('kanban_barrier', 0, false);
       for (let i = 0; i < orbs; i++) {
         const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
-        drawSprite(ctx, 'note', this.px - camX + Math.cos(a) * radius, this.py - camY + Math.sin(a) * radius, 20);
+        const ox = this.px - camX + Math.cos(a) * radius;
+        const oy = this.py - camY + Math.sin(a) * radius;
+        ctx.drawImage(sprite, Math.round(ox - 14), Math.round(oy - 14), 28, 28);
+      }
+    } else if (barrier && this.hp > 0) {
+      const orbs = 1 + Math.ceil(barrier.lv / 2);
+      const radius = 66 + 5 * barrier.lv;
+      const sprite = getPixelSprite('barrier', 0, false);
+      for (let i = 0; i < orbs; i++) {
+        const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
+        const ox = this.px - camX + Math.cos(a) * radius;
+        const oy = this.py - camY + Math.sin(a) * radius;
+        ctx.drawImage(sprite, Math.round(ox - 10), Math.round(oy - 10), 20, 20);
       }
     }
 
-    // player (dot絵社畜・2コマ歩行)
+    // player (4-frame walk cycle + horizontal flip + hit flash)
     if (this.hp > 0) {
       const x = this.px - camX; const y = this.py - camY;
       const blink = this.iframes > 0 && Math.floor(this.time * 16) % 2 === 0;
@@ -1460,11 +1779,12 @@ export class SurvivorEngine {
       ctx.beginPath();
       ctx.arc(x, y, this.magnetR(), 0, Math.PI * 2);
       ctx.stroke();
-      if (!blink) {
-        const moving = Math.hypot(this.moveX, this.moveY) > 0.1;
-        const frame = moving && Math.floor(this.walkPhase) % 2 === 1 ? 'player1' : 'player0';
-        drawSprite(ctx, frame, x, y - 2, 38);
-      }
+
+      const moving = Math.hypot(this.moveX, this.moveY) > 0.1;
+      const walkFrame = moving ? Math.floor(this.walkPhase) % 4 : 0;
+      const spriteName = blink ? 'player_white' : 'player';
+      const sprite = getPixelSprite(spriteName, walkFrame, this.facingLeft);
+      ctx.drawImage(sprite, Math.round(x - 20), Math.round(y - 24), 40, 40);
     }
 
     // particles
@@ -1476,16 +1796,11 @@ export class SurvivorEngine {
     }
     ctx.globalAlpha = 1;
 
-    // damage numbers
-    ctx.textAlign = 'center';
-    for (const n of this.nums) {
-      const a = Math.min(1, n.life / 0.4);
-      ctx.globalAlpha = a;
-      ctx.font = n.crit ? 'bold 15px sans-serif' : 'bold 12px sans-serif';
-      ctx.fillStyle = n.crit ? '#fde047' : '#ffffff';
-      ctx.fillText(String(n.val), sx2(n.x), sy2(n.y));
-    }
-    ctx.globalAlpha = 1;
+    // damage numbers via DamageNumberPool
+    ctx.save();
+    ctx.translate(-camX, -camY);
+    this.damageNumberPool.render(ctx);
+    ctx.restore();
 
     // night tint
     if (night > 0) {

@@ -142,20 +142,20 @@ export interface AchievementDef {
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'debut', name: '初出社', icon: '🎒', desc: '1回出社する', reward: 100, check: (s) => s.runs >= 1 },
-  { id: 'kill100', name: 'メール捌き', icon: '📧', desc: '1出社で100体撃破', reward: 100, check: (_s, r) => r.kills >= 100 },
-  { id: 'kill500', name: '業務効率化', icon: '⚡', desc: '1出社で500体撃破', reward: 250, check: (_s, r) => r.kills >= 500 },
-  { id: 'kill1500', name: '人海戦術', icon: '🌊', desc: '1出社で1500体撃破', reward: 500, check: (_s, r) => r.kills >= 1500 },
-  { id: 'surv3', name: '午前耐久', icon: '🕘', desc: '3分生存する', reward: 100, check: (_s, r) => r.time >= 180 },
-  { id: 'surv8', name: '残り2時間', icon: '🕔', desc: '8分生存する', reward: 300, check: (_s, r) => r.time >= 480 },
-  { id: 'teiji', name: '定時退社', icon: '🎉', desc: '18時まで生き残る', reward: 500, check: (_s, r) => r.victory },
-  { id: 'black', name: 'ブラック生還', icon: '💀', desc: 'ブラックで定時退社', reward: 800, check: (_s, r) => r.victory && r.difficulty === 'hard' },
-  { id: 'lv15', name: '中堅社員', icon: '💪', desc: 'Lv15に到達', reward: 200, check: (_s, r) => r.level >= 15 },
-  { id: 'lv25', name: 'ベテラン', icon: '👑', desc: 'Lv25に到達', reward: 400, check: (_s, r) => r.level >= 25 },
-  { id: 'chest3', name: '棚ぼた', icon: '🎁', desc: '1出社で宝箱3個', reward: 200, check: (_s, r) => r.chests >= 3 },
-  { id: 'rich', name: '残業代長者', icon: '💰', desc: '1出社で🪙300稼ぐ', reward: 200, check: (_s, r) => r.coins >= 300 },
-  { id: 'veteran', name: '皆勤賞', icon: '🏅', desc: '累計10出社', reward: 300, check: (s) => s.runs >= 10 },
-  { id: 'slayer', name: 'リストラ王', icon: '🗡️', desc: '累計10000体撃破', reward: 500, check: (s) => s.totalKills >= 10000 },
+  { id: 'debut', name: '初出社', icon: 'icon_building', desc: '1回出社する', reward: 100, check: (s) => s.runs >= 1 },
+  { id: 'kill100', name: 'メール捌き', icon: 'mail', desc: '1出社で100体撃破', reward: 100, check: (_s, r) => r.kills >= 100 },
+  { id: 'kill500', name: '業務効率化', icon: 'icon_sword', desc: '1出社で500体撃破', reward: 250, check: (_s, r) => r.kills >= 500 },
+  { id: 'kill1500', name: '人海戦術', icon: 'icon_sword', desc: '1出社で1500体撃破', reward: 500, check: (_s, r) => r.kills >= 1500 },
+  { id: 'surv3', name: '午前耐久', icon: 'icon_clock', desc: '3分生存する', reward: 100, check: (_s, r) => r.time >= 180 },
+  { id: 'surv8', name: '残り2時間', icon: 'icon_clock', desc: '8分生存する', reward: 300, check: (_s, r) => r.time >= 480 },
+  { id: 'teiji', name: '定時退社', icon: 'icon_trophy', desc: '18時まで生き残る', reward: 500, check: (_s, r) => r.victory },
+  { id: 'black', name: 'ブラック生還', icon: 'icon_skull', desc: 'ブラックで定時退社', reward: 800, check: (_s, r) => r.victory && r.difficulty === 'hard' },
+  { id: 'lv15', name: '中堅社員', icon: 'icon_power', desc: 'Lv15に到達', reward: 200, check: (_s, r) => r.level >= 15 },
+  { id: 'lv25', name: 'ベテラン', icon: 'icon_trophy', desc: 'Lv25に到達', reward: 400, check: (_s, r) => r.level >= 25 },
+  { id: 'chest3', name: '棚ぼた', icon: 'chest', desc: '1出社で宝箱3個', reward: 200, check: (_s, r) => r.chests >= 3 },
+  { id: 'rich', name: '残業代長者', icon: 'coin', desc: '1出社で300コイン稼ぐ', reward: 200, check: (_s, r) => r.coins >= 300 },
+  { id: 'veteran', name: '皆勤賞', icon: 'icon_trophy', desc: '累計10出社', reward: 300, check: (s) => s.runs >= 10 },
+  { id: 'slayer', name: 'リストラ王', icon: 'icon_sword', desc: '累計10000体撃破', reward: 500, check: (s) => s.totalKills >= 10000 },
 ];
 
 export interface AchState {
@@ -207,13 +207,13 @@ export interface TitleDef {
 }
 
 export const TITLES: TitleDef[] = [
-  { id: '新人', name: '新人', icon: '🌱', desc: '出社おめでとう', check: () => true },
-  { id: '中堅', name: '中堅社員', icon: '💼', desc: 'Lv15に到達', check: (s) => s.maxLevel >= 15 },
-  { id: '皆勤', name: '皆勤賞', icon: '🏅', desc: '累計10出社', check: (s) => s.runs >= 10 },
-  { id: '定時', name: '定時退社マスター', icon: '🎉', desc: '定時退社を達成', check: (s) => s.wins >= 1 },
-  { id: '残業王', name: '残業王', icon: '🌙', desc: '累計3時間勤務', check: (s) => s.totalTime >= 10800 },
-  { id: 'ブラック生還者', name: 'ブラック生還者', icon: '💀', desc: 'ブラックで定時退社', check: (s) => loadAch().unlocked['black'] === true },
-  { id: '社畜神', name: '社畜神', icon: '👑', desc: '図鑑コンプ＋定時退社', check: (s) => {
+  { id: '新人', name: '新人', icon: 'icon_building', desc: '出社おめでとう', check: () => true },
+  { id: '中堅', name: '中堅社員', icon: 'doc', desc: 'Lv15に到達', check: (s) => s.maxLevel >= 15 },
+  { id: '皆勤', name: '皆勤賞', icon: 'icon_trophy', desc: '累計10出社', check: (s) => s.runs >= 10 },
+  { id: '定時', name: '定時退社マスター', icon: 'bell', desc: '定時退社を達成', check: (s) => s.wins >= 1 },
+  { id: '残業王', name: '残業王', icon: 'overtime', desc: '累計3時間勤務', check: (s) => s.totalTime >= 10800 },
+  { id: 'ブラック生還者', name: 'ブラック生還者', icon: 'icon_skull', desc: 'ブラックで定時退社', check: (s) => loadAch().unlocked['black'] === true },
+  { id: '社畜神', name: '社畜神', icon: 'president', desc: '図鑑コンプ＋定時退社', check: (s) => {
     const c = encyCompletion();
     return s.wins >= 1 && c.enemies >= c.enemiesTotal && c.weapons >= c.weaponsTotal;
   } },
@@ -248,12 +248,12 @@ export interface MissionDef {
 }
 
 const MISSION_POOL: MissionDef[] = [
-  { id: 'kill300', name: '業務300件処理', icon: '⚡', desc: '敵を300体撃破(累計)', target: 300, reward: 150, metric: (r) => r.kills },
-  { id: 'surv6', name: '午後も耐えろ', icon: '🕒', desc: '6分生存する', target: 360, reward: 150, metric: (r) => Math.floor(r.time) },
-  { id: 'lv12', name: 'スキルアップ', icon: '📈', desc: 'Lv12に到達', target: 12, reward: 150, metric: (r) => r.level },
-  { id: 'gems120', name: 'やる気回収', icon: '💪', desc: 'やる気を120個集める', target: 120, reward: 120, metric: (r) => r.gems },
-  { id: 'chest2', name: '棚ぼた狙い', icon: '🎁', desc: '宝箱を2個開ける', target: 2, reward: 150, metric: (r) => r.chests },
-  { id: 'coins120', name: '残業代稼ぎ', icon: '🪙', desc: '残業代🪙120稼ぐ', target: 120, reward: 120, metric: (r) => r.coins },
+  { id: 'kill300', name: '業務300件処理', icon: 'icon_sword', desc: '敵を300体撃破(累計)', target: 300, reward: 150, metric: (r) => r.kills },
+  { id: 'surv6', name: '午後も耐えろ', icon: 'icon_clock', desc: '6分生存する', target: 360, reward: 150, metric: (r) => Math.floor(r.time) },
+  { id: 'lv12', name: 'スキルアップ', icon: 'icon_level_up', desc: 'Lv12に到達', target: 12, reward: 150, metric: (r) => r.level },
+  { id: 'gems120', name: 'やる気回収', icon: 'gem_green', desc: 'やる気を120個集める', target: 120, reward: 120, metric: (r) => r.gems },
+  { id: 'chest2', name: '棚ぼた狙い', icon: 'chest', desc: '宝箱を2個開ける', target: 2, reward: 150, metric: (r) => r.chests },
+  { id: 'coins120', name: '残業代稼ぎ', icon: 'coin', desc: '残業代120コイン稼ぐ', target: 120, reward: 120, metric: (r) => r.coins },
 ];
 
 export interface DailyState {

@@ -137,14 +137,14 @@ export interface AchievementDef {
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'debut', name: '初出勤', icon: '🎒', desc: '1回出勤する', reward: 100, check: (s) => s.runs >= 1 },
-  { id: 'wave5', name: '五連勤', icon: '🌀', desc: 'WAVE5に到達', reward: 150, check: (s) => s.bestWave >= 5 },
-  { id: 'wave10', name: '残業突入', icon: '🌙', desc: 'WAVE10に到達', reward: 250, check: (s) => s.bestWave >= 10 },
-  { id: 'clear', name: '渦の制圧', icon: '🎉', desc: '全15ウェーブを踏破', reward: 500, check: (_s, r) => r.victory },
-  { id: 'hard', name: 'ブラック制圧', icon: '💀', desc: 'ブラックで全踏破', reward: 800, check: (_s, r) => r.victory && r.difficulty === 'hard' },
-  { id: 'hunter', name: '節断ち職人', icon: '✂️', desc: '累計2000節を切断', reward: 250, check: (s) => s.totalSegs >= 2000 },
-  { id: 'rich', name: '残業代長者', icon: '💰', desc: '1出勤で🪙300稼ぐ', reward: 200, check: (_s, r) => r.coins >= 300 },
-  { id: 'veteran', name: '皆勤賞', icon: '🏅', desc: '累計10出勤', reward: 300, check: (s) => s.runs >= 10 },
+  { id: 'debut', name: '初出勤', icon: 'debut', desc: '1回出勤する', reward: 100, check: (s) => s.runs >= 1 },
+  { id: 'wave5', name: '五連勤', icon: 'wave5', desc: 'WAVE5に到達', reward: 150, check: (s) => s.bestWave >= 5 },
+  { id: 'wave10', name: '残業突入', icon: 'wave10', desc: 'WAVE10に到達', reward: 250, check: (s) => s.bestWave >= 10 },
+  { id: 'clear', name: '渦の制圧', icon: 'clear', desc: '全15ウェーブを踏破', reward: 500, check: (_s, r) => r.victory },
+  { id: 'hard', name: 'ブラック制圧', icon: 'hard', desc: 'ブラックで全踏破', reward: 800, check: (_s, r) => r.victory && r.difficulty === 'hard' },
+  { id: 'hunter', name: '節断ち職人', icon: 'hunter', desc: '累計2000節を切断', reward: 250, check: (s) => s.totalSegs >= 2000 },
+  { id: 'rich', name: '残業代長者', icon: 'rich', desc: '1出勤で300コイン稼ぐ', reward: 200, check: (_s, r) => r.coins >= 300 },
+  { id: 'veteran', name: '皆勤賞', icon: 'veteran', desc: '累計10出勤', reward: 300, check: (s) => s.runs >= 10 },
 ];
 
 export interface AchState {
@@ -253,12 +253,12 @@ export interface TitleDef {
 }
 
 export const TITLES: TitleDef[] = [
-  { id: '新人', name: '新人', icon: '🌱', desc: '出勤おめでとう', check: () => true },
-  { id: '中堅', name: '中堅社員', icon: '💼', desc: 'WAVE5に到達', check: (s) => s.bestWave >= 5 },
-  { id: '皆勤', name: '皆勤賞', icon: '🏅', desc: '累計10出勤', check: (s) => s.runs >= 10 },
-  { id: '制圧者', name: '渦の制圧者', icon: '🎉', desc: '全15ウェーブ踏破', check: (s) => s.wins >= 1 },
-  { id: '残業王', name: '残業王', icon: '🌙', desc: '累計3000節を切断', check: (s) => s.totalSegs >= 3000 },
-  { id: 'スパイラル神', name: 'スパイラル神', icon: '👑', desc: '図鑑コンプ＋全踏破', check: (s) => {
+  { id: '新人', name: '新人', icon: 'rookie', desc: '出勤おめでとう', check: () => true },
+  { id: '中堅', name: '中堅社員', icon: 'mid', desc: 'WAVE5に到達', check: (s) => s.bestWave >= 5 },
+  { id: '皆勤', name: '皆勤賞', icon: 'veteran', desc: '累計10出勤', check: (s) => s.runs >= 10 },
+  { id: '制圧者', name: '渦の制圧者', icon: 'clear', desc: '全15ウェーブ踏破', check: (s) => s.wins >= 1 },
+  { id: '残業王', name: '残業王', icon: 'overtime', desc: '累計3000節を切断', check: (s) => s.totalSegs >= 3000 },
+  { id: 'スパイラル神', name: 'スパイラル神', icon: 'god', desc: '図鑑コンプ＋全踏破', check: (s) => {
     const c = encyCompletion();
     return s.wins >= 1 && c.chains >= c.chainsTotal && c.upgrades >= c.upgradesTotal;
   } },
@@ -294,11 +294,11 @@ export interface MissionDef {
 }
 
 const MISSION_POOL: MissionDef[] = [
-  { id: 'wave6', name: '午前を耐えろ', icon: '🕘', desc: 'WAVE6に到達', target: 6, reward: 150, metric: (r) => r.wave, accumulate: false },
-  { id: 'seg300', name: '切断300節', icon: '✂️', desc: '体節を300切断(累計)', target: 300, reward: 150, metric: (r) => r.segs, accumulate: true },
-  { id: 'coins150', name: '残業代稼ぎ', icon: '🪙', desc: '残業代🪙150稼ぐ(累計)', target: 150, reward: 120, metric: (r) => r.coins, accumulate: true },
-  { id: 'chains8', name: '列崩し8本', icon: '⛓️', desc: '列を8つ崩壊(累計)', target: 8, reward: 150, metric: (r) => r.chains, accumulate: true },
-  { id: 'wave11', name: '午後も耐えろ', icon: '🕒', desc: 'WAVE11に到達', target: 11, reward: 200, metric: (r) => r.wave, accumulate: false },
+  { id: 'wave6', name: '午前を耐えろ', icon: 'morning', desc: 'WAVE6に到達', target: 6, reward: 150, metric: (r) => r.wave, accumulate: false },
+  { id: 'seg300', name: '切断300節', icon: 'segs', desc: '体節を300切断(累計)', target: 300, reward: 150, metric: (r) => r.segs, accumulate: true },
+  { id: 'coins150', name: '残業代稼ぎ', icon: 'coins', desc: '残業代150コイン稼ぐ(累計)', target: 150, reward: 120, metric: (r) => r.coins, accumulate: true },
+  { id: 'chains8', name: '列崩し8本', icon: 'chains', desc: '列を8つ崩壊(累計)', target: 8, reward: 150, metric: (r) => r.chains, accumulate: true },
+  { id: 'wave11', name: '午後も耐えろ', icon: 'afternoon', desc: 'WAVE11に到達', target: 11, reward: 200, metric: (r) => r.wave, accumulate: false },
 ];
 
 export interface DailyState {
