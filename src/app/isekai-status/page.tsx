@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import Head from 'next/head';
 import { IsekaiStatusForm } from '@/components/isekai-status/IsekaiStatusForm';
 import { IsekaiStatusCard } from '@/components/isekai-status/IsekaiStatusCard';
 import { ActionButtons } from '@/components/isekai-status/ActionButtons';
@@ -59,7 +58,7 @@ export default function IsekaiStatusPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
       <div className="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-8 font-sans transition-colors duration-300 pb-0">
         <div className="max-w-7xl mx-auto">

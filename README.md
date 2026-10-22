@@ -20,7 +20,7 @@
 
 ### 1. 前提条件
 
-- [Node.js](https://nodejs.org/) (`v22.14.0`以降が必須)
+- [Node.js](https://nodejs.org/) (`v26.12.1`以降が必須)
 - [pnpm](https://pnpm.io/ja/) (v9以降)
 - [Git](https://git-scm.com/)
 
@@ -28,11 +28,11 @@
 
 1. **Node.jsバージョンの確認**
    
-   このプロジェクトはNode.js v22.14.0以降が必要です。現在のバージョンを確認してください：
+   このプロジェクトはNode.js v26.12.1以降が必要です。現在のバージョンを確認してください：
    ```bash
    node -v
    ```
-   v22.14.0未満の場合は、[Node.js公式サイト](https://nodejs.org/)から最新版をインストールしてください。
+   v26.12.1未満の場合は、[Node.js公式サイト](https://nodejs.org/)から最新版をインストールしてください。
 
 2. **リポジトリをクローンする**
    ```bash

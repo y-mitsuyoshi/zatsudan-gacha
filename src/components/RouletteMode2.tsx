@@ -27,7 +27,7 @@ export function RouletteMode() {
   const [winner, setWinner] = useState<RouletteItem | null>(null);
   const [rotation, setRotation] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   const drawRoulette = useCallback(() => {
     const canvas = canvasRef.current;

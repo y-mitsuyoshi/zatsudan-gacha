@@ -64,6 +64,30 @@
         "destination": "/excuse-generator.html"
       },
       {
+        "source": "/barricade-defense",
+        "destination": "/barricade-defense.html"
+      },
+      {
+        "source": "/barricade-defense/",
+        "destination": "/barricade-defense.html"
+      },
+      {
+        "source": "/shachiku-spiral",
+        "destination": "/shachiku-spiral.html"
+      },
+      {
+        "source": "/shachiku-spiral/",
+        "destination": "/shachiku-spiral.html"
+      },
+      {
+        "source": "/shachiku-survivor",
+        "destination": "/shachiku-survivor.html"
+      },
+      {
+        "source": "/shachiku-survivor/",
+        "destination": "/shachiku-survivor.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -73,7 +97,7 @@
     {
       "source": "functions",
       "codebase": "default",
-      "runtime": "nodejs22"
+      "runtime": "nodejs24"
     }
   ]
 }
