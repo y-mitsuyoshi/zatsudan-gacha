@@ -8,8 +8,12 @@ export function usePageTracking() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // ページが変わったらページビューをトラッキング
-    trackPageView(document.title, window.location.href);
+    if (!pathname) {
+      return;
+    }
+
+    // Query strings are intentionally excluded: they can contain user input.
+    trackPageView(document.title, pathname);
   }, [pathname]);
 }
 

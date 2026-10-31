@@ -10,14 +10,14 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-const ROOM_ID_REGEX = /^[A-Z0-9]{4}$/;
+const ROOM_ID_REGEX = /^[A-Z0-9]{6}$/;
 const MAX_USERNAME_LENGTH = 20;
 
-// Helper to generate a cryptographically secure random 4-character room ID
+// Helper to generate a cryptographically secure random 6-character room ID
 function generateRoomId(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     result += chars.charAt(randomInt(0, chars.length));
   }
   return result;
@@ -39,7 +39,7 @@ function validateUserName(rawName: unknown): string {
 
 function validateRoomId(rawRoomId: unknown): string {
   if (!rawRoomId || typeof rawRoomId !== "string" || !ROOM_ID_REGEX.test(rawRoomId)) {
-    throw new HttpsError("invalid-argument", "Valid 4-character Room ID is required.");
+    throw new HttpsError("invalid-argument", "Valid 6-character Room ID is required.");
   }
   return rawRoomId;
 }
@@ -51,9 +51,6 @@ export const createRoom = onCall({region: "us-central1"}, async (request) => {
   }
   const userName = validateUserName(request.data?.userName);
 
-  const roomId = generateRoomId();
-  const roomRef = db.collection("shachiku_rooms").doc(roomId);
-
   const initialPlayer = {
     id: uid,
     name: userName,
@@ -62,32 +59,42 @@ export const createRoom = onCall({region: "us-central1"}, async (request) => {
     isHost: true
   };
 
-  const roomData = {
-    id: roomId,
-    hostId: uid,
-    players: {[uid]: initialPlayer},
-    phase: "LOBBY",
-    dayCount: 0,
-    timeLimit: 0,
-    logs: [{
-      id: Date.now().toString(),
-      type: "SYSTEM",
-      message: `Room created by ${userName}`,
-      timestamp: Date.now()
-    }],
-    votes: {},
-    actions: {},
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
+  // Retry on the extremely unlikely event of a room ID collision.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const roomId = generateRoomId();
+    const roomRef = db.collection("shachiku_rooms").doc(roomId);
+    const roomData = {
+      id: roomId,
+      hostId: uid,
+      players: {[uid]: initialPlayer},
+      phase: "LOBBY",
+      dayCount: 0,
+      timeLimit: 0,
+      logs: [{
+        id: Date.now().toString(),
+        type: "SYSTEM",
+        message: `Room created by ${userName}`,
+        timestamp: Date.now()
+      }],
+      votes: {},
+      actions: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
 
-  try {
-    await roomRef.set(roomData);
-    return {roomId};
-  } catch (error) {
-    console.error("Error creating room:", error);
-    throw new HttpsError("internal", "Failed to create room.");
+    try {
+      await roomRef.create(roomData);
+      return {roomId};
+    } catch (error: any) {
+      // Firestore ALREADY_EXISTS is code 6; retry with a fresh ID.
+      if (error?.code !== 6) {
+        console.error("Error creating room:", error);
+        throw new HttpsError("internal", "Failed to create room.");
+      }
+    }
   }
+
+  throw new HttpsError("resource-exhausted", "Could not allocate a room. Please try again.");
 });
 
 export const joinRoom = onCall({region: "us-central1"}, async (request) => {
@@ -107,13 +114,14 @@ export const joinRoom = onCall({region: "us-central1"}, async (request) => {
     }
 
     const roomData = roomDoc.data();
-    if (roomData?.phase !== "LOBBY") {
-      throw new HttpsError("failed-precondition", "Game has already started.");
+
+    // Existing players may rejoin even after the game has started.
+    if (roomData?.players && roomData.players[uid]) {
+      return {roomId, joined: true};
     }
 
-    // Check if user is already in room
-    if (roomData.players && roomData.players[uid]) {
-      return {roomId, joined: true};
+    if (roomData?.phase !== "LOBBY") {
+      throw new HttpsError("failed-precondition", "Game has already started.");
     }
 
     if (Object.keys(roomData.players || {}).length >= 8) {
@@ -328,10 +336,31 @@ export const submitAction = onCall({region: "us-central1"}, async (request) => {
           });
         }
 
-        updates.phase = "NIGHT_ACTION";
         updates.votes = {};
         updates.logs = newLogs;
         updates.updatedAt = Date.now();
+
+        const activeAfterVote = Object.values(roomData.players)
+          .map((p: any) => updates[`players.${p.id}.isAlive`] === false ? {...p, isAlive: false} : p)
+          .filter((p: any) => p.isAlive);
+        const spiesAfterVote = activeAfterVote.filter((p: any) => roleMap[p.id] === "SPY").length;
+        const consultantAfterVote = activeAfterVote.some((p: any) => roleMap[p.id] === "CONSULTANT");
+
+        if (spiesAfterVote === 0) {
+          updates.winner = consultantAfterVote ? "CONSULTANT" : "COMPANY";
+          updates.phase = "GAME_OVER";
+        } else if (spiesAfterVote >= activeAfterVote.length - spiesAfterVote) {
+          updates.winner = consultantAfterVote ? "CONSULTANT" : "SPIES";
+          updates.phase = "GAME_OVER";
+        } else {
+          updates.phase = "NIGHT_ACTION";
+        }
+
+        if (updates.phase === "GAME_OVER") {
+          for (const [pid, r] of Object.entries(roleMap)) {
+            updates[`players.${pid}.role`] = r;
+          }
+        }
       } else {
         updates.updatedAt = Date.now();
       }
@@ -419,18 +448,14 @@ export const submitAction = onCall({region: "us-central1"}, async (request) => {
 
         const spiesCount = activeAfter.filter((p: any) => getPlayerRole(p.id) === "SPY").length;
         const othersCount = activeAfter.length - spiesCount;
+        const consultantAlive = activeAfter.some((p: any) => getPlayerRole(p.id) === "CONSULTANT");
 
         if (spiesCount === 0) {
-          updates.winner = "COMPANY";
+          updates.winner = consultantAlive ? "CONSULTANT" : "COMPANY";
           updates.phase = "GAME_OVER";
         } else if (spiesCount >= othersCount) {
-          updates.winner = "SPIES";
+          updates.winner = consultantAlive ? "CONSULTANT" : "SPIES";
           updates.phase = "GAME_OVER";
-
-          const consultant = activeAfter.find((p: any) => getPlayerRole(p.id) === "CONSULTANT");
-          if (consultant) {
-            updates.winner = "CONSULTANT";
-          }
         }
 
         // Reveal roles only when game is over

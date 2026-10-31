@@ -113,10 +113,10 @@ pnpm run dev
 
 ```bash
 # Gemini APIキーを設定
-firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY_HERE"
+firebase functions:secrets:set GEMINI_API_KEY
 
 # 設定を確認
-firebase functions:config:get
+firebase functions:secrets:get GEMINI_API_KEY
 ```
 
 ### デプロイ手順
@@ -162,7 +162,7 @@ firebase functions:config:get
 
 - **APIキー保護**: Firebase Functionsの環境変数で管理
 - **CORS設定**: 信頼できるドメインからのアクセスのみ許可
-- **レート制限**: 1IPアドレスあたり1時間に10回まで
+- **レート制限**: 1IPアドレスあたり1日20回まで（短時間の連打は一時ブロック、全体の1日上限も設定）
 - **キャッシュ機能**: 同一テーマを30分間キャッシュ
 
 ### Firebase設定ファイル
@@ -188,8 +188,8 @@ curl -X POST \
 
 ### トラブルシューティング
 
-- **Functions デプロイエラー**: `firebase functions:config:get`でAPI設定を確認
+- **Functions デプロイエラー**: `firebase functions:secrets:get GEMINI_API_KEY`でAPI設定を確認
 - **CORS エラー**: `functions/src/index.ts`でドメイン設定を確認
-- **Node.js バージョンエラー**: Functions用にNode.js 18以上が必要
+- **Node.js バージョンエラー**: Functions用にNode.js 24が必要
 
 詳細な設定手順は `FIREBASE_SETUP.md` および `SECURITY_SETUP.md` をご参照ください。

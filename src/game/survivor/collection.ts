@@ -28,16 +28,6 @@ const K = {
   daily: 'shachiku-survivor-daily/v1',
 };
 
-function read<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return { ...fallback, ...(JSON.parse(raw) as Partial<T>) };
-  } catch {
-    return fallback;
-  }
-}
-
 function write(key: string, v: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(v));
@@ -46,11 +36,57 @@ function write(key: string, v: unknown): void {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function safeCount(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : fallback;
+}
+
+function safeNumberMap(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+      .map(([k, v]) => [k, Math.max(0, Math.floor(v as number))])
+  );
+}
+
+function safeBooleanMap(value: unknown): Record<string, boolean> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, v]) => typeof v === 'boolean')
+  ) as Record<string, boolean>;
+}
+
 export function loadStats(): SurvivorStats {
-  return read<SurvivorStats>(K.stats, {
+  const fallback: SurvivorStats = {
     runs: 0, wins: 0, totalKills: 0, totalTime: 0, totalGems: 0,
     totalChests: 0, totalCoins: 0, maxLevel: 1, maxScore: 0, bestTime: 0,
-  });
+  };
+  try {
+    const raw = localStorage.getItem(K.stats);
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return fallback;
+    return {
+      runs: safeCount(parsed.runs),
+      wins: safeCount(parsed.wins),
+      totalKills: safeCount(parsed.totalKills),
+      totalTime: safeCount(parsed.totalTime),
+      totalGems: safeCount(parsed.totalGems),
+      totalChests: safeCount(parsed.totalChests),
+      totalCoins: safeCount(parsed.totalCoins),
+      maxLevel: Math.max(1, safeCount(parsed.maxLevel, 1)),
+      maxScore: safeCount(parsed.maxScore),
+      bestTime: safeCount(parsed.bestTime),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 /** Apply a finished run to cumulative stats. Returns the updated stats. */
@@ -70,6 +106,21 @@ export function applyRunToStats(r: RunResult): SurvivorStats {
   return s;
 }
 
+/** Apply only the endless-mode delta for a run that was already settled at victory. */
+export function applyRunDeltaToStats(previous: RunResult, next: RunResult): SurvivorStats {
+  const s = loadStats();
+  s.totalKills += Math.max(0, next.kills - previous.kills);
+  s.totalTime += Math.max(0, Math.floor(next.time) - Math.floor(previous.time));
+  s.totalGems += Math.max(0, next.gems - previous.gems);
+  s.totalChests += Math.max(0, next.chests - previous.chests);
+  s.totalCoins += Math.max(0, next.coins - previous.coins);
+  s.maxLevel = Math.max(s.maxLevel, next.level);
+  s.maxScore = Math.max(s.maxScore, next.score);
+  s.bestTime = Math.max(s.bestTime, Math.floor(next.time));
+  write(K.stats, s);
+  return s;
+}
+
 /* ---------------- encyclopedia ---------------- */
 
 export interface EncyData {
@@ -78,7 +129,18 @@ export interface EncyData {
 }
 
 export function loadEncy(): EncyData {
-  return read<EncyData>(K.ency, { enemies: {}, weapons: {} });
+  try {
+    const raw = localStorage.getItem(K.ency);
+    if (!raw) return { enemies: {}, weapons: {} };
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return { enemies: {}, weapons: {} };
+    return {
+      enemies: safeNumberMap(parsed.enemies),
+      weapons: safeNumberMap(parsed.weapons),
+    };
+  } catch {
+    return { enemies: {}, weapons: {} };
+  }
 }
 
 export function applyRunToEncy(r: RunResult): EncyData {
@@ -87,6 +149,20 @@ export function applyRunToEncy(r: RunResult): EncyData {
     e.enemies[k] = (e.enemies[k] ?? 0) + v;
   }
   for (const [k, v] of Object.entries(r.weaponLevels)) {
+    e.weapons[k] = Math.max(e.weapons[k] ?? 0, v);
+  }
+  write(K.ency, e);
+  return e;
+}
+
+/** Apply only the endless-mode delta to the encyclopedia. */
+export function applyRunDeltaToEncy(previous: RunResult, next: RunResult): EncyData {
+  const e = loadEncy();
+  for (const [k, v] of Object.entries(next.killsByKind)) {
+    const delta = Math.max(0, v - (previous.killsByKind[k] ?? 0));
+    e.enemies[k] = (e.enemies[k] ?? 0) + delta;
+  }
+  for (const [k, v] of Object.entries(next.weaponLevels)) {
     e.weapons[k] = Math.max(e.weapons[k] ?? 0, v);
   }
   write(K.ency, e);
@@ -164,7 +240,18 @@ export interface AchState {
 }
 
 export function loadAch(): AchState {
-  return read<AchState>(K.ach, { unlocked: {}, claimed: {} });
+  try {
+    const raw = localStorage.getItem(K.ach);
+    if (!raw) return { unlocked: {}, claimed: {} };
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return { unlocked: {}, claimed: {} };
+    return {
+      unlocked: safeBooleanMap(parsed.unlocked),
+      claimed: safeBooleanMap(parsed.claimed),
+    };
+  } catch {
+    return { unlocked: {}, claimed: {} };
+  }
 }
 
 /** Check run against all achievements. Returns newly unlocked defs. */
@@ -290,9 +377,19 @@ export function todayMissions(): MissionDef[] {
 
 export function loadDaily(): DailyState {
   const fresh: DailyState = { date: todayKey(), progress: {}, claimed: {} };
-  const st = read<DailyState>(K.daily, fresh);
-  if (st.date !== todayKey()) return fresh;
-  return st;
+  try {
+    const raw = localStorage.getItem(K.daily);
+    if (!raw) return fresh;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed) || parsed.date !== todayKey()) return fresh;
+    return {
+      date: todayKey(),
+      progress: safeNumberMap(parsed.progress),
+      claimed: safeBooleanMap(parsed.claimed),
+    };
+  } catch {
+    return fresh;
+  }
 }
 
 /** Add a finished run's contribution to today's missions. */
@@ -305,6 +402,23 @@ export function applyRunToDaily(r: RunResult): DailyState {
       st.progress[m.id] = Math.min(m.target, (st.progress[m.id] ?? 0) + v);
     } else {
       st.progress[m.id] = Math.min(m.target, Math.max(st.progress[m.id] ?? 0, v));
+    }
+  }
+  write(K.daily, st);
+  return st;
+}
+
+/** Apply only the endless-mode delta to today's missions. */
+export function applyRunDeltaToDaily(previous: RunResult, next: RunResult): DailyState {
+  const st = loadDaily();
+  const s = loadStats();
+  for (const m of todayMissions()) {
+    const nextValue = m.metric(next, s);
+    const previousValue = m.metric(previous, s);
+    if (m.id === 'kill300' || m.id === 'gems120' || m.id === 'chest2' || m.id === 'coins120') {
+      st.progress[m.id] = Math.min(m.target, (st.progress[m.id] ?? 0) + Math.max(0, nextValue - previousValue));
+    } else {
+      st.progress[m.id] = Math.min(m.target, Math.max(st.progress[m.id] ?? 0, nextValue));
     }
   }
   write(K.daily, st);

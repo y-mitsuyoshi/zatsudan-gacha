@@ -1,19 +1,37 @@
 import {onRequest} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
+import {createHash} from "crypto";
 import cors from "cors";
+import {getApps, initializeApp} from "firebase-admin/app";
+import {getFirestore} from "firebase-admin/firestore";
+
+if (!getApps().length) {
+  initializeApp();
+}
+const rateLimitDb = getFirestore();
 
 // Gemini APIキーをシークレットとして定義
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
-// CORS設定
+const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+const allowedOrigins = [
+  "https://zatsudan-gacha.app",
+  "https://zatsudan-gacha.web.app",
+  "https://zatsudan-gacha.firebaseapp.com",
+  ...(isEmulator ? [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001"
+  ] : [])
+];
+
 const corsHandler = cors({
-  origin: [
-    "https://zatsudan-gacha.app",
-    "https://zatsudan-gacha.web.app",
-    "https://zatsudan-gacha.firebaseapp.com",
-    "http://localhost:3000" // 開発環境用
-  ]
+  origin: allowedOrigins,
+  methods: ["POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+  maxAge: 86400
 });
 
 // シンプルなインメモリキャッシュ（上限付き）
@@ -25,17 +43,34 @@ const MAX_CACHE_SIZE = 500;
 const requestCounts = new Map<string, {count: number; resetTime: number}>();
 const RATE_LIMIT = 20; // 1日に20回
 const RATE_WINDOW = 24 * 60 * 60 * 1000; // 1日
+const GLOBAL_DAILY_LIMIT = 2000; // 全利用者合計の1日上限（コスト保護）
 const MAX_TRACKED_IPS = 5000;
 
 const suspiciousPatterns = new Map<string, {count: number; windowStart: number}>();
 const blockedIPs = new Map<string, number>(); // IP -> unblockTime
 const MINUTE_WINDOW = 60 * 1000;
-const BLOCK_DURATION = 24 * 60 * 60 * 1000;
+const BLOCK_DURATION = 15 * 60 * 1000; // 15分（共有IPの長時間ロックを避ける）
 
 const MAX_THEME_LENGTH = 100;
 const MAX_SITUATION_LENGTH = 100;
 const MAX_TONE_LENGTH = 50;
 const MAX_DETAILS_LENGTH = 500;
+const MAX_BODY_BYTES = 10_000;
+const AI_TIMEOUT_MS = 25_000;
+
+function hashForLog(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 12);
+}
+
+function isOversizedRequest(request: {headers: Record<string, string | string[] | undefined>}): boolean {
+  const rawLength = request.headers["content-length"];
+  const length = Array.isArray(rawLength) ? rawLength[0] : rawLength;
+  if (!length) {
+    return false;
+  }
+  const parsed = Number(length);
+  return Number.isFinite(parsed) && parsed > MAX_BODY_BYTES;
+}
 
 function evictOldestIfNeeded<K, V>(map: Map<K, V>, maxEntries: number): void {
   if (map.size >= maxEntries) {
@@ -47,6 +82,10 @@ function evictOldestIfNeeded<K, V>(map: Map<K, V>, maxEntries: number): void {
 }
 
 function getClientIP(request: {ip?: string; headers: Record<string, string | string[] | undefined>}): string {
+  // Cloud Functions/Cloud Run provides the trusted socket IP on request.ip.
+  if (request.ip) {
+    return request.ip;
+  }
   const forwarded = request.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.length > 0) {
     return forwarded.split(",")[0].trim();
@@ -54,7 +93,7 @@ function getClientIP(request: {ip?: string; headers: Record<string, string | str
   if (Array.isArray(forwarded) && forwarded.length > 0) {
     return forwarded[0].split(",")[0].trim();
   }
-  return request.ip || "unknown";
+  return "unknown";
 }
 
 function isRateLimited(ip: string): boolean {
@@ -64,7 +103,7 @@ function isRateLimited(ip: string): boolean {
   const unblockTime = blockedIPs.get(ip);
   if (unblockTime !== undefined) {
     if (now < unblockTime) {
-      logger.warn(`Blocked IP attempted access: ${ip}`);
+      logger.warn(`Blocked client attempted access: ${hashForLog(ip)}`);
       return true;
     }
     blockedIPs.delete(ip);
@@ -78,7 +117,7 @@ function isRateLimited(ip: string): boolean {
   } else {
     burst.count += 1;
     if (burst.count > 10) {
-      logger.error(`Malicious activity detected from IP: ${ip}. Adding to blocklist.`);
+      logger.error(`Malicious activity detected. Temporarily blocking client ${hashForLog(ip)}.`);
       evictOldestIfNeeded(blockedIPs, MAX_TRACKED_IPS);
       blockedIPs.set(ip, now + BLOCK_DURATION);
       suspiciousPatterns.delete(ip);
@@ -99,6 +138,46 @@ function isRateLimited(ip: string): boolean {
 
   userRequests.count += 1;
   return false;
+}
+
+async function consumeSharedRateLimit(clientIP: string): Promise<boolean> {
+  const now = Date.now();
+  const dayKey = new Date(now).toISOString().slice(0, 10);
+  const clientRef = rateLimitDb.collection("ai_rate_limits").doc(hashForLog(clientIP));
+  const globalRef = rateLimitDb.collection("ai_rate_limits").doc(`global_${dayKey}`);
+
+  try {
+    return await rateLimitDb.runTransaction(async (transaction) => {
+      const [clientDoc, globalDoc] = await Promise.all([
+        transaction.get(clientRef),
+        transaction.get(globalRef)
+      ]);
+      const clientData = clientDoc.data();
+      const globalData = globalDoc.data();
+      const windowEnd = typeof clientData?.resetTime === "number" ? clientData.resetTime : 0;
+      const clientCount = now < windowEnd && typeof clientData?.count === "number" ? clientData.count : 0;
+      const globalCount = globalData?.date === dayKey && typeof globalData?.count === "number" ? globalData.count : 0;
+
+      if (clientCount >= RATE_LIMIT || globalCount >= GLOBAL_DAILY_LIMIT) {
+        return false;
+      }
+
+      transaction.set(clientRef, {
+        count: clientCount + 1,
+        resetTime: now < windowEnd ? windowEnd : now + RATE_WINDOW,
+        updatedAt: now
+      }, {merge: true});
+      transaction.set(globalRef, {
+        date: dayKey,
+        count: globalCount + 1,
+        updatedAt: now
+      }, {merge: true});
+      return true;
+    });
+  } catch (error) {
+    logger.error("Shared rate limit check failed; falling back to in-memory limit.", error);
+    return true;
+  }
 }
 
 function getFromCache(key: string): {text: string} | null {
@@ -145,13 +224,10 @@ export const gemini = onRequest(
             return;
           }
 
-          // クライアントIPを取得
-          const clientIP = getClientIP(request);
+          response.set("Cache-Control", "no-store");
 
-          // レート制限チェック
-          if (isRateLimited(clientIP)) {
-            logger.warn(`Rate limit exceeded for IP: ${clientIP}`);
-            response.status(429).json({error: "Too Many Requests"});
+          if (isOversizedRequest(request)) {
+            response.status(413).json({error: "Request body is too large"});
             resolve();
             return;
           }
@@ -175,16 +251,25 @@ export const gemini = onRequest(
             return;
           }
 
-          // キャッシュチェック
+          // キャッシュチェック（キャッシュヒットは利用回数に数えない）
           const cached = getFromCache(theme);
           if (cached) {
-            logger.info(`Cache HIT for theme: ${theme}`);
+            logger.info("Cache HIT");
             response.json(cached);
             resolve();
             return;
           }
 
-          logger.info(`Cache MISS for theme: ${theme}`);
+          // レート制限チェック（入力検証後・キャッシュミス時のみ）
+          const clientIP = getClientIP(request);
+          if (isRateLimited(clientIP) || !(await consumeSharedRateLimit(clientIP))) {
+            logger.warn(`Rate limit exceeded for client: ${hashForLog(clientIP)}`);
+            response.status(429).json({error: "Too Many Requests"});
+            resolve();
+            return;
+          }
+
+          logger.info("Cache MISS");
 
           // シークレットからAPIキーを取得（Firebase Functions v2）
           const apiKey = geminiApiKey.value();
@@ -206,7 +291,11 @@ export const gemini = onRequest(
 
           const payload = {
             systemInstruction,
-            contents: [{role: "user", parts: [{text: `雑談テーマ: ${theme}`}]}]
+            contents: [{role: "user", parts: [{text: `雑談テーマ: ${theme}`}]}],
+            generationConfig: {
+              temperature: 0.9,
+              maxOutputTokens: 512
+            }
           };
 
           const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
@@ -217,7 +306,8 @@ export const gemini = onRequest(
               "Content-Type": "application/json",
               "x-goog-api-key": apiKey
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(AI_TIMEOUT_MS)
           });
 
           if (!apiResponse.ok) {
@@ -241,7 +331,7 @@ export const gemini = onRequest(
             // キャッシュに保存
             setCache(theme, responseData);
 
-            logger.info(`Successfully generated response for theme: ${theme}`);
+            logger.info("Successfully generated a response");
             response.json(responseData);
           } else {
             logger.error("Invalid response structure from Gemini API:", result);
@@ -276,11 +366,10 @@ export const excuseGenerator = onRequest(
             return;
           }
 
-          const clientIP = getClientIP(request);
+          response.set("Cache-Control", "no-store");
 
-          if (isRateLimited(clientIP)) {
-            logger.warn(`Rate limit exceeded for IP: ${clientIP}`);
-            response.status(429).json({error: "Too Many Requests"});
+          if (isOversizedRequest(request)) {
+            response.status(413).json({error: "Request body is too large"});
             resolve();
             return;
           }
@@ -323,6 +412,14 @@ export const excuseGenerator = onRequest(
             return;
           }
 
+          const clientIP = getClientIP(request);
+          if (isRateLimited(clientIP) || !(await consumeSharedRateLimit(clientIP))) {
+            logger.warn(`Rate limit exceeded for client: ${hashForLog(clientIP)}`);
+            response.status(429).json({error: "Too Many Requests"});
+            resolve();
+            return;
+          }
+
           const apiKey = geminiApiKey.value();
           if (!apiKey) {
             logger.error("GEMINI_API_KEY is not configured");
@@ -355,7 +452,11 @@ export const excuseGenerator = onRequest(
 
           const payload = {
             systemInstruction: {parts: [{text: systemPrompt}]},
-            contents: [{role: "user", parts: [{text: userCondition}]}]
+            contents: [{role: "user", parts: [{text: userCondition}]}],
+            generationConfig: {
+              temperature: 1.0,
+              maxOutputTokens: 800
+            }
           };
 
           const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
@@ -366,7 +467,8 @@ export const excuseGenerator = onRequest(
               "Content-Type": "application/json",
               "x-goog-api-key": apiKey
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(AI_TIMEOUT_MS)
           });
 
           if (!apiResponse.ok) {

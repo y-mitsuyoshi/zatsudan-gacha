@@ -6,90 +6,90 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
-      {
-        "source": "/profile-maker",
-        "destination": "/profile-maker.html"
-      },
-      {
-        "source": "/profile-maker/",
-        "destination": "/profile-maker.html"
-      },
-      {
-        "source": "/isekai-status",
-        "destination": "/isekai-status.html"
-      },
-      {
-        "source": "/isekai-status/",
-        "destination": "/isekai-status.html"
-      },
-      {
-        "source": "/shachiku-sugoroku",
-        "destination": "/shachiku-sugoroku.html"
-      },
-      {
-        "source": "/shachiku-sugoroku/",
-        "destination": "/shachiku-sugoroku.html"
-      },
-      {
-        "source": "/shachiku-shooting",
-        "destination": "/shachiku-shooting.html"
-      },
-      {
-        "source": "/shachiku-shooting/",
-        "destination": "/shachiku-shooting.html"
-      },
-      {
-        "source": "/station-sign-maker",
-        "destination": "/station-sign-maker.html"
-      },
-      {
-        "source": "/station-sign-maker/",
-        "destination": "/station-sign-maker.html"
-      },
-      {
-        "source": "/shachiku-jinro",
-        "destination": "/shachiku-jinro.html"
-      },
-      {
-        "source": "/shachiku-jinro/",
-        "destination": "/shachiku-jinro.html"
-      },
-      {
-        "source": "/excuse-generator",
-        "destination": "/excuse-generator.html"
-      },
-      {
-        "source": "/excuse-generator/",
-        "destination": "/excuse-generator.html"
-      },
-      {
-        "source": "/barricade-defense",
-        "destination": "/barricade-defense.html"
-      },
-      {
-        "source": "/barricade-defense/",
-        "destination": "/barricade-defense.html"
-      },
-      {
-        "source": "/shachiku-spiral",
-        "destination": "/shachiku-spiral.html"
-      },
-      {
-        "source": "/shachiku-spiral/",
-        "destination": "/shachiku-spiral.html"
-      },
-      {
-        "source": "/shachiku-survivor",
-        "destination": "/shachiku-survivor.html"
-      },
-      {
-        "source": "/shachiku-survivor/",
-        "destination": "/shachiku-survivor.html"
-      },
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "X-Permitted-Cross-Domain-Policies",
+            "value": "none"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), gyroscope=(), accelerometer=()"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=63072000; includeSubDomains; preload"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src https:; worker-src 'self' blob:; manifest-src 'self';"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|gif|webp|svg|ico|woff2)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800"
+          }
+        ]
+      },
+      {
+        "source": "/llms*.txt",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/sitemap.xml",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/robots.txt",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/_next/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
   },
@@ -97,7 +97,13 @@
     {
       "source": "functions",
       "codebase": "default",
-      "runtime": "nodejs24"
+      "runtime": "nodejs24",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
-  ]
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  }
 }

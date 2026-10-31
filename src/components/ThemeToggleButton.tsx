@@ -12,7 +12,7 @@ export const ThemeToggleButton = () => {
   }, [])
 
   if (!mounted) {
-    return null
+    return <div className="h-10 w-10" aria-hidden="true" />
   }
 
   const toggleTheme = () => {
@@ -23,7 +23,7 @@ export const ThemeToggleButton = () => {
     <button
       onClick={toggleTheme}
       className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-      aria-label="Toggle theme"
+      aria-label={resolvedTheme === 'dark' ? 'ライトモードに切り替える' : 'ダークモードに切り替える'}
     >
       {resolvedTheme === 'dark' ? (
         // Moon Icon

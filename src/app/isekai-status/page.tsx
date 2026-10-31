@@ -35,7 +35,7 @@ export default function IsekaiStatusPage() {
     "@type": "WebApplication",
     "name": "異世界転生ステータスカード",
     "description": "5つの質問に答えて、あなたが異世界に転生した時のステータスカードを作成するエンターテイメントアプリ",
-    "url": "https://zatsudan-gacha.web.app/isekai-status",
+    "url": "https://zatsudan-gacha.app/isekai-status",
     "applicationCategory": "GameApplication",
     "operatingSystem": "Any",
     "offers": {

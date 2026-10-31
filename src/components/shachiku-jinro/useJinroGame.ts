@@ -120,6 +120,7 @@ export function useJinroGame(): [GameState, JinroGameActions] {
   const conversationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const conversationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visibilityHandlerRef = useRef<(() => void) | null>(null);
   /** タイマーの世代。フェーズ遷移/リセットで加算し、旧タイマーの誤発火を防ぐ */
   const genRef = useRef(0);
   /** 二重解決防止 (vote/nightの多重発火ガード) */
@@ -149,6 +150,10 @@ export function useJinroGame(): [GameState, JinroGameActions] {
       if (conversationTimerRef.current) clearInterval(conversationTimerRef.current);
       if (conversationTimeoutRef.current) clearTimeout(conversationTimeoutRef.current);
       if (resolveTimeoutRef.current) clearTimeout(resolveTimeoutRef.current);
+      if (visibilityHandlerRef.current) {
+        document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+        visibilityHandlerRef.current = null;
+      }
     };
   }, []);
 
@@ -160,20 +165,44 @@ export function useJinroGame(): [GameState, JinroGameActions] {
     if (conversationTimerRef.current) { clearInterval(conversationTimerRef.current); conversationTimerRef.current = null; }
     if (conversationTimeoutRef.current) { clearTimeout(conversationTimeoutRef.current); conversationTimeoutRef.current = null; }
     if (resolveTimeoutRef.current) { clearTimeout(resolveTimeoutRef.current); resolveTimeoutRef.current = null; }
+    if (visibilityHandlerRef.current) {
+      document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+      visibilityHandlerRef.current = null;
+    }
   }, []);
 
   const startTimer = useCallback((duration: number, onComplete: () => void) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (visibilityHandlerRef.current) {
+      document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+      visibilityHandlerRef.current = null;
+    }
     const gen = genRef.current;
-    const endTime = Date.now() + duration * 1000;
+    let endTime = Date.now() + duration * 1000;
+    let hiddenAt: number | null = document.hidden ? Date.now() : null;
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (hiddenAt === null) hiddenAt = Date.now();
+      } else if (hiddenAt !== null) {
+        endTime += Date.now() - hiddenAt;
+        hiddenAt = null;
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    visibilityHandlerRef.current = onVisibility;
 
     // 即時反映(残り時間表示のチラつき防止)
     setState(prev => (prev.timeRemaining === duration ? prev : { ...prev, timeRemaining: duration }));
 
     timerRef.current = setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
       if (gen !== genRef.current) {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
+        document.removeEventListener('visibilitychange', onVisibility);
+        if (visibilityHandlerRef.current === onVisibility) visibilityHandlerRef.current = null;
         return;
       }
       const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
@@ -182,6 +211,8 @@ export function useJinroGame(): [GameState, JinroGameActions] {
       if (remaining <= 0) {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
+        document.removeEventListener('visibilitychange', onVisibility);
+        if (visibilityHandlerRef.current === onVisibility) visibilityHandlerRef.current = null;
         if (gen === genRef.current) onComplete();
       }
     }, 250);
@@ -457,6 +488,9 @@ export function useJinroGame(): [GameState, JinroGameActions] {
     }
     const alivePlayers = Object.values(currentState.players).filter(p => p.isAlive);
     const allActions: Record<string, string> = { ...currentState.actions };
+    const myId = findHumanId(currentState.players);
+    const myPlayer = myId ? currentState.players[myId] : undefined;
+    const humanIsSpy = Boolean(myPlayer?.isAlive && myPlayer.role === 'SPY');
 
     // AI night actions
     alivePlayers.forEach(p => {
@@ -464,6 +498,8 @@ export function useJinroGame(): [GameState, JinroGameActions] {
         const targets = alivePlayers.filter(t => t.id !== p.id);
         if (targets.length === 0) return;
         if (p.role === 'SPY') {
+          // Respect the human spy's choice instead of letting an AI spy override it.
+          if (humanIsSpy && myId && allActions[myId]) return;
           const nonSpies = targets.filter(t => t.role !== 'SPY');
           allActions[p.id] = pickRandom(nonSpies.length > 0 ? nonSpies : targets).id;
         } else if (p.role === 'HR' || p.role === 'GA') {
@@ -473,8 +509,6 @@ export function useJinroGame(): [GameState, JinroGameActions] {
     });
 
     // Auto-act for human if needed
-    const myId = findHumanId(currentState.players);
-    const myPlayer = myId ? currentState.players[myId] : undefined;
     if (myPlayer && myPlayer.isAlive && !allActions[myPlayer.id] && ['SPY', 'HR', 'GA'].includes(myPlayer.role)) {
       const targets = alivePlayers.filter(t => t.id !== myPlayer.id);
       if (targets.length > 0) allActions[myPlayer.id] = pickRandom(targets).id;
@@ -497,7 +531,8 @@ export function useJinroGame(): [GameState, JinroGameActions] {
     let attackedId: string | null = null;
 
     const spyActions = Object.entries(allActions).filter(([actorId]) => newPlayers[actorId]?.role === 'SPY');
-    const spyTarget = spyActions.length > 0 ? spyActions[spyActions.length - 1][1] : null;
+    const humanSpyTarget = humanIsSpy && myId ? allActions[myId] : null;
+    const spyTarget = humanSpyTarget ?? (spyActions.length > 0 ? spyActions[0][1] : null);
 
     const gaActions = Object.entries(allActions).filter(([actorId]) => newPlayers[actorId]?.role === 'GA');
     const guardTarget = gaActions.length > 0 ? gaActions[gaActions.length - 1][1] : null;
@@ -599,7 +634,7 @@ export function useJinroGame(): [GameState, JinroGameActions] {
     stopTimers();
     const gen = genRef.current;
     const roles = buildRoles(count);
-    const aiNames = shuffle(AI_NAMES).slice(0, count - 1);
+    const aiNames = shuffle(AI_NAMES.filter((aiName) => aiName !== name)).slice(0, count - 1);
     const players: Record<string, Player> = {};
 
     const humanId = 'human-player';

@@ -16,13 +16,10 @@ export const DomainRedirect = () => {
       
       // Firebase の標準ドメインからの場合のみリダイレクト
       if (hostname === 'zatsudan-gacha.web.app' || hostname === 'zatsudan-gacha.firebaseapp.com') {
-        const currentUrl = window.location.href;
         const newUrl = `https://zatsudan-gacha.app${window.location.pathname}${window.location.search}${window.location.hash}`;
         
-        console.log('[DomainRedirect] Redirecting from:', currentUrl, 'to:', newUrl);
-        
-        // より確実なリダイレクト方法を使用
-        window.location.href = newUrl;
+        // replace() avoids leaving the old Firebase domain in the browser history.
+        window.location.replace(newUrl);
       }
     }
   }, []);

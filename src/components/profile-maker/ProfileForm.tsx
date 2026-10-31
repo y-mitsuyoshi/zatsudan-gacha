@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ProfileState } from "@/types";
+import { fileToOptimizedDataUrl } from "@/lib/image";
 
 interface ProfileFormProps {
   profile: ProfileState;
@@ -9,7 +10,7 @@ interface ProfileFormProps {
 }
 
 // Reusable Input Component
-const FormInput = ({ label, name, value, onChange, placeholder, required = false, as = 'input' }: {
+const FormInput = ({ label, name, value, onChange, placeholder, required = false, as = 'input', maxLength }: {
   label: string;
   name: keyof ProfileState;
   value: string;
@@ -17,6 +18,7 @@ const FormInput = ({ label, name, value, onChange, placeholder, required = false
   placeholder?: string;
   required?: boolean;
   as?: 'input' | 'textarea';
+  maxLength?: number;
 }) => (
   <div className="mb-6">
     <label htmlFor={name} className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -31,6 +33,7 @@ const FormInput = ({ label, name, value, onChange, placeholder, required = false
         onChange={onChange}
         placeholder={placeholder}
         required={required}
+        maxLength={maxLength}
         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
       />
     ) : (
@@ -41,6 +44,7 @@ const FormInput = ({ label, name, value, onChange, placeholder, required = false
         onChange={onChange}
         placeholder={placeholder}
         rows={3}
+        maxLength={maxLength}
         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
       />
     )}
@@ -48,6 +52,8 @@ const FormInput = ({ label, name, value, onChange, placeholder, required = false
 );
 
 export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile }) => {
+  const [imageError, setImageError] = useState('');
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProfile(prev => ({
@@ -56,21 +62,23 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
     }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imageUrl = event.target?.result as string;
-        setProfile(prev => ({ ...prev, image: imageUrl }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+    setImageError('');
 
-  // Dummy handler for now
-  const handleLikesChange = (newLikes: string[]) => {
-    setProfile(prev => ({ ...prev, likes: newLikes }));
+    if (!file) {
+      return;
+    }
+
+    try {
+      const imageUrl = await fileToOptimizedDataUrl(file);
+      setProfile(prev => ({ ...prev, image: imageUrl }));
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : '画像を読み込めませんでした。');
+    } finally {
+      // Allow selecting the same file again after a failed attempt.
+      e.target.value = '';
+    }
   };
 
   return (
@@ -82,12 +90,14 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.name}
         onChange={handleChange}
         required
+        maxLength={30}
       />
       <FormInput
         label="推しの所属・グループ名など"
         name="group"
         value={profile.group}
         onChange={handleChange}
+        maxLength={40}
       />
       
       <div className="mb-6">
@@ -98,10 +108,14 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
           <input
             type="file"
             id="image"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             onChange={handleImageUpload}
             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
           />
+          {imageError && (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">{imageError}</p>
+          )}
+          <p className="text-xs text-gray-500 dark:text-gray-400">PNG・JPEG・WebP、8MBまで。大きな画像は自動で縮小します。</p>
           {profile.image && (
             <div className="flex items-center space-x-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -157,6 +171,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.episode}
         onChange={handleChange}
         placeholder="例：「〇〇という作品で一目惚れ」"
+        maxLength={160}
       />
       <FormInput
         label="一番好きなビジュアル・衣装"
@@ -164,6 +179,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.favoriteVisual}
         onChange={handleChange}
         placeholder="例：「〇〇のライブ衣装」"
+        maxLength={120}
       />
       <FormInput
         label="一番好きなセリフ・歌詞"
@@ -171,6 +187,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.favoriteQuote}
         onChange={handleChange}
         as="textarea"
+        maxLength={160}
       />
 
       <TagInput
@@ -188,6 +205,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.fanHistory}
         onChange={handleChange}
         placeholder="例: 約3年 / 2020年から"
+        maxLength={40}
       />
       <FormInput
         label="推しへの称号"
@@ -195,6 +213,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
         value={profile.title}
         onChange={handleChange}
         placeholder="例: 顔面国宝"
+        maxLength={30}
       />
     </form>
   );
@@ -211,6 +230,7 @@ const TagInput = ({ label, tags, setTags, suggestions = [], placeholder = "タ�
   maxTags?: number;
 }) => {
     const [inputValue, setInputValue] = useState('');
+    const inputId = useId();
 
     const addTag = (tag: string) => {
         const newTag = tag.trim();
@@ -233,23 +253,30 @@ const TagInput = ({ label, tags, setTags, suggestions = [], placeholder = "タ�
 
     return (
         <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{label}</label>
+            <label htmlFor={inputId} className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{label}</label>
             <div className="flex flex-wrap gap-2 mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 min-h-[44px]">
                 {tags.map(tag => (
                     <span key={tag} className="flex items-center bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-sm font-medium px-2.5 py-1 rounded-full">
                         {tag}
-                        <button onClick={() => removeTag(tag)} className="ml-2 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300">
+                        <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-2 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
+                            aria-label={`${tag}を削除`}
+                        >
                             &times;
                         </button>
                     </span>
                 ))}
                 {(!maxTags || tags.length < maxTags) && (
                     <input
+                        id={inputId}
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={tags.length === 0 ? placeholder : ''}
+                        maxLength={30}
                         className="flex-grow bg-transparent focus:outline-none text-gray-800 dark:text-white"
                     />
                 )}

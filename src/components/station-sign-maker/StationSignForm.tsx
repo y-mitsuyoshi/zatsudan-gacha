@@ -96,7 +96,15 @@ export const StationSignForm: React.FC<StationSignFormProps> = ({ stationState, 
             type="text"
             value={stationState.lineColor}
             onChange={handleChange}
+            onBlur={() => {
+              if (!/^#[0-9a-f]{6}$/i.test(stationState.lineColor)) {
+                setStationState(prev => ({ ...prev, lineColor: '#009b40' }));
+              }
+            }}
             name="lineColor"
+            id="lineColorText"
+            aria-label="路線カラー（16進数）"
+            maxLength={7}
             className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100"
             placeholder="#009b40"
           />

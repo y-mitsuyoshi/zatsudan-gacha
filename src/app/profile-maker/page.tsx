@@ -55,7 +55,7 @@ export default function ProfileMakerPage() {
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                   プレビュー
                 </h2>
-                <div className="flex flex-wrap gap-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
+                <div className="flex flex-wrap gap-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg" role="group" aria-label="プロフィールカードのテンプレート">
                   {([
                     { key: 'simple', label: 'シンプル' },
                     { key: 'pop', label: 'ポップ' },
@@ -70,6 +70,8 @@ export default function ProfileMakerPage() {
                   ] as { key: Template; label: string }[]).map(({ key, label }) => (
                     <button
                       key={key}
+                      type="button"
+                      aria-pressed={template === key}
                       onClick={() => setTemplate(key)}
                       className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
                         template === key

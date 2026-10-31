@@ -40,7 +40,6 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
         clearTimeout(timeout);
       };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRolling]);
 
   const getDotPositions = (value: number) => {

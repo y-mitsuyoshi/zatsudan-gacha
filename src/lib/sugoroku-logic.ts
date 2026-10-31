@@ -141,13 +141,24 @@ const ACHIEVEMENT_STORAGE_KEY = 'shachiku-sugoroku-achievements';
 // --- LocalStorage Utilities ---
 const loadAchievementsFromStorage = (): string[] => {
     if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(ACHIEVEMENT_STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    try {
+        const data = localStorage.getItem(ACHIEVEMENT_STORAGE_KEY);
+        if (!data) return [];
+        const parsed: unknown = JSON.parse(data);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((value): value is string => typeof value === 'string');
+    } catch {
+        return [];
+    }
 };
 
 const saveAchievementsToStorage = (achievements: string[]) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(ACHIEVEMENT_STORAGE_KEY, JSON.stringify(achievements));
+    try {
+        localStorage.setItem(ACHIEVEMENT_STORAGE_KEY, JSON.stringify(achievements));
+    } catch {
+        /* storage unavailable */
+    }
 };
 
 
@@ -595,12 +606,12 @@ export function checkEndGame(state: GameState): GameState {
         newState.ending = 'legendary';
     } else if (yaruki >= 85 && turn <= 14 && restCount <= 1) {
         newState.ending = 'promotion';
+    } else if (yaruki >= 80 && turn <= 12) {
+        newState.ending = 'specialist';
     } else if (yaruki >= 80 && turn <= 16) {
         newState.ending = 'mentor';
     } else if (yaruki >= 78 && turn <= 14) {
         newState.ending = 'innovator';
-    } else if (yaruki >= 80 && turn <= 12) {
-        newState.ending = 'specialist';
     } else if (yaruki >= 75 && turn <= 18) {
         newState.ending = newState.job === '営業' ? 'ace'
           : newState.job === 'デザイナー' ? 'creator'
@@ -647,13 +658,11 @@ export function checkEndGame(state: GameState): GameState {
         newState.ending = 'influencer';
     } else if (newState.job === '人事・総務') {
         newState.ending = 'writer';
-    } else if (turn >= 40) {
-        newState.ending = 'farmer'; // Took too long, decided to farm
-    } else if (restCount >= 5) {
-        newState.ending = 'global'; // Rested a lot, decided to travel
     }
     // Bad endings (poor performance)
-    else if (yarukiZeroCount >= 5) {
+    else if (turn >= 40) {
+        newState.ending = 'farmer'; // Took too long, opted to farm
+    } else if (yarukiZeroCount >= 5) {
         newState.ending = 'breakdown';
     } else if (yarukiZeroCount >= 3) {
         newState.ending = 'burnout';
@@ -671,6 +680,8 @@ export function checkEndGame(state: GameState): GameState {
         newState.ending = 'resignation';
     } else if (turn >= 30) {
         newState.ending = 'collapse';
+    } else if (restCount >= 5) {
+        newState.ending = 'global'; // Rested a lot, decided to travel
     } else {
         newState.ending = 'defeat';
     }

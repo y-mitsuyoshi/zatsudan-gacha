@@ -27,15 +27,15 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://zatsudan-gacha.web.app'),
+  metadataBase: new URL('https://zatsudan-gacha.app'),
   alternates: {
     canonical: '/isekai-status',
   },
   openGraph: {
     title: '異世界転生ステータスカード | あなたの異世界での姿を診断',
     description: '5つの質問に答えて、あなたが異世界に転生した時のステータスカードを作成しよう！職業、能力値、固有スキルなど、あなただけの異世界キャラクターが完成します。',
-    url: 'https://zatsudan-gacha.web.app/isekai-status',
-    siteName: 'ざつだんガチャ',
+    url: 'https://zatsudan-gacha.app/isekai-status',
+    siteName: '雑談テーマガチャ',
     images: [
       {
         url: '/ogp.png',
@@ -64,9 +64,6 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
-  },
-  verification: {
-    google: 'your-google-verification-code', // 実際のGoogle Search Console verification codeに置き換え
   },
   category: 'entertainment',
 };

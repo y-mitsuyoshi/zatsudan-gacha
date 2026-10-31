@@ -1,8 +1,12 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAnalytics, isSupported, logEvent, Analytics } from 'firebase/analytics';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFunctions, Functions } from 'firebase/functions';
+import {
+  initializeAnalytics,
+  isSupported,
+  logEvent,
+  setAnalyticsCollectionEnabled,
+  Analytics,
+} from 'firebase/analytics';
+import { hasAnalyticsConsent } from './consent';
 
 // Firebase config は環境変数で提供する
 const firebaseConfig = {
@@ -19,113 +23,96 @@ let analytics: Analytics | null = null;
 let isInitializing = false;
 let isInitialized = false;
 let app: FirebaseApp | undefined;
-let db: Firestore | undefined;
-let auth: Auth | undefined;
-let functions: Functions | undefined;
+let analyticsInitPromise: Promise<Analytics | null> | null = null;
+let pendingPageView: { page_title: string; page_location: string } | null = null;
 
 export function getFirebaseApp() {
   if (!app) {
-     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   }
   return app;
 }
 
-export function getFirebaseFirestore() {
-  if (!firebaseConfig.apiKey) {
-    console.error('Firebase API key is not configured.');
-    return undefined;
-  }
-  if (!db) {
-    db = getFirestore(getFirebaseApp());
-  }
-  return db;
-}
-
-export function getFirebaseAuth() {
-  if (!firebaseConfig.apiKey) {
-    console.error('Firebase API key is not configured.');
-    return undefined;
-  }
-  if (!auth) {
-    auth = getAuth(getFirebaseApp());
-  }
-  return auth;
-}
-
-export function getFirebaseFunctions() {
-  if (!firebaseConfig.apiKey) {
-    console.error('Firebase API key is not configured.');
-    return undefined;
-  }
-  if (!functions) {
-    // Functionsのリージョンを必要に応じて設定 (例: asia-northeast1)
-    functions = getFunctions(getFirebaseApp(), 'us-central1');
-  }
-  return functions;
-}
-
-export async function initFirebaseAnalytics() {
-  // サーバーサイドでは実行しない
-  if (typeof window === 'undefined') {
+export async function initFirebaseAnalytics(): Promise<Analytics | null> {
+  if (typeof window === 'undefined' || !hasAnalyticsConsent()) {
     return null;
   }
 
-  // 既に初期化済みまたは初期化中の場合は重複実行を避ける
-  if (isInitialized || isInitializing) {
+  if (isInitialized) {
+    if (analytics) {
+      setAnalyticsCollectionEnabled(analytics, true);
+    }
     return analytics;
   }
 
+  if (isInitializing) {
+    return analyticsInitPromise;
+  }
+
   isInitializing = true;
-
-  try {
-    // Firebase Appの初期化 (確実に行う)
-    getFirebaseApp();
-    
-    // Analytics がサポートされているかチェック
-    const supported = await isSupported();
-    if (supported) {
-      analytics = getAnalytics(app);
-      isInitialized = true;
-    }
-  } catch (error) {
-    // Analytics初期化エラーは静かに処理
-  } finally {
-    isInitializing = false;
-  }
-
-  return analytics;
-}
-
-export function getFirebaseAnalytics() {
-  return analytics;
-}
-
-export function isAnalyticsInitialized() {
-  return isInitialized;
-}
-
-// ページビューをトラッキングする関数
-export function trackPageView(page_title: string, page_location?: string) {
-  if (analytics && isInitialized) {
-    logEvent(analytics, 'page_view', {
-      page_title,
-      page_location: page_location || window.location.href,
-    });
-  } else if (!isInitialized) {
-    // 2秒後にリトライ
-    setTimeout(() => {
-      if (analytics && isInitialized) {
-        logEvent(analytics, 'page_view', {
-          page_title,
-          page_location: page_location || window.location.href,
-        });
+  analyticsInitPromise = (async () => {
+    try {
+      const firebaseApp = getFirebaseApp();
+      const supported = await isSupported();
+      if (!supported) {
+        return null;
       }
-    }, 2000);
+
+      analytics = initializeAnalytics(firebaseApp, {
+        config: {
+          // Page views are tracked manually so client-side navigation is not double-counted.
+          send_page_view: false,
+        },
+      });
+      isInitialized = true;
+      setAnalyticsCollectionEnabled(analytics, true);
+
+      if (pendingPageView) {
+        logEvent(analytics, 'page_view', pendingPageView);
+        pendingPageView = null;
+      }
+
+      return analytics;
+    } catch {
+      return null;
+    } finally {
+      isInitializing = false;
+    }
+  })();
+
+  return analyticsInitPromise;
+}
+
+export function disableFirebaseAnalytics(): void {
+  if (analytics) {
+    setAnalyticsCollectionEnabled(analytics, false);
   }
 }
 
-// カスタムイベントをトラッキングする関数
-export function trackEvent(eventName: string, parameters?: Record<string, any>) {
+export function trackPageView(page_title: string, page_location?: string) {
+  if (typeof window === 'undefined' || !hasAnalyticsConsent()) {
+    return;
+  }
+
+  const payload = {
+    page_title,
+    page_location: page_location || window.location.pathname,
+  };
+
+  if (analytics && isInitialized) {
+    logEvent(analytics, 'page_view', payload);
+    return;
+  }
+
+  pendingPageView = payload;
+  void initFirebaseAnalytics();
+}
+
+export function trackEvent(eventName: string, parameters?: Record<string, unknown>) {
+  if (!hasAnalyticsConsent()) {
+    return;
+  }
+
   if (analytics && isInitialized) {
     logEvent(analytics, eventName, parameters);
   }

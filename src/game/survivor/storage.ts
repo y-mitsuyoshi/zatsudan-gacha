@@ -2,7 +2,7 @@
  * 社畜サバイバー — localStorage persistence (settings / records / meta progress).
  */
 
-import type { Difficulty } from './config';
+import { DIFFICULTY_ORDER, type Difficulty } from './config';
 
 const K = {
   settings: 'shachiku-survivor-settings/v1',
@@ -43,14 +43,45 @@ export interface SurvivorRecord {
   date: number;
 }
 
+function safeInt(value: unknown, fallback = 0, min = 0, max = Number.MAX_SAFE_INTEGER): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.floor(value)))
+    : fallback;
+}
+
+function isDifficulty(value: unknown): value is Difficulty {
+  return typeof value === 'string' && DIFFICULTY_ORDER.includes(value as Difficulty);
+}
+
 export function loadRecords(): SurvivorRecord[] {
   try {
     const raw = localStorage.getItem(K.records);
     if (!raw) return [];
-    const arr = JSON.parse(raw) as SurvivorRecord[];
-    if (!Array.isArray(arr)) return [];
-    return arr
-      .filter((r) => typeof r?.score === 'number')
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is SurvivorRecord =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof (item as SurvivorRecord).score === 'number' &&
+        Number.isFinite((item as SurvivorRecord).score) &&
+        isDifficulty((item as SurvivorRecord).difficulty) &&
+        typeof (item as SurvivorRecord).time === 'number' &&
+        Number.isFinite((item as SurvivorRecord).time) &&
+        typeof (item as SurvivorRecord).level === 'number' &&
+        typeof (item as SurvivorRecord).kills === 'number' &&
+        typeof (item as SurvivorRecord).victory === 'boolean' &&
+        typeof (item as SurvivorRecord).date === 'number'
+      )
+      .map((record) => ({
+        score: safeInt(record.score),
+        difficulty: record.difficulty,
+        time: safeInt(record.time),
+        level: safeInt(record.level, 1, 1),
+        kills: safeInt(record.kills),
+        victory: record.victory,
+        date: safeInt(record.date),
+      }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
   } catch {
@@ -84,17 +115,19 @@ export function loadProgress(): SurvivorProgress {
   try {
     const raw = localStorage.getItem(K.progress);
     if (!raw) return fallback;
-    const p = JSON.parse(raw) as Partial<SurvivorProgress>;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return fallback;
+    const p = parsed as Partial<SurvivorProgress>;
     return {
-      coins: typeof p.coins === 'number' ? Math.max(0, Math.floor(p.coins)) : 0,
+      coins: safeInt(p.coins),
       meta: {
-        atk: p.meta?.atk ?? 0,
-        hp: p.meta?.hp ?? 0,
-        speed: p.meta?.speed ?? 0,
-        magnet: p.meta?.magnet ?? 0,
+        atk: safeInt(p.meta?.atk, 0, 0, 50),
+        hp: safeInt(p.meta?.hp, 0, 0, 50),
+        speed: safeInt(p.meta?.speed, 0, 0, 50),
+        magnet: safeInt(p.meta?.magnet, 0, 0, 50),
       },
-      wins: p.wins ?? 0,
-      runs: p.runs ?? 0,
+      wins: safeInt(p.wins),
+      runs: safeInt(p.runs),
     };
   } catch {
     return fallback;

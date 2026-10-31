@@ -1,46 +1,51 @@
-// Note: This is a simple in-memory rate limiter.
-// In a serverless environment, each instance will have its own counter,
-// so the rate limit is not enforced globally across all instances.
-// For a production-ready solution, consider using a centralized store like Redis.
+// Development/fallback limiter. Production uses the Firebase Functions limiter.
+// This is still keyed per client and only counts requests that actually reach
+// the upstream AI provider.
 
-const RPM_LIMIT = 15; // Requests per minute
-const RPD_LIMIT = 50; // Requests per day
+const RPM_LIMIT = 15;
+const RPD_LIMIT = 50;
+const MAX_TRACKED_CLIENTS = 5_000;
 
-const requestTimestamps: number[] = [];
+const requestTimestampsByClient = new Map<string, number[]>();
 
-// Clean up timestamps older than 24 hours to prevent memory leak
-setInterval(() => {
-    const now = Date.now();
-    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
-    const firstValidIndex = requestTimestamps.findIndex(ts => ts > twentyFourHoursAgo);
-    if (firstValidIndex > 0) {
-        requestTimestamps.splice(0, firstValidIndex);
-    }
-}, 60 * 60 * 1000); // Run every hour
+function pruneAndGet(clientKey: string, now: number): number[] {
+  const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+  const timestamps = (requestTimestampsByClient.get(clientKey) ?? [])
+    .filter((timestamp) => timestamp > twentyFourHoursAgo);
 
-export function isRateLimited(): boolean {
-    const now = Date.now();
+  // Refresh insertion order so the oldest active client is evicted first.
+  requestTimestampsByClient.delete(clientKey);
+  requestTimestampsByClient.set(clientKey, timestamps);
+  return timestamps;
+}
 
-    // --- Daily Limit Check ---
-    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
-    const requestsInLast24Hours = requestTimestamps.filter(ts => ts > twentyFourHoursAgo).length;
+function evictOldestClientIfNeeded(): void {
+  if (requestTimestampsByClient.size <= MAX_TRACKED_CLIENTS) {
+    return;
+  }
+  const oldestKey = requestTimestampsByClient.keys().next().value;
+  if (oldestKey !== undefined) {
+    requestTimestampsByClient.delete(oldestKey);
+  }
+}
 
-    if (requestsInLast24Hours >= RPD_LIMIT) {
-        console.warn(`Rate limit exceeded: RPD limit of ${RPD_LIMIT} reached.`);
-        return true;
-    }
+export function isRateLimited(clientKey: string): boolean {
+  const now = Date.now();
+  const timestamps = pruneAndGet(clientKey, now);
+  const oneMinuteAgo = now - 60 * 1000;
+  const requestsInLastMinute = timestamps.filter((timestamp) => timestamp > oneMinuteAgo).length;
 
-    // --- Minute Limit Check ---
-    const oneMinuteAgo = now - 60 * 1000;
-    const requestsInLastMinute = requestTimestamps.filter(ts => ts > oneMinuteAgo).length;
+  if (timestamps.length >= RPD_LIMIT || requestsInLastMinute >= RPM_LIMIT) {
+    requestTimestampsByClient.set(clientKey, timestamps);
+    return true;
+  }
 
-    if (requestsInLastMinute >= RPM_LIMIT) {
-        console.warn(`Rate limit exceeded: RPM limit of ${RPM_LIMIT} reached.`);
-        return true;
-    }
+  timestamps.push(now);
+  requestTimestampsByClient.set(clientKey, timestamps);
+  evictOldestClientIfNeeded();
+  return false;
+}
 
-    // If not rate-limited, record the current request
-    requestTimestamps.push(now);
-
-    return false;
+export function resetRateLimiter(): void {
+  requestTimestampsByClient.clear();
 }

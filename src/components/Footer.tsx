@@ -113,8 +113,25 @@ export const Footer: React.FC = () => {
             </div>
             
             <div className="text-center md:text-right">
+              <nav aria-label="フッターナビゲーション" className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 mb-3 text-sm">
+                <Link href="/icebreak" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  会議のアイスブレイク
+                </Link>
+                <Link href="/themes" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  お題カテゴリ一覧
+                </Link>
+                <Link href="/#faq" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  よくある質問
+                </Link>
+                <Link href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  プライバシーポリシー
+                </Link>
+                <Link href="/sitemap.xml" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  サイトマップ
+                </Link>
+              </nav>
               <p className="text-xs text-gray-500 dark:text-gray-500">
-                © 2025 雑談テーマガチャ. All rights reserved.
+                © 2026 雑談テーマガチャ. All rights reserved.
               </p>
             </div>
           </div>

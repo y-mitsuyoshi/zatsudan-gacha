@@ -58,6 +58,7 @@ export interface JoystickRenderOptions {
 
 export class VirtualJoystick {
   private container: HTMLElement | null = null;
+  private previousTouchAction = '';
   private maxRadius: number;
   private deadzone: number;
   private floating: boolean;
@@ -101,6 +102,7 @@ export class VirtualJoystick {
       this.detach();
     }
     this.container = container;
+    this.previousTouchAction = this.container.style.touchAction;
 
     // Prevent default touch behaviors like scrolling/zooming on the joystick container
     this.container.style.touchAction = 'none';
@@ -126,6 +128,7 @@ export class VirtualJoystick {
 
     this.destroyDomOverlay();
     this.reset();
+    this.container.style.touchAction = this.previousTouchAction;
     this.container = null;
   }
 

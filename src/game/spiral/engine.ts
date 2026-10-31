@@ -1175,8 +1175,12 @@ export class SpiralEngine {
   private updateChests(dt: number): void {
     for (const ch of this.chests) {
       ch.spin += dt * 1.4;
-      if (ch.openT > 0) ch.openT -= dt;
-      if (ch.taken) continue;
+      if (ch.taken) {
+        // Continue the opening animation even after openT reaches 0 so the
+        // chest is eventually removed and can be replaced by a new one.
+        ch.openT -= dt;
+        continue;
+      }
       // Follow the gap between the two segments; drop the chest if the chain broke there.
       if (!this.chains.includes(ch.chain) || ch.segA.hp <= 0 || ch.segB.hp <= 0) {
         ch.taken = true;

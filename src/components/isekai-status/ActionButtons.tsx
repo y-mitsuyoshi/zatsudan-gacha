@@ -17,6 +17,8 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disabled = false }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const safeName = profileName.trim() || 'isekai';
 
   const handleGenerateImage = async () => {
     const cardElement = document.getElementById('isekai-status-card');
@@ -26,8 +28,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
     }
 
     setIsGenerating(true);
+    setErrorMessage('');
     try {
-      // trackEvent('generate_isekai_card_start', { name: profileName });
       const canvas = await html2canvas(cardElement, {
         useCORS: true,
         scale: 2, // Higher resolution
@@ -35,16 +37,16 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
       });
 
       const link = document.createElement('a');
-      const safeFilename = profileName.replace(/[^a-z0-9_]/gi, '_').toLowerCase() || 'isekai_status';
+      const safeFilename = safeName.replace(/[^a-z0-9_]/gi, '_').toLowerCase() || 'isekai_status';
       link.download = `${safeFilename}_isekai_status.png`;
       link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
       link.click();
-      // trackEvent('generate_isekai_card_success', { name: profileName });
+      document.body.removeChild(link);
 
     } catch (error) {
       console.error("Error generating image:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      // trackEvent('generate_isekai_card_error', { name: profileName, error: errorMessage });
+      setErrorMessage('画像の生成に失敗しました。時間をおいて再度お試しください。');
     } finally {
       setIsGenerating(false);
     }
@@ -53,12 +55,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
   const handleShareToX = () => {
     const shareText = "私が異世界転生した結果ww";
     const hashtags = "異世界転生ステータスカード,私を構成する5つのパラメータ";
-    const appUrl = "https://zatsudan-gacha.web.app/isekai-status"; // Assuming this is the correct URL
+    const appUrl = "https://zatsudan-gacha.app/isekai-status";
 
     const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(appUrl)}&hashtags=${encodeURIComponent(hashtags)}`;
 
-    window.open(twitterIntentUrl, '_blank');
-    // trackEvent('share_isekai_to_x_click', { name: profileName });
+    window.open(twitterIntentUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -70,6 +71,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
         </p>
       </div>
       <button
+        type="button"
         onClick={handleGenerateImage}
         disabled={isGenerating || disabled}
         className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
@@ -77,6 +79,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
         {isGenerating ? '画像生成中...' : '画像をダウンロード'}
       </button>
       <button
+        type="button"
         onClick={handleShareToX}
         disabled={disabled}
         className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 flex items-center justify-center space-x-2 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-70 disabled:cursor-not-allowed"
@@ -84,6 +87,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
         <XIcon className="h-5 w-5" />
         <span>Xでシェアする</span>
       </button>
+      {errorMessage && (
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3" role="alert">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 };

@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// This app does not read or write Firestore from the browser.
+// All game data is accessed through Firebase Functions with the Admin SDK,
+// which bypasses these rules. Deny direct client access by default.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

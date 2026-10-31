@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 
-const pageTitle = '社畜すごろくNEO | あなたの社畜ランクを診断！面白いあるあるネタ満載の暇つぶしゲーム';
+const pageTitle = '社畜すごろくNEO | あるある満載の社畜ランク診断ゲーム';
 const pageDescription = '「退勤直前の"ちょっといい？"」など社会人の"あるある"が満載の爆笑すごろくゲーム。職業を選んでアイテムを駆使し、あなたの社畜ランクを診断しよう！実績コレクション機能も。完全無料で今すぐプレイ。';
 
 export const metadata: Metadata = {
   title: pageTitle,
   description: pageDescription,
-  metadataBase: new URL('https://zatsudan-gacha.web.app'),
+  metadataBase: new URL('https://zatsudan-gacha.app'),
   alternates: {
     canonical: '/shachiku-sugoroku',
   },

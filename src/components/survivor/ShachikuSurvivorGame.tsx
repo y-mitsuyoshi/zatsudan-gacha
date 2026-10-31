@@ -13,14 +13,17 @@ import {
   type Difficulty, type StageId,
 } from '@/game/survivor/config';
 import {
-  loadStats, applyRunToStats, encyEnemies, encyWeapons, encyCompletion,
+  loadStats, applyRunToStats, applyRunDeltaToStats,
+  applyRunToEncy, applyRunDeltaToEncy,
+  encyEnemies, encyWeapons, encyCompletion,
   loadAch, checkAchievements, claimAchievement, ACHIEVEMENTS,
   earnedTitles, bestTitle,
-  todayMissions, loadDaily, applyRunToDaily, claimMission,
+  todayMissions, loadDaily, applyRunToDaily, applyRunDeltaToDaily, claimMission,
   type SurvivorStats, type AchState, type DailyState,
 } from '@/game/survivor/collection';
 import { getPixelIconDataUrl } from '@/game/survivor/pixelSprites';
 import { VirtualJoystick } from '@/game/common/virtualJoystick';
+import Image from 'next/image';
 
 type Screen = 'title' | 'playing' | 'levelup' | 'paused' | 'result';
 type TitleTab = 'play' | 'power' | 'dex' | 'ach' | 'daily';
@@ -159,6 +162,7 @@ export default function ShachikuSurvivorGame() {
   const keysRef = useRef<Set<string>>(new Set());
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const joystickRef = useRef<VirtualJoystick | null>(null);
+  const lastSettledRunRef = useRef<RunResult | null>(null);
   const bannerTimer = useRef<number | null>(null);
 
   const [screen, setScreen] = useState<Screen>('title');
@@ -227,21 +231,41 @@ export default function ShachikuSurvivorGame() {
   }, []);
 
   const finishRun = useCallback((r: RunResult, d: Difficulty) => {
-    setRecords(saveRecord({ score: r.score, difficulty: d, time: r.time, level: r.level, kills: r.kills, victory: r.victory, date: Date.now() }));
+    const previousSettlement = lastSettledRunRef.current;
+    const isFirstSettlement = previousSettlement === null;
+
+    if (isFirstSettlement) {
+      setRecords(saveRecord({ score: r.score, difficulty: d, time: r.time, level: r.level, kills: r.kills, victory: r.victory, date: Date.now() }));
+    }
+
     const p = loadProgress();
-    p.coins += r.coins;
-    p.runs += 1;
-    if (r.victory) p.wins += 1;
+    p.coins += isFirstSettlement ? r.coins : Math.max(0, r.coins - previousSettlement.coins);
+    if (isFirstSettlement) {
+      p.runs += 1;
+      if (r.victory) p.wins += 1;
+    }
     saveProgress(p);
     setBank(p.coins);
     setMetaLv({ ...(p.meta as unknown as Record<string, number>) });
-    const s = applyRunToStats(r);
+
+    const s = isFirstSettlement
+      ? applyRunToStats(r)
+      : applyRunDeltaToStats(previousSettlement, r);
     setStats(s);
-    applyRunToDaily(r);
+
+    if (isFirstSettlement) {
+      applyRunToEncy(r);
+      applyRunToDaily(r);
+    } else {
+      applyRunDeltaToEncy(previousSettlement, r);
+      applyRunDeltaToDaily(previousSettlement, r);
+    }
     setDaily(loadDaily());
+
     const fresh = checkAchievements(s, r);
     setAch(loadAch());
     setFreshAch(fresh.map((a) => a.id));
+    lastSettledRunRef.current = r;
     setResult(r);
     changeScreen('result');
   }, [changeScreen]);
@@ -276,6 +300,7 @@ export default function ShachikuSurvivorGame() {
     keysRef.current = new Set();
     dragRef.current = null;
     setRunMeta({ difficulty: d, stage: st });
+    lastSettledRunRef.current = null;
     setResult(null);
     setLevelData(null);
     setFreshAch([]);
@@ -333,8 +358,12 @@ export default function ShachikuSurvivorGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushMove]);
 
-  // virtual joystick on touch
+  // virtual joystick on touch, only while actually playing
   useEffect(() => {
+    if (screen !== 'playing') {
+      return;
+    }
+
     const stage = stageRef.current;
     if (!stage) return;
     const joystick = new VirtualJoystick({
@@ -362,9 +391,11 @@ export default function ShachikuSurvivorGame() {
     return () => {
       cancelAnimationFrame(animId);
       joystick.detach();
-      joystickRef.current = null;
+      if (joystickRef.current === joystick) {
+        joystickRef.current = null;
+      }
     };
-  }, []);
+  }, [screen]);
 
   // auto-pause when tab hidden
   useEffect(() => {
@@ -722,9 +753,11 @@ function TitleOverlay(props: {
   return (
     <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-black/90 via-black/85 to-black/95 p-4">
       <div className="relative mb-3 overflow-hidden rounded-xl border border-yellow-500/40 shadow-lg shadow-yellow-950/50">
-        <img
+        <Image
           src="/assets/survivor_cover.jpg"
           alt="Salaryman Survivors"
+          width={1376}
+          height={768}
           className="h-32 w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-2.5">

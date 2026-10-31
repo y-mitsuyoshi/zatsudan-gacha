@@ -71,10 +71,11 @@ export default function Lobby({ onStart }: LobbyProps) {
 
             {/* Player Name */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              <label htmlFor="jinro-player-name" className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                 社員名
               </label>
               <input
+                id="jinro-player-name"
                 type="text"
                 className="w-full px-4 py-3 bg-gray-900/60 border border-gray-600/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                 placeholder="あなたの名前を入力..."
@@ -87,11 +88,12 @@ export default function Lobby({ onStart }: LobbyProps) {
 
             {/* Player Count */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              <label htmlFor="jinro-player-count" className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                 参加人数（AI含む）
               </label>
               <div className="flex items-center gap-4">
                 <input
+                  id="jinro-player-count"
                   type="range"
                   min="4"
                   max="8"

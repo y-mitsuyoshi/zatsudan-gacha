@@ -1,4 +1,4 @@
-import type { CourseId, Difficulty, EnemyKind } from './config';
+import { COURSE_ORDER, DIFFICULTY_ORDER, type CourseId, type Difficulty, type EnemyKind } from './config';
 
 const PREFIX = 'barricade-defense-v1:';
 
@@ -21,6 +21,7 @@ export type Codex = Partial<Record<EnemyKind, number>>;
 export interface Progress {
   coins: number;
   unlocked: CourseId[];
+  clearedCourses?: CourseId[];
   powerBonus: number; // 恒久攻撃 +4%/Lv (最大10)
   wallBonus: number; // 恒久壁 +10/Lv (最大10)
   baseBonus: number; // 恒久自宅 +5/Lv (最大10)
@@ -75,7 +76,15 @@ export function loadRecords(): RecordEntry[] {
     return parsed
       .filter(
         (e): e is RecordEntry =>
-          typeof e === 'object' && e !== null && typeof (e as RecordEntry).score === 'number',
+          typeof e === 'object' &&
+          e !== null &&
+          typeof (e as RecordEntry).score === 'number' &&
+          Number.isFinite((e as RecordEntry).score) &&
+          COURSE_ORDER.includes((e as RecordEntry).course) &&
+          DIFFICULTY_ORDER.includes((e as RecordEntry).difficulty) &&
+          typeof (e as RecordEntry).wave === 'number' &&
+          typeof (e as RecordEntry).victory === 'boolean' &&
+          typeof (e as RecordEntry).date === 'number',
       )
       .slice(0, 10);
   } catch {
@@ -97,6 +106,7 @@ function num(v: unknown, def: number, min: number, max: number): number {
 const DEFAULT_PROGRESS: Progress = {
   coins: 0,
   unlocked: ['city'],
+  clearedCourses: [],
   powerBonus: 0,
   wallBonus: 0,
   baseBonus: 0,
@@ -108,9 +118,9 @@ const DEFAULT_PROGRESS: Progress = {
 };
 
 export function loadProgress(): Progress {
-  if (typeof window === 'undefined') return { ...DEFAULT_PROGRESS, unlocked: ['city'], achievements: [], codex: {} };
+  if (typeof window === 'undefined') return { ...DEFAULT_PROGRESS, unlocked: ['city'], clearedCourses: [], achievements: [], codex: {} };
   const raw = safeGet('progress');
-  if (!raw) return { ...DEFAULT_PROGRESS, unlocked: ['city'], achievements: [], codex: {} };
+  if (!raw) return { ...DEFAULT_PROGRESS, unlocked: ['city'], clearedCourses: [], achievements: [], codex: {} };
   try {
     const p = JSON.parse(raw) as Partial<Progress>;
     const unlocked = Array.isArray(p.unlocked)
@@ -120,6 +130,11 @@ export function loadProgress(): Progress {
         )
       : (['city'] as CourseId[]);
     if (!unlocked.includes('city')) unlocked.unshift('city');
+    const clearedCourses = Array.isArray(p.clearedCourses)
+      ? (p.clearedCourses as unknown[]).filter(
+          (c): c is CourseId => COURSE_ORDER.includes(c as CourseId),
+        )
+      : [];
     const achievements = Array.isArray(p.achievements)
       ? (p.achievements as unknown[]).filter((a): a is string => typeof a === 'string')
       : [];
@@ -133,6 +148,7 @@ export function loadProgress(): Progress {
     return {
       coins: num(p.coins, 0, 0, 999999),
       unlocked,
+      clearedCourses,
       powerBonus: num(p.powerBonus, 0, 0, 10),
       wallBonus: num(p.wallBonus, 0, 0, 10),
       baseBonus: num(p.baseBonus, 0, 0, 10),
@@ -143,7 +159,7 @@ export function loadProgress(): Progress {
       endlessBest: num(p.endlessBest, 0, 0, 999),
     };
   } catch {
-    return { ...DEFAULT_PROGRESS, unlocked: ['city'], achievements: [], codex: {} };
+    return { ...DEFAULT_PROGRESS, unlocked: ['city'], clearedCourses: [], achievements: [], codex: {} };
   }
 }
 

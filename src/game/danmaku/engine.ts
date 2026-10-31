@@ -374,7 +374,7 @@ export class DanmakuEngine {
     }
     if (this.prevBossAlive && !s.boss.alive && s.phase === 'interval') {
       this.sound.bigBoom();
-      saveContinue({ stage: s.stage + 1, score: s.score, weapon: s.weapon, weaponLevel: s.power });
+      saveContinue({ stage: s.stage + 1, score: s.score, weapon: s.weapon, weaponLevel: s.power, difficulty: s.diff });
     }
     this.prevKills = s.kills;
     this.prevGraze = s.graze;

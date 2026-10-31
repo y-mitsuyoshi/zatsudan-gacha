@@ -2,8 +2,7 @@
  * 社畜スパイラルディフェンス — persistence + stats + achievements.
  */
 
-import type { Difficulty } from './config';
-import { CHAINS, UPGRADES } from './config';
+import { CHAINS, UPGRADES, DIFFICULTY_ORDER, type Difficulty } from './config';
 import type { RunResult } from './engine';
 
 const K = {
@@ -16,22 +15,42 @@ const K = {
   daily: 'shachiku-spiral-daily/v1',
 };
 
-function read<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return { ...fallback, ...(JSON.parse(raw) as Partial<T>) };
-  } catch {
-    return fallback;
-  }
-}
-
 function write(key: string, v: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(v));
   } catch {
     /* storage unavailable */
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function safeCount(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : fallback;
+}
+
+function safeNumberMap(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+      .map(([k, v]) => [k, Math.max(0, Math.floor(v as number))])
+  );
+}
+
+function safeBooleanMap(value: unknown): Record<string, boolean> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, v]) => typeof v === 'boolean')
+  ) as Record<string, boolean>;
+}
+
+function isDifficulty(value: unknown): value is Difficulty {
+  return typeof value === 'string' && DIFFICULTY_ORDER.includes(value as Difficulty);
 }
 
 /* ---------------- settings ---------------- */
@@ -41,7 +60,14 @@ export interface SpiralSettings {
 }
 
 export function loadSettings(): SpiralSettings {
-  return read<SpiralSettings>(K.settings, { muted: false });
+  try {
+    const raw = localStorage.getItem(K.settings);
+    if (!raw) return { muted: false };
+    const parsed: unknown = JSON.parse(raw);
+    return { muted: isRecord(parsed) && parsed.muted === true };
+  } catch {
+    return { muted: false };
+  }
 }
 
 export function saveSettings(s: SpiralSettings): void {
@@ -65,7 +91,23 @@ export function loadRecords(): SpiralRecord[] {
     const arr = JSON.parse(raw) as SpiralRecord[];
     if (!Array.isArray(arr)) return [];
     return arr
-      .filter((r) => typeof r?.score === 'number')
+      .filter((item): item is SpiralRecord =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof (item as SpiralRecord).score === 'number' &&
+        Number.isFinite((item as SpiralRecord).score) &&
+        typeof (item as SpiralRecord).wave === 'number' &&
+        typeof (item as SpiralRecord).victory === 'boolean' &&
+        isDifficulty((item as SpiralRecord).difficulty) &&
+        typeof (item as SpiralRecord).date === 'number'
+      )
+      .map((record) => ({
+        score: safeCount(record.score),
+        wave: safeCount(record.wave),
+        victory: record.victory,
+        difficulty: record.difficulty,
+        date: safeCount(record.date),
+      }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
   } catch {
@@ -91,9 +133,27 @@ export interface SpiralProgress {
 }
 
 export function loadProgress(): SpiralProgress {
-  return read<SpiralProgress>(K.progress, {
+  const fallback: SpiralProgress = {
     coins: 0, meta: { atk: 0, hp: 0, rate: 0 }, runs: 0, wins: 0,
-  });
+  };
+  try {
+    const raw = localStorage.getItem(K.progress);
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return fallback;
+    return {
+      coins: safeCount(parsed.coins),
+      meta: {
+        atk: safeCount(isRecord(parsed.meta) ? parsed.meta.atk : 0),
+        hp: safeCount(isRecord(parsed.meta) ? parsed.meta.hp : 0),
+        rate: safeCount(isRecord(parsed.meta) ? parsed.meta.rate : 0),
+      },
+      runs: safeCount(parsed.runs),
+      wins: safeCount(parsed.wins),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 export function saveProgress(p: SpiralProgress): void {
@@ -111,7 +171,22 @@ export interface SpiralStats {
 }
 
 export function loadStats(): SpiralStats {
-  return read<SpiralStats>(K.stats, { runs: 0, wins: 0, bestWave: 0, totalSegs: 0, maxScore: 0 });
+  const fallback: SpiralStats = { runs: 0, wins: 0, bestWave: 0, totalSegs: 0, maxScore: 0 };
+  try {
+    const raw = localStorage.getItem(K.stats);
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return fallback;
+    return {
+      runs: safeCount(parsed.runs),
+      wins: safeCount(parsed.wins),
+      bestWave: safeCount(parsed.bestWave),
+      totalSegs: safeCount(parsed.totalSegs),
+      maxScore: safeCount(parsed.maxScore),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 export function applyRunToStats(r: RunResult): SpiralStats {
@@ -121,6 +196,16 @@ export function applyRunToStats(r: RunResult): SpiralStats {
   s.bestWave = Math.max(s.bestWave, r.wave);
   s.totalSegs += r.segs;
   s.maxScore = Math.max(s.maxScore, r.score);
+  write(K.stats, s);
+  return s;
+}
+
+/** Apply only the endless-mode delta for a run that was already settled at victory. */
+export function applyRunDeltaToStats(previous: RunResult, next: RunResult): SpiralStats {
+  const s = loadStats();
+  s.bestWave = Math.max(s.bestWave, next.wave);
+  s.totalSegs += Math.max(0, next.segs - previous.segs);
+  s.maxScore = Math.max(s.maxScore, next.score);
   write(K.stats, s);
   return s;
 }
@@ -153,7 +238,18 @@ export interface AchState {
 }
 
 export function loadAch(): AchState {
-  return read<AchState>(K.ach, { unlocked: {}, claimed: {} });
+  try {
+    const raw = localStorage.getItem(K.ach);
+    if (!raw) return { unlocked: {}, claimed: {} };
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return { unlocked: {}, claimed: {} };
+    return {
+      unlocked: safeBooleanMap(parsed.unlocked),
+      claimed: safeBooleanMap(parsed.claimed),
+    };
+  } catch {
+    return { unlocked: {}, claimed: {} };
+  }
 }
 
 export function checkAchievements(s: SpiralStats, r: RunResult): AchievementDef[] {
@@ -192,7 +288,18 @@ export interface EncyData {
 }
 
 export function loadEncy(): EncyData {
-  return read<EncyData>(K.ency, { chains: {}, upgrades: {} });
+  try {
+    const raw = localStorage.getItem(K.ency);
+    if (!raw) return { chains: {}, upgrades: {} };
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return { chains: {}, upgrades: {} };
+    return {
+      chains: safeNumberMap(parsed.chains),
+      upgrades: safeNumberMap(parsed.upgrades),
+    };
+  } catch {
+    return { chains: {}, upgrades: {} };
+  }
 }
 
 export function applyRunToEncy(r: RunResult): EncyData {
@@ -201,6 +308,20 @@ export function applyRunToEncy(r: RunResult): EncyData {
     e.chains[k] = (e.chains[k] ?? 0) + v;
   }
   for (const [k, v] of Object.entries(r.upgradeLevels)) {
+    e.upgrades[k] = Math.max(e.upgrades[k] ?? 0, v);
+  }
+  write(K.ency, e);
+  return e;
+}
+
+/** Apply only the endless-mode delta to the encyclopedia. */
+export function applyRunDeltaToEncy(previous: RunResult, next: RunResult): EncyData {
+  const e = loadEncy();
+  for (const [k, v] of Object.entries(next.chainKills)) {
+    const delta = Math.max(0, v - (previous.chainKills[k] ?? 0));
+    e.chains[k] = (e.chains[k] ?? 0) + delta;
+  }
+  for (const [k, v] of Object.entries(next.upgradeLevels)) {
     e.upgrades[k] = Math.max(e.upgrades[k] ?? 0, v);
   }
   write(K.ency, e);
@@ -335,9 +456,19 @@ export function todayMissions(): MissionDef[] {
 
 export function loadDaily(): DailyState {
   const fresh: DailyState = { date: todayKey(), progress: {}, claimed: {} };
-  const st = read<DailyState>(K.daily, fresh);
-  if (st.date !== todayKey()) return fresh;
-  return st;
+  try {
+    const raw = localStorage.getItem(K.daily);
+    if (!raw) return fresh;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed) || parsed.date !== todayKey()) return fresh;
+    return {
+      date: todayKey(),
+      progress: safeNumberMap(parsed.progress),
+      claimed: safeBooleanMap(parsed.claimed),
+    };
+  } catch {
+    return fresh;
+  }
 }
 
 export function applyRunToDaily(r: RunResult): DailyState {
@@ -348,6 +479,22 @@ export function applyRunToDaily(r: RunResult): DailyState {
       st.progress[m.id] = Math.min(m.target, (st.progress[m.id] ?? 0) + v);
     } else {
       st.progress[m.id] = Math.min(m.target, Math.max(st.progress[m.id] ?? 0, v));
+    }
+  }
+  write(K.daily, st);
+  return st;
+}
+
+/** Apply only the endless-mode delta to today's missions. */
+export function applyRunDeltaToDaily(previous: RunResult, next: RunResult): DailyState {
+  const st = loadDaily();
+  for (const m of todayMissions()) {
+    const nextValue = m.metric(next);
+    const previousValue = m.metric(previous);
+    if (m.accumulate) {
+      st.progress[m.id] = Math.min(m.target, (st.progress[m.id] ?? 0) + Math.max(0, nextValue - previousValue));
+    } else {
+      st.progress[m.id] = Math.min(m.target, Math.max(st.progress[m.id] ?? 0, nextValue));
     }
   }
   write(K.daily, st);

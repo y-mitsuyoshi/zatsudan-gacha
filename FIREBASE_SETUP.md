@@ -32,10 +32,10 @@ Firebase Functions で Gemini API を使用するために、環境変数を設�
 
 ```bash
 # Firebase CLI で環境変数を設定
-firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY_HERE"
+firebase functions:secrets:set GEMINI_API_KEY
 
 # 設定を確認
-firebase functions:config:get
+firebase functions:secrets:get GEMINI_API_KEY
 ```
 
 ## 2. Functions のデプロイ
@@ -86,7 +86,7 @@ https://us-central1-zatsudan-gacha.cloudfunctions.net/gemini
 - 開発環境: localhost:3000
 
 ### レート制限
-- 1IPアドレスあたり1時間に10回まで
+- 1IPアドレスあたり1日20回まで（短時間の連打は一時ブロック、全体の1日上限も設定）
 - メモリベースの制限（Function再起動時にリセット）
 
 ### キャッシュ機能

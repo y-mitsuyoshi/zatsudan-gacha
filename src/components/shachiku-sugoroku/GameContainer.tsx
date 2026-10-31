@@ -77,7 +77,23 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
 
   const isRollingRef = React.useRef(false);
   const diceValueRef = React.useRef(diceValue);
+  const hideDiceTimerRef = React.useRef<number | null>(null);
   React.useEffect(() => { diceValueRef.current = diceValue; }, [diceValue]);
+
+  React.useEffect(() => {
+    return () => {
+      if (hideDiceTimerRef.current !== null) {
+        window.clearTimeout(hideDiceTimerRef.current);
+      }
+      audioManager.stopBgm();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (gameState.isFinished) {
+      audioManager.stopBgm();
+    }
+  }, [gameState.isFinished]);
 
   const handleDiceRollComplete = () => {
     // Calculate new game state after dice animation completes
@@ -96,8 +112,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
     if (newState.pendingMoves && newState.pendingMoves !== 0) {
       setIsMoving(true);
     } else {
-      // No movement needed (e.g. resting), hide dice
-      setTimeout(() => setShowDice(false), 1500);
+      // No movement needed (e.g. resting), hide dice eventually.
+      if (hideDiceTimerRef.current !== null) {
+        window.clearTimeout(hideDiceTimerRef.current);
+      }
+      hideDiceTimerRef.current = window.setTimeout(() => {
+        if (!isRollingRef.current) {
+          setShowDice(false);
+        }
+        hideDiceTimerRef.current = null;
+      }, 1500);
     }
   };
 
@@ -105,6 +129,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState }) =>
     if (isRolling || gameState.isFinished || isMoving || gameState.isEventWait) return;
     const pending = gameState.pendingMoves || 0;
     if (pending !== 0) return;
+
+    if (hideDiceTimerRef.current !== null) {
+      window.clearTimeout(hideDiceTimerRef.current);
+      hideDiceTimerRef.current = null;
+    }
 
     isRollingRef.current = true;
     setIsRolling(true);

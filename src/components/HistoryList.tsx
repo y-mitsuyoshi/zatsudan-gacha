@@ -1,43 +1,70 @@
-import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
+import { StarIcon as StarIconOutline, ClockIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { ClockIcon } from '@heroicons/react/24/outline';
+import { getCategoryForTheme } from '@/lib/themeCategories';
 
 type HistoryListProps = {
   history: string[];
   favorites: string[];
   onToggleFavorite: (theme: string) => void;
   onSelectTheme: (theme: string) => void;
+  onClear?: () => void;
 };
 
-export const HistoryList = ({ history, favorites, onToggleFavorite, onSelectTheme }: HistoryListProps) => {
+export const HistoryList = ({ history, favorites, onToggleFavorite, onSelectTheme, onClear }: HistoryListProps) => {
   if (history.length === 0) {
     return (
-      <div className="text-center text-gray-500 dark:text-gray-400 py-4 flex items-center justify-center">
+      <div className="text-center text-gray-500 dark:text-gray-400 py-6 flex items-center justify-center">
         <ClockIcon className="h-5 w-5 mr-2" />
-        <span>まだ履歴はありません。</span>
+        <span>まだ履歴はありません。ガチャを回すとここに残ります。</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      {history.map((theme) => (
-        <div key={theme} className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-          <span
-            className="cursor-pointer hover:underline flex-grow"
-            onClick={() => onSelectTheme(theme)}
+      <div className="flex items-center justify-between px-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400">最新10件まで保存されます</p>
+        {onClear && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 underline underline-offset-2"
           >
-            {theme}
-          </span>
-          <button onClick={() => onToggleFavorite(theme)} className="ml-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
-            {favorites.includes(theme) ? (
-              <StarIconSolid className="h-5 w-5 text-yellow-400" />
-            ) : (
-              <StarIconOutline className="h-5 w-5 text-gray-400" />
-            )}
+            履歴を消去
           </button>
-        </div>
-      ))}
+        )}
+      </div>
+      {history.map((theme) => {
+        const category = getCategoryForTheme(theme);
+        return (
+          <div key={theme} className="flex items-center justify-between gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <button
+              type="button"
+              className="flex-grow min-w-0 text-left group"
+              onClick={() => onSelectTheme(theme)}
+            >
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                {category ? `${category.emoji} ${category.name}` : 'お題'}
+              </span>
+              <span className="block text-sm font-medium text-gray-800 dark:text-gray-100 group-hover:underline">
+                {theme}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleFavorite(theme)}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+              aria-label={favorites.includes(theme) ? 'お気に入りから削除' : 'お気に入りに追加'}
+            >
+              {favorites.includes(theme) ? (
+                <StarIconSolid className="h-5 w-5 text-yellow-400" />
+              ) : (
+                <StarIconOutline className="h-5 w-5 text-gray-400" />
+              )}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 };

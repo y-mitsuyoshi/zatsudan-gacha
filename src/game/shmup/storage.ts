@@ -1,4 +1,4 @@
-import type { WeaponId } from '../danmaku/config';
+import type { Difficulty, WeaponId } from '../danmaku/config';
 
 const PREFIX = 'shachiku-shooting-v2:';
 
@@ -70,8 +70,18 @@ export function loadScores(): ScoreEntry[] {
           typeof e === 'object' &&
           e !== null &&
           typeof (e as ScoreEntry).score === 'number' &&
-          typeof (e as ScoreEntry).stage === 'number',
+          Number.isFinite((e as ScoreEntry).score) &&
+          typeof (e as ScoreEntry).stage === 'number' &&
+          Number.isFinite((e as ScoreEntry).stage) &&
+          typeof (e as ScoreEntry).rank === 'string' &&
+          typeof (e as ScoreEntry).date === 'number',
       )
+      .map((entry) => ({
+        score: Math.max(0, Math.floor(entry.score)),
+        stage: Math.max(1, Math.floor(entry.stage)),
+        rank: entry.rank.slice(0, 20),
+        date: Math.max(0, Math.floor(entry.date)),
+      }))
       .slice(0, 5);
   } catch {
     return [];
@@ -91,7 +101,11 @@ export interface ContinueSave {
   score: number;
   weapon: WeaponId;
   weaponLevel: number;
+  difficulty: Difficulty;
 }
+
+const WEAPON_IDS: WeaponId[] = ['rensa', 'kakusan', 'tsuibi', 'laser'];
+const DIFFICULTY_IDS: Difficulty[] = ['easy', 'normal', 'hard'];
 
 export function loadContinue(): ContinueSave | null {
   const raw = typeof window === 'undefined' ? null : safeGet('continue');
@@ -100,13 +114,20 @@ export function loadContinue(): ContinueSave | null {
     const p = JSON.parse(raw) as Partial<ContinueSave>;
     if (typeof p.stage !== 'number' || typeof p.score !== 'number') return null;
     if (p.stage < 1 || p.stage > 99) return null;
-    const weapon: WeaponId =
-      p.weapon === 'kakusan' || p.weapon === 'tsuibi' ? p.weapon : 'rensa';
+    const weapon: WeaponId = p.weapon && WEAPON_IDS.includes(p.weapon) ? p.weapon : 'rensa';
+    const difficulty: Difficulty =
+      p.difficulty && DIFFICULTY_IDS.includes(p.difficulty) ? p.difficulty : 'normal';
     const wl =
       typeof p.weaponLevel === 'number'
         ? Math.min(5, Math.max(1, Math.floor(p.weaponLevel)))
         : 1;
-    return { stage: Math.floor(p.stage), score: Math.max(0, Math.floor(p.score)), weapon, weaponLevel: wl };
+    return {
+      stage: Math.floor(p.stage),
+      score: Math.max(0, Math.floor(p.score)),
+      weapon,
+      weaponLevel: wl,
+      difficulty,
+    };
   } catch {
     return null;
   }

@@ -11,6 +11,8 @@ interface RouletteItem {
   color: string;
 }
 
+const CANVAS_SIZE = 340;
+
 const DEFAULT_COLORS = [
   '#667EEA', '#764BA2', '#F093FB', '#F5576C', 
   '#4FACFE', '#00F2FE', '#43E97B', '#38F9D7',
@@ -26,6 +28,7 @@ export function RouletteMode() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [winner, setWinner] = useState<RouletteItem | null>(null);
   const [rotation, setRotation] = useState(0);
+  const [error, setError] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
 
@@ -36,12 +39,22 @@ export function RouletteMode() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = Math.min(centerX, centerY) - 15;
+    // 高DPIディスプレイでもぼやけないよう、描画解像度を調整
+    const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    const pixelSize = Math.round(CANVAS_SIZE * dpr);
+    if (canvas.width !== pixelSize || canvas.height !== pixelSize) {
+      canvas.width = pixelSize;
+      canvas.height = pixelSize;
+    }
+    const scale = canvas.width / CANVAS_SIZE;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+    const centerX = CANVAS_SIZE / 2;
+    const centerY = CANVAS_SIZE / 2;
+    const radius = CANVAS_SIZE / 2 - 15;
 
     // キャンバスをクリア
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     // 背景の影を描画
     ctx.save();
@@ -172,26 +185,25 @@ export function RouletteMode() {
     ctx.fillStyle = '#64748b';
     ctx.fill();
 
-    // ピン（指針）を描画（真上に固定、より美しく）
+    // ピン（指針）を描画（真上に固定）
     ctx.save();
-    ctx.translate(centerX, centerY - radius - 20);
-    
+    ctx.translate(centerX, centerY - radius - 10);
+
     // 指針の影
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 4;
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 3;
     
     // 指針のグラデーション
-    const arrowGradient = ctx.createLinearGradient(0, -30, 0, 20);
+    const arrowGradient = ctx.createLinearGradient(0, -6, 0, 20);
     arrowGradient.addColorStop(0, '#ef4444');
     arrowGradient.addColorStop(1, '#dc2626');
     
     ctx.beginPath();
     ctx.moveTo(0, 20);
-    ctx.lineTo(-15, -12);
-    ctx.lineTo(0, -30);
-    ctx.lineTo(15, -12);
+    ctx.lineTo(-13, -6);
+    ctx.lineTo(13, -6);
     ctx.closePath();
     
     ctx.fillStyle = arrowGradient;
@@ -208,51 +220,71 @@ export function RouletteMode() {
     drawRoulette();
   }, [drawRoulette]);
 
+  useEffect(() => {
+    return () => {
+      if (animationRef.current !== undefined) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
   const addItem = () => {
-    if (newItemName.trim() && items.length < 12) {
-      const newItem: RouletteItem = {
-        id: Date.now().toString(),
-        name: newItemName.trim(),
-        weight: 1,
-        color: DEFAULT_COLORS[items.length % DEFAULT_COLORS.length]
-      };
-      setItems([...items, newItem]);
-      setNewItemName('');
-      
-      // Google Analytics イベント送信
-      trackEvent('roulette_item_added', {
-        item_name: newItem.name,
-        item_count: items.length + 1,
-        color: newItem.color
-      });
+    const trimmedName = newItemName.trim();
+
+    if (!trimmedName || items.length >= 12 || isSpinning) {
+      return;
     }
+
+    if (items.some(item => item.name === trimmedName)) {
+      setError('同じ名前の項目がすでにあります');
+      return;
+    }
+
+    const newItem: RouletteItem = {
+      id: Date.now().toString(),
+      name: trimmedName,
+      weight: 1,
+      color: DEFAULT_COLORS[items.length % DEFAULT_COLORS.length]
+    };
+    setItems([...items, newItem]);
+    setNewItemName('');
+    setError('');
+
+    // Google Analytics イベント送信
+    trackEvent('roulette_item_added', {
+      item_count: items.length + 1
+    });
   };
 
   const removeItem = (id: string) => {
+    if (isSpinning) return;
     const itemToRemove = items.find(item => item.id === id);
     setItems(items.filter(item => item.id !== id));
+    setError('');
+    if (winner?.id === id) {
+      setWinner(null);
+    }
     
     // Google Analytics イベント送信
     if (itemToRemove) {
       trackEvent('roulette_item_removed', {
-        item_name: itemToRemove.name,
-        item_count: items.length - 1,
-        color: itemToRemove.color
+        item_count: items.length - 1
       });
     }
   };
 
   const updateWeight = (id: string, newWeight: number) => {
+    if (isSpinning) return;
     if (newWeight >= 1 && newWeight <= 10) {
       const oldItem = items.find(item => item.id === id);
       setItems(items.map(item => 
         item.id === id ? { ...item, weight: newWeight } : item
       ));
+      setError('');
       
       // Google Analytics イベント送信
       if (oldItem) {
         trackEvent('roulette_weight_changed', {
-          item_name: oldItem.name,
           old_weight: oldItem.weight,
           new_weight: newWeight,
           weight_change: newWeight - oldItem.weight
@@ -264,14 +296,18 @@ export function RouletteMode() {
   const spinRoulette = () => {
     if (isSpinning || items.length === 0) return;
 
+    if (animationRef.current !== undefined) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
     setIsSpinning(true);
     setWinner(null);
+    setError('');
 
     // Google Analytics イベント送信 - スピン開始
     trackEvent('roulette_spin_started', {
       item_count: items.length,
-      total_weight: items.reduce((sum, item) => sum + item.weight, 0),
-      items: items.map(item => ({ name: item.name, weight: item.weight }))
+      total_weight: items.reduce((sum, item) => sum + item.weight, 0)
     });
 
     // ランダムな回転角度を計算（最低5回転 + ランダム）
@@ -298,6 +334,7 @@ export function RouletteMode() {
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
+        animationRef.current = undefined;
         setIsSpinning(false);
         determineWinner(currentRotation % 360);
       }
@@ -338,9 +375,7 @@ export function RouletteMode() {
     // Google Analytics イベント送信 - 結果確定
     if (winnerItem) {
       trackEvent('roulette_result', {
-        winner_name: winnerItem.name,
         winner_weight: winnerItem.weight,
-        winner_color: winnerItem.color,
         total_items: items.length,
         total_weight: totalWeight,
         final_rotation: finalRotation,
@@ -364,6 +399,8 @@ export function RouletteMode() {
               ref={canvasRef}
               width={340}
               height={340}
+              role="img"
+              aria-label="ルーレットの盤面"
               className="rounded-full shadow-2xl ring-4 ring-white/50 dark:ring-gray-800/50 w-full h-auto max-w-[280px] sm:max-w-[320px] md:max-w-[340px] mx-auto"
               style={{
                 filter: isSpinning ? 'blur(0.5px) brightness(1.1)' : 'none',
@@ -378,6 +415,7 @@ export function RouletteMode() {
         {/* スピンボタン */}
         <div className="text-center">
           <button
+            type="button"
             onClick={spinRoulette}
             disabled={isSpinning || items.length === 0}
             className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 shadow-lg ${
@@ -401,7 +439,11 @@ export function RouletteMode() {
 
         {/* 結果表示 */}
         {winner && !isSpinning && (
-          <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border-2 border-green-200 dark:border-green-700 text-center">
+          <div
+            className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border-2 border-green-200 dark:border-green-700 text-center"
+            role="status"
+            aria-live="polite"
+          >
             <div className="text-5xl mb-4 animate-bounce">🎉</div>
             <div 
               className="text-3xl font-black tracking-wide"
@@ -422,20 +464,30 @@ export function RouletteMode() {
           <input
             type="text"
             value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addItem()}
+            onChange={(e) => {
+              setNewItemName(e.target.value);
+              if (error) setError('');
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && addItem()}
             placeholder="新しい項目を入力（最大20文字）"
-            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-base"
+            aria-label="ルーレットに追加する項目"
+            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-base disabled:opacity-60"
             maxLength={20}
+            disabled={isSpinning}
           />
           <button
+            type="button"
             onClick={addItem}
-            disabled={!newItemName.trim() || items.length >= 12}
+            disabled={!newItemName.trim() || items.length >= 12 || isSpinning}
+            aria-label="項目を追加"
             className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 disabled:transform-none font-semibold whitespace-nowrap min-w-[120px] sm:min-w-0"
           >
-            <PlusIcon className="w-5 h-5" />
+            <PlusIcon className="w-5 h-5 mx-auto" />
           </button>
         </div>
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>
+        )}
 
         {/* アイテムリスト */}
         <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
@@ -467,8 +519,10 @@ export function RouletteMode() {
                     重み
                   </span>
                   <button
+                    type="button"
                     onClick={() => updateWeight(item.id, item.weight - 1)}
-                    disabled={item.weight <= 1}
+                    disabled={isSpinning || item.weight <= 1}
+                    aria-label={`${item.name}の重みを減らす`}
                     className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
                   >
                     <MinusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -477,8 +531,10 @@ export function RouletteMode() {
                     {item.weight}
                   </span>
                   <button
+                    type="button"
                     onClick={() => updateWeight(item.id, item.weight + 1)}
-                    disabled={item.weight >= 10}
+                    disabled={isSpinning || item.weight >= 10}
+                    aria-label={`${item.name}の重みを増やす`}
                     className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
                   >
                     <PlusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -486,9 +542,12 @@ export function RouletteMode() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => removeItem(item.id)}
-                  className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 flex-shrink-0"
+                  disabled={isSpinning}
+                  className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:hover:scale-100 flex-shrink-0"
                   title="削除"
+                  aria-label={`${item.name}を削除`}
                 >
                   <TrashIcon className="w-5 h-5" />
                 </button>

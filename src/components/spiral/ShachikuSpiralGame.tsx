@@ -1,15 +1,18 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SpiralEngine, type HudSnapshot, type BuildData, type RunResult } from '@/game/spiral/engine';
 import { SpiralSound } from '@/game/spiral/audio';
 import { VirtualJoystick } from '@/game/common/virtualJoystick';
 import {
   loadSettings, saveSettings, loadRecords, saveRecord, loadProgress, saveProgress,
-  loadStats, applyRunToStats, loadAch, checkAchievements, claimAchievement, ACHIEVEMENTS,
-  applyRunToEncy, encyChains, encyUpgrades, encyCompletion,
+  loadStats, applyRunToStats, applyRunDeltaToStats,
+  loadAch, checkAchievements, claimAchievement, ACHIEVEMENTS,
+  applyRunToEncy, applyRunDeltaToEncy,
+  encyChains, encyUpgrades, encyCompletion,
   bestTitle,
-  todayMissions, loadDaily, applyRunToDaily, claimMission,
+  todayMissions, loadDaily, applyRunToDaily, applyRunDeltaToDaily, claimMission,
   type SpiralRecord, type SpiralStats, type AchState, type DailyState,
 } from '@/game/spiral/storage';
 import {
@@ -55,6 +58,7 @@ export default function ShachikuSpiralGame() {
   const screenRef = useRef<Screen>('title');
   const keysRef = useRef<Set<string>>(new Set());
   const bannerTimer = useRef<number | null>(null);
+  const lastSettledRunRef = useRef<RunResult | null>(null);
 
   const [screen, setScreen] = useState<Screen>('title');
   const changeScreen = useCallback((s: Screen) => {
@@ -115,18 +119,20 @@ export default function ShachikuSpiralGame() {
     eng.setAim(CENTER + Math.cos(aimRef.current) * R, CENTER + Math.sin(aimRef.current) * R);
   }, []);
 
-  // Continuous loop to sync virtual joystick input while playing
+  // Continuous loop for keyboard/joystick input, only while playing.
   useEffect(() => {
+    if (screen !== 'playing') {
+      return;
+    }
+
     let animId = 0;
     const pollInput = () => {
-      if (screenRef.current === 'playing') {
-        pushMove();
-      }
+      pushMove();
       animId = requestAnimationFrame(pollInput);
     };
     animId = requestAnimationFrame(pollInput);
     return () => cancelAnimationFrame(animId);
-  }, [pushMove]);
+  }, [pushMove, screen]);
 
   const destroyEngine = useCallback(() => {
     engineRef.current?.destroy();
@@ -136,22 +142,41 @@ export default function ShachikuSpiralGame() {
   }, []);
 
   const finishRun = useCallback((r: RunResult, d: Difficulty) => {
-    setRecords(saveRecord({ score: r.score, wave: r.wave, victory: r.victory, difficulty: d, date: Date.now() }));
+    const previousSettlement = lastSettledRunRef.current;
+    const isFirstSettlement = previousSettlement === null;
+
+    if (isFirstSettlement) {
+      setRecords(saveRecord({ score: r.score, wave: r.wave, victory: r.victory, difficulty: d, date: Date.now() }));
+    }
+
     const p = loadProgress();
-    p.coins += r.coins;
-    p.runs += 1;
-    if (r.victory) p.wins += 1;
+    p.coins += isFirstSettlement ? r.coins : Math.max(0, r.coins - previousSettlement.coins);
+    if (isFirstSettlement) {
+      p.runs += 1;
+      if (r.victory) p.wins += 1;
+    }
     saveProgress(p);
     setBank(p.coins);
     setMetaLv({ ...p.meta });
-    const s = applyRunToStats(r);
+
+    const s = isFirstSettlement
+      ? applyRunToStats(r)
+      : applyRunDeltaToStats(previousSettlement, r);
     setStats(s);
-    applyRunToEncy(r);
-    applyRunToDaily(r);
+
+    if (isFirstSettlement) {
+      applyRunToEncy(r);
+      applyRunToDaily(r);
+    } else {
+      applyRunDeltaToEncy(previousSettlement, r);
+      applyRunDeltaToDaily(previousSettlement, r);
+    }
     setDaily(loadDaily());
+
     const fresh = checkAchievements(s, r);
     setAch(loadAch());
     setFreshAch(fresh.map((a) => a.id));
+    lastSettledRunRef.current = r;
     setResult(r);
     changeScreen('result');
   }, [changeScreen]);
@@ -186,6 +211,7 @@ export default function ShachikuSpiralGame() {
 
     keysRef.current = new Set();
     setRunMeta({ difficulty: d, stage: st });
+    lastSettledRunRef.current = null;
     setResult(null);
     setBuild(null);
     setFreshAch([]);
@@ -211,6 +237,18 @@ export default function ShachikuSpiralGame() {
   }, [screen]);
 
   useEffect(() => () => destroyEngine(), [destroyEngine]);
+
+  const pauseGame = useCallback(() => {
+    engineRef.current?.setPaused(true);
+    soundRef.current?.suspend();
+    changeScreen('paused');
+  }, [changeScreen]);
+
+  const resumeGame = useCallback(() => {
+    soundRef.current?.resume();
+    engineRef.current?.setPaused(false);
+    changeScreen('playing');
+  }, [changeScreen]);
 
   // keyboard event listeners
   useEffect(() => {
@@ -246,7 +284,7 @@ export default function ShachikuSpiralGame() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
     };
-  }, [pushMove]);
+  }, [pushMove, pauseGame, resumeGame]);
 
   useEffect(() => {
     const onVis = () => {
@@ -254,19 +292,7 @@ export default function ShachikuSpiralGame() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, []);
-
-  const pauseGame = useCallback(() => {
-    engineRef.current?.setPaused(true);
-    soundRef.current?.suspend();
-    changeScreen('paused');
-  }, [changeScreen]);
-
-  const resumeGame = useCallback(() => {
-    soundRef.current?.resume();
-    engineRef.current?.setPaused(false);
-    changeScreen('playing');
-  }, [changeScreen]);
+  }, [pauseGame]);
 
   const quitToTitle = useCallback(() => {
     destroyEngine();
@@ -637,9 +663,11 @@ function TitleOverlay(props: {
     <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4">
       <div className="my-auto">
         <div className="relative mb-3 overflow-hidden rounded-xl border border-cyan-500/40 shadow-lg shadow-cyan-950/50">
-          <img
+          <Image
             src="/assets/spiral_cover.jpg"
             alt="Cybernetic Syndicate Spiral"
+            width={1376}
+            height={768}
             className="h-28 w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-2.5">

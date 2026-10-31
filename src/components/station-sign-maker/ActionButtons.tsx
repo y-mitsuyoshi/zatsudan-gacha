@@ -16,6 +16,8 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({ stationName }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const safeName = stationName.trim() || '駅名標';
 
   const handleGenerateImage = async () => {
     const cardElement = document.getElementById('station-sign-card');
@@ -25,8 +27,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ stationName }) => 
     }
 
     setIsGenerating(true);
+    setErrorMessage('');
     try {
-      trackEvent('generate_sign_start', { name: stationName });
+      trackEvent('generate_sign_start', { name_length: safeName.length });
       const canvas = await html2canvas(cardElement, {
         useCORS: true,
         scale: 2,
@@ -34,28 +37,31 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ stationName }) => 
       });
 
       const link = document.createElement('a');
-      const safeFilename = stationName.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+      const safeFilename = safeName.replace(/[^a-z0-9_]/gi, '_').toLowerCase() || 'station';
       link.download = `${safeFilename}_station_sign.png`;
       link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
       link.click();
-      trackEvent('generate_sign_success', { name: stationName });
+      document.body.removeChild(link);
+      trackEvent('generate_sign_success');
 
     } catch (error) {
       console.error("Error generating image:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      trackEvent('generate_sign_error', { name: stationName, error: errorMessage });
+      setErrorMessage('画像の生成に失敗しました。時間をおいて再度お試しください。');
+      trackEvent('generate_sign_error', { error: error instanceof Error ? error.name : 'UnknownError' });
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleShareToX = () => {
-    const shareText = `私だけの駅、できました。\n\n#駅名看板メーカー\n#${stationName.replace(/\s/g, '_')}駅`;
-    const appUrl = 'https://zatsudan-gacha.web.app/station-sign-maker'; // TODO: Make this dynamic
+    const hashtagName = safeName.replace(/\s/g, '_').replace(/[^\w\u3040-\u30ff\u4e00-\u9faf_]/g, '');
+    const shareText = `私だけの駅、できました。\n\n#駅名看板メーカー\n#${hashtagName}駅`;
+    const appUrl = 'https://zatsudan-gacha.app/station-sign-maker';
     const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(appUrl)}`;
 
-    window.open(twitterIntentUrl, '_blank');
-    trackEvent('share_to_x_click', { name: stationName });
+    window.open(twitterIntentUrl, '_blank', 'noopener,noreferrer');
+    trackEvent('share_to_x_click');
   };
 
   return (
@@ -67,6 +73,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ stationName }) => 
         </p>
       </div>
       <button
+        type="button"
         onClick={handleGenerateImage}
         disabled={isGenerating}
         className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
@@ -74,12 +81,18 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ stationName }) => 
         {isGenerating ? '生成中...' : '画像をダウンロード'}
       </button>
       <button
+        type="button"
         onClick={handleShareToX}
         className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 flex items-center justify-center space-x-2 hover:bg-gray-800 dark:hover:bg-gray-200"
       >
         <XIcon className="h-5 w-5" />
         <span>Xでシェアする</span>
       </button>
+      {errorMessage && (
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3" role="alert">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 };

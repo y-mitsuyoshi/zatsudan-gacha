@@ -1,9 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DefenseEngine, type HudSnapshot, type ShopSnapshot, type RunResult } from '@/game/defense/engine';
 import { DefenseSound } from '@/game/defense/audio';
-import { VirtualJoystick } from '@/game/common/virtualJoystick';
 import {
   WEAPONS, ENEMIES, COURSES, COURSE_ORDER, DIFFICULTIES, DIFFICULTY_ORDER, SHOP, MAX_ALLIES,
   ACHIEVEMENTS, PERKS,
@@ -126,6 +126,7 @@ function WeaponRing({ weaponId, durationLeft }: { weaponId: WeaponId; durationLe
 function evalAchievements(r: RunResult, p: Progress, records: RecordEntry[]): string[] {
   const has = new Set(p.achievements);
   const give: string[] = [];
+  const cleared = r.victory || r.courseCleared;
   const grant = (id: string, cond: boolean) => {
     if (cond && !has.has(id)) {
       give.push(id);
@@ -133,7 +134,7 @@ function evalAchievements(r: RunResult, p: Progress, records: RecordEntry[]): st
     }
   };
   grant('first_run', true);
-  grant('first_win', r.victory);
+  grant('first_win', cleared);
   grant('boss', r.bossKills > 0);
   grant('nakama', r.maxAllies >= 3);
   grant('combo50', r.maxCombo >= 50);
@@ -143,8 +144,11 @@ function evalAchievements(r: RunResult, p: Progress, records: RecordEntry[]): st
   grant('veteran', p.totalRuns >= 10);
   grant('slayer', p.totalKills >= 1000);
   grant('rich', p.coins >= 1000);
-  const won = new Set(records.filter((x) => x.victory).map((x) => x.course));
-  grant('all_course', won.size >= 3);
+  const won = new Set([
+    ...(p.clearedCourses ?? []),
+    ...records.filter((x) => x.victory).map((x) => x.course),
+  ]);
+  grant('all_course', won.size >= COURSE_ORDER.length);
   if (give.length > 0) p.achievements = Array.from(has);
   return give;
 }
@@ -154,7 +158,6 @@ export default function BarricadeDefenseGame() {
   const stageRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<DefenseEngine | null>(null);
   const soundRef = useRef<DefenseSound | null>(null);
-  const joystickRef = useRef<VirtualJoystick | null>(null);
   const aimRef = useRef({ x: 240, y: 200 });
   const bannerTimer = useRef<number | null>(null);
 
@@ -204,8 +207,9 @@ export default function BarricadeDefenseGame() {
   }, []);
 
   const finishRun = useCallback((r: RunResult, c: CourseId, d: Difficulty) => {
+    const cleared = r.victory || r.courseCleared;
     const entry: RecordEntry = {
-      score: r.score, course: c, difficulty: d, wave: r.wave, victory: r.victory, date: Date.now(),
+      score: r.score, course: c, difficulty: d, wave: r.wave, victory: cleared, date: Date.now(),
     };
     const updated = saveRecord(entry);
     setRecords(updated);
@@ -218,7 +222,9 @@ export default function BarricadeDefenseGame() {
       const n = r.killsByKind[k] ?? 0;
       if (n > 0) p.codex[k] = (p.codex[k] ?? 0) + n;
     }
-    if (r.victory) {
+    if (cleared) {
+      p.clearedCourses = p.clearedCourses ?? [];
+      if (!p.clearedCourses.includes(c)) p.clearedCourses.push(c);
       const idx = COURSE_ORDER.indexOf(c);
       const next = COURSE_ORDER[idx + 1];
       if (next && !p.unlocked.includes(next)) p.unlocked.push(next);
@@ -288,36 +294,6 @@ export default function BarricadeDefenseGame() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [changeScreen]);
-
-  // Floating virtual joystick integration
-  useEffect(() => {
-    if (screen !== 'playing') return;
-    const stage = stageRef.current;
-    if (!stage) return;
-    const joystick = new VirtualJoystick({ maxRadius: 52, deadzone: 0.08, touchOnly: false });
-    joystick.attach(stage);
-    joystickRef.current = joystick;
-
-    let rafId = 0;
-    const poll = () => {
-      if (screenRef.current === 'playing') {
-        const vec = joystick.getVector();
-        if (vec.active && Math.abs(vec.x) > 0.02) {
-          const targetX = Math.max(10, Math.min(470, 240 + vec.x * 200));
-          aimRef.current.x = targetX;
-          engineRef.current?.setAim(targetX, 200);
-        }
-        rafId = requestAnimationFrame(poll);
-      }
-    };
-    rafId = requestAnimationFrame(poll);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      joystick.detach();
-      joystickRef.current = null;
-    };
-  }, [screen]);
 
   // ---- input ----
   const toLogical = useCallback((clientX: number, clientY: number) => {
@@ -630,7 +606,7 @@ export default function BarricadeDefenseGame() {
           )}
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">
-          左右ドラッグで移動（自動前進・自動射撃）・緑ゲートを選んで強化・段ボールを撃つと武器変化・SOSを撃つと同期が増加
+          画面を左右にドラッグ／タップで移動（自動前進・自動射撃）・緑ゲートを選んで強化・段ボールを撃つと武器変化・SOSを撃つと同期が増加
         </p>
       </div>
     </div>
@@ -656,9 +632,11 @@ function TitleOverlay(props: {
   return (
     <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-black/90 via-black/85 to-black/95 p-4">
       <div className="relative mb-3 overflow-hidden rounded-xl border border-cyan-500/40 shadow-lg shadow-cyan-950/50">
-        <img
+        <Image
           src="/assets/defense_cover.jpg"
           alt="Commuter Defense 3D"
+          width={1376}
+          height={768}
           className="h-32 w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-2.5">
@@ -725,7 +703,7 @@ function TitleOverlay(props: {
 
       {showHelp && (
         <div className="mt-2 rounded-xl bg-white/10 p-3 text-[11px] leading-relaxed">
-          <p><b>操作</b>: 左右にドラッグで移動。自動で前進＆自動射撃（3D）。</p>
+          <p><b>操作</b>: 画面を左右にドラッグ／タップで移動。自動で前進＆自動射撃（3D）。</p>
           <p><b>ゲート選択</b>: 緑は強化（火力×2・連射UP・同期+1等）、赤は弱体化。体当たりする側を選べ！</p>
           <p><b>差し入れ段ボール</b>を撃つと… 武器GET(名刺/カバン/定期/特急/冷房)・お局の雷・残業代・ガード回復！</p>
           <p><b>SOSケージ</b>を撃つと同期が参戦(最大{MAX_ALLIES}人)。同期は自動援護。</p>
@@ -863,11 +841,13 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
 
 function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; difficulty: Difficulty }; records: RecordEntry[]; newAch: string[]; onRetry: () => void; onTitle: () => void }) {
   const { result, meta, records, newAch, onRetry, onTitle } = props;
+  const cleared = result.victory || result.courseCleared;
+  const endedInEndless = !result.victory && result.courseCleared;
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4 text-center">
-      <p className="text-2xl font-black text-amber-300">{result.victory ? '出社達成' : '過労ダウン'}</p>
-      <h2 className={`mt-1 text-2xl font-black ${result.victory ? 'text-yellow-300' : 'text-red-400'}`}>
-        {result.victory ? '定時出社成功！' : '過労でダウン…'}
+      <p className="text-2xl font-black text-amber-300">{cleared ? '出社達成' : '過労ダウン'}</p>
+      <h2 className={`mt-1 text-2xl font-black ${cleared ? 'text-yellow-300' : 'text-red-400'}`}>
+        {endedInEndless ? '本編クリア＋残業終了' : result.victory ? '定時出社成功！' : '過労でダウン…'}
       </h2>
       <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}{result.endless > 0 ? ` ＋ 無限${result.endless}` : ''}</p>
       <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-2 gap-2 text-sm">

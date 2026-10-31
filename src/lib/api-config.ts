@@ -1,48 +1,53 @@
+const CLIENT_TIMEOUT_MS = 30_000;
+const FUNCTIONS_BASE_URL = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL
+  || 'https://us-central1-zatsudan-gacha.cloudfunctions.net';
+
 // API設定
 export const API_CONFIG = {
   // 本番環境ではFirebase Functions、開発環境では直接APIアクセス
   GEMINI_ENDPOINT: process.env.NODE_ENV === 'production'
-    ? 'https://us-central1-zatsudan-gacha.cloudfunctions.net/gemini'
+    ? `${FUNCTIONS_BASE_URL}/gemini`
     : '/api/gemini',
 
   EXCUSE_GENERATOR_ENDPOINT: process.env.NODE_ENV === 'production'
-    ? 'https://us-central1-zatsudan-gacha.cloudfunctions.net/excuseGenerator'
+    ? `${FUNCTIONS_BASE_URL}/excuseGenerator`
     : '/api/excuse-generator',
 
   // 開発環境でのみ使用されるAPIキー
   USE_DIRECT_API: process.env.NODE_ENV === 'development',
 };
 
-export async function callGeminiAPI(theme: string): Promise<{ text: string }> {
-  const response = await fetch(API_CONFIG.GEMINI_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ theme }),
-  });
+async function requestJson<T>(url: string, body: unknown): Promise<T> {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `API Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API Error: ${response.statusText}`);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      throw new Error('リクエストがタイムアウトしました。時間をおいてもう一度お試しください。');
+    }
+    throw error;
   }
+}
 
-  return response.json();
+export async function callGeminiAPI(theme: string): Promise<{ text: string }> {
+  return requestJson<{ text: string }>(API_CONFIG.GEMINI_ENDPOINT, { theme });
 }
 
 export async function callExcuseGeneratorAPI(situation: string, tone: string, details?: string): Promise<{ excuse: string }> {
-  const response = await fetch(API_CONFIG.EXCUSE_GENERATOR_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ situation, tone, details }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `API Error: ${response.statusText}`);
-  }
-
-  return response.json();
+  return requestJson<{ excuse: string }>(API_CONFIG.EXCUSE_GENERATOR_ENDPOINT, { situation, tone, details });
 }

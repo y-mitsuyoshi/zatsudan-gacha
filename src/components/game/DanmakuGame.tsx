@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DanmakuEngine, type HudSnapshot } from '@/game/danmaku/engine';
 import type { RunResult } from '@/game/danmaku/sim';
+import { copyToClipboard } from '@/lib/clipboard';
 import { WEAPONS, DIFFICULTIES, difficultyDef, titleForStage, type Difficulty, type WeaponId } from '@/game/danmaku/config';
 import {
   loadSettings,
@@ -91,20 +92,22 @@ export default function DanmakuGame() {
   }, []);
 
   const startRun = useCallback(
-    (opts?: { stage?: number; score?: number; power?: number; lives?: number }) => {
+    (opts?: { stage?: number; score?: number; power?: number; lives?: number; weapon?: WeaponId; difficulty?: Difficulty }) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       destroyEngine();
       const id = ++runId.current;
+      const runWeapon = opts?.weapon ?? weapon;
+      const runDifficulty = opts?.difficulty ?? difficulty;
       setResult(null);
       setShared(false);
       setFatal(null);
       setBanner(null);
-      setHud({ ...DEFAULT_HUD, weapon, difficulty, score: opts?.score ?? 0, stage: opts?.stage ?? 1 });
+      setHud({ ...DEFAULT_HUD, weapon: runWeapon, difficulty: runDifficulty, score: opts?.score ?? 0, stage: opts?.stage ?? 1 });
       const engine = new DanmakuEngine({
         canvas,
-        weapon,
-        difficulty,
+        weapon: runWeapon,
+        difficulty: runDifficulty,
         power: opts?.power ?? 1,
         stage: opts?.stage ?? 1,
         score: opts?.score ?? 0,
@@ -132,7 +135,7 @@ export default function DanmakuGame() {
       engine.start();
       setScreen('playing');
     },
-    [destroyEngine, weapon, difficulty, muted, shake, showBanner],
+    [destroyEngine, weapon, difficulty, muted, shake, showBanner, setScreen],
   );
 
   const handlePauseKey = useCallback(() => {
@@ -145,7 +148,7 @@ export default function DanmakuGame() {
       eng.setPaused(true);
       setScreen('paused');
     }
-  }, []);
+  }, [setScreen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -178,13 +181,15 @@ export default function DanmakuGame() {
 
   const handleShare = useCallback(async () => {
     if (!result) return;
-    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : 'https://zatsudan-gacha.app/shachiku-shooting';
     const text = `社畜シューティングNEO[${difficultyDef(result.difficulty).name}]: Stage ${result.stage} / ${result.score.toLocaleString()}点 / 称号「${result.rank}」 #社畜シューティング ${url}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: '社畜シューティングNEO', text });
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
+      } else {
+        await copyToClipboard(text);
         setShared(true);
       }
     } catch {
@@ -339,7 +344,15 @@ export default function DanmakuGame() {
                   const c = loadContinue();
                   if (c) {
                     setWeapon(c.weapon);
-                    startRun({ stage: c.stage, score: c.score, power: c.weaponLevel, lives: 3 });
+                    setDifficulty(c.difficulty);
+                    startRun({
+                      stage: c.stage,
+                      score: c.score,
+                      power: c.weaponLevel,
+                      lives: 3,
+                      weapon: c.weapon,
+                      difficulty: c.difficulty,
+                    });
                   } else startRun();
                 }}
                 className="w-full max-w-sm rounded-xl bg-yellow-500 py-2.5 font-bold text-black transition hover:bg-yellow-400 active:scale-95"

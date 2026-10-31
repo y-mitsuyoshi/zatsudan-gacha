@@ -1,445 +1,460 @@
-"use client";
-
-import { useEffect, useState, useCallback } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { callGeminiAPI } from '@/lib/api-config';
-import { themeData } from '@/lib/themeData';
+import { ThemeGacha } from '@/components/ThemeGacha';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
-import { useHistory, useFavorites } from '@/lib/hooks';
-import { HistoryList } from '@/components/HistoryList';
-import { FavoritesList } from '@/components/FavoritesList';
-import { Tabs } from '@/components/Tabs';
-import { TimeAttackMode } from '@/components/TimeAttackMode';
-import { RouletteMode } from '@/components/RouletteMode2';
+import { CategoryGrid } from '@/components/CategoryGrid';
 import { ShareButtons } from '@/components/ShareButtons';
-import { trackEvent } from '@/lib/firebase';
-import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { ClockIcon, StarIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
+import {
+  getCategoryForTheme,
+  themeCategories,
+  totalThemeCount,
+} from '@/lib/themeCategories';
 
+export const metadata: Metadata = {
+  title: '雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選',
+  description: `会議のアイスブレイクやリモートワークの雑談に困ったら「雑談テーマガチャ」。${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、ボタンひとつで会話のきっかけをランダム提案。無料・登録不要で使えます。`,
+  alternates: {
+    canonical: '/',
+  },
+};
+
+const APP_URL = 'https://zatsudan-gacha.app';
+
+const useCases = [
+  {
+    emoji: '💻',
+    title: 'オンライン会議の冒頭に',
+    description: 'いきなり本題に入る前のアイスブレイクに。1問選ぶだけで、参加者の緊張がほぐれます。',
+  },
+  {
+    emoji: '🤝',
+    title: '1on1や面談のきっかけに',
+    description: '仕事の話だけでは見えない、相手の人柄や価値観を知る入口になります。',
+  },
+  {
+    emoji: '🏢',
+    title: 'チームの交流・雑談タイムに',
+    description: 'リモートワークで減りがちな何気ない会話を、手軽に増やせます。',
+  },
+  {
+    emoji: '🎓',
+    title: '研修・ワークショップに',
+    description: 'グループワークのウォームアップや、ブレイクアウトルームの話題提供に。',
+  },
+  {
+    emoji: '🍻',
+    title: '飲み会・パーティーに',
+    description: '初対面の人が多い場でも、会話が止まらないお題をランダムに選べます。',
+  },
+  {
+    emoji: '🏠',
+    title: '家族・友達との団らんに',
+    description: '食事の席や休日の会話に。いつもと少し違う話題で盛り上がれます。',
+  },
+  {
+    emoji: '🎤',
+    title: 'スピーチ・朝礼の練習に',
+    description: 'タイムアタックモードで、与えられたお題について話す練習ができます。',
+  },
+  {
+    emoji: '🎲',
+    title: '誰が話すか決めたいときに',
+    description: 'ルーレットモードなら、項目と重みを設定して公平に順番を決められます。',
+  },
+];
+
+const popularThemeNames = [
+  '最近始めた新しい趣味は？',
+  '今までで一番良かった旅行先は？',
+  '最近観て面白かった映画は？',
+  '最後の晩餐に何を食べたい？',
+  '仕事のやりがいを感じる瞬間は？',
+  'もし宝くじで1億円当たったら？',
+  '最近よく聴いているアーティストは？',
+  '学生時代の一番の思い出は？',
+  '休日の朝は何時に起きる？',
+  '大事にしている価値観は？',
+  '好きな季節は？',
+  'ペットとの忘れられない思い出は？',
+];
+
+const faqs = [
+  {
+    question: '雑談テーマガチャとは何ですか？',
+    answer: `ボタンひとつで雑談のお題をランダムに表示する、無料のWebアプリです。${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題を収録しており、会議のアイスブレイク、リモートワークの雑談、1on1、チーム交流などに利用できます。`,
+  },
+  {
+    question: '会議のアイスブレイクには、どのお題がおすすめですか？',
+    answer: '「最近始めた新しい趣味は？」「休日の朝は何時に起きる？」「学生時代の一番の思い出は？」など、答えやすく会話が広がるお題がおすすめです。カテゴリを「趣味」「休日・ライフスタイル」「学校・学生時代」に絞ると選びやすくなります。',
+  },
+  {
+    question: '無料で使えますか？',
+    answer: 'はい。ログインや会員登録は不要で、すべてのカテゴリ・お題・モードを無料で利用できます。',
+  },
+  {
+    question: 'オフラインでも使えますか？',
+    answer: 'お題の抽選はページ内のデータで動作するため、一度ページを読み込めばオフラインでも利用できます。AI深掘り質問の生成のみ、インターネット接続が必要です。',
+  },
+  {
+    question: 'AI深掘り機能とは何ですか？',
+    answer: '選んだお題について、会話をさらに広げる質問をAI（Gemini）が3つ提案する機能です。「その話をもう少し聞きたい」というときに便利です。',
+  },
+  {
+    question: 'カテゴリはどれくらいありますか？',
+    answer: `現在${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題を収録しています。趣味、旅行、仕事、恋愛、食べ物、音楽、ゲーム・アニメなど、幅広い話題から選べます。`,
+  },
+  {
+    question: 'タイムアタックやルーレットも使えますか？',
+    answer: 'はい。制限時間内にお題について話す「タイムアタック」、項目と重みを設定して抽選する「ルーレット」も利用できます。',
+  },
+  {
+    question: 'お気に入りや履歴は保存されますか？',
+    answer: 'お気に入りと履歴は、お使いのブラウザのlocalStorageに保存されます。ログインは不要です。ブラウザのデータを削除すると保存内容も消去されます。',
+  },
+  {
+    question: 'チームビルディングや研修で使えますか？',
+    answer: 'はい。会議の冒頭、ブレイクアウトルーム、研修のウォームアップ、社内イベントなどで活用できます。同じお題が連続しにくい抽選ロジックも取り入れています。',
+  },
+  {
+    question: '子どもや家族と一緒に使えますか？',
+    answer: 'はい。家族・友達、動物・ペット、季節・イベントなど、幅広い年代で楽しめるカテゴリを用意しています。',
+  },
+];
+
+const otherTools = [
+  { title: '社畜人狼', description: '会社を舞台にした人狼ゲーム', href: '/shachiku-jinro', emoji: '🐺' },
+  { title: '社畜すごろく', description: '定時退社を目指すすごろく', href: '/shachiku-sugoroku', emoji: '🏢' },
+  { title: '異世界ステータス', description: '異世界での自分を診断', href: '/isekai-status', emoji: '⚔️' },
+  { title: 'プロフィールメーカー', description: '推し活プロフィールカード', href: '/profile-maker', emoji: '💖' },
+  { title: '社畜通勤サバイバー', description: '満員電車を突破する3Dゲーム', href: '/barricade-defense', emoji: '🚃' },
+  { title: '社畜サバイバー', description: '18時まで生き残るサバイバル', href: '/shachiku-survivor', emoji: '🏃' },
+  { title: '社畜スパイラル', description: '渦巻く業務からコアを守る', href: '/shachiku-spiral', emoji: '🌀' },
+  { title: '言い訳ジェネレーター', description: 'AIが考える究極の言い逃れ', href: '/excuse-generator', emoji: '🙇‍♂️' },
+  { title: '駅名標メーカー', description: 'オリジナル駅名標を作成', href: '/station-sign-maker', emoji: '🚉' },
+];
+
+function serializeJsonLd(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
 
 export default function Home() {
-    type GameMode = 'normal' | 'timeAttack' | 'roulette';
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: '雑談テーマガチャ',
+    alternateName: ['雑談ガチャ', 'お題ガチャ', '雑談お題ジェネレーター'],
+    url: `${APP_URL}/`,
+    description: `会議のアイスブレイクやリモートワークの雑談に使える、${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題をランダムに提案する無料Webアプリ。`,
+    applicationCategory: 'EntertainmentApplication',
+    operatingSystem: 'Any',
+    browserRequirements: 'JavaScript',
+    inLanguage: 'ja',
+    isAccessibleForFree: true,
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'JPY',
+    },
+    featureList: [
+      '雑談お題のランダム抽選',
+      `${themeCategories.length}カテゴリから選べるお題フィルター`,
+      '履歴とお気に入りの保存',
+      'タイムアタックモード',
+      'ルーレットモード',
+      'AIによる深掘り質問の提案',
+    ],
+    publisher: {
+      '@type': 'Organization',
+      name: '雑談テーマガチャ',
+      url: APP_URL,
+    },
+  };
 
-    const [gameMode, setGameMode] = useState<GameMode>('normal');
-    const [selectedCategory, setSelectedCategory] = useState('all');
-    const [currentTheme, setCurrentTheme] = useState('');
-    const [themeDisplay, setThemeDisplay] = useState<React.ReactNode>(<p className="text-lg text-gray-600 dark:text-gray-400">カテゴリを選んでボタンを押してね！</p>);
-    const [gachaButtonText, setGachaButtonText] = useState('ガチャを回す');
-    const [isGachaSpinning, setIsGachaSpinning] = useState(false);
-    const [showGeminiArea, setShowGeminiArea] = useState(false);
-    const [isDiggingDeeper, setIsDiggingDeeper] = useState(false);
-    const [digDeeperResults, setDigDeeperResults] = useState<React.ReactNode>(null);
-    const { history, addHistory } = useHistory();
-    const { favorites, toggleFavorite } = useFavorites();
-    const [isCopied, setIsCopied] = useState(false);
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
 
-    const resetGeminiFeatures = useCallback(() => {
-        setDigDeeperResults(null);
-        setIsDiggingDeeper(false);
-    }, []);
+  const categoryJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: '雑談テーマガチャのカテゴリ一覧',
+    numberOfItems: themeCategories.length,
+    itemListElement: themeCategories.map((category, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: `${category.name}の雑談お題`,
+      url: `${APP_URL}/themes/${category.slug}`,
+    })),
+  };
 
-    const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newCategory = e.target.value;
-        setSelectedCategory(newCategory);
-        setShowGeminiArea(false);
-        resetGeminiFeatures();
-        
-        // カテゴリ変更をトラッキング
-        trackEvent('category_changed', {
-            category: newCategory,
-            previous_category: selectedCategory
-        });
-    };
+  return (
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 text-gray-800 dark:text-gray-100 transition-colors duration-300">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(categoryJsonLd) }}
+      />
 
-    const handleCopy = useCallback((text: string) => {
-        navigator.clipboard.writeText(text).then(() => {
-            setIsCopied(true);
-            setTimeout(() => {
-                setIsCopied(false);
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-        });
-    }, []);
-
-    const updateTheme = useCallback((theme: string) => {
-        setCurrentTheme(theme);
-
-        const categoryName = Object.keys(themeData).find(key => themeData[key].includes(theme)) || '色々';
-
-        setThemeDisplay(
-            <div className="text-center">
-                <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-sm font-semibold px-3 py-1 rounded-full mb-3">{categoryName}</span>
-                <p className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{theme}</p>
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-100 via-white to-purple-100 dark:from-indigo-950/60 dark:via-slate-900 dark:to-purple-950/50 border-b border-white/60 dark:border-gray-800">
+        <div className="absolute -top-24 -left-20 h-64 w-64 rounded-full bg-indigo-300/30 blur-3xl" aria-hidden="true" />
+        <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-purple-300/30 blur-3xl" aria-hidden="true" />
+        <div className="relative max-w-6xl mx-auto px-4 pt-6 pb-10 sm:pt-8 sm:pb-14">
+          <div className="flex justify-end">
+            <ThemeToggleButton />
+          </div>
+          <div className="max-w-3xl mx-auto text-center">
+            <p className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm font-bold text-indigo-700 dark:text-indigo-300 bg-white/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800 rounded-full px-4 py-1.5 mb-5">
+              <span>無料・登録不要</span>
+              <span aria-hidden="true">｜</span>
+              <span>{themeCategories.length}カテゴリ</span>
+              <span aria-hidden="true">｜</span>
+              <span>{totalThemeCount}以上のお題</span>
+            </p>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-gray-900 dark:text-white mb-4">
+              雑談テーマガチャ
+            </h1>
+            <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+              「何を話そう？」を、ボタンひとつで解決。<br className="hidden sm:block" />
+              会議のアイスブレイクも、リモートワークの雑談も、これひとつで会話がはずみます。
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 text-xs sm:text-sm">
+              {['会議のアイスブレイク', '1on1', 'チーム交流', '飲み会', '研修'].map((label) => (
+                <span key={label} className="rounded-full bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-300">
+                  {label}
+                </span>
+              ))}
             </div>
-        );
-        setShowGeminiArea(true);
-        resetGeminiFeatures();
-    }, [resetGeminiFeatures]);
-
-    useEffect(() => {
-        if (currentTheme) {
-            updateTheme(currentTheme);
-        }
-    }, [currentTheme, updateTheme]);
-
-    const themePool = (selectedCategory === 'all')
-        ? Object.values(themeData).flat()
-        : themeData[selectedCategory] || [];
-
-    const spinGacha = () => {
-        setIsGachaSpinning(true);
-        setGachaButtonText('抽選中...');
-        setThemeDisplay(null);
-        resetGeminiFeatures();
-
-        // ガチャ実行をトラッキング
-        trackEvent('gacha_spin', {
-            category: selectedCategory,
-            game_mode: gameMode
-        });
-
-        let shuffleCount = 0;
-        const shuffleInterval = setInterval(() => {
-            if (!themePool || themePool.length === 0) {
-                clearInterval(shuffleInterval);
-                updateTheme("テーマが見つかりません。");
-                setIsGachaSpinning(false);
-                setGachaButtonText('ガチャを回す');
-                return;
-            }
-            const randomIndex = Math.floor(Math.random() * themePool.length);
-            const tempTheme = themePool[randomIndex];
-            setThemeDisplay(<p className="text-2xl font-bold text-gray-700 dark:text-gray-300 animate-pulse">{tempTheme}</p>);
-            shuffleCount++;
-
-            if (shuffleCount >= 10) {
-                clearInterval(shuffleInterval);
-                const finalThemeIndex = Math.floor(Math.random() * themePool.length);
-                const finalTheme = themePool[finalThemeIndex];
-                updateTheme(finalTheme);
-                // ノーマルモードの場合のみ履歴に追加
-                if (gameMode === 'normal') {
-                    addHistory(finalTheme);
-                }
-                setIsGachaSpinning(false);
-                setGachaButtonText('もう一度回す');
-
-                // ガチャ結果をトラッキング
-                trackEvent('gacha_result', {
-                    theme: finalTheme,
-                    category: selectedCategory,
-                    game_mode: gameMode
-                });
-            }
-        }, 100);
-    };
-
-    const handleSelectTheme = (theme: string) => {
-        updateTheme(theme);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const getDeeperQuestions = async () => {
-        if (!currentTheme) return;
-
-        setIsDiggingDeeper(true);
-        setDigDeeperResults(
-            <div className="flex items-center justify-center p-4">
-                <div className="loader"></div>
-                <p className="ml-4 text-gray-600 dark:text-gray-400">AIが質問を考えています...</p>
-            </div>
-        );
-
-        // AI深掘り機能使用をトラッキング
-        trackEvent('ai_dig_deeper_requested', {
-            theme: currentTheme,
-            category: selectedCategory
-        });
-
-        try {
-            const result = await callGeminiAPI(currentTheme);
-            
-            const questions = result.text.split('\n')
-                .filter(line => line.trim())
-                .map(line => line.replace(/^[•\-\*\d\.]\s*/, '').trim())
-                .filter(line => line);
-
-            // AI深掘り成功をトラッキング
-            trackEvent('ai_dig_deeper_success', {
-                theme: currentTheme,
-                questions_count: questions.length
-            });
-
-            setDigDeeperResults(
-                <div className="space-y-3">
-                    <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-4">
-                        💭 こんな話題で深掘りしてみては？
-                    </h4>
-                    {questions.map((question, index) => (
-                        <div 
-                            key={index}
-                            className="p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-200 cursor-pointer"
-                            onClick={() => {
-                                handleCopy(question);
-                                // 質問コピーをトラッキング
-                                trackEvent('ai_question_copied', {
-                                    question: question,
-                                    theme: currentTheme
-                                });
-                            }}
-                        >
-                            <p className="text-gray-700 dark:text-gray-300 font-medium">
-                                {question}
-                            </p>
-                        </div>
-                    ))}
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                        ✨ 質問をクリックするとコピーできます
-                    </p>
-                </div>
-            );
-        } catch (error) {
-            console.error("API call failed:", error);
-            
-            // AI深掘り失敗をトラッキング
-            trackEvent('ai_dig_deeper_error', {
-                theme: currentTheme,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-            
-            setDigDeeperResults(<p className="text-red-600">エラーが発生しました。少し時間をおいてから、もう一度お試しください。</p>);
-        } finally {
-            setIsDiggingDeeper(false);
-        }
-    };
-
-
-    return (
-        <div className="bg-slate-100 dark:bg-slate-900 flex items-center justify-center min-h-screen p-4 font-sans transition-colors duration-300">
-            <div className="relative bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl text-center w-full max-w-lg mx-auto transition-colors duration-300">
-                <div className="absolute top-4 right-4">
-                    <ThemeToggleButton />
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">雑談テーマガチャ</h1>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">リモートでも、雑談でつながろう。</p>
-
-                <div className="mb-6">
-                    <div className="flex justify-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 mb-6">
-                        <button
-                            onClick={() => {
-                                setGameMode('normal');
-                                trackEvent('game_mode_changed', { mode: 'normal' });
-                            }}
-                            className={`w-1/3 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                                gameMode === 'normal'
-                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
-                            }`}
-                        >
-                            ノーマル
-                        </button>
-                        <button
-                            onClick={() => {
-                                setGameMode('timeAttack');
-                                trackEvent('game_mode_changed', { mode: 'timeAttack' });
-                            }}
-                            className={`w-1/3 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                                gameMode === 'timeAttack'
-                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
-                            }`}
-                        >
-                            タイムアタック
-                        </button>
-                        <button
-                            onClick={() => {
-                                setGameMode('roulette');
-                                trackEvent('game_mode_changed', { mode: 'roulette' });
-                            }}
-                            className={`w-1/3 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                                gameMode === 'roulette'
-                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
-                            }`}
-                        >
-                            ルーレット
-                        </button>
-                    </div>
-
-                    <div className="mb-6">
-                        <label htmlFor="category-select" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">カテゴリを選ぶ:</label>
-                        <select
-                            id="category-select"
-                            value={selectedCategory}
-                            onChange={handleCategoryChange}
-                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                            style={{ display: gameMode === 'roulette' ? 'none' : 'block' }}
-                        >
-                            <option value="all">すべてのテーマ</option>
-                            {Object.keys(themeData).map(category => (
-                                <option key={category} value={category}>{category}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {gameMode === 'timeAttack' && (
-                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">制限時間内にテーマについて語りきろう！</p>
-                    )}
-                    
-                    {gameMode === 'roulette' && (
-                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">ルーレットで抽選しよう！項目と重みを設定できます。</p>
-                    )}
-                </div>
-
-
-                {gameMode === 'normal' ? (
-                    <>
-                        <div id="theme-display" className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[150px] flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-                            {themeDisplay}
-                        </div>
-
-                        {currentTheme && (
-                            <div className="mb-6">
-                                <div className="flex justify-center items-center space-x-4">
-                                    <button
-                                        onClick={() => {
-                                            handleCopy(currentTheme);
-                                            trackEvent('theme_copied', { theme: currentTheme });
-                                        }}
-                                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        aria-label="コピーする"
-                                    >
-                                        {isCopied ? (
-                                            <CheckIcon className="h-6 w-6 text-green-500" />
-                                        ) : (
-                                            <ClipboardIcon className="h-6 w-6 text-gray-400" />
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            toggleFavorite(currentTheme);
-                                            trackEvent('favorite_toggled', { 
-                                                theme: currentTheme,
-                                                action: favorites.includes(currentTheme) ? 'removed' : 'added'
-                                            });
-                                        }}
-                                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        aria-label="お気に入りに追加/削除"
-                                    >
-                                        {favorites.includes(currentTheme) ? (
-                                            <StarIconSolid className="h-6 w-6 text-yellow-400" />
-                                        ) : (
-                                            <StarIconOutline className="h-6 w-6 text-gray-400" />
-                                        )}
-                                    </button>
-                                </div>
-                                {isCopied && <p className="text-sm text-green-600 dark:text-green-400 mt-2">コピーしました！</p>}
-                            </div>
-                        )}
-
-                        {showGeminiArea && (
-                            <div id="gemini-feature-area" className="mb-6">
-                                <button
-                                    id="dig-deeper-button"
-                                    onClick={getDeeperQuestions}
-                                    disabled={isDiggingDeeper}
-                                    className="w-full bg-white dark:bg-gray-700 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-600 font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-sm hover:shadow-md btn-active-effect flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <span className="mr-2">✨</span> AIに深掘り質問を考えてもらう
-                                </button>
-                                {digDeeperResults && (
-                                    <div id="dig-deeper-results" className="mt-4 text-left bg-indigo-50 dark:bg-gray-900/50 p-4 rounded-lg border border-indigo-200 dark:border-gray-700">
-                                        {digDeeperResults}
-                                    </div>
-                                )}
-                                
-                                <div className="mt-4 text-center">
-                                    <Link 
-                                        href={`/excuse-generator?situation=${encodeURIComponent('雑談テーマが難しすぎて話せない')}&details=${encodeURIComponent('テーマは「' + currentTheme + '」でした')}`}
-                                        className="text-xs text-gray-400 hover:text-indigo-500 transition-colors flex items-center justify-center space-x-1"
-                                    >
-                                        <span>🙇‍♂️ このテーマで話すのは無理...（言い訳を作る）</span>
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
-
-                        <button
-                            id="gacha-button"
-                            onClick={spinGacha}
-                            disabled={isGachaSpinning}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 shadow-md hover:shadow-lg btn-active-effect disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                            {gachaButtonText}
-                        </button>
-                    </>
-                ) : gameMode === 'timeAttack' ? (
-                    <div className="mb-6">
-                        <TimeAttackMode themes={themePool} />
-                    </div>
-                ) : (
-                    <div className="mb-6">
-                        <RouletteMode />
-                    </div>
-                )}
-
-                {gameMode !== 'roulette' && (
-                    <div className="mt-8">
-                        <Tabs tabs={[
-                            {
-                                label: '履歴',
-                                content: <HistoryList history={history} favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
-                            },
-                            {
-                                label: 'お気に入り',
-                                content: <FavoritesList favorites={favorites} onToggleFavorite={toggleFavorite} onSelectTheme={handleSelectTheme} />
-                            }
-                        ]} />
-                    </div>
-                )}
-
-                <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">🎮 他のゲームで遊ぶ</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <Link href="/shachiku-jinro" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🐺</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜人狼</span>
-                        </Link>
-                        <Link href="/shachiku-sugoroku" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🏢</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜すごろく</span>
-                        </Link>
-                        <Link href="/isekai-status" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">⚔️</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">異世界ステータス</span>
-                        </Link>
-                        <Link href="/profile-maker" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">💖</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">プロフメーカー</span>
-                        </Link>
-                        <Link href="/barricade-defense" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🚃</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜通勤サバイバー</span>
-                        </Link>
-                        <Link href="/shachiku-survivor" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🏢</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜サバイバー</span>
-                        </Link>
-                        <Link href="/shachiku-spiral" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🌀</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">社畜スパイラル</span>
-                        </Link>
-                        <Link href="/excuse-generator" className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 transition-all text-center group">
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🙇‍♂️</span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">言い訳ジェネレーター</span>
-                        </Link>
-                    </div>
-                </div>
-
-                <ShareButtons />
-            </div>
+          </div>
         </div>
-    );
+      </section>
+
+      <section id="gacha" className="relative z-10 max-w-2xl mx-auto px-4 -mt-5 sm:-mt-7 scroll-mt-6">
+        <ThemeGacha />
+        <div className="mt-6 rounded-2xl bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 px-4 py-3 text-center">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            お題は随時追加中。気に入ったお題は☆で保存して、いつでも見返せます。
+          </p>
+        </div>
+      </section>
+
+      <div className="max-w-6xl mx-auto px-4 py-12 sm:py-16 space-y-16 sm:space-y-20">
+        <section aria-labelledby="about-heading" className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 lg:gap-12 items-start">
+          <div>
+            <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">ABOUT</p>
+            <h2 id="about-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-4">
+              雑談テーマガチャとは
+            </h2>
+            <div className="space-y-4 text-sm sm:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
+              <p>
+                「雑談テーマガチャ」は、会議やオンライン飲み会、1on1の冒頭で使える<strong>雑談のお題をランダムに表示する無料ツール</strong>です。ボタンを押すだけで、その場に合った会話のきっかけを提案します。
+              </p>
+              <p>
+                収録しているのは、趣味・旅行・食べ物・仕事・恋愛・音楽・ゲームなど{themeCategories.length}カテゴリ、{totalThemeCount}以上のお題。カテゴリを絞れば、初対面の相手でも答えやすい話題を選べます。履歴とお気に入りはブラウザに保存されるので、定番のお題をすぐに呼び出せます。
+              </p>
+              <p>
+                さらに、選んだお題についてAIが深掘り質問を3つ提案する機能や、制限時間内に話す「タイムアタック」、項目と重みを設定できる「ルーレット」も搭載。会議のアイスブレイクから研修のワークショップまで、幅広い場面で活用できます。
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {[
+              { emoji: '🎲', title: 'ワンタップ抽選', text: 'ボタンひとつでお題をランダム表示' },
+              { emoji: '🗂️', title: `${themeCategories.length}カテゴリ`, text: '話題に合わせてフィルターできる' },
+              { emoji: '⭐', title: '履歴・お気に入り', text: 'ブラウザに自動保存。登録不要' },
+              { emoji: '✨', title: 'AI深掘り', text: '会話が広がる質問を3つ提案' },
+            ].map((feature) => (
+              <div key={feature.title} className="p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <span className="text-2xl" aria-hidden="true">{feature.emoji}</span>
+                <h3 className="font-bold text-sm sm:text-base mt-2">{feature.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{feature.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="categories" aria-labelledby="categories-heading" className="scroll-mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+            <div>
+              <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">CATEGORY</p>
+              <h2 id="categories-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
+                {themeCategories.length}カテゴリから選べる雑談お題
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                気になるカテゴリを選ぶと、そのカテゴリのお題を一覧で見られます。
+              </p>
+            </div>
+            <Link
+              href="/themes"
+              className="shrink-0 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              カテゴリ一覧をすべて見る →
+            </Link>
+          </div>
+          <CategoryGrid exampleCount={2} />
+        </section>
+
+        <section aria-labelledby="howto-heading">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">HOW TO</p>
+          <h2 id="howto-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-6">
+            雑談テーマガチャの使い方
+          </h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { step: '01', title: 'カテゴリを選ぶ', text: '「すべてのテーマ」でもOK。会議なら趣味や休日、初対面なら食べ物や旅行がおすすめです。' },
+              { step: '02', title: 'ガチャを回す', text: 'ボタンを押すとお題がランダムに表示されます。連続で同じお題が出にくい仕組みです。' },
+              { step: '03', title: '会話を広げる', text: 'お題をコピーして共有したり、AIに深掘り質問を考えてもらったりできます。' },
+            ].map((item) => (
+              <div key={item.step} className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-black text-indigo-500 dark:text-indigo-400">{item.step}</span>
+                <h3 className="text-lg font-bold mt-2 mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="usecases-heading">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">USE CASE</p>
+          <h2 id="usecases-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-3">
+            会議・1on1・チーム交流など、こんな場面で
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            雑談のお題は、会話を始めるきっかけづくりに役立ちます。相手の答えに「それで？」と質問を重ねると、自然に会話が広がります。
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {useCases.map((useCase) => (
+              <div key={useCase.title} className="p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <span className="text-2xl" aria-hidden="true">{useCase.emoji}</span>
+                <h3 className="font-bold text-sm sm:text-base mt-2 mb-1.5">{useCase.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{useCase.description}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5">
+            <Link
+              href="/icebreak"
+              className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              会議のアイスブレイクにおすすめのお題30選を見る
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </section>
+
+        <section aria-labelledby="popular-heading">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">PICK UP</p>
+          <h2 id="popular-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-3">
+            人気の雑談お題ピックアップ
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            会議のアイスブレイクや飲み会でも使いやすい、定番のお題です。
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {popularThemeNames.map((theme) => {
+              const category = getCategoryForTheme(theme);
+              return (
+                <Link
+                  key={theme}
+                  href={category ? `/themes/${category.slug}` : '/themes'}
+                  className="group p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md transition-all"
+                >
+                  <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                    {category ? `${category.emoji} ${category.name}` : 'お題'}
+                  </span>
+                  <p className="mt-1.5 text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {theme}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section aria-labelledby="ai-heading" className="rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-6 sm:p-10 overflow-hidden relative">
+          <div className="absolute -top-16 -right-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+          <div className="relative max-w-3xl">
+            <p className="text-xs font-bold tracking-widest text-indigo-200 mb-2">AI DEEP DIVE</p>
+            <h2 id="ai-heading" className="text-2xl sm:text-3xl font-black mb-3">
+              AIに深掘り質問を考えてもらう
+            </h2>
+            <p className="text-sm sm:text-base text-indigo-100 leading-relaxed mb-5">
+              お題に答えたあと「もう少し話を広げたい」と思ったら、AI深掘り機能を使ってみてください。選んだお題について、会話がはずむ質問を3つ提案します。会議のアイスブレイクや1on1で、会話が続かないときのサポートに便利です。
+            </p>
+            <a
+              href="#gacha"
+              className="inline-flex items-center gap-2 bg-white text-indigo-700 font-bold px-5 py-3 rounded-xl hover:bg-indigo-50 transition-colors"
+            >
+              <span aria-hidden="true">✨</span>
+              ガチャを回して試す
+            </a>
+          </div>
+        </section>
+
+        <section id="faq" aria-labelledby="faq-heading" className="scroll-mt-6">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">FAQ</p>
+          <h2 id="faq-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-6">
+            よくある質問
+          </h2>
+          <div className="space-y-3">
+            {faqs.map((faq) => (
+              <details key={faq.question} className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5 font-bold text-sm sm:text-base">
+                  <span>{faq.question}</span>
+                  <span className="shrink-0 text-indigo-500 dark:text-indigo-400 transition-transform group-open:rotate-45 text-xl" aria-hidden="true">＋</span>
+                </summary>
+                <p className="px-4 sm:px-5 pb-4 sm:pb-5 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  {faq.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="other-tools-heading">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">OTHER TOOLS</p>
+          <h2 id="other-tools-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-3">
+            他のツールでも遊ぶ
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            雑談だけじゃない、コミュニケーションを楽しむための無料ツールを用意しています。
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {otherTools.map((tool) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="group flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md transition-all"
+              >
+                <span className="text-2xl" aria-hidden="true">{tool.emoji}</span>
+                <span>
+                  <span className="block text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {tool.title}
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tool.description}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <ShareButtons heading="雑談テーマガチャをシェアする" />
+      </div>
+    </main>
+  );
 }

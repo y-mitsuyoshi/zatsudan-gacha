@@ -68,6 +68,7 @@ export interface ShopSnapshot {
 
 export interface RunResult {
   victory: boolean;
+  courseCleared: boolean;
   score: number;
   wave: number;
   kills: number;
@@ -278,6 +279,7 @@ export class DefenseEngine {
   private lastGateText = '';
   private over = false;
   private victory = false;
+  private courseCleared = false;
   private shopOpen = false;
   private guardBroke = false;
   private killsByKind: Record<EnemyKind, number> = { runner: 0, walker: 0, brute: 0, shield: 0, kamikaze: 0, boss: 0 };
@@ -370,6 +372,7 @@ export class DefenseEngine {
     this.lastGateText = '';
     this.over = false;
     this.victory = false;
+    this.courseCleared = false;
     this.shopOpen = false;
     this.guardBroke = false;
     this.killsByKind = { runner: 0, walker: 0, brute: 0, shield: 0, kamikaze: 0, boss: 0 };
@@ -1322,6 +1325,7 @@ export class DefenseEngine {
     this.emitHud();
     this.cb.onGameOver({
       victory,
+      courseCleared: this.courseCleared,
       score: Math.floor(this.score),
       wave: 1,
       kills: this.kills,
@@ -1383,6 +1387,7 @@ export class DefenseEngine {
       this.coins += 60;
       this.sound.waveClear();
       this.victory = true;
+      this.courseCleared = true;
       this.openShop(true);
     }
     if (this.hp <= 0 && !this.over) {
