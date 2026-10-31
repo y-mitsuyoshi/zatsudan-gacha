@@ -1,11 +1,14 @@
 "use client";
 
 import html2canvas from 'html2canvas';
+import { useEffect, useRef, useState } from 'react';
+import { CheckIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 import { trackEvent } from '@/lib/firebase';
-import { useState } from 'react';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface ActionButtonsProps {
-  profileName: string; // Needed for dynamic filenames and share text
+  profileName: string;
+  profileText?: string;
 }
 
 const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -14,10 +17,20 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName }) => {
+export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, profileText = '' }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const copyTimerRef = useRef<number | null>(null);
   const safeName = profileName.trim() || '推し';
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleGenerateImage = async () => {
     const cardElement = document.getElementById('profile-card');
@@ -54,6 +67,27 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName }) => 
     }
   };
 
+  const handleCopyText = async () => {
+    if (!profileText) return;
+    try {
+      await copyToClipboard(profileText);
+      setIsCopied(true);
+      setErrorMessage('');
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = window.setTimeout(() => setIsCopied(false), 2000);
+      trackEvent('copy_profile_text');
+    } catch (error) {
+      console.error('Failed to copy profile text:', error);
+      setCopiedError();
+    }
+  };
+
+  const setCopiedError = () => {
+    setErrorMessage('テキストをコピーできませんでした。時間をおいて再度お試しください。');
+  };
+
   const handleShareToX = () => {
     const hashtagName = safeName.replace(/\s/g, '_').replace(/[^\w\u3040-\u30ff\u4e00-\u9faf_]/g, '');
     const shareText = `見てみて！私の推し「${safeName}」のプロフィールカード作ったよ！\nみんなも作ってみよう！\n\n#推し活プロフィールメーカー\n#${hashtagName}`;
@@ -79,6 +113,15 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName }) => 
         className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
       >
         {isGenerating ? '生成中...' : '画像をダウンロード'}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyText}
+        disabled={!profileText}
+        className="w-full bg-white dark:bg-gray-700 border-2 border-fuchsia-500 text-fuchsia-700 dark:text-fuchsia-200 font-bold py-3 px-6 rounded-lg text-base transition-all duration-200 flex items-center justify-center gap-2 hover:bg-fuchsia-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isCopied ? <CheckIcon className="h-5 w-5 text-green-500" /> : <ClipboardIcon className="h-5 w-5" />}
+        <span>{isCopied ? 'プロフィールをコピーしました' : 'プロフィールをテキストコピー'}</span>
       </button>
       <button
         type="button"

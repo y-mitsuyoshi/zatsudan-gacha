@@ -5,6 +5,7 @@ import { IsekaiFormState, Gender, QuestionAnswer, QuestionAnswerWithEmpty } from
 interface IsekaiStatusFormProps {
   formState: IsekaiFormState;
   setFormState: React.Dispatch<React.SetStateAction<IsekaiFormState>>;
+  onRandomize?: () => void;
 }
 
 // Reusable Input Component
@@ -65,7 +66,7 @@ const RadioGroup = ({ question, name, value, onChange, options }: {
 );
 
 
-export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, setFormState }) => {
+export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, setFormState, onRandomize }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormState(prev => ({
@@ -82,8 +83,10 @@ export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, s
     { name: 'q5', question: '【質問5】長い旅の終わり。あなたは何を求める？', options: [{ value: 'A' as QuestionAnswer, label: 'さらなる強さを求めて修行の旅へ' }, { value: 'B' as QuestionAnswer, label: '静かな場所で平穏な暮らしを始める' }, { value: 'C' as QuestionAnswer, label: '旅の思い出を本にして一儲けを企む' }] },
   ];
 
+  const answeredCount = [formState.q1, formState.q2, formState.q3, formState.q4, formState.q5].filter(Boolean).length;
+
   return (
-    <form role="form" aria-label="異世界転生ステータスカード生成フォーム">
+    <form role="form" aria-label="異世界転生ステータスカード生成フォーム" onSubmit={(event) => event.preventDefault()}>
       <h3 className="text-lg font-bold mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">基本情報</h3>
       <FormInput
         label="あなたの名前"
@@ -119,7 +122,30 @@ export const IsekaiStatusForm: React.FC<IsekaiStatusFormProps> = ({ formState, s
         </select>
       </div>
 
-      <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">運命を決める5つの質問</h3>
+      <div className="mt-8 mb-4 flex items-end justify-between gap-3 border-b pb-2">
+        <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">運命を決める5つの質問</h3>
+        {onRandomize && (
+          <button
+            type="button"
+            onClick={onRandomize}
+            className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200"
+          >
+            ランダムに回答
+          </button>
+        )}
+      </div>
+      <div className="mb-6">
+        <div className="mb-1 flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
+          <span>回答済み {answeredCount}/5</span>
+          <span>{answeredCount === 5 ? '準備完了！' : 'あと' + (5 - answeredCount) + '問'}</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={answeredCount} aria-label="回答済みの質問数">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-all duration-300"
+            style={{ width: `${(answeredCount / 5) * 100}%` }}
+          />
+        </div>
+      </div>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         以下の質問に答えて、あなたの異世界での運命を決めましょう。すべての質問に回答する必要があります。
       </p>

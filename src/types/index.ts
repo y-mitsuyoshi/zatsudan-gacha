@@ -19,11 +19,15 @@ export interface IsekaiFormState {
   q5: QuestionAnswerWithEmpty;
 }
 
+export type IsekaiRarity = 'N' | 'R' | 'SR' | 'SSR';
+
 export interface IsekaiStatus {
   name: string;
   epithet: string; // 二つ名
   job: string;
   level: number;
+  rarity: IsekaiRarity;
+  totalStats: number;
   params: {
     strength: number;
     magic: number;
@@ -52,7 +56,7 @@ export type ProfileState = {
 
 // --- Station Sign Maker Types ---
 
-export type StationTemplate = 'jr-east' | 'tokyo-metro' | 'simple';
+export type StationTemplate = 'classic' | 'circle' | 'minimal';
 
 export type StationSignState = {
   station: string;
@@ -60,4 +64,6 @@ export type StationSignState = {
   prevStation: string;
   nextStation: string;
   lineColor: string;
+  lineSymbol: string;
+  stationNumber: string;
 };

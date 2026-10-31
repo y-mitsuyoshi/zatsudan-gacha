@@ -1,11 +1,14 @@
 "use client";
 
 import html2canvas from 'html2canvas';
-// import { trackEvent } from '@/lib/firebase'; // Tracking is commented out for now
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { CheckIcon, ClipboardIcon } from '@heroicons/react/24/outline';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface ActionButtonsProps {
   profileName: string;
+  shareText?: string;
+  copyText?: string;
   disabled?: boolean;
 }
 
@@ -15,10 +18,20 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disabled = false }) => {
+export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, shareText, copyText, disabled = false }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const copyTimerRef = useRef<number | null>(null);
   const safeName = profileName.trim() || 'isekai';
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleGenerateImage = async () => {
     const cardElement = document.getElementById('isekai-status-card');
@@ -53,13 +66,29 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
   };
 
   const handleShareToX = () => {
-    const shareText = "私が異世界転生した結果ww";
+    const text = shareText || "私が異世界転生した結果ww";
     const hashtags = "異世界転生ステータスカード,私を構成する5つのパラメータ";
     const appUrl = "https://zatsudan-gacha.app/isekai-status";
 
-    const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(appUrl)}&hashtags=${encodeURIComponent(hashtags)}`;
+    const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(appUrl)}&hashtags=${encodeURIComponent(hashtags)}`;
 
     window.open(twitterIntentUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyText = async () => {
+    if (!copyText) return;
+    try {
+      await copyToClipboard(copyText);
+      setIsCopied(true);
+      setErrorMessage('');
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = window.setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy status:', error);
+      setErrorMessage('診断結果をコピーできませんでした。時間をおいて再度お試しください。');
+    }
   };
 
   return (
@@ -77,6 +106,15 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ profileName, disab
         className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
       >
         {isGenerating ? '画像生成中...' : '画像をダウンロード'}
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyText}
+        disabled={disabled || !copyText}
+        className="w-full bg-white dark:bg-gray-700 border-2 border-indigo-500 text-indigo-700 dark:text-indigo-200 font-bold py-3 px-6 rounded-lg text-base transition-all duration-200 flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isCopied ? <CheckIcon className="h-5 w-5 text-green-500" /> : <ClipboardIcon className="h-5 w-5" />}
+        <span>{isCopied ? 'コピーしました' : '診断結果をテキストコピー'}</span>
       </button>
       <button
         type="button"

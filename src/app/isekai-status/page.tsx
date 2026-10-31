@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IsekaiStatusForm } from '@/components/isekai-status/IsekaiStatusForm';
 import { IsekaiStatusCard } from '@/components/isekai-status/IsekaiStatusCard';
 import { ActionButtons } from '@/components/isekai-status/ActionButtons';
@@ -21,6 +21,7 @@ export default function IsekaiStatusPage() {
   });
 
   const [status, setStatus] = useState<IsekaiStatus | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   const handleGenerateStatus = () => {
     if (formState.name && formState.birthDate && formState.q1 && formState.q2 && formState.q3 && formState.q4 && formState.q5) {
@@ -28,6 +29,29 @@ export default function IsekaiStatusPage() {
       setStatus(newStatus);
     }
   };
+
+  const handleRandomizeAnswers = () => {
+    const answers = ['A', 'B', 'C'] as const;
+    const pick = () => answers[Math.floor(Math.random() * answers.length)];
+    setStatus(null);
+    setFormState(prev => ({ ...prev, q1: pick(), q2: pick(), q3: pick(), q4: pick(), q5: pick() }));
+  };
+
+  useEffect(() => {
+    if (status) {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [status]);
+
+  const statusText = status ? [
+    `【${status.name}】${status.epithet}（${status.rarity}）`,
+    `職業: ${status.job} / Lv.${status.level} / 総合力 ${status.totalStats}`,
+    `ちから ${status.params.strength} / まりょく ${status.params.magic} / すばやさ ${status.params.agility} / きようさ ${status.params.dexterity} / うんのよさ ${status.params.luck}`,
+    `固有スキル: ${status.uniqueSkill}`,
+    `パーティスキル: ${status.partySkill}`,
+    `装備: ${status.equipment.join('、')}`,
+    '#異世界転生ステータスカード',
+  ].join('\n') : undefined;
 
   // JSON-LD schema markup for SEO
   const jsonLd = {
@@ -94,7 +118,7 @@ export default function IsekaiStatusPage() {
             <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
               あなたの情報を入力
             </h2>
-            <IsekaiStatusForm formState={formState} setFormState={setFormState} />
+            <IsekaiStatusForm formState={formState} setFormState={setFormState} onRandomize={handleRandomizeAnswers} />
             
             <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
               <button
@@ -108,13 +132,27 @@ export default function IsekaiStatusPage() {
           </div>
 
           {/* Right: Preview & Control Area */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3" ref={resultRef}>
             {status ? (
               <>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
-                    あなたのステータス
-                  </h2>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg" aria-live="polite">
+                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                        あなたのステータス
+                      </h2>
+                      <p className="mt-1 text-xs font-bold text-indigo-600 dark:text-indigo-300">
+                        レアリティ {status.rarity} / 総合力 {status.totalStats}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStatus(null)}
+                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200"
+                    >
+                      回答を変えて再診断
+                    </button>
+                  </div>
                   <IsekaiStatusCard status={status} />
                 </div>
 
@@ -122,7 +160,11 @@ export default function IsekaiStatusPage() {
                   <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
                     完成したら…
                   </h2>
-                  <ActionButtons profileName={formState.name} disabled={false} />
+                  <ActionButtons
+                    profileName={formState.name}
+                    shareText={statusText}
+                    copyText={statusText}
+                  />
                 </div>
               </>
             ) : (

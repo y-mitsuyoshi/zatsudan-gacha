@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { callExcuseGeneratorAPI } from '@/lib/api-config';
@@ -9,28 +8,31 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { ClockIcon, ClipboardIcon, CheckIcon, ShareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const SITUATIONS = [
-    '遅刻・寝坊',
-    '納期遅れ',
-    '飲み会の断り',
-    '宿題・課題忘れ',
-    '既読スルー',
-    '自炊をサボった',
-    '約束をすっぽかした',
-    'その他',
-];
+    { value: '遅刻・寝坊', icon: '⏰' },
+    { value: '納期遅れ', icon: '📦' },
+    { value: '飲み会の断り', icon: '🍻' },
+    { value: '宿題・課題忘れ', icon: '📚' },
+    { value: '既読スルー', icon: '💬' },
+    { value: '自炊をサボった', icon: '🍳' },
+    { value: '約束をすっぽかした', icon: '📅' },
+    { value: 'その他', icon: '✍️' },
+] as const;
 
 const TONES = [
-    '真面目・ビジネス用',
-    'ユーモア・社畜風',
-    '異世界転生風',
-    'マッチョ風',
-    'ツンデレ風',
-    '文豪風',
-    '猫風',
-    'ラップ風',
-    'ギャル風',
-    'ランダム（ガチャ）',
-];
+    { value: '真面目・ビジネス用', icon: '💼', hint: '誠実そうに見える' },
+    { value: 'ユーモア・社畜風', icon: '🏢', hint: '自虐で笑いを取る' },
+    { value: '異世界転生風', icon: '⚔️', hint: '世界観で逃げ切る' },
+    { value: 'マッチョ風', icon: '💪', hint: '筋肉で押し切る' },
+    { value: 'ツンデレ風', icon: '😤', hint: '照れ隠しで謝る' },
+    { value: '文豪風', icon: '🖋️', hint: '文学的に語る' },
+    { value: '猫風', icon: '🐈', hint: 'にゃんで誤魔化す' },
+    { value: 'ラップ風', icon: '🎤', hint: '韻で謝罪する' },
+    { value: 'ギャル風', icon: '💅', hint: '軽やかに乗り切る' },
+    { value: 'ランダム（ガチャ）', icon: '🎲', hint: 'おまかせ' },
+] as const;
+
+const TONE_VALUES = TONES.map((item) => item.value);
+const SITUATION_VALUES = SITUATIONS.map((item) => item.value);
 
 const HISTORY_STORAGE_KEY = 'excuse_history';
 const MAX_HISTORY_ITEMS = 20;
@@ -77,8 +79,6 @@ function loadHistory(): ExcuseHistory[] {
 }
 
 function ExcuseGeneratorContent() {
-    const searchParams = useSearchParams();
-
     const [situation, setSituation] = useState('遅刻・寝坊');
     const [customSituation, setCustomSituation] = useState('');
     const [tone, setTone] = useState('ランダム（ガチャ）');
@@ -93,13 +93,15 @@ function ExcuseGeneratorContent() {
     const [errorMessage, setErrorMessage] = useState('');
     const copyTimerRef = useRef<number | null>(null);
 
-    // Initialize from search params
+    // Initialize from query parameters on the client. Reading window.location
+    // instead of useSearchParams keeps the page statically rendered for SEO.
     useEffect(() => {
-        const initialSituation = searchParams?.get('situation');
-        const initialDetails = searchParams?.get('details');
+        const params = new URLSearchParams(window.location.search);
+        const initialSituation = params.get('situation');
+        const initialDetails = params.get('details');
 
         if (initialSituation) {
-            if (SITUATIONS.includes(initialSituation)) {
+            if (SITUATION_VALUES.includes(initialSituation as (typeof SITUATION_VALUES)[number])) {
                 setSituation(initialSituation);
             } else {
                 setSituation('その他');
@@ -109,7 +111,7 @@ function ExcuseGeneratorContent() {
         if (initialDetails) {
             setDetails(initialDetails.slice(0, 500));
         }
-    }, [searchParams]);
+    }, []);
 
     // Load history from localStorage after hydration.
     useEffect(() => {
@@ -152,7 +154,7 @@ function ExcuseGeneratorContent() {
 
         let finalTone = tone;
         if (tone === 'ランダム（ガチャ）') {
-            const availableTones = TONES.filter(t => t !== 'ランダム（ガチャ）');
+            const availableTones = TONE_VALUES.filter(t => t !== 'ランダム（ガチャ）');
             finalTone = availableTones[Math.floor(Math.random() * availableTones.length)];
         }
         setSelectedToneDisplay(finalTone);
@@ -251,20 +253,21 @@ function ExcuseGeneratorContent() {
                         <div className="space-y-6">
                             <div>
                                 <p className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">シチュエーション</p>
-                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="シチュエーション">
-                                    {SITUATIONS.map(s => (
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="シチュエーション">
+                                    {SITUATIONS.map(option => (
                                         <button
-                                            key={s}
+                                            key={option.value}
                                             type="button"
-                                            aria-pressed={situation === s}
-                                            onClick={() => setSituation(s)}
-                                            className={`p-2 text-sm rounded-lg border transition-all ${
-                                                situation === s
-                                                    ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-md'
-                                                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-indigo-300'
+                                            aria-pressed={situation === option.value}
+                                            onClick={() => setSituation(option.value)}
+                                            className={`flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-bold transition-all sm:text-sm ${
+                                                situation === option.value
+                                                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
+                                                    : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300'
                                             }`}
                                         >
-                                            {s}
+                                            <span aria-hidden="true">{option.icon}</span>
+                                            {option.value}
                                         </button>
                                     ))}
                                 </div>
@@ -288,17 +291,34 @@ function ExcuseGeneratorContent() {
                             )}
 
                             <div>
-                                <label htmlFor="excuse-tone" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                                    トーン（文体）
-                                </label>
-                                <select
-                                    id="excuse-tone"
-                                    value={tone}
-                                    onChange={(e) => setTone(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                                >
-                                    {TONES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300">トーン（文体）</p>
+                                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">1つ選択</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="トーン（文体）">
+                                    {TONES.map(option => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={tone === option.value}
+                                            onClick={() => setTone(option.value)}
+                                            className={`rounded-xl border p-2.5 text-left transition-all ${
+                                                tone === option.value
+                                                    ? 'border-fuchsia-500 bg-fuchsia-50 shadow-sm dark:border-fuchsia-400 dark:bg-fuchsia-900/20'
+                                                    : 'border-gray-200 bg-white hover:border-fuchsia-300 dark:border-gray-600 dark:bg-gray-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-base" aria-hidden="true">{option.icon}</span>
+                                                <span className={`text-xs font-black ${tone === option.value ? 'text-fuchsia-700 dark:text-fuchsia-200' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                    {option.value}
+                                                </span>
+                                            </div>
+                                            <p className="mt-0.5 pl-5 text-[10px] text-gray-500 dark:text-gray-400">{option.hint}</p>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div>
@@ -342,7 +362,10 @@ function ExcuseGeneratorContent() {
                     ) : (
                         <div className="space-y-4 animate-in fade-in duration-300">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">生成履歴</h2>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">生成履歴</h2>
+                                    <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500">このブラウザに最大20件保存されます</p>
+                                </div>
                                 <div className="flex space-x-2">
                                     <button
                                         type="button"
@@ -460,6 +483,14 @@ function ExcuseGeneratorContent() {
                                     <ShareIcon className="w-5 h-5" />
                                 </button>
                             </div>
+                            <button
+                                type="button"
+                                onClick={generateExcuse}
+                                disabled={!canGenerate}
+                                className="mt-3 w-full rounded-xl border border-indigo-300 bg-white/70 px-4 py-2.5 text-sm font-black text-indigo-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-700 dark:bg-gray-800/70 dark:text-indigo-200 dark:hover:bg-gray-800"
+                            >
+                                {isLoading ? 'AIが考え直しています…' : '✨ 別の言い訳を生成'}
+                            </button>
                         </div>
                     )}
                 </div>
@@ -489,13 +520,5 @@ function ExcuseGeneratorContent() {
 }
 
 export default function ExcuseGeneratorPage() {
-    return (
-        <Suspense fallback={
-            <div className="flex justify-center items-center min-h-screen bg-slate-100 dark:bg-slate-900">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" aria-label="読み込み中"></div>
-            </div>
-        }>
-            <ExcuseGeneratorContent />
-        </Suspense>
-    );
+    return <ExcuseGeneratorContent />;
 }

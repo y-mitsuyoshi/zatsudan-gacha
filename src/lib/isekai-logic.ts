@@ -140,13 +140,22 @@ export const generateIsekaiStatus = (form: IsekaiFormState): IsekaiStatus => {
     equipmentSet.add(pickRandom(EQUIPMENT, rng));
   }
   const equipment = Array.from(equipmentSet);
-
+  const totalStats = Object.values(scaledParams).reduce((sum, value) => sum + value, 0);
+  const rarity = level >= 85 || totalStats >= 450
+    ? 'SSR'
+    : level >= 65 || totalStats >= 350
+      ? 'SR'
+      : level >= 40 || totalStats >= 250
+        ? 'R'
+        : 'N';
 
   return {
     name: form.name,
     epithet,
     job,
     level,
+    rarity,
+    totalStats,
     params: scaledParams,
     uniqueSkill,
     partySkill,

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "推し活プロフィールメーカー - あなたの「好き」をカードに",
-    description: "あなただけの推し紹介カードを簡単に作成！好きなところ、思い出のエピソードなどを詰め込んで、世界に一つだけのオリジナルプロフィールを共有しよう。",
+    description: "10種類のテンプレートで、あなただけの推し紹介カードを簡単に作成！画像保存・テキストコピー・Xシェアに対応。",
     url: "https://zatsudan-gacha.app/profile-maker",
     siteName: "雑談テーマガチャ",
     images: [
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "推し活プロフィールメーカー - あなたの「好き」をカードに",
-    description: "あなただけの推し紹介カードを簡単に作成！好きなところ、思い出のエピソードなどを詰め込んで、世界に一つだけのオリジナルプロフィールを共有しよう。",
+    description: "10種類のテンプレートで、あなただけの推し紹介カードを簡単に作成！画像保存・テキストコピー・Xシェアに対応。",
     images: ["https://zatsudan-gacha.app/ogp.png"],
   },
 };

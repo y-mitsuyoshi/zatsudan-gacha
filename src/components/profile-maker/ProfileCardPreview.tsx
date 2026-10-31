@@ -5,6 +5,7 @@ import { ProfileState, Template } from "@/types";
 interface ProfileCardPreviewProps {
   profile: ProfileState;
   template: Template;
+  cardId?: string;
 }
 
 // Helper component for card sections
@@ -17,7 +18,7 @@ const CardSection = ({ title, children, className = '' }: { title: string; child
   </div>
 );
 
-export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile, template }) => {
+export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile, template, cardId = 'profile-card' }) => {
   const {
     name, group, color, image, likes, episode, favoriteVisual, favoriteQuote, customTags, title, fanHistory
   } = profile;
@@ -167,7 +168,7 @@ export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile,
     : { backgroundColor: `${color}30`, color: color };
 
   return (
-    <div id="profile-card" className={`${s.card} w-full min-w-[280px] max-w-2xl mx-auto aspect-[1.91/1] flex flex-col transition-all duration-300 leading-normal`} style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+    <div id={cardId} className={`${s.card} w-full min-w-[280px] max-w-2xl mx-auto aspect-[1.91/1] flex flex-col transition-all duration-300 leading-normal`} style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
       {/* Header */}
       <header className={`flex items-start pb-2 sm:pb-4 ${s.header}`} style={accentStyle}>
         {image && (
@@ -193,7 +194,7 @@ export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile,
       </header>
 
       {/* Body */}
-      <main className="flex-grow mt-3 sm:mt-6 grid grid-cols-1 md:grid-cols-5 gap-x-4 md:gap-x-8">
+      <div className="flex-grow mt-3 sm:mt-6 grid grid-cols-1 md:grid-cols-5 gap-x-4 md:gap-x-8">
         <div className="md:col-span-3 space-y-2 sm:space-y-4">
           <CardSection title="好きなところ" className={s.sectionTitle}>
             <div className="flex flex-wrap gap-1 sm:gap-2">
@@ -222,7 +223,7 @@ export const ProfileCardPreview: React.FC<ProfileCardPreviewProps> = ({ profile,
             <p className="text-sm sm:text-base">{fanHistory || <span className="text-gray-400 text-sm">（未入力）</span>}</p>
           </CardSection>
         </div>
-      </main>
+      </div>
 
       {/* Footer */}
       <footer className={`mt-auto pt-2 sm:pt-4 ${s.footer}`}>

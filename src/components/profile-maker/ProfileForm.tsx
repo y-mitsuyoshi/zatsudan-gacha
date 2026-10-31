@@ -82,7 +82,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile })
   };
 
   return (
-    <form>
+    <form onSubmit={(event) => event.preventDefault()}>
       <h3 className="text-lg font-bold mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">基本情報</h3>
       <FormInput
         label="推しの名前"
