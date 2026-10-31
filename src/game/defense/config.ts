@@ -86,7 +86,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   brute: { kind: 'brute', name: '巨漢リーマン', hp: 120, speed: 1.5, damage: 22, score: 250, coins: 12, radius: 0.9, color: '#f97316', emoji: 'brute' },
   shield: { kind: 'shield', name: '傘ガード', hp: 78, speed: 1.9, damage: 14, score: 200, coins: 9, radius: 0.7, color: '#38bdf8', emoji: 'shield' },
   kamikaze: { kind: 'kamikaze', name: '激突チャリ', hp: 24, speed: 6.0, damage: 32, score: 150, coins: 7, radius: 0.55, color: '#f472b6', emoji: 'kamikaze' },
-  boss: { kind: 'boss', name: '満員電車', hp: 1500, speed: 1.1, damage: 45, score: 3000, coins: 150, radius: 1.8, color: '#ef4444', emoji: 'boss' },
+  boss: { kind: 'boss', name: '満員電車', hp: 1000, speed: 1.1, damage: 45, score: 3000, coins: 150, radius: 1.8, color: '#ef4444', emoji: 'boss' },
 };
 
 export type CourseId = 'city' | 'desert' | 'snow' | 'rain' | 'tunnel';

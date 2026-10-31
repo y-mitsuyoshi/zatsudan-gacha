@@ -26,6 +26,23 @@ const DEFAULT_HUD: HudSnapshot = {
 
 const ENEMY_ORDER: EnemyKind[] = ['runner', 'walker', 'brute', 'shield', 'kamikaze', 'boss'];
 
+const COURSE_MARK: Record<CourseId, string> = {
+  city: '都', desert: '急', snow: '地', rain: '雨', tunnel: '隧',
+};
+
+const SHOP_MARKS: Record<string, string> = {
+  repair: '修', wall: '壁', power: '攻', ally: '仲', heal: '飯',
+};
+
+function resultRank(result: RunResult, difficulty: Difficulty): { rank: string; label: string; color: string } {
+  const cleared = result.victory || result.courseCleared;
+  if (cleared && difficulty === 'hard') return { rank: 'S', label: '完璧な出社', color: 'from-amber-300 to-orange-500 text-amber-950' };
+  if (cleared && result.endless > 0) return { rank: 'S', label: '残業の覇者', color: 'from-fuchsia-400 to-purple-600 text-white' };
+  if (cleared) return { rank: 'A', label: '定時退社', color: 'from-sky-400 to-cyan-500 text-white' };
+  if (result.score >= 8000) return { rank: 'B', label: 'あと一歩', color: 'from-emerald-400 to-teal-500 text-white' };
+  return { rank: 'C', label: '再挑戦', color: 'from-slate-400 to-slate-600 text-white' };
+}
+
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
@@ -191,6 +208,7 @@ export default function BarricadeDefenseGame() {
     const p = loadProgress();
     setProg(p);
     setBank(p.coins);
+    setShowHelp(p.totalRuns === 0);
     if (!p.unlocked.includes(course)) setCourse('city');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -459,9 +477,12 @@ export default function BarricadeDefenseGame() {
           <div className="mb-2.5 rounded-2xl border border-white/15 bg-slate-950/60 p-3 text-xs shadow-2xl backdrop-blur-md">
             {/* Top Row: Station Distance, Score, Coins */}
             <div className="mb-2 flex items-center justify-between font-bold">
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="rounded-lg bg-blue-950/60 px-2 py-0.5 text-blue-300 border border-blue-500/30">
                   会社まで あと{hud.distLeft}m
+                </span>
+                <span className="rounded-lg bg-white/10 px-2 py-0.5 text-gray-200 border border-white/15 font-mono">
+                  WAVE {hud.wave}/{hud.totalWaves}
                 </span>
                 {hud.endless > 0 && (
                   <span className="rounded-lg bg-purple-950/60 px-1.5 py-0.5 text-[10px] text-purple-300 border border-purple-500/30 font-mono">
@@ -563,7 +584,11 @@ export default function BarricadeDefenseGame() {
         {/* stage */}
         <div
           ref={stageRef}
-          className="relative overflow-hidden rounded-xl border border-white/15"
+          className={`relative overflow-hidden rounded-xl border bg-black/20 ${
+            (hud.baseHp / (hud.baseMax || 1) < 0.3 || hud.wallHp / (hud.wallMax || 1) < 0.2)
+              ? 'border-red-500/70 ring-2 ring-red-500/40'
+              : 'border-white/15'
+          } cursor-crosshair`}
           style={{ aspectRatio: '3 / 5' }}
           onPointerDown={onPointer}
           onPointerMove={onPointer}
@@ -590,10 +615,17 @@ export default function BarricadeDefenseGame() {
           )}
 
           {screen === 'paused' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-y-auto bg-black/75 p-4">
               <p className="text-2xl font-black">一時停止（サボり中）</p>
-              <button onClick={resumeGame} className="rounded-xl bg-green-600 px-8 py-3 font-bold">業務に戻る</button>
-              <button onClick={quitToTitle} className="rounded-xl bg-white/15 px-8 py-3 font-bold">タイトルに戻る</button>
+              <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-center text-xs">
+                <p className="font-bold text-cyan-200">WAVE {hud.wave}/{hud.totalWaves} ・ SCORE {hud.score.toLocaleString()}</p>
+                <p className="mt-1 text-gray-300">コイン {hud.coins} ・ 同期 {1 + hud.allies}人 ・ 撃破 {hud.kills}</p>
+              </div>
+              <p className="max-w-[280px] text-center text-[11px] text-gray-300">
+                画面を左右にドラッグ／タップで移動。PCは ←→ / A D でも移動できます。
+              </p>
+              <button type="button" onClick={resumeGame} className="rounded-xl bg-green-600 px-8 py-3 font-black shadow-lg hover:bg-green-500">業務に戻る</button>
+              <button type="button" onClick={quitToTitle} className="rounded-xl bg-white/15 px-8 py-3 font-bold hover:bg-white/20">タイトルに戻る</button>
             </div>
           )}
 
@@ -606,7 +638,7 @@ export default function BarricadeDefenseGame() {
           )}
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">
-          画面を左右にドラッグ／タップで移動（自動前進・自動射撃）・緑ゲートを選んで強化・段ボールを撃つと武器変化・SOSを撃つと同期が増加
+          画面を左右にドラッグ／タップで移動（PCは ←→ / A D でも移動）・緑ゲートを選んで強化・段ボールで武器GET・SOSで同期救出
         </p>
       </div>
     </div>
@@ -651,17 +683,27 @@ function TitleOverlay(props: {
         {COURSE_ORDER.map((c) => {
           const def = COURSES[c];
           const locked = !prog.unlocked.includes(c);
+          const cleared = (prog.clearedCourses?.includes(c) ?? false) || records.some((r) => r.course === c && r.victory);
           return (
             <button
               key={c}
+              type="button"
               disabled={locked}
+              aria-pressed={course === c}
               onClick={() => setCourse(c)}
               title={def.desc}
-              className={`rounded-xl border p-2 text-center ${course === c ? 'border-yellow-300 bg-yellow-300/15' : 'border-white/15 bg-white/5'} ${locked ? 'opacity-40' : ''}`}
+              className={`rounded-xl border p-2 text-center transition ${
+                course === c ? 'border-yellow-300 bg-yellow-300/15 shadow-[0_0_12px_rgba(253,224,71,0.15)]' : 'border-white/15 bg-white/5 hover:border-white/30'
+              } ${locked ? 'opacity-40' : ''}`}
             >
-              <span className="text-xs font-mono font-bold text-amber-300">{locked ? '[施錠]' : '[開放]'}</span>
-              <p className="text-xs font-bold">{def.name}</p>
+              <span className="text-lg" aria-hidden="true">{locked ? '未' : COURSE_MARK[c]}</span>
+              <p className="mt-0.5 text-xs font-bold leading-tight">{def.name}</p>
               <p className="text-[10px] text-gray-400">{def.waves * 100}m</p>
+              <span className={`mt-1 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-black ${
+                cleared ? 'bg-amber-300/20 text-amber-200' : locked ? 'bg-white/10 text-gray-400' : 'bg-emerald-300/15 text-emerald-200'
+              }`}>
+                {cleared ? '制覇' : locked ? '未開放' : '挑戦可'}
+              </span>
             </button>
           );
         })}
@@ -675,19 +717,31 @@ function TitleOverlay(props: {
           return (
             <button
               key={d}
+              type="button"
+              aria-pressed={difficulty === d}
               onClick={() => setDifficulty(d)}
-              className={`rounded-xl border p-2 text-center ${difficulty === d ? 'border-green-300 bg-green-300/15' : 'border-white/15 bg-white/5'}`}
+              className={`rounded-xl border p-2 text-center transition ${
+                difficulty === d ? 'border-green-300 bg-green-300/15' : 'border-white/15 bg-white/5 hover:border-white/30'
+              }`}
             >
-              <p className="text-xs font-bold">{def.name}</p>
-              <p className="text-[10px] text-gray-400">×{def.scoreMul}</p>
+              <p className="text-xs font-black">{def.name}</p>
+              <p className="mt-0.5 text-[9px] leading-tight text-gray-400">{def.desc}</p>
+              <p className="mt-0.5 text-[10px] font-mono text-amber-300">×{def.scoreMul}</p>
+              {d === 'easy' && <span className="mt-0.5 inline-block rounded-full bg-sky-300/15 px-1.5 text-[8px] font-bold text-sky-200">はじめて</span>}
+              {d === 'hard' && <span className="mt-0.5 inline-block rounded-full bg-rose-300/15 px-1.5 text-[8px] font-bold text-rose-200">やりこみ</span>}
             </button>
           );
         })}
       </div>
 
-      <button onClick={onStart} className="mt-4 w-full rounded-xl bg-red-600 py-3 text-lg font-black shadow-lg">
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-[11px] font-bold text-gray-200">
+        {COURSES[course].name} × {DIFFICULTIES[difficulty].name} / {COURSES[course].waves * 100}m
+      </div>
+
+      <button type="button" onClick={onStart} className="mt-3 w-full rounded-xl bg-gradient-to-r from-red-600 to-rose-500 py-3 text-lg font-black shadow-lg transition hover:from-red-500 hover:to-rose-400 active:scale-[0.99]">
         出社する
       </button>
+      <p className="mt-1 text-center text-[10px] text-gray-400">左右にドラッグ／タップで移動・自動射撃</p>
       <div className="mt-2 flex items-center justify-between text-xs text-gray-300">
         <span>へそくり: {bank} コイン</span>
         <span>{prog.totalKills}撃破・{prog.totalRuns}出社</span>
@@ -702,15 +756,13 @@ function TitleOverlay(props: {
       </div>
 
       {showHelp && (
-        <div className="mt-2 rounded-xl bg-white/10 p-3 text-[11px] leading-relaxed">
-          <p><b>操作</b>: 画面を左右にドラッグ／タップで移動。自動で前進＆自動射撃（3D）。</p>
-          <p><b>ゲート選択</b>: 緑は強化（火力×2・連射UP・同期+1等）、赤は弱体化。体当たりする側を選べ！</p>
-          <p><b>差し入れ段ボール</b>を撃つと… 武器GET(名刺/カバン/定期/特急/冷房)・お局の雷・残業代・ガード回復！</p>
-          <p><b>SOSケージ</b>を撃つと同期が参戦(最大{MAX_ALLIES}人)。同期は自動援護。</p>
-          <p><b>満員電車（ボス）</b>は倒すと大量ボーナス。倒せなくても逃げ切りOK！</p>
-          <p>群衆にぶつかるとガード→体力の順に減少。体力0で過労ダウン。</p>
-          <p>会社に到着で出社成功→次の路線解放＆エンドレス残業へ。</p>
-          <p>スコア・解放・へそくり・図鑑・実績は自動セーブ。</p>
+        <div className="mt-2 space-y-2 rounded-xl border border-white/10 bg-white/10 p-3 text-[11px] leading-relaxed">
+          <p className="font-black text-cyan-200">はじめての方へ</p>
+          <p><b>① 移動</b>: 画面を左右にドラッグ／タップ（PCは ←→ / A D）。自動で前進＆射撃します。</p>
+          <p><b>② ゲート</b>: 緑は強化（火力×2・連射UP・同期+1など）、赤は弱体化。通りたい側へ移動しよう。</p>
+          <p><b>③ 拾う</b>: 段ボールで武器チェンジ、SOSケージで同期が参戦。同期は自動で援護します。</p>
+          <p><b>④ ボス</b>: 満員電車の体当たりは、光る地点から離れて回避。倒せなくてもゴール可能です。</p>
+          <p className="text-gray-300">ガードが壊れると体力にダメージ。体力0で過労ダウン。スコア・解放・へそくりは自動セーブされます。</p>
         </div>
       )}
 
@@ -806,18 +858,25 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
             (item.id === 'repair' && shop.wallHp >= shop.wallMax) ||
             (item.id === 'heal' && shop.baseHp >= shop.baseMax);
           const extra = item.id === 'power' ? ` (Lv${shop.powerLv})` : item.id === 'wall' ? ` (Lv${shop.wallLv})` : '';
+          const buttonLabel = maxed ? 'MAX' : !afford ? 'コイン不足' : `${cost} コイン`;
           return (
-            <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/10 p-2">
-              <div className="text-xs">
+            <div key={item.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 p-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/30 text-lg" aria-hidden="true">
+                {SHOP_MARKS[item.id] ?? '店'}
+              </span>
+              <div className="min-w-0 flex-1 text-xs">
                 <p className="font-bold">{item.name}{extra}</p>
                 <p className="text-gray-300">{item.desc}</p>
               </div>
               <button
+                type="button"
                 disabled={!afford || maxed}
                 onClick={() => onBuy(item.id)}
-                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold ${afford && !maxed ? 'bg-green-600' : 'bg-white/10 opacity-50'}`}
+                className={`shrink-0 rounded-lg px-3 py-2 text-[10px] font-black ${
+                  afford && !maxed ? 'bg-green-600 hover:bg-green-500' : 'bg-white/10 opacity-50'
+                }`}
               >
-                {maxed ? 'MAX' : `${cost} コイン`}
+                {buttonLabel}
               </button>
             </div>
           );
@@ -825,11 +884,16 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
       </div>
       {shop.victory ? (
         <div className="mt-3 space-y-2">
-          <button onClick={onEndless} className="w-full rounded-xl bg-purple-600 py-3 font-black">終わらぬ残業に突入する</button>
-          <button onClick={onFinish} className="w-full rounded-xl bg-yellow-500 py-3 font-black text-black">勤怠を付けて帰宅</button>
+          <p className="text-center text-[10px] text-gray-400">ここで買い物をしてから、残業に挑むか帰宅できます。</p>
+          <button type="button" onClick={onEndless} className="w-full rounded-xl bg-purple-600 py-3 font-black shadow-lg transition hover:bg-purple-500">
+            終わらぬ残業に突入する
+          </button>
+          <button type="button" onClick={onFinish} className="w-full rounded-xl bg-yellow-500 py-3 font-black text-black shadow-lg transition hover:bg-yellow-400">
+            勤怠を付けて帰宅
+          </button>
         </div>
       ) : (
-        <button onClick={onNext} className="mt-3 w-full rounded-xl bg-red-600 py-3 font-black">
+        <button type="button" onClick={onNext} className="mt-3 w-full rounded-xl bg-red-600 py-3 font-black">
           WAVE {shop.endless > 0 ? `${shop.wave} +∞${shop.endless + 1}` : shop.wave + 1} へ出社
         </button>
       )}
@@ -842,6 +906,7 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
 function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; difficulty: Difficulty }; records: RecordEntry[]; newAch: string[]; onRetry: () => void; onTitle: () => void }) {
   const { result, meta, records, newAch, onRetry, onTitle } = props;
   const cleared = result.victory || result.courseCleared;
+  const rank = resultRank(result, meta.difficulty);
   const endedInEndless = !result.victory && result.courseCleared;
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4 text-center">
@@ -850,6 +915,11 @@ function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; dif
         {endedInEndless ? '本編クリア＋残業終了' : result.victory ? '定時出社成功！' : '過労でダウン…'}
       </h2>
       <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}{result.endless > 0 ? ` ＋ 無限${result.endless}` : ''}</p>
+      <div className={`mx-auto mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-to-r ${rank.color} px-4 py-1 text-sm font-black shadow-lg`}>
+        <span className="text-xs opacity-80">RANK</span>
+        <span className="text-xl">{rank.rank}</span>
+        <span className="text-[10px] opacity-90">{rank.label}</span>
+      </div>
       <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">スコア</p><p className="text-lg font-black text-yellow-300">{result.score.toLocaleString()}</p></div>
         <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">走破距離</p><p className="text-lg font-black">{result.dist}m</p></div>

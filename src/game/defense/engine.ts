@@ -138,6 +138,8 @@ interface Foe {
   elite: boolean;
   isBoss: boolean;
   slamT: number;
+  slamWarned: boolean;
+  slamTargetX: number;
   minionT: number;
   hpBarGroup?: THREE.Group;
   hpBarFill?: THREE.Mesh;
@@ -517,7 +519,9 @@ export class DefenseEngine {
 
   snapshotShop(victory: boolean): ShopSnapshot {
     return {
-      wave: 1, totalWaves: 1, endless: this.endless,
+      wave: Math.min(this.course.waves, Math.max(1, Math.ceil(this.waveNum()))),
+      totalWaves: this.course.waves,
+      endless: this.endless,
       coins: Math.floor(this.coins),
       wallHp: Math.ceil(this.guard), wallMax: this.guardMax,
       baseHp: Math.ceil(this.hp), baseMax: this.hpMax,
@@ -798,8 +802,9 @@ export class DefenseEngine {
   private spawnRow(): void {
     if (this.foes.length > 46) return;
     const plan = planWave(this.course, Math.min(this.course.waves, Math.round(this.waveNum())), this.diff, this.endless);
-    const n = 2 + Math.floor(rand(0, 2.99) + this.endless * 0.3);
-    const lanes = shuffled(LANES).slice(0, Math.min(5, n));
+    // Count now scales gently with the wave budget/difficulty instead of relying only on luck.
+    const n = Math.round(clamp(2 + plan.budget / 50 + rand(0, 1.2) + this.endless * 0.2, 1, 5));
+    const lanes = shuffled(LANES).slice(0, n);
     for (const lx of lanes) {
       this.spawnFoe(pickKind(plan, Math.random()), lx + rand(-0.4, 0.4), false);
     }
@@ -851,6 +856,8 @@ export class DefenseEngine {
       elite,
       isBoss: kind === 'boss',
       slamT: kind === 'boss' ? 6 : 0,
+      slamWarned: false,
+      slamTargetX: 0,
       minionT: kind === 'boss' ? 2.5 : 0,
       hpBarGroup,
       hpBarFill,
@@ -1215,6 +1222,22 @@ export class DefenseEngine {
     }
   }
 
+  private spawnWarningRing(x: number, z: number, size: number): void {
+    for (const r of this.ringPool) {
+      if (r.active) continue;
+      r.active = true;
+      r.m.visible = true;
+      r.m.position.set(x, 0.55, z);
+      r.m.scale.set(0.1, 0.1, 0.1);
+      r.mat.color.setHex(0xf59e0b);
+      r.mat.opacity = 0.42;
+      r.life = 1.4;
+      r.max = 1.4;
+      r.grow = size / 1.4;
+      break;
+    }
+  }
+
   private floater(x: number, y: number, z: number, text: string, color: string): void {
     for (const f of this.floaterPool) {
       if (f.active) continue;
@@ -1279,8 +1302,8 @@ export class DefenseEngine {
     this.cb.onHud({
       score: Math.floor(this.score),
       coins: Math.floor(this.coins),
-      wave: 1,
-      totalWaves: 1,
+      wave: Math.min(this.course.waves, Math.max(1, Math.ceil(this.waveNum()))),
+      totalWaves: this.course.waves,
       endless: this.endless,
       combo: this.combo,
       weapon: this.weapon,
@@ -1327,7 +1350,7 @@ export class DefenseEngine {
       victory,
       courseCleared: this.courseCleared,
       score: Math.floor(this.score),
-      wave: 1,
+      wave: Math.min(this.course.waves, Math.max(1, Math.ceil(this.waveNum()))),
       kills: this.kills,
       coins: Math.floor(this.coins),
       maxCombo: this.maxCombo,
@@ -1714,20 +1737,33 @@ export class DefenseEngine {
           this.spawnFoe(Math.random() < 0.5 ? 'runner' : 'walker', rand(-3.5, 3.5), false);
         }
 
-        // Locomotive ram / slam attack
+        // Locomotive ram / slam attack. Telegraph the landing point so the
+        // player can dodge sideways instead of taking unavoidable chip damage.
         f.slamT -= dt;
-        if (f.slamT <= 0) {
-          f.slamT = 8;
-          this.spawnRing(f.x, 0.6, f.z, 9, '#ef4444');
-          this.damageGuard(30 * this.diff.dmgMul);
-          this.screenShake.addTrauma(0.65);
-          this.hitStop.triggerMs(60);
-          this.sound.boom();
+        if (f.slamT <= 1.5 && !f.slamWarned) {
+          f.slamWarned = true;
+          f.slamTargetX = f.x;
+          this.spawnWarningRing(f.slamTargetX, f.z, 6);
+          this.floater(f.slamTargetX, 4.6, f.z, '回避準備！', '#f59e0b');
           if (!this.slamAnnounced) {
             this.slamAnnounced = true;
-            this.cb.onBanner('満員電車が急接近！', '通勤ガードに大ダメージ');
+            this.cb.onBanner('満員電車が体当たり準備！', '光る地点から離れて回避しよう');
+          }
+        }
+        if (f.slamT <= 0) {
+          f.slamT = 8;
+          f.slamWarned = false;
+          this.spawnRing(f.slamTargetX, 0.6, f.z, 5, '#ef4444');
+          const hit = Math.abs(this.hero.position.x - f.slamTargetX) < 2.3;
+          if (hit) {
+            this.damageGuard(24 * this.diff.dmgMul);
+            this.screenShake.addTrauma(0.65);
+            this.hitStop.triggerMs(60);
+            this.sound.boom();
+            this.floater(this.hero.position.x, 4.5, HERO_Z, '被弾！', '#ef4444');
           } else {
-            this.floater(f.x, 4.5, f.z, '急接近！！', '#ef4444');
+            this.floater(this.hero.position.x, 4.2, HERO_Z, '回避成功！', '#4ade80');
+            this.sound.pickup();
           }
         }
         continue;
