@@ -1,197 +1,209 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { GameState, SquareType } from '@/types/sugoroku';
-import { GAME_BOARD, ENDINGS, ACHIEVEMENT_LIST } from '@/lib/sugoroku-logic';
+import { GameState } from '@/types/sugoroku';
+import { GAME_BOARD, ENDINGS, ACHIEVEMENT_LIST, JOB_PROFILES } from '@/lib/sugoroku-logic';
 
-// Simplified Path Board
-const PathGameBoard = ({ path }: { path: number[], playerName: string }) => {
-    const pathSet = React.useMemo(() => new Set(path), [path]);
-    const getSquareColor = (type: SquareType, position: number): string => {
-        if (pathSet.has(position)) {
-            if (position === 0) return 'bg-green-400 ring-2 ring-green-200';
-            if (position === 60) return 'bg-yellow-400 ring-2 ring-yellow-200';
-            return 'bg-blue-400'; // Path color
-        }
-        return 'bg-gray-200 opacity-30';
-    };
+const CHAPTERS = [
+  { start: 0, end: 9, label: '第1章 入社' },
+  { start: 10, end: 19, label: '第2章 新人' },
+  { start: 20, end: 29, label: '第3章 若手' },
+  { start: 30, end: 39, label: '第4章 中堅' },
+  { start: 40, end: 49, label: '第5章 管理職' },
+  { start: 50, end: 60, label: '第6章 役員' },
+];
 
-    return (
-        <div className="flex flex-wrap gap-1 justify-center p-4 bg-white/50 rounded-xl">
-            {GAME_BOARD.map((square) => (
-                <div 
-                  key={square.position} 
-                  className={`
-                    w-3 h-3 rounded-full transition-all duration-500
-                    ${getSquareColor(square.type, square.position)}
-                    ${pathSet.has(square.position) ? 'scale-110' : 'scale-90'}
-                  `}
-                  title={`Square ${square.position}: ${square.title}`}
-                />
-            ))}
-        </div>
-    );
+const PathGameBoard = ({ path }: { path: number[] }) => {
+  const pathSet = React.useMemo(() => new Set(path), [path]);
+
+  return (
+    <div className="space-y-2">
+      {CHAPTERS.map((chapter) => {
+        const squares = GAME_BOARD.filter((square) => square.position >= chapter.start && square.position <= chapter.end);
+        const visited = squares.filter((square) => pathSet.has(square.position)).length;
+        return (
+          <div key={chapter.label} className="flex items-center gap-2">
+            <span className="w-20 shrink-0 text-[9px] font-black text-[#9a8464] dark:text-stone-400">{chapter.label}</span>
+            <div className="flex flex-1 flex-wrap gap-1">
+              {squares.map((square) => {
+                const isVisited = pathSet.has(square.position);
+                const isGoal = square.type === 'goal';
+                return (
+                  <span
+                    key={square.position}
+                    className={`h-2.5 w-2.5 rounded-full transition-all ${
+                      isGoal
+                        ? 'bg-amber-500 ring-2 ring-amber-300'
+                        : isVisited
+                          ? 'bg-amber-400'
+                          : 'bg-[#e3d3b3] dark:bg-[#4c3f2c]'
+                    }`}
+                    title={`${square.position}: ${square.title}`}
+                  />
+                );
+              })}
+            </div>
+            <span className="w-8 shrink-0 text-right text-[9px] font-bold text-[#a58c66] dark:text-stone-500">{visited}/{squares.length}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
-
 
 interface ResultCardProps {
   gameState: GameState;
+  onRestart: () => void;
 }
 
-export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
+export const ResultCard: React.FC<ResultCardProps> = ({ gameState, onRestart }) => {
   const resultCardRef = useRef<HTMLDivElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const { playerName, job, turn, yaruki, ending, newlyUnlockedAchievements, path } = gameState;
+  const career = gameState.career ?? 0;
+  const uniqueVisited = new Set(path).size;
+  const profile = JOB_PROFILES[job];
 
-  const sRankEndings = ['legendary', 'promotion', 'mentor', 'specialist', 'innovator', 'ace', 'creator', 'leader'];
+  const sRankEndings = ['legendary', 'executive', 'promotion', 'mentor', 'specialist', 'innovator', 'ace', 'creator', 'leader'];
   const isGoodEnding = ending != null && sRankEndings.includes(ending);
-
-  // Confetti effect on mount for S-rank
-  useEffect(() => {
-    if (!isGoodEnding) return;
-    // 軽量紙吹雪: CSSアニメのドットを一定時間表示
-    const id = setTimeout(() => {}, 0);
-    return () => clearTimeout(id);
-  }, [isGoodEnding]);
-
-  const handleDownloadImage = () => {
-    if (resultCardRef.current) {
-      html2canvas(resultCardRef.current, {
-          useCORS: true,
-          backgroundColor: null,
-          scale: 2, // Higher quality
-      }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `shachiku-result-${new Date().getTime()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      });
-    }
-  };
-
-  const handleRestart = () => {
-      window.location.reload();
-  }
 
   const getEndingData = () => {
     const endingKey = ending as keyof typeof ENDINGS;
     const endingInfo = ENDINGS[endingKey] || { title: '不明なエンディング', description: 'データが見つかりません' };
 
-    // Rank Logic
     let rank = 'C';
-    let gradient = 'from-gray-400 to-slate-500';
-    let icon = '🤔';
-    let bgPattern = 'bg-gray-100';
+    let gradient = 'from-stone-500 to-slate-600';
+    let icon = '🍵';
     let subtitle = 'お疲れ様でした';
 
-    const sRank = ['legendary', 'promotion', 'mentor', 'specialist', 'innovator', 'ace', 'creator', 'leader'];
     const aRank = ['stable', 'balanced', 'diligent', 'team-player', 'steady'];
     const bRank = ['consistent', 'reliable', 'average', 'survivor', 'mediocre', 'freelance', 'entrepreneur', 'global', 'investor', 'influencer', 'farmer', 'writer'];
     const cRank = ['routine', 'ordinary'];
-    // D Rank (Bad endings)
     const dRank = ['burnout', 'dropout', 'overwork', 'mental-break', 'stress-victim', 'exhausted', 'breakdown', 'resignation', 'collapse', 'defeat'];
 
-    if (sRank.includes(endingKey)) {
-        rank = 'S';
-        gradient = 'from-yellow-300 via-orange-400 to-red-400';
-        icon = '👑';
-        bgPattern = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-100 via-orange-50 to-white';
-        subtitle = '最高のエンディング！';
+    if (sRankEndings.includes(endingKey)) {
+      rank = 'S';
+      gradient = 'from-amber-500 via-orange-500 to-rose-500';
+      icon = '🏆';
+      subtitle = '最高のキャリア！';
     } else if (aRank.includes(endingKey)) {
-        rank = 'A';
-        gradient = 'from-blue-400 via-cyan-400 to-teal-400';
-        icon = '✨';
-        bgPattern = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-100 via-cyan-50 to-white';
-        subtitle = '素晴らしいキャリア！';
+      rank = 'A';
+      gradient = 'from-sky-600 via-cyan-500 to-teal-500';
+      icon = '✨';
+      subtitle = '素晴らしいキャリア！';
     } else if (bRank.includes(endingKey)) {
-        rank = 'B';
-        gradient = 'from-green-400 to-emerald-500';
-        icon = '👍';
-        bgPattern = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-green-100 via-emerald-50 to-white';
-        subtitle = 'ナイス社畜ライフ！';
+      rank = 'B';
+      gradient = 'from-emerald-600 to-teal-500';
+      icon = '👍';
+      subtitle = 'ナイスキャリア！';
     } else if (cRank.includes(endingKey)) {
-        rank = 'C';
-        gradient = 'from-gray-400 to-slate-500';
-        icon = '🍵';
-        bgPattern = 'bg-gray-50';
-        subtitle = '平凡こそが幸せ？';
+      rank = 'C';
+      gradient = 'from-stone-500 to-slate-600';
+      icon = '🍵';
+      subtitle = '平凡こそが幸せ？';
     } else if (dRank.includes(endingKey)) {
-        rank = 'D';
-        gradient = 'from-purple-500 to-indigo-600';
-        icon = '🚑';
-        bgPattern = 'bg-purple-50';
-        subtitle = '少し休みましょう...';
+      rank = 'D';
+      gradient = 'from-purple-600 to-indigo-600';
+      icon = '🛌';
+      subtitle = '少し休みましょう…';
     }
 
-    return {
-      title: endingInfo.title,
-      subtitle: subtitle,
-      rank: rank,
-      description: endingInfo.description,
-      gradient: gradient,
-      icon: icon,
-      bgPattern: bgPattern
-    };
+    return { title: endingInfo.title, subtitle, rank, description: endingInfo.description, gradient, icon };
   };
 
   const endingData = getEndingData();
 
+  const handleDownloadImage = async () => {
+    if (!resultCardRef.current) return;
+
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      const canvas = await html2canvas(resultCardRef.current, {
+        useCORS: true,
+        backgroundColor: '#fffaf0',
+        scale: 2,
+      });
+      const link = document.createElement('a');
+      link.download = `shachiku-career-result-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Failed to save result image:', error);
+      setSaveError('画像の保存に失敗しました。時間をおいて再度お試しください。');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+    `社畜すごろくで「${endingData.title}」(RANK ${endingData.rank})になった！ ${playerName}(${job}) ${turn}ターン やる気${yaruki} 評価${career}`
+  )}&url=${encodeURIComponent('https://zatsudan-gacha.app/shachiku-sugoroku')}`;
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-black/5 backdrop-blur-sm">
-      <div className="max-w-2xl w-full animate-in zoom-in-95 duration-300">
-        
-        <div ref={resultCardRef} className={`relative rounded-[2rem] overflow-hidden shadow-2xl bg-white ${endingData.bgPattern}`}>
-          {/* Decorative Circles */}
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-tr from-white/40 to-transparent rounded-full blur-3xl"></div>
-          
-          {/* Header */}
-          <div className={`relative p-8 text-center text-white bg-gradient-to-r ${endingData.gradient}`}>
-            <div className="text-6xl mb-4 animate-bounce filter drop-shadow-lg">{endingData.icon}</div>
-            <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1 rounded-full text-sm font-bold mb-4 border border-white/30">
-              RANK {endingData.rank}
+    <div className="flex min-h-screen items-center justify-center p-3 sm:p-4">
+      <div className="w-full max-w-2xl animate-[zoom-in_0.3s_ease-out_1]">
+        <div
+          ref={resultCardRef}
+          className="relative overflow-hidden rounded-[2rem] border-4 border-[#e7d8b5] bg-[#fffaf0] shadow-2xl dark:border-[#5a4a33] dark:bg-[#211e19]"
+        >
+          <div className={`relative overflow-hidden bg-gradient-to-r ${endingData.gradient} px-6 py-8 text-center text-white`}>
+            <div className="absolute -right-8 -top-10 text-[130px] opacity-15" aria-hidden="true">{endingData.icon}</div>
+            <div className="relative">
+              <p className="text-[10px] font-black tracking-[0.35em] text-white/80">FINAL RESULT</p>
+              <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-3 py-1 text-xs font-black">
+                <span>RANK {endingData.rank}</span>
+                <span className="h-3 w-px bg-white/40" />
+                <span>{profile.icon} {job}</span>
+              </div>
+              <h1 className="mt-3 text-3xl font-black tracking-tight drop-shadow-md sm:text-4xl">{endingData.title}</h1>
+              <p className="mt-1 text-sm font-bold text-white/90">{endingData.subtitle}</p>
             </div>
-            <h1 className="text-4xl font-black mb-2 tracking-tight drop-shadow-md">{endingData.title}</h1>
-            <p className="text-lg opacity-90 font-medium">{endingData.subtitle}</p>
           </div>
 
-          {/* Content */}
-          <div className="p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-2">
-                {playerName} <span className="text-sm font-normal text-gray-500">({job})</span>
+          <div className="p-5 sm:p-7">
+            <div className="mb-5 text-center">
+              <h2 className="text-xl font-black text-[#3b2f1e] dark:text-amber-50">
+                {playerName} <span className="text-sm font-bold text-[#8a7557] dark:text-stone-400">({job})</span>
               </h2>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-[#6f5d42] dark:text-stone-300">
                 {endingData.description}
               </p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-blue-50 p-4 rounded-2xl text-center border border-blue-100">
-                <div className="text-xs text-blue-400 font-bold uppercase mb-1">TURN</div>
-                <div className="text-2xl font-black text-blue-600">{turn}</div>
+            {isGoodEnding && (
+              <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-center text-xs font-black text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                ✨ ハイランク到達！あなたのキャリアは輝いています。
               </div>
-              <div className="bg-green-50 p-4 rounded-2xl text-center border border-green-100">
-                <div className="text-xs text-green-400 font-bold uppercase mb-1">YARUKI</div>
-                <div className="text-2xl font-black text-green-600">{yaruki}</div>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-2xl text-center border border-purple-100">
-                <div className="text-xs text-purple-400 font-bold uppercase mb-1">GOAL</div>
-                <div className="text-2xl font-black text-purple-600">{gameState.position}</div>
-              </div>
+            )}
+
+            <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                { label: 'TURN', value: turn, color: 'text-sky-600 dark:text-sky-300' },
+                { label: 'やる気', value: yaruki, color: 'text-emerald-600 dark:text-emerald-300' },
+                { label: '評価', value: career, color: 'text-amber-600 dark:text-amber-300' },
+                { label: '到達', value: `${uniqueVisited}/61`, color: 'text-violet-600 dark:text-violet-300' },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-[#e2d4b8] bg-white/70 p-2.5 text-center dark:border-[#4c3f2c] dark:bg-[#2b2720]">
+                  <p className="text-[9px] font-black tracking-widest text-[#9a8464] dark:text-stone-400">{stat.label}</p>
+                  <p className={`mt-0.5 text-xl font-black tabular-nums ${stat.color}`}>{stat.value}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Achievements */}
             {newlyUnlockedAchievements.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 text-center">Unlocked Achievements</h3>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {newlyUnlockedAchievements.map(ach => {
-                    const info = (ACHIEVEMENT_LIST as Record<string, { name: string; description: string }>)[ach];
+              <div className="mb-5">
+                <h3 className="mb-2 text-center text-[10px] font-black tracking-widest text-[#9a8464] dark:text-stone-400">UNLOCKED ACHIEVEMENTS</h3>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {newlyUnlockedAchievements.map((achievement) => {
+                    const info = (ACHIEVEMENT_LIST as Record<string, { name: string; description: string }>)[achievement];
                     return (
-                      <span key={ach} title={info?.description ?? ach} className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200 flex items-center gap-1">
-                        <span>🏆</span> {info?.name ?? ach}
+                      <span key={achievement} title={info?.description ?? achievement} className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                        <span aria-hidden="true">🏆</span> {info?.name ?? achievement}
                       </span>
                     );
                   })}
@@ -199,37 +211,56 @@ export const ResultCard: React.FC<ResultCardProps> = ({ gameState }) => {
               </div>
             )}
 
-            {/* Path */}
-            <div className="mb-2">
-               <p className="text-xs text-gray-400 font-bold text-center mb-2">通ったマス: {path.length} / 61</p>
-               <PathGameBoard path={path} playerName={playerName} />
+            <div className="mb-5">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-[10px] font-black tracking-widest text-[#9a8464] dark:text-stone-400">CAREER PATH</h3>
+                <span className="text-[10px] font-bold text-[#a58c66] dark:text-stone-500">通ったマス {uniqueVisited} / 61</span>
+              </div>
+              <PathGameBoard path={path} />
             </div>
+
+            {gameState.decisionHistory && gameState.decisionHistory.length > 0 && (
+              <div className="rounded-xl border border-dashed border-[#d8c6a2] bg-[#f8efdd]/60 p-3 dark:border-[#4c3f2c] dark:bg-[#2a251d]">
+                <p className="mb-2 text-[10px] font-black tracking-widest text-[#9a8464] dark:text-stone-400">YOUR CHOICES</p>
+                <ul className="space-y-1">
+                  {gameState.decisionHistory.map((decision, index) => (
+                    <li key={`${decision.title}-${index}`} className="flex items-start gap-1.5 text-[11px] font-bold text-[#6f5d42] dark:text-stone-300">
+                      <span className="text-amber-500" aria-hidden="true">•</span>
+                      {decision.title} → {decision.choice}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex gap-4 justify-center flex-wrap">
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
           <button
-            onClick={handleRestart}
-            className="bg-white text-gray-800 font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 flex items-center gap-2"
+            type="button"
+            onClick={onRestart}
+            className="rounded-xl border border-[#d8c6a2] bg-[#fffaf0] px-5 py-3 text-sm font-black text-[#3b2f1e] shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-[#5c4a32] dark:bg-[#211e19] dark:text-amber-50"
           >
-            <span>🔄</span> もう一度
+            🔄 もう一度
           </button>
           <button
+            type="button"
             onClick={handleDownloadImage}
-            className={`font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all text-white flex items-center gap-2 bg-gradient-to-r ${endingData.gradient}`}
+            disabled={isSaving}
+            className={`rounded-xl bg-gradient-to-r ${endingData.gradient} px-5 py-3 text-sm font-black text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60`}
           >
-            <span>📸</span> 保存する
+            📸 {isSaving ? '保存中…' : '結果を保存'}
           </button>
           <a
-            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`社畜すごろくで「${endingData.title}」(RANK ${endingData.rank})になった！ ${playerName}(${job}) ${turn}ターン やる気${yaruki}`)}`}
+            href={shareUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-black text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2"
+            className="rounded-xl bg-stone-900 px-5 py-3 text-sm font-black text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:bg-amber-300 dark:text-stone-900"
           >
-            <span>𝕏</span> 結果を共有
+            𝕏 結果を共有
           </a>
         </div>
+        {saveError && <p className="mt-3 text-center text-xs font-bold text-rose-600 dark:text-rose-400" role="alert">{saveError}</p>}
       </div>
     </div>
   );

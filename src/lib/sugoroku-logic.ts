@@ -1,9 +1,22 @@
-import { Job, Item, BoardSquare, GameState, SetupFormState } from '@/types/sugoroku';
+import { Job, Item, BoardSquare, GameDecision, GameState, SetupFormState } from '@/types/sugoroku';
 import { audioManager } from '@/utils/audio';
 
 // --- Master Data ---
 
 export const JOBS: Job[] = ['営業', 'エンジニア', 'デザイナー', '企画・マーケティング', '人事・総務', '経理・財務', '法務・コンプラ', '広報・PR', '品質保証', '総合職'];
+
+export const JOB_PROFILES: Record<Job, { icon: string; tagline: string; strength: string; accent: string }> = {
+  '営業': { icon: '👔', tagline: '人脈で道を開く', strength: '営業イベントで大きく前進', accent: 'from-sky-500 to-cyan-400' },
+  'エンジニア': { icon: '💻', tagline: '技術で突破する', strength: 'システム系イベントに強い', accent: 'from-indigo-500 to-blue-400' },
+  'デザイナー': { icon: '🎨', tagline: '感性で魅せる', strength: 'デザイン系イベントで加速', accent: 'from-pink-500 to-rose-400' },
+  '企画・マーケティング': { icon: '📈', tagline: '企画で動かす', strength: '話題化イベントに強い', accent: 'from-violet-500 to-purple-400' },
+  '人事・総務': { icon: '🧾', tagline: '社内を支える', strength: '調整イベントで評価を得やすい', accent: 'from-emerald-500 to-teal-400' },
+  '経理・財務': { icon: '💰', tagline: '数字で語る', strength: '予算・決算イベントに強い', accent: 'from-amber-500 to-yellow-400' },
+  '法務・コンプラ': { icon: '⚖️', tagline: 'ルールで守る', strength: '監査イベントで前進', accent: 'from-slate-600 to-gray-400' },
+  '広報・PR': { icon: '📣', tagline: '声で届ける', strength: '広報イベントで大きく前進', accent: 'from-orange-500 to-amber-400' },
+  '品質保証': { icon: '🔎', tagline: '品質を守る', strength: '検査イベントで評価を得やすい', accent: 'from-cyan-600 to-sky-400' },
+  '総合職': { icon: '🏢', tagline: '万能に動く', strength: '安定した立ち回りが得意', accent: 'from-fuchsia-500 to-pink-400' },
+};
 
 export const ITEMS: { [id: string]: Item } = {
   'energy-drink': {
@@ -40,7 +53,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 17, type: 'event', title: 'SNSで企画がバズる！', description: '企画・マーケは5マス進む。他はやる気10UP。', effect: { type: 'job-specific', value: 'viral-hit' }, icon: '📱' },
     { position: 18, type: 'event', title: 'クリエイティブなひらめき', description: 'デザイナーは3マス進む。', effect: { type: 'job-specific', value: 'creative-spark' }, icon: '💡' },
     { position: 19, type: 'event', title: '動くはずのコードが動かない', description: 'エンジニアは1回休み。', effect: { type: 'job-specific', value: 'code-bug' }, icon: '🐛' },
-    { position: 20, type: 'normal', title: '有給休暇', description: '心と体をリフレッシュ。', effect: null, icon: '🏖️' },
+    { position: 20, type: 'decision', title: 'キャリア面談', description: 'この先の働き方を決める面談。どちらを選ぶ？', effect: { type: 'decision', value: 'career-talk' }, icon: '🧭' },
     { position: 21, type: 'event', title: '飲み会', description: 'やる気が5上がるが、次のターンは1マスしか進めない。', effect: { type: 'yaruki', value: 5 }, icon: '🍺' },
     { position: 22, type: 'event', title: '上司の無茶振り', description: 'やる気が25下がる。', effect: { type: 'yaruki', value: -25 }, icon: '💢' },
     { position: 23, type: 'normal', title: '穏やかな一日', description: '集中して業務ができた。', effect: null, icon: '🍵' },
@@ -50,7 +63,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 27, type: 'event', title: 'サーバーダウン', description: 'エンジニア以外は2マス戻る。', effect: { type: 'job-specific', value: 'server-down' }, icon: '🔌' },
     { position: 28, type: 'event', title: '接待', description: '営業はやる気10UP。他はやる気10DOWN。', effect: { type: 'job-specific', value: 'settai' }, icon: '🍶' },
     { position: 29, type: 'event', title: '研修の講師', description: '人事・総務は3マス進む。他はやる気5UP。', effect: { type: 'job-specific', value: 'training-instructor' }, icon: '👨‍🏫' },
-    { position: 30, type: 'normal', title: '中間地点', description: '折り返し地点！まだまだ先は長い…', effect: null, icon: '🚩' },
+    { position: 30, type: 'decision', title: '折り返しの選択', description: '後半戦のスタンスを選ぼう。', effect: { type: 'decision', value: 'midpoint-choice' }, icon: '🛤️' },
     { position: 31, type: 'event', title: '月末の売上締め', description: '経理・財務は2回休み。営業はやる気10UP。', effect: { type: 'job-specific', value: 'month-end' }, icon: '🗓️' },
     { position: 32, type: 'event', title: '健康診断で再検査', description: '心配になってやる気が10下がる。', effect: { type: 'yaruki', value: -10 }, icon: '🏥' },
     { position: 33, type: 'event', title: '採用面接の担当', description: '人事・総務はやる気15UP。他は1マス進む。', effect: { type: 'job-specific', value: 'interview-duty' }, icon: '👔' },
@@ -63,7 +76,7 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 40, type: 'event', title: '予算会議', description: '経理・財務は2マス進む。企画・マーケは1回休み。', effect: { type: 'job-specific', value: 'budget-meeting' }, icon: '📊' },
     { position: 41, type: 'event', title: '大型案件受注', description: '営業は6マス進む！他は2マス進む。', effect: { type: 'job-specific', value: 'big-deal' }, icon: '🤝' },
     { position: 42, type: 'event', title: 'ウイルス感染', description: 'エンジニア以外は1回休み。', effect: { type: 'job-specific', value: 'virus-infection' }, icon: '🦠' },
-    { position: 43, type: 'normal', title: '残業なしの日', description: '早く帰れてラッキー！', effect: null, icon: '🌇' },
+    { position: 43, type: 'decision', title: '夕方の選択', description: '今日の終わり方を選ぼう。', effect: { type: 'decision', value: 'evening-choice' }, icon: '🌇' },
     { position: 44, type: 'event', title: '人事評価面談', description: '人事・総務は1マス進む。他はやる気5DOWN。', effect: { type: 'job-specific', value: 'performance-review' }, icon: '📝' },
     { position: 45, type: 'salary', title: '給料日', description: 'やる気が30回復！', effect: { type: 'yaruki', value: 30 }, icon: '💰' },
     { position: 46, type: 'event', title: '決算処理', description: '経理・財務は3回休み。他は1マス戻る。', effect: { type: 'job-specific', value: 'financial-closing' }, icon: '💹' },
@@ -83,6 +96,77 @@ export const GAME_BOARD: BoardSquare[] = [
     { position: 60, type: 'goal', title: 'ゴール！', description: 'ボーナス支給日！おめでとう！', effect: null, icon: '🎊' },
 ];
 
+export const DECISIONS: Record<string, GameDecision> = {
+  'career-talk': {
+    id: 'career-talk',
+    title: 'キャリア面談',
+    description: '上司から今後の働き方について面談を求められた。あなたはどう答える？',
+    options: [
+      {
+        id: 'aim-promotion',
+        label: '昇進を狙う',
+        description: '評価 +3 / やる気 -12',
+        yaruki: -12,
+        career: 3,
+        resultMessage: '面談で昇進への意欲を伝えた。評価が3上がったが、少し疲れた。',
+      },
+      {
+        id: 'keep-pace',
+        label: '今のペースを守る',
+        description: '評価 +1 / やる気 +8',
+        yaruki: 8,
+        career: 1,
+        resultMessage: '無理をせず今のペースを守ることにした。やる気が8回復し、評価も少し上がった。',
+      },
+    ],
+  },
+  'midpoint-choice': {
+    id: 'midpoint-choice',
+    title: '折り返しの選択',
+    description: '折り返し地点。後半戦のチームでの立ち位置を選ぼう。',
+    options: [
+      {
+        id: 'lead-project',
+        label: 'プロジェクトを牽引する',
+        description: '評価 +4 / やる気 -15',
+        yaruki: -15,
+        career: 4,
+        resultMessage: 'プロジェクトのリーダーを引き受けた。評価が4上がったが、疲労も大きい。',
+      },
+      {
+        id: 'support-team',
+        label: 'チームを支える',
+        description: '評価 +2 / やる気 +5',
+        yaruki: 5,
+        career: 2,
+        resultMessage: '縁の下の力持ちとしてチームを支えた。評価が2上がり、やる気も回復した。',
+      },
+    ],
+  },
+  'evening-choice': {
+    id: 'evening-choice',
+    title: '夕方の選択',
+    description: '退勤前。あなたなら今日の終わり方をどう選ぶ？',
+    options: [
+      {
+        id: 'finish-early',
+        label: '定時で帰る',
+        description: '評価 -1 / やる気 +12',
+        yaruki: 12,
+        career: -1,
+        resultMessage: '思い切って定時で帰った。評価は少し下がったが、心と体はリフレッシュ！',
+      },
+      {
+        id: 'one-more-task',
+        label: 'もう一件こなす',
+        description: '評価 +2 / やる気 -8',
+        yaruki: -8,
+        career: 2,
+        resultMessage: 'もう一件仕事を片付けた。評価が2上がったが、やる気を少し消耗した。',
+      },
+    ],
+  },
+};
 
 // --- Achievements & Endings ---
 
@@ -92,12 +176,15 @@ const ACHIEVEMENTS = {
   'monday-hater': { name: '月曜撲滅委員会', description: '「月曜朝から…」マスに2回以上止まる。' },
   'yaruki-master': { name: 'やる気の支配者', description: 'やる気90以上でゴールする。' },
   'yaruki-zero': { name: '燃え尽き症候群', description: 'やる気がゼロになって1回以上休む。' },
+  'career-master': { name: '評価の達人', description: '社内評価10以上でゴールする。' },
+  'decision-3': { name: '決断の連続', description: '選択イベントを3回経験する。' },
 };
 
 export const ACHIEVEMENT_LIST = ACHIEVEMENTS;
 
 export const ENDINGS = {
     'legendary': { title: '伝説の社員', description: '完璧なパフォーマンスと高いやる気で、会社の歴史に名を刻む伝説の社員となった。' },
+    'executive': { title: '執行役員', description: '高い評価と確かな成果を積み重ね、執行役員として会社の舵を取る立場になった。' },
     'promotion': { title: '昇進昇格', description: '優秀な成績が認められ、管理職への昇進が決定した。' },
     'mentor': { title: '頼れる先輩', description: '後輩からの信頼も厚く、社内の模範となる存在として活躍した。' },
     'specialist': { title: '専門職のエキスパート', description: '専門分野での深い知識と経験を積み、その道のプロフェッショナルとなった。' },
@@ -183,6 +270,9 @@ export const INITIAL_GAME_STATE: GameState = {
   yarukiZeroCount: 0,
   diceBoost: 0,
   slowNextTurn: false,
+  career: 0,
+  pendingDecision: null,
+  decisionHistory: [],
 };
 
 // --- Game Functions ---
@@ -245,9 +335,45 @@ export function consumeItem(currentState: GameState, itemId: string): GameState 
   return next;
 }
 
+export function resolveDecision(currentState: GameState, optionId: string): GameState {
+  const decision = currentState.pendingDecision;
+  if (!decision) return currentState;
+  const option = decision.options.find((item) => item.id === optionId);
+  if (!option) return currentState;
+
+  const next: GameState = {
+    ...currentState,
+    pendingDecision: null,
+    career: Math.max(0, (currentState.career ?? 0) + option.career),
+    yaruki: Math.max(0, Math.min(100, currentState.yaruki + option.yaruki)),
+    gameMessage: option.resultMessage,
+    decisionHistory: [
+      ...(currentState.decisionHistory ?? []),
+      { title: decision.title, choice: option.label },
+    ],
+  };
+
+  if (next.yaruki <= 0) {
+    next.yarukiZeroCount = (next.yarukiZeroCount ?? next.landedOnCounts[-2] ?? 0) + 1;
+    next.landedOnCounts[-2] = (next.landedOnCounts[-2] || 0) + 1;
+    next.isResting += 1;
+    next.gameMessage += '\nやる気がゼロになった...1回休み。';
+    next.yaruki = 10;
+  }
+
+  return next;
+}
+
 function applySquareEffect(state: GameState, square: BoardSquare): GameState {
   let newState = { ...state };
   const effect = square.effect;
+
+  if (effect?.type === 'decision') {
+    newState.pendingDecision = DECISIONS[String(effect.value)] ?? null;
+    newState.gameMessage = square.description;
+    newState.position = Math.max(0, Math.min(newState.position, BOARD_SIZE));
+    return newState;
+  }
 
   // Position 5: job roulette (previously a dead square with effect null)
   if (!effect) {
@@ -599,11 +725,14 @@ export function checkEndGame(state: GameState): GameState {
     const turn = newState.turn;
     const restCount = getRestCount(newState);
     const yarukiZeroCount = getYarukiZeroCount(newState);
+    const career = newState.career ?? 0;
 
     // Order matters: legendary -> job/escape -> good -> average -> bad.
     // Thresholds tuned so each band is reachable (avg clear ~17 turns).
     if (yaruki >= 90 && turn <= 12 && restCount === 0) {
         newState.ending = 'legendary';
+    } else if (career >= 12 && yaruki >= 70 && turn <= 20) {
+        newState.ending = 'executive';
     } else if (yaruki >= 85 && turn <= 14 && restCount <= 1) {
         newState.ending = 'promotion';
     } else if (yaruki >= 80 && turn <= 12) {
@@ -693,6 +822,8 @@ export function checkEndGame(state: GameState): GameState {
     if ((newState.landedOnCounts[1] || 0) >= 2) newlyUnlocked.push('monday-hater');
     if (newState.yaruki >= 90) newlyUnlocked.push('yaruki-master');
     if (yarukiZeroCount >= 1) newlyUnlocked.push('yaruki-zero');
+    if (career >= 10) newlyUnlocked.push('career-master');
+    if ((newState.decisionHistory?.length ?? 0) >= 3) newlyUnlocked.push('decision-3');
 
     newState.newlyUnlockedAchievements = newlyUnlocked;
 
@@ -708,6 +839,10 @@ export function checkEndGame(state: GameState): GameState {
 }
 
 export function takeTurn(currentState: GameState, diceValue?: number): GameState {
+  if (currentState.pendingDecision) {
+    return { ...currentState, gameMessage: '選択イベントを解決してください。' };
+  }
+
   let newState = { ...currentState, turn: currentState.turn + 1 };
 
   if (newState.isResting > 0) {
@@ -829,7 +964,10 @@ export function moveOneStep(currentState: GameState): GameState {
           // AND set ignoreNextEvent to true so the NEXT landing doesn't trigger another event
           // ALSO set wait if it is the GOAL
           // イベントが発生したら（effectがあれば）、メッセージを読ませるためにウェイトを入れる
-          if (currentSquare.effect || currentSquare.type === 'goal') {
+          if (newState.pendingDecision) {
+              // 選択イベントは専用カードで解決するため、自動ウェイトは使わない
+              newState.isEventWait = false;
+          } else if (currentSquare.effect || currentSquare.type === 'goal') {
               newState.isEventWait = true;
               // 移動が発生する場合のみ、次のイベントを無視するフラグを立てる
               if (newState.pendingMoves && newState.pendingMoves !== 0) {

@@ -10,7 +10,7 @@ export interface Item {
 }
 
 // Defines the type of a square on the board
-export type SquareType = 'start' | 'goal' | 'normal' | 'event' | 'item' | 'salary' | 'job-specific';
+export type SquareType = 'start' | 'goal' | 'normal' | 'event' | 'item' | 'salary' | 'job-specific' | 'decision';
 
 // Defines a single square on the game board
 export interface BoardSquare {
@@ -19,10 +19,26 @@ export interface BoardSquare {
   title: string;
   description: string;
   effect: {
-    type: 'move' | 'rest' | 'yaruki' | 'item' | 'job-specific';
+    type: 'move' | 'rest' | 'yaruki' | 'item' | 'job-specific' | 'decision';
     value: number | string;
   } | null;
   icon?: string;
+}
+
+export interface GameDecisionOption {
+  id: string;
+  label: string;
+  description: string;
+  yaruki: number;
+  career: number;
+  resultMessage: string;
+}
+
+export interface GameDecision {
+  id: string;
+  title: string;
+  description: string;
+  options: GameDecisionOption[];
 }
 
 // Defines the overall state of the game
@@ -49,6 +65,9 @@ export interface GameState {
   yarukiZeroCount?: number; // Times yaruki hit zero
   diceBoost?: number; // Bonus added to next dice roll (from energy drink)
   slowNextTurn?: boolean; // Next turn forced to 1 move (from nomikai)
+  career?: number; // 社内評価ポイント（選択イベントで変動）
+  pendingDecision?: GameDecision | null; // 選択待ちのイベント
+  decisionHistory?: { title: string; choice: string }[]; // 選択の記録
 }
 
 // Defines the initial form state before the game starts

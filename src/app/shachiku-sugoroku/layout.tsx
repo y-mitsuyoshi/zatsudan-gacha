@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 
-const pageTitle = '社畜すごろくNEO | あるある満載の社畜ランク診断ゲーム';
-const pageDescription = '「退勤直前の"ちょっといい？"」など社会人の"あるある"が満載の爆笑すごろくゲーム。職業を選んでアイテムを駆使し、あなたの社畜ランクを診断しよう！実績コレクション機能も。完全無料で今すぐプレイ。';
+const pageTitle = '社畜すごろくNEO | 選択で変わるキャリアボードゲーム';
+const pageDescription = 'サイコロで進む60マスのキャリアすごろく。10種の職業、選択イベント、評価ポイント、アイテム、実績を搭載。あなたの選択で結末が変わる無料ブラウザボードゲーム。';
 
 export const metadata: Metadata = {
   title: pageTitle,
   description: pageDescription,
+  keywords: ['社畜すごろく', 'すごろく', 'ボードゲーム', 'キャリア診断', 'ブラウザゲーム', '無料ゲーム', '仕事 ゲーム', '選択ゲーム'],
   metadataBase: new URL('https://zatsudan-gacha.app'),
   alternates: {
     canonical: '/shachiku-sugoroku',
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     siteName: '雑談テーマガチャ',
     images: [
       {
-        url: '/shachiku-sugoroku-ogp.png', // New OGP image for this page
+        url: '/shachiku-sugoroku-ogp.png',
         width: 1200,
         height: 630,
         alt: '社畜すごろくNEO - 雑談テーマガチャ',

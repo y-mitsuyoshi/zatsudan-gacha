@@ -8,38 +8,39 @@ interface DiceComponentProps {
   onRollComplete?: () => void;
 }
 
-export const DiceComponent: React.FC<DiceComponentProps> = ({ 
-  isRolling, 
-  finalValue, 
-  onRollComplete 
+export const DiceComponent: React.FC<DiceComponentProps> = ({
+  isRolling,
+  finalValue,
+  onRollComplete,
 }) => {
-  const [currentValue, setCurrentValue] = useState(1);
+  const [currentValue, setCurrentValue] = useState(finalValue || 1);
   const [showFinal, setShowFinal] = useState(false);
-  // onRollCompleteの参照変化でアニメ用タイマーがリセットされるのを防ぐ
   const callbackRef = React.useRef(onRollComplete);
   callbackRef.current = onRollComplete;
   const finalRef = React.useRef(finalValue);
   finalRef.current = finalValue;
 
   useEffect(() => {
-    if (isRolling) {
-      setShowFinal(false);
-      const interval = setInterval(() => {
-        setCurrentValue(Math.floor(Math.random() * 6) + 1);
-      }, 80); // Faster rotation
-
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        setCurrentValue(finalRef.current);
-        setShowFinal(true);
-        callbackRef.current?.();
-      }, 800);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
+    if (!isRolling) {
+      return;
     }
+
+    setShowFinal(false);
+    const interval = setInterval(() => {
+      setCurrentValue(Math.floor(Math.random() * 6) + 1);
+    }, 80);
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      setCurrentValue(finalRef.current);
+      setShowFinal(true);
+      callbackRef.current?.();
+    }, 800);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, [isRolling]);
 
   const getDotPositions = (value: number) => {
@@ -49,52 +50,56 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
       3: ['top-left', 'center', 'bottom-right'],
       4: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
       5: ['top-left', 'top-right', 'center', 'bottom-left', 'bottom-right'],
-      6: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right']
+      6: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right'],
     };
     return positions[value as keyof typeof positions] || [];
   };
 
   const getDotClassName = (position: string) => {
-    const base = "absolute w-4 h-4 bg-gray-800 rounded-full shadow-inner";
+    const base = 'absolute h-3.5 w-3.5 rounded-full bg-stone-800 shadow-inner';
     const positions = {
-      'top-left': 'top-3 left-3',
-      'top-right': 'top-3 right-3',
-      'middle-left': 'top-1/2 left-3 -translate-y-1/2',
-      'middle-right': 'top-1/2 right-3 -translate-y-1/2',
+      'top-left': 'left-3 top-3',
+      'top-right': 'right-3 top-3',
+      'middle-left': 'left-3 top-1/2 -translate-y-1/2',
+      'middle-right': 'right-3 top-1/2 -translate-y-1/2',
       'bottom-left': 'bottom-3 left-3',
       'bottom-right': 'bottom-3 right-3',
-      'center': 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+      center: 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
     };
     return `${base} ${positions[position as keyof typeof positions]}`;
   };
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative perspective-1000">
-        <div 
-          className={`
-            relative w-24 h-24 bg-white rounded-2xl border-4 border-gray-200 shadow-xl
-            ${isRolling ? 'animate-[spin_0.5s_linear_infinite]' : showFinal ? 'animate-bounce' : ''}
-            transition-all duration-300 transform
-          `}
-          style={{
-            background: 'linear-gradient(145deg, #ffffff, #f0f0f0)',
-            boxShadow: '5px 5px 10px #d1d1d1, -5px -5px 10px #ffffff'
-          }}
+      <div className="relative">
+        {isRolling && <div className="absolute inset-0 -z-10 scale-125 rounded-full bg-amber-400/30 blur-xl" aria-hidden="true" />}
+        <div
+          role="img"
+          aria-label={`サイコロの目: ${currentValue}`}
+          className={`relative flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-[#e5d7bb] bg-gradient-to-br from-white to-[#f5eee0] shadow-[5px_5px_12px_rgba(82,61,30,0.2),-5px_-5px_10px_rgba(255,255,255,0.8)] transition-transform duration-300 ${
+            isRolling ? 'animate-[spin_0.5s_linear_infinite]' : showFinal ? 'animate-[bounce_0.4s_ease-out_1]' : ''
+          }`}
         >
           {getDotPositions(currentValue).map((position, index) => (
             <div key={index} className={getDotClassName(position)} />
           ))}
+          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-stone-800 px-2 py-0.5 text-[9px] font-black tracking-widest text-amber-200">
+            DICE
+          </span>
         </div>
       </div>
-      
-      {!isRolling && showFinal && (
-        <div className="mt-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600">
-            {finalValue}！
-          </div>
-        </div>
-      )}
+
+      <div className="mt-3 min-h-6 text-center" aria-live="polite">
+        {isRolling ? (
+          <span className="text-xs font-black text-amber-700 dark:text-amber-300">コロコロ…</span>
+        ) : showFinal ? (
+          <span className="text-sm font-black text-amber-700 dark:text-amber-300">
+            出目 <span className="text-xl text-[#3b2f1e] dark:text-amber-50">{currentValue}</span>
+          </span>
+        ) : (
+          <span className="text-[11px] font-bold text-[#9a8464] dark:text-stone-400">サイコロを振ろう</span>
+        )}
+      </div>
     </div>
   );
 };
