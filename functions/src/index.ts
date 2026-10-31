@@ -58,6 +58,18 @@ const MAX_DETAILS_LENGTH = 500;
 const MAX_BODY_BYTES = 10_000;
 const AI_TIMEOUT_MS = 25_000;
 
+const ALLOWED_TONES = new Set([
+  "真面目・ビジネス用",
+  "ユーモア・社畜風",
+  "異世界転生風",
+  "マッチョ風",
+  "ツンデレ風",
+  "文豪風",
+  "猫風",
+  "ラップ風",
+  "ギャル風"
+]);
+
 function hashForLog(value: string): string {
   return createHash("sha256").update(value).digest("hex").slice(0, 12);
 }
@@ -408,6 +420,12 @@ export const excuseGenerator = onRequest(
             response.status(400).json({
               error: "Input length exceeds allowed limits"
             });
+            resolve();
+            return;
+          }
+
+          if (!ALLOWED_TONES.has(tone)) {
+            response.status(400).json({error: "Invalid tone"});
             resolve();
             return;
           }
