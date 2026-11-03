@@ -58,11 +58,23 @@ function runTests() {
     assert.ok(sq.title.length > 0, `Square ${i} must have title`);
     assert.ok(sq.short.length > 0 && sq.short.length <= 8, `Square ${i} must have short label`);
     assert.ok(sq.districtId >= 1 && sq.districtId <= 5, `Square ${i} must belong to district 1..5`);
-    assert.ok(sq.x >= 0 && sq.x <= 100, `Square ${i} x coordinate must be within 0..100`);
-    assert.ok(sq.y >= 0 && sq.y <= 100, `Square ${i} y coordinate must be within 0..100`);
+    assert.ok(sq.x >= 8.5 && sq.x <= 91.5, `Square ${i} x coordinate (${sq.x}) must have safe edge margin (8.5..91.5)`);
+    assert.ok(sq.y >= 14.5 && sq.y <= 87.5, `Square ${i} y coordinate (${sq.y}) must have safe vertical margin (14.5..87.5)`);
     assert.ok(!emojiRegex.test(sq.title), `Square ${i} title should not contain emoji`);
     assert.ok(!emojiRegex.test(sq.short), `Square ${i} short should not contain emoji`);
     assert.ok(!emojiRegex.test(sq.description), `Square ${i} description should not contain emoji`);
+  }
+  // 同一地区内の隣接マス同士が十分な水平距離（>=11.5%）を保ち重ならないことを検証
+  for (let i = 1; i <= BOARD_SIZE; i++) {
+    const prev = GAME_BOARD[i - 1];
+    const curr = GAME_BOARD[i];
+    if (prev.districtId === curr.districtId) {
+      const dx = Math.abs(curr.x - prev.x);
+      assert.ok(
+        dx >= 11.5,
+        `Adjacent squares #${prev.position} and #${curr.position} in district ${curr.districtId} are too close horizontally (${dx.toFixed(1)}%)`,
+      );
+    }
   }
   assert.equal(FLOORS.length, 5, 'Should have 5 scenic diorama districts');
   assert.equal(RANKS.length, 7, 'Should have 7 career ranks (新入社員〜社長)');

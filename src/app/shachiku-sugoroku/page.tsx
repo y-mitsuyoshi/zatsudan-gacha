@@ -36,7 +36,7 @@ export default function ShachikuSugorokuPage() {
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto max-w-7xl">
+      <div className="relative mx-auto max-w-[1440px]">
         <header className="mb-5 overflow-hidden rounded-2xl border-2 border-[#3b3022] bg-[#f4ece0] shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
           <div className="flex flex-col gap-4 bg-[#12100d] p-4 text-[#fffaf0] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
             <div className="flex items-center gap-3.5">

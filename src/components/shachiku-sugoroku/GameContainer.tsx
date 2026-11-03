@@ -49,6 +49,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
   const [pendingRolls, setPendingRolls] = useState<number[]>([1]);
   const [isMoving, setIsMoving] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isWideBoard, setIsWideBoard] = useState(false);
   const [statPops, setStatPops] = useState<StatDeltaPop[]>([]);
   const [shakeHud, setShakeHud] = useState(false);
   const [paydayBanner, setPaydayBanner] = useState<PaydayEvent | null>(null);
@@ -497,10 +498,14 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* 左カラム：2.5D ジオラマ・ライフロード盤面 */}
-        <section className="order-1 lg:col-span-8" aria-label="社畜ライフロード盤面">
+        {/* 左カラム：2.5D ジオラマ・ライフロード盤面（標準8カラム / ワイド12カラム切替対応） */}
+        <section
+          className={`order-1 ${isWideBoard ? 'lg:col-span-12' : 'lg:col-span-8'}`}
+          aria-label="社畜ライフロード盤面"
+        >
           <GameBoard
             position={gameState.position}
+            playerPosition={gameState.position}
             playerName={gameState.playerName}
             job={gameState.job}
             isMoving={isMoving}
@@ -510,13 +515,34 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             slowNextTurn={gameState.slowNextTurn ?? false}
             rankIndex={gameState.rank ?? 0}
             career={career}
+            gatesPassed={gameState.gatesPassed}
+            paydaysPassed={gameState.paydaysPassed}
             assetsCount={assets.length}
             selectedRoute={gameState.selectedRoute}
+            isWideBoard={isWideBoard}
+            onToggleWideBoard={() => {
+              audioManager.playSe('click');
+              setIsWideBoard((prev) => !prev);
+            }}
+            onQuickSpin={handleTakeTurn}
+            onChangeStance={(nextStance) => {
+              audioManager.playSe('click');
+              setStance(nextStance);
+            }}
+            isBusy={isBusy || gameState.isFinished}
+            isResting={gameState.isResting ?? 0}
           />
         </section>
 
         {/* 右カラム：キャリア・ルーレット＆資産ポートフォリオ指令室 */}
-        <aside className="order-2 space-y-4 lg:col-span-4" aria-label="社員ステータスとルーレット操作">
+        <aside
+          className={`order-2 ${
+            isWideBoard
+              ? 'space-y-4 lg:col-span-12 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0'
+              : 'space-y-4 lg:col-span-4'
+          }`}
+          aria-label="社員ステータスとルーレット操作"
+        >
           {/* キャリア・ルーレット＆働き方スタンス指令パネル */}
           <section className="overflow-hidden rounded-xl border-2 border-[#3b3022] bg-[#f4ece0] shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
             <div className="border-b-2 border-[#3b3022] bg-[#12100d] px-4 py-2.5 text-[#fffaf0]">
