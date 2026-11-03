@@ -16,8 +16,11 @@ import {
   advanceOneYear,
   resolveMortgageDecision,
   executePrepayment,
+  executePropertySpecificAction,
   executeRefinance,
   executeSellProperty,
+  setFocusMode,
+  analyzeOutcomeFactors,
 } from '../src/lib/mortgage-logic';
 import { MortgageSetupConfig } from '../src/types/mortgage';
 
@@ -170,9 +173,30 @@ assert.equal(
 const afterRefi = executeRefinance(actionGame, 'to-fixed');
 assert.equal(afterRefi.currentRateType, 'flat-35', 'Refinance action must switch rate type to flat-35 fixed');
 
+const afterFocus = setFocusMode(actionGame, 'frugal-prepay');
+assert.equal(afterFocus.focusMode, 'frugal-prepay', 'Focus mode must update cleanly');
+assert.ok((actionGame.companions ?? []).length === 4, 'Must track 4 parallel companion households');
+
+// Verify Mansion vs Detached House specific actions
+const afterMansionReform = executePropertySpecificAction(actionGame, 'mansion-board-reform');
+assert.ok(
+  afterMansionReform.currentMgmtAndRepairMonthlyMan < actionGame.currentMgmtAndRepairMonthlyMan,
+  'Mansion board reform must reduce monthly maintenance fee'
+);
+const detachedGame = createMortgageGame({
+  ...baseSetup,
+  propertyId: 'detached-custom-new',
+});
+const afterDetachedSolar = executePropertySpecificAction(detachedGame, 'detached-solar-battery');
+assert.ok(
+  afterDetachedSolar.propertyValueMan > detachedGame.propertyValueMan,
+  'Detached solar+battery action must increase home equity value'
+);
+
 const afterSale = executeSellProperty(actionGame);
 assert.ok(afterSale.status !== 'playing', 'Selling property must conclude the simulation with a settlement');
 assert.ok(afterSale.ending !== null, 'Selling property must produce an ending summary');
+assert.ok(analyzeOutcomeFactors(afterSale).length >= 2, 'Outcome factor analysis must return key reasons');
 
 // 7. Run 50 Full-Lifecycle Simulations across Random Gacha Setups & Macro Regimes
 let completedSimulations = 0;
@@ -202,6 +226,7 @@ console.log(`Completed ${completedSimulations} full-lifecycle simulations. Endin
 const filesToCheck = [
   'src/types/mortgage.ts',
   'src/lib/mortgage-logic.ts',
+  'src/components/mortgage/MortgageVisuals.tsx',
   'src/components/mortgage/MortgageGame.tsx',
   'src/app/mortgage-life/page.tsx',
 ];

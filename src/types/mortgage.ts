@@ -200,6 +200,34 @@ export interface MortgageDecisionEvent {
 
 export type EndingRank = 'S' | 'A' | 'B' | 'C' | 'D' | 'BANKRUPT';
 
+export type FocusModeId =
+  | 'balanced'
+  | 'frugal-prepay'
+  | 'nisa-invest'
+  | 'career-sidejob'
+  | 'family-health';
+
+export interface CompanionHousehold {
+  id: string;
+  familyName: string;
+  label: string;
+  propertyShort: string;
+  loanSetupLabel: string;
+  age: number;
+  remainingBalanceMan: number;
+  liquidSavingsMan: number;
+  netEquityMan: number;
+  status: 'playing' | 'paid-off' | 'sold' | 'bankrupt';
+  statusText: string;
+}
+
+export interface OutcomeFactor {
+  type: 'positive' | 'negative' | 'info';
+  title: string;
+  detail: string;
+  impactLabel: string;
+}
+
 export interface MortgageEnding {
   id: string;
   rank: EndingRank;
@@ -233,6 +261,9 @@ export interface MortgageGameState {
   subIncomeMan: number;
   currentMgmtAndRepairMonthlyMan: number;
   mentalScore: number;
+  healthScore?: number; // 心身の健康度 (0..100)
+  focusMode?: FocusModeId; // 今年の重点方針
+  companions?: CompanionHousehold[]; // 同じ日に鍵を受け取った4世帯
   arrearsMonths: number; // 延滞月数 (6ヶ月到達で代位弁済・競売破産)
   rescheduleYearsLeft: number; // リスケ(元金返済猶予)残り年数
   danshinTriggered: boolean;

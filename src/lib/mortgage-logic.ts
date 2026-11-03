@@ -2,11 +2,13 @@ import {
   BankId,
   BankSpec,
   ChronicleEntry,
+  CompanionHousehold,
   ContractType,
   DanshinSpec,
   DanshinType,
   EmploymentType,
   FamilyPlanType,
+  FocusModeId,
   HouseholdArchetype,
   LoanTermYears,
   MacroRegimeId,
@@ -14,6 +16,7 @@ import {
   MortgageEnding,
   MortgageGameState,
   MortgageSetupConfig,
+  OutcomeFactor,
   PropertyCategory,
   PropertySpec,
   RateType,
@@ -21,6 +24,94 @@ import {
   UnderwritingResult,
   YearlySnapshot,
 } from '@/types/mortgage';
+
+export const FOCUS_MODES: Record<
+  FocusModeId,
+  { id: FocusModeId; label: string; effectHint: string }
+> = {
+  balanced: {
+    id: 'balanced',
+    label: '標準バランス',
+    effectHint: '生活と貯蓄のバランスを保ちながら無理なく返済します。',
+  },
+  'frugal-prepay': {
+    id: 'frugal-prepay',
+    label: '徹底節約・貯蓄優先',
+    effectHint: '外食・娯楽を控え、年間支出を約35万円圧縮して手元資金を厚くします（幸福度 -1/年）。',
+  },
+  'nisa-invest': {
+    id: 'nisa-invest',
+    label: '新NISA・積極運用',
+    effectHint: '余剰資金をインデックス投資へ回し、運用利回りを高めます（好景気で+5%、不況時は変動あり）。',
+  },
+  'career-sidejob': {
+    id: 'career-sidejob',
+    label: '本業昇給・副業集中',
+    effectHint: 'スキルアップと副業に注力し、年間手取り収入を+25〜40万円底上げします（健康 -1/年）。',
+  },
+  'family-health': {
+    id: 'family-health',
+    label: '家族と健康を最優先',
+    effectHint: '人間ドックや家族の時間を大切にし、心身の健康と家族の幸福度を毎年回復します（年20万円）。',
+  },
+};
+
+function createInitialCompanions(): CompanionHousehold[] {
+  return [
+    {
+      id: 'comp-tower',
+      familyName: '佐藤家（32歳・共働き）',
+      label: '都心タワマン 8,480万',
+      propertyShort: '湾岸タワマン38階',
+      loanSetupLabel: 'ネット銀変動0.38%・ペア35年',
+      age: 32,
+      remainingBalanceMan: 7600,
+      liquidSavingsMan: 480,
+      netEquityMan: 520,
+      status: 'playing',
+      statusText: 'Wローン控除で順調スタート',
+    },
+    {
+      id: 'comp-detached',
+      familyName: '鈴木家（34歳・会社員）',
+      label: '注文戸建て 5,680万',
+      propertyShort: '都市近郊・太陽光ZEH戸建',
+      loanSetupLabel: 'フラット35S固定・単独35年',
+      age: 34,
+      remainingBalanceMan: 4980,
+      liquidSavingsMan: 420,
+      netEquityMan: 680,
+      status: 'playing',
+      statusText: '全期間固定で金利上昇リスク0',
+    },
+    {
+      id: 'comp-50yr',
+      familyName: '高橋家（28歳・若手世帯）',
+      label: '新築建売 4,180万',
+      propertyShort: '郊外ニュータウン4LDK',
+      loanSetupLabel: '地銀50年ローン変動・合算',
+      age: 28,
+      remainingBalanceMan: 4050,
+      liquidSavingsMan: 240,
+      netEquityMan: 80,
+      status: 'playing',
+      statusText: '50年ローンで月返済を抑え中',
+    },
+    {
+      id: 'comp-used',
+      familyName: '田中家（37歳・堅実派）',
+      label: '築20年中古マンション 3,880万',
+      propertyShort: '準都心リノベ済3LDK',
+      loanSetupLabel: 'メガバンク変動・単独35年',
+      age: 37,
+      remainingBalanceMan: 3280,
+      liquidSavingsMan: 640,
+      netEquityMan: 980,
+      status: 'playing',
+      statusText: '借入を抑え手元資金に余裕',
+    },
+  ];
+}
 
 export const ARCHETYPES: HouseholdArchetype[] = [
   {
@@ -997,6 +1088,9 @@ export function createMortgageGame(config: MortgageSetupConfig): MortgageGameSta
       property.initialRepairFeeMonthlyMan +
       property.parkingMonthlyMan,
     mentalScore: 82,
+    healthScore: 86,
+    focusMode: 'balanced',
+    companions: createInitialCompanions(),
     arrearsMonths: 0,
     rescheduleYearsLeft: 0,
     danshinTriggered: false,
@@ -1582,25 +1676,118 @@ export function advanceOneYear(
     );
   }
 
+  // 今年の重点方針（focusMode）による家計・メンタル・健康補正
+  const focus = state.focusMode ?? 'balanced';
+  let focusCashBonusMan = 0;
+  let focusInvestBonusRate = 0.025;
+  if (focus === 'frugal-prepay') {
+    focusCashBonusMan = 35;
+    state.mentalScore = Math.max(15, state.mentalScore - 1);
+  } else if (focus === 'nisa-invest') {
+    focusInvestBonusRate = state.config.macroRegime === 'deflation-return' ? -0.01 : 0.048;
+  } else if (focus === 'career-sidejob') {
+    focusCashBonusMan = 32;
+    state.healthScore = Math.max(20, (state.healthScore ?? 85) - 1);
+  } else if (focus === 'family-health') {
+    focusCashBonusMan = -20;
+    state.mentalScore = Math.min(100, state.mentalScore + 3);
+    state.healthScore = Math.min(100, (state.healthScore ?? 85) + 2);
+  } else {
+    state.healthScore = Math.max(25, (state.healthScore ?? 85) - (age >= 50 ? 1 : 0));
+  }
+
   const annualCashFlowMan =
     Math.round(
       (netHouseholdIncomeMan +
-        annualTaxCreditMan -
+        annualTaxCreditMan +
+        focusCashBonusMan -
         annualLoanPaymentMan -
         annualRunningCostMan -
         annualLivingAndEduCostMan) *
         10,
     ) / 10;
 
-  // 手元金融資産の運用利回り（黒字貯蓄分の一部を新NISA年3%で運用）
+  // 手元金融資産の運用利回り（黒字貯蓄分の一部を新NISA等で運用）
   const investmentReturnMan =
-    state.liquidSavingsMan > 300 ? Math.round((state.liquidSavingsMan - 200) * 0.025) : 0;
+    state.liquidSavingsMan > 300 ? Math.round((state.liquidSavingsMan - 200) * focusInvestBonusRate) : 0;
 
   state.liquidSavingsMan = Math.round((state.liquidSavingsMan + annualCashFlowMan + investmentReturnMan) * 10) / 10;
   state.totalPrincipalPaidMan = Math.round((state.totalPrincipalPaidMan + annualPrincipalPaidMan) * 10) / 10;
   state.totalInterestPaidMan = Math.round((state.totalInterestPaidMan + annualInterestPaidMan) * 10) / 10;
   state.totalRunningCostPaidMan = Math.round((state.totalRunningCostPaidMan + annualRunningCostMan) * 10) / 10;
   state.totalTaxCreditReceivedMan = Math.round((state.totalTaxCreditReceivedMan + annualTaxCreditMan) * 10) / 10;
+
+  // 同じ日に鍵を受け取った4世帯（Companions）の年次進行更新
+  if (state.companions) {
+    state.companions = state.companions.map((comp) => {
+      if (comp.status !== 'playing') {
+        return { ...comp, age: comp.age + 1 };
+      }
+      const nextAge = comp.age + 1;
+      const isVar = comp.id !== 'comp-detached';
+      const rateSpikePenalty = isVar ? Math.max(0, (state.bojPolicyRate - 0.25) * 38) : 0;
+      const principalStep =
+        comp.id === 'comp-50yr' ? 58 : comp.id === 'comp-tower' ? 195 : comp.id === 'comp-detached' ? 140 : 110;
+      const nextRem = Math.max(0, comp.remainingBalanceMan - principalStep);
+      const baseSavingDelta =
+        comp.id === 'comp-tower'
+          ? 75 - rateSpikePenalty * 1.4 - (y >= 12 ? 36 : 0)
+          : comp.id === 'comp-detached'
+            ? 45 - (y === 13 ? 165 : 0)
+            : comp.id === 'comp-50yr'
+              ? 28 - rateSpikePenalty * 0.9 - (nextAge >= 60 ? 110 : 0)
+              : 55 - rateSpikePenalty * 0.6;
+      const nextSav = Math.round(comp.liquidSavingsMan + baseSavingDelta);
+      const nextEq = Math.round(comp.netEquityMan + principalStep * 0.65 + baseSavingDelta);
+      if (nextRem <= 0) {
+        return {
+          ...comp,
+          age: nextAge,
+          remainingBalanceMan: 0,
+          liquidSavingsMan: Math.max(100, nextSav),
+          netEquityMan: nextEq,
+          status: 'paid-off',
+          statusText: `${nextAge}歳で完済達成！`,
+        };
+      }
+      if (nextSav < -180) {
+        if (comp.id === 'comp-tower' && state.config.macroRegime !== 'deflation-return') {
+          return {
+            ...comp,
+            age: nextAge,
+            remainingBalanceMan: 0,
+            liquidSavingsMan: 680,
+            netEquityMan: 680,
+            status: 'sold',
+            statusText: `${nextAge}歳で自宅を売却し住み替え`,
+          };
+        }
+        return {
+          ...comp,
+          age: nextAge,
+          remainingBalanceMan: nextRem,
+          liquidSavingsMan: nextSav,
+          netEquityMan: nextEq,
+          status: 'bankrupt',
+          statusText: `${nextAge}歳で返済不能・任意売却`,
+        };
+      }
+      const statusText =
+        baseSavingDelta < -30
+          ? '利上げ・維持費増で貯蓄取り崩し中'
+          : nextRem < 1500
+            ? '完済まであと少し！'
+            : '順調に毎月返済を継続中';
+      return {
+        ...comp,
+        age: nextAge,
+        remainingBalanceMan: nextRem,
+        liquidSavingsMan: nextSav,
+        netEquityMan: nextEq,
+        statusText,
+      };
+    });
+  }
 
   const isOverLoan = state.remainingBalanceMan + state.unpaidInterestMan > state.propertyValueMan;
   const netEquityMan = Math.round(
@@ -1681,6 +1868,113 @@ export function advanceOneYear(
   }
 
   // === 8. 人生とローンの重大決断イベント発火判定（タイムライン自動一時停止） ===
+  // (A0-1) マンション・タワマン7年目：管理組合総会（機械式駐車場＆管理会社見直し）
+  if (
+    property.buildingType !== 'detached' &&
+    y === 7 &&
+    !state.triggeredEventIds.includes('mansion-mgmt-parking-7')
+  ) {
+    state.triggeredEventIds.push('mansion-mgmt-parking-7');
+    state.pendingDecision = {
+      id: 'mansion-mgmt-parking-7',
+      yearIndex: y,
+      age,
+      category: 'repair-crisis',
+      title:
+        property.buildingType === 'tower'
+          ? '【タワマン管理組合総会】コンシェルジュ・機械式駐車場の維持費見直し議案'
+          : '【マンション管理組合総会】機械式駐車場の空き増加と管理会社見直し議案',
+      description:
+        'マンション特有の課題が浮上！共用設備や機械式駐車場のメンテナンス費が膨らむなか、理事会で「管理会社との契約見直し」「過剰サービスの削減」「マイカー駐車場契約の継続是非」が議論されている。',
+      statisticalContext:
+        '分譲マンションでは管理委託費の適正化や機械式駐車場の撤去・平面化によって、将来の管理費・修繕積立金の高騰を月5,000〜15,000円抑えられる事例が増えている。',
+      choices: [
+        {
+          id: 'lead-board-reform',
+          label: '理事に立候補し、管理委託費の相見積もりと共用部LED・省エネ化を断行する',
+          subLabel: '毎月の管理修繕費 -0.5万円/月（年6万円削減）・マンション資産価値 +80万円',
+          outcomeSummary:
+            '休日の時間を割いて理事長として交渉をまとめ上げ、サービス品質を維持したまま管理委託費の削減に成功！毎月の固定費が月5,000円軽くなった。',
+          repairCostMonthlyDeltaMan: -0.5,
+          buildingValueBonusMan: 80,
+          mentalDelta: -2,
+        },
+        {
+          id: 'release-car-parking',
+          label: 'マイカーを手放してマンション駐車場を解約し、カーシェアへ移行する',
+          subLabel: '車両売却 +90万円 / 毎月の駐車場・維持費 -1.6万円/月（年19.2万円削減）',
+          outcomeSummary:
+            '駅近マンションの利便性を活かしてマイカーを売却し、駐車場契約を解約！売却益90万円を得て、さらに毎月の固定費が1.6万円大幅に軽くなった！',
+          cashDeltaMan: 90,
+          repairCostMonthlyDeltaMan: -1.6,
+          mentalDelta: 2,
+        },
+        {
+          id: 'keep-luxury-service',
+          label: '現状のフルサービス・駐車場契約を維持し、管理費の値上げ（+0.4万/月）を受け入れる',
+          subLabel: '毎月の管理費 +0.4万円/月 / 暮らしの快適さと満足度 +6',
+          outcomeSummary:
+            '共用サービスとマイカー生活をそのまま維持。毎月の管理費は少し上がったが、家族の満足度は高く保たれた。',
+          repairCostMonthlyDeltaMan: 0.4,
+          mentalDelta: 6,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (A0-2) 一戸建て7年目：屋根太陽光パネル＋蓄電池・断熱窓リノベの選択
+  if (
+    property.buildingType === 'detached' &&
+    y === 7 &&
+    !state.triggeredEventIds.includes('detached-solar-ev-7')
+  ) {
+    state.triggeredEventIds.push('detached-solar-ev-7');
+    state.pendingDecision = {
+      id: 'detached-solar-ev-7',
+      yearIndex: y,
+      age,
+      category: 'repair-crisis',
+      title: '【一戸建ての特権】電気代・ガス代高騰に対する「太陽光発電＋蓄電池・内窓断熱」導入判断',
+      description:
+        '管理組合の許可がいらない一戸建てならではの選択肢！エネルギー価格の上昇が続くなか、自治体の補助金を使って屋根への太陽光パネル＋蓄電池、または高断熱内窓リフォームを導入するかどうかの提案が届いた。',
+      statisticalContext:
+        '一戸建てはマンションに比べ面積あたりの光熱費が高くなりやすい一方、自家消費型太陽光＋断熱改修で年間15〜22万円の光熱費削減が可能。',
+      choices: [
+        {
+          id: 'install-full-solar-battery',
+          label: '補助金を活用し、太陽光パネル＋定置型蓄電池を導入する（自己負担 135万円）',
+          subLabel: '手元資金 -135万円 / 毎月の光熱費・売電収支が月1.4万円（年16.8万円）恒久改善＋建物価値+110万',
+          outcomeSummary:
+            '屋根に太陽光パネルと蓄電池を設置！日中の電気代がほぼゼロになり、災害時の停電対策と年間約17万円のキャッシュフロー改善を同時に手に入れた！',
+          cashDeltaMan: -135,
+          repairCostMonthlyDeltaMan: -1.4,
+          buildingValueBonusMan: 110,
+          mentalDelta: 6,
+        },
+        {
+          id: 'inner-window-insulation',
+          label: 'コスパ重視で全室「高断熱内窓（二重窓）」リフォームのみ実施する（48万円）',
+          subLabel: '手元資金 -48万円 / 冷暖房費が月0.6万円（年7.2万円）削減・健康＆快適性アップ',
+          outcomeSummary:
+            '先進的窓リノベ補助金を活用して48万円で内窓を設置！冬の底冷えと結露が消え、冷暖房費も年間約7万円浮くようになった。',
+          cashDeltaMan: -48,
+          repairCostMonthlyDeltaMan: -0.6,
+          mentalDelta: 5,
+        },
+        {
+          id: 'skip-energy-upgrade',
+          label: '初期費用をかけず、今のまま手元キャッシュを温存する',
+          subLabel: '初期出費 0円 / 今後のエネルギー価格上昇で光熱費が月+0.3万円増加',
+          outcomeSummary:
+            'まとまった出費を見送り手元資金を温存した。ただし電気・ガス代の値上がりにより毎月の光熱費負担がじわじわ増えている。',
+          repairCostMonthlyDeltaMan: 0.3,
+        },
+      ],
+    };
+    return state;
+  }
+
   // (A) 戸建て13年目：外壁塗装・屋根防水・給湯器交換の大規模修繕イベント
   if (
     property.buildingType === 'detached' &&
@@ -2180,4 +2474,223 @@ export function executeSellProperty(currentState: MortgageGameState): MortgageGa
   updatedState.ending = res.ending;
   updatedState.score = res.score;
   return updatedState;
+}
+
+/**
+ * 今年の重点方針（ライフスタイルモード）を切り替える
+ */
+export function setFocusMode(
+  currentState: MortgageGameState,
+  mode: FocusModeId,
+): MortgageGameState {
+  return {
+    ...currentState,
+    focusMode: mode,
+  };
+}
+
+/**
+ * 結末の勝因・敗因をわかりやすく3〜4項目で自動診断する
+ */
+export function analyzeOutcomeFactors(state: MortgageGameState): OutcomeFactor[] {
+  const factors: OutcomeFactor[] = [];
+  const property = PROPERTIES[state.config.propertyId];
+  const bank = BANKS[state.config.bankId];
+
+  // 1. 金利・利息負担の分析
+  const interestRatio =
+    state.underwriting.loanPrincipalMan > 0
+      ? Math.round((state.totalInterestPaidMan / state.underwriting.loanPrincipalMan) * 100)
+      : 0;
+  if (state.unpaidInterestMan > 50 || interestRatio >= 35) {
+    factors.push({
+      type: 'negative',
+      title: `金利上昇による利息膨張（借入元本の約${interestRatio}%相当を利息で支払）`,
+      detail: `日銀の利上げ局面で適用金利が最大${Math.max(...state.history.map((h) => h.appliedInterestRate), state.appliedInterestRate).toFixed(2)}%まで上昇し、累計${Math.round(state.totalInterestPaidMan).toLocaleString()}万円の利息負担が発生しました。`,
+      impactLabel: `総利息 -${Math.round(state.totalInterestPaidMan).toLocaleString()}万円`,
+    });
+  } else {
+    factors.push({
+      type: 'positive',
+      title: `金利リスクの抑制（累計支払利息 ${Math.round(state.totalInterestPaidMan).toLocaleString()}万円）`,
+      detail: `${bank.shortName}・${state.config.repaymentMethod === 'equal-principal' ? '元金均等返済' : '元利均等返済'}の選択と計画的な元金圧縮により、利息負担を元本の約${interestRatio}%に抑え込みました。`,
+      impactLabel: `利息比率 ${interestRatio}%`,
+    });
+  }
+
+  // 2. 住宅ローン控除・繰上返済の分析
+  if (state.totalPrepaymentMan >= 200) {
+    factors.push({
+      type: 'positive',
+      title: `機動的な一部繰上返済（累計 ${Math.round(state.totalPrepaymentMan).toLocaleString()}万円を実行）`,
+      detail: '余剰資金を元金の直接削減に充てたことで、後半の複利ダメージと返済期間を大幅に短縮できました。',
+      impactLabel: `繰上返済 ${Math.round(state.totalPrepaymentMan).toLocaleString()}万円`,
+    });
+  } else if (state.totalTaxCreditReceivedMan >= 150) {
+    factors.push({
+      type: 'positive',
+      title: `住宅ローン控除（減税還付）のフル活用`,
+      detail: `${property.isNew ? '新築13年間' : '中古10年間'}の住宅ローン控除により、累計${Math.round(state.totalTaxCreditReceivedMan).toLocaleString()}万円の税金還付が家計の防衛資金となりました。`,
+      impactLabel: `税還付 +${Math.round(state.totalTaxCreditReceivedMan).toLocaleString()}万円`,
+    });
+  }
+
+  // 3. 物件の資産価値（土地＋建物）と維持費の分析
+  const retentionRate = Math.round((state.propertyValueMan / property.priceMan) * 100);
+  if (retentionRate >= 72) {
+    factors.push({
+      type: 'positive',
+      title: `マイホームの資産価値維持（購入時の${retentionRate}%・時価${state.propertyValueMan.toLocaleString()}万円）`,
+      detail: `${property.shortName}の立地・土地資産価値が底堅く推移し、純資産（バランスシート）の強力な支えとなりました。`,
+      impactLabel: `残存価値 ${retentionRate}%`,
+    });
+  } else {
+    factors.push({
+      type: 'negative',
+      title: `建物減価と維持費負担（累計維持費 ${Math.round(state.totalRunningCostPaidMan).toLocaleString()}万円）`,
+      detail: `管理費・修繕積立金・固定資産税・メンテナンス費用として累計${Math.round(state.totalRunningCostPaidMan).toLocaleString()}万円が発生し、物件時価は購入時の${retentionRate}%（${state.propertyValueMan.toLocaleString()}万円）となりました。`,
+      impactLabel: `維持費 -${Math.round(state.totalRunningCostPaidMan).toLocaleString()}万円`,
+    });
+  }
+
+  // 4. 団信またはライフイベントの分析
+  if (state.danshinTriggered) {
+    factors.push({
+      type: 'positive',
+      title: '団体信用生命保険（特約団信）による残債免除発動',
+      detail: '健康上の重大な転機に際し、手厚い団信保障が発動して住宅ローン残債が免除され、家族の暮らしを守り抜きました。',
+      impactLabel: '団信完済発動',
+    });
+  } else if (state.isDivorced) {
+    factors.push({
+      type: 'negative',
+      title: 'ペアローン・世帯離別によるキャッシュフロー急減',
+      detail: '2馬力前提の返済計画から1馬力へ変化したことで、住居費の返済負担率が跳ね上がりました。',
+      impactLabel: '世帯収入減',
+    });
+  }
+
+  return factors;
+}
+
+/**
+ * マンション専用 / 一戸建て専用の任意アクション実行
+ */
+export function executePropertySpecificAction(
+  currentState: MortgageGameState,
+  actionId:
+    | 'mansion-board-reform'
+    | 'mansion-release-parking'
+    | 'detached-solar-battery'
+    | 'detached-diy-maint',
+): MortgageGameState {
+  if (currentState.status !== 'playing') return currentState;
+  if (currentState.triggeredEventIds.includes(`prop-act-${actionId}`)) return currentState;
+
+  const nextId = (currentState.chronicle[0]?.id ?? 1) + 1;
+  const nextTriggered = [...currentState.triggeredEventIds, `prop-act-${actionId}`];
+
+  if (actionId === 'mansion-board-reform') {
+    return {
+      ...currentState,
+      triggeredEventIds: nextTriggered,
+      currentMgmtAndRepairMonthlyMan: Math.max(
+        1.0,
+        Math.round((currentState.currentMgmtAndRepairMonthlyMan - 0.5) * 10) / 10,
+      ),
+      buildingValueMan: currentState.buildingValueMan + 60,
+      propertyValueMan: currentState.landValueMan + currentState.buildingValueMan + 60,
+      chronicle: [
+        {
+          id: nextId,
+          yearIndex: currentState.yearIndex,
+          calendarYear: currentState.calendarYear,
+          age: currentState.age,
+          category: 'action',
+          tone: 'good',
+          title: '【マンション理事会改革】管理委託費と共用部電力契約の見直しを実行（月額維持費 ▲0.5万円削減）',
+          body: '管理組合の理事会に働きかけ、共用部のLED化と管理委託メニューの最適化を実現！毎月の管理費・修繕費負担が永続的に月5,000円（年6万円）軽くなった。',
+          financialDeltaLabel: '維持費 -6万/年',
+        },
+        ...currentState.chronicle,
+      ],
+    };
+  }
+
+  if (actionId === 'mansion-release-parking') {
+    return {
+      ...currentState,
+      triggeredEventIds: nextTriggered,
+      liquidSavingsMan: Math.round((currentState.liquidSavingsMan + 85) * 10) / 10,
+      currentMgmtAndRepairMonthlyMan: Math.max(
+        1.0,
+        Math.round((currentState.currentMgmtAndRepairMonthlyMan - 1.5) * 10) / 10,
+      ),
+      chronicle: [
+        {
+          id: nextId,
+          yearIndex: currentState.yearIndex,
+          calendarYear: currentState.calendarYear,
+          age: currentState.age,
+          category: 'action',
+          tone: 'good',
+          title: '【マンション駐車場解約＆カーシェア移行】車両売却 +85万円 ＆ 毎月固定費 ▲1.5万円削減！',
+          body: '駅近マンションの立地を活かして自家用車を売却し、機械式駐車場を解約。売却益85万円が手に入り、毎月の駐車場代（年間18万円）がゼロになった！',
+          financialDeltaLabel: '手元+85万 / 固定費-18万/年',
+        },
+        ...currentState.chronicle,
+      ],
+    };
+  }
+
+  if (actionId === 'detached-solar-battery') {
+    if (currentState.liquidSavingsMan < 180) return currentState;
+    return {
+      ...currentState,
+      triggeredEventIds: nextTriggered,
+      liquidSavingsMan: Math.round((currentState.liquidSavingsMan - 130) * 10) / 10,
+      currentMgmtAndRepairMonthlyMan:
+        Math.round((currentState.currentMgmtAndRepairMonthlyMan - 1.3) * 10) / 10,
+      buildingValueMan: currentState.buildingValueMan + 100,
+      propertyValueMan: currentState.landValueMan + currentState.buildingValueMan + 100,
+      chronicle: [
+        {
+          id: nextId,
+          yearIndex: currentState.yearIndex,
+          calendarYear: currentState.calendarYear,
+          age: currentState.age,
+          category: 'action',
+          tone: 'good',
+          title: '【一戸建て太陽光＋蓄電池設置】自己負担130万円で毎月の光熱費・売電収支が月1.3万円改善！',
+          body: '戸建ての屋根をフル活用し、太陽光パネルと定置型蓄電池を設置！毎月の電気代が激減し、年間約15.6万円のキャッシュフロー改善と資産価値アップを達成した。',
+          financialDeltaLabel: '光熱費 -15.6万/年',
+        },
+        ...currentState.chronicle,
+      ],
+    };
+  }
+
+  // detached-diy-maint
+  if (currentState.liquidSavingsMan < 80) return currentState;
+  return {
+    ...currentState,
+    triggeredEventIds: nextTriggered,
+    liquidSavingsMan: Math.round((currentState.liquidSavingsMan - 35) * 10) / 10,
+    buildingValueMan: currentState.buildingValueMan + 75,
+    propertyValueMan: currentState.landValueMan + currentState.buildingValueMan + 75,
+    chronicle: [
+      {
+        id: nextId,
+        yearIndex: currentState.yearIndex,
+        calendarYear: currentState.calendarYear,
+        age: currentState.age,
+        category: 'action',
+        tone: 'good',
+        title: '【一戸建て予防メンテナンス】防蟻処理・外壁シーリング補修を実施（35万円・建物価値+75万円維持）',
+        body: '雨漏りやシロアリ被害が出る前に35万円で予防メンテナンスを実施！将来の高額修繕リスクを抑え、建物の資産価値を守り抜いた。',
+        financialDeltaLabel: '建物価値 +75万',
+      },
+      ...currentState.chronicle,
+    ],
+  };
 }
