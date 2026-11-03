@@ -7,7 +7,10 @@ import {
   GAME_BOARD,
   JOBS,
   JOB_PROFILES,
+  LIFE_ASSETS,
+  PAYDAY_POSITIONS,
   RANKS,
+  calculateNetWorthBreakdown,
   checkEndGame,
   consumeItem,
   createNewGame,
@@ -43,20 +46,27 @@ function stepUntilIdle(state: ReturnType<typeof createNewGame>) {
 }
 
 function runTests() {
-  console.log('--- Running Shachiku Sugoroku NEO Verification Tests ---');
+  console.log('--- Running Shachiku Life Road Verification Tests ---');
 
-  // 1. 盤面データ整合性・絵文字ゼロ検証
-  assert.equal(GAME_BOARD.length, BOARD_SIZE + 1, 'Board must have 61 squares (0..60)');
+  // 1. 盤面データ整合性・ジオラマ座標・絵文字ゼロ検証
+  assert.equal(BOARD_SIZE, 35, 'BOARD_SIZE must be 35 (0..35 = 36 squares)');
+  assert.equal(GAME_BOARD.length, BOARD_SIZE + 1, 'Board must have 36 squares (0..35)');
   const emojiRegex = /[\p{Extended_Pictographic}]/u;
   for (let i = 0; i <= BOARD_SIZE; i++) {
     const sq = GAME_BOARD[i];
     assert.equal(sq.position, i, `Square at index ${i} should have position ${i}`);
     assert.ok(sq.title.length > 0, `Square ${i} must have title`);
     assert.ok(sq.short.length > 0 && sq.short.length <= 8, `Square ${i} must have short label`);
+    assert.ok(sq.districtId >= 1 && sq.districtId <= 5, `Square ${i} must belong to district 1..5`);
+    assert.ok(sq.x >= 0 && sq.x <= 100, `Square ${i} x coordinate must be within 0..100`);
+    assert.ok(sq.y >= 0 && sq.y <= 100, `Square ${i} y coordinate must be within 0..100`);
     assert.ok(!emojiRegex.test(sq.title), `Square ${i} title should not contain emoji`);
     assert.ok(!emojiRegex.test(sq.short), `Square ${i} short should not contain emoji`);
+    assert.ok(!emojiRegex.test(sq.description), `Square ${i} description should not contain emoji`);
   }
-  assert.equal(FLOORS.length, 6, 'Should have 6 corporate floors');
+  assert.equal(FLOORS.length, 5, 'Should have 5 scenic diorama districts');
+  assert.equal(RANKS.length, 7, 'Should have 7 career ranks (新入社員〜社長)');
+  assert.deepEqual(PAYDAY_POSITIONS, [5, 13, 21, 29], 'Payday gates at 5, 13, 21, 29');
 
   // 2. 全10職種の初期化検証
   for (const job of JOBS) {
@@ -69,74 +79,90 @@ function runTests() {
     assert.equal(state.money, profile.startMoney);
     assert.equal(state.items.length, 1);
     assert.equal(state.items[0].id, profile.startItem);
+    assert.equal(state.assets.length, 0);
     assert.equal(state.status, 'playing');
     assert.equal(state.isFinished, false);
   }
 
-  // 3. 定時スタンス(1D6) vs 全力残業スタンス(2D6) とアイテム消費の検証
+  // 3. 定時スタンス(1スピン) vs 全力残業スタンス(Wスピン) とアイテム消費の検証
   {
     let state = createNewGame({ name: '田中', job: '営業' });
-    // 初期支給品のエナドリを使用
     state = consumeItem(state, 'energy-drink');
     assert.equal(state.items.length, 0);
     assert.equal(state.diceBoost, 2);
 
-    // 定時スタンスで出目3 → ブースト+2で計5マス移動
-    state = takeTurn(state, 'teiji', [3]);
-    assert.equal(state.pendingMoves, 5);
+    // 定時スタンスで出目1 → ブースト+2で計3マス移動 (0 -> 3: 備品発見)
+    state = takeTurn(state, 'teiji', [1]);
+    assert.equal(state.pendingMoves, 3);
     assert.equal(state.teijiCount, 1);
-    assert.deepEqual(state.lastRoll, [3]);
+    assert.deepEqual(state.lastRoll, [1]);
     state = stepUntilIdle(state);
-    // 5マス目は配属ガチャ（さらに2マス進む可能性あり）
-    assert.ok(state.position === 5 || state.position === 7);
+    assert.equal(state.position, 3);
 
-    // 全力残業スタンスで2ダイス [4, 5] = 9マス
+    // 全力残業スタンスでWルーレット [3, 4] = 7マス
     const beforeCareer = state.career;
     const beforeMoney = state.money;
-    state = takeTurn(state, 'zangyo', [4, 5]);
+    state = takeTurn(state, 'zangyo', [3, 4]);
     assert.equal(state.zangyoCount, 1);
     assert.equal(state.career, beforeCareer + 1);
     assert.equal(state.money, beforeMoney + 10);
-    assert.equal(state.pendingMoves, 9);
+    assert.equal(state.pendingMoves, 7);
   }
 
-  // 4. 昇進査定ゲートの通過・昇進検証
+  // 4. 昇進査定ゲート ＆ 給料日ゲート通過ボーナス（PAYDAY通過支給）の検証
   {
     let state = createNewGame({ name: '昇進太郎', job: '総合職' }); // startCareer = 3
-    state.position = 11;
-    state = takeTurn(state, 'teiji', [2]); // 11 -> 12 (Gate 1: 一般社員, 必要評価2) -> 13
+    state.position = 4;
+    const moneyBefore = state.money;
+    // 4 -> 5 (第1給料日ゲート＆主任査定: 必要評価2) -> 6 へ通過させる
+    state = takeTurn(state, 'teiji', [2]);
+    // 1歩目: position 5 へ移動（昇進祝金 +40万 ＆ PAYDAY給料日支給 +40万）
+    state = moveOneStep(state);
+    assert.equal(state.position, 5);
+    assert.ok(state.gatesPassed.includes(5), 'Gate 5 should be recorded');
+    assert.equal(state.rank, 1, 'Should be promoted to rank 1 (主任)');
+    assert.ok(state.paydaysPassed.includes(5), 'Payday 5 should be recorded on pass');
+    assert.equal(state.lastPayday?.position, 5);
+    assert.equal(state.lastPayday?.baseSalary, RANKS[1].salaryBonus);
+    assert.equal(state.money, moneyBefore + RANKS[1].salaryBonus + RANKS[1].salaryBonus);
     state = stepUntilIdle(state);
-    assert.ok(state.gatesPassed.includes(12), 'Gate 12 should be recorded');
-    assert.equal(state.rank, 1, 'Should be promoted to rank 1 (一般社員)');
-    assert.equal(state.lastGate?.promoted, true);
-    assert.equal(state.lastGate?.rankName, RANKS[1].name);
+    assert.equal(state.position, 6);
   }
 
-  // 5. 決断イベント（リスク選択肢の成功/失敗含む）検証
+  // 5. キャリア分岐ジャンクション決断 ＆ ライフ資産ポートフォリオ獲得・配当検証
   {
     let state = createNewGame({ name: '決断花子', job: '企画・マーケティング' });
-    state.position = 19;
-    state = takeTurn(state, 'teiji', [1]); // 20マス目: 上期キャリア面談
+    state.position = 7;
+    state = takeTurn(state, 'teiji', [1]); // 8マス目: キャリア分岐ジャンクション
     state = moveOneStep(state);
-    assert.equal(state.position, 20);
-    assert.ok(state.pendingDecision, 'Should trigger career-talk decision at square 20');
+    assert.equal(state.position, 8);
+    assert.ok(state.pendingDecision, 'Should trigger career-talk decision at square 8');
     assert.equal(state.pendingDecision?.id, DECISIONS['career-talk'].id);
 
-    // 勝負手オプション (pitch-new-biz) を成功乱数 (0.1 < 0.65) で解決
-    const prevCareer = state.career;
-    state = resolveDecision(state, 'pitch-new-biz', () => 0.1);
+    // 定時クルーズ路線 (keep-pace) を選択 → インカム投資信託 (value 80, dividend 15) を獲得
+    state = resolveDecision(state, 'keep-pace', () => 0.1);
     assert.equal(state.pendingDecision, null);
-    assert.equal(state.career, prevCareer + 5);
-    assert.equal(state.pendingMoves, 3);
-    assert.equal(state.decisionHistory.length, 1);
-    assert.equal(state.decisionHistory[0].success, true);
+    assert.equal(state.selectedRoute, 'elite');
+    assert.equal(state.assets.length, 1);
+    assert.equal(state.assets[0].id, 'income-fund');
+    assert.equal(state.assets[0].value, LIFE_ASSETS['income-fund'].value);
     state = stepUntilIdle(state);
-    assert.equal(state.position, 23);
+
+    // 次に13マス目の第2給料日ゲートを通過すると、役職基本給＋インカム投資信託の配当(+15万)が加算される
+    state.position = 12;
+    state = takeTurn(state, 'teiji', [1]);
+    state = moveOneStep(state);
+    assert.equal(state.position, 13);
+    assert.equal(state.lastPayday?.dividendBonus, 15);
+    assert.equal(
+      state.lastPayday?.totalPayout,
+      (state.lastPayday?.baseSalary ?? 0) + 15,
+    );
   }
 
   // 6. 有給休暇届と根回し資料の動作検証
   {
-    let state = createNewGame({ name: '有給次郎', job: 'デザイナー' }); // 初期: paid-leave
+    let state = createNewGame({ name: '有給次郎', job: 'デザイナー' });
     state.isResting = 2;
     state.slowNextTurn = true;
     state.yaruki = 50;
@@ -145,7 +171,7 @@ function runTests() {
     assert.equal(state.slowNextTurn, false, 'Paid leave must clear hangover slow flag');
     assert.equal(state.yaruki, 65);
 
-    let state2 = createNewGame({ name: '根回し三郎', job: '法務・コンプラ' }); // 初期: nemawashi
+    let state2 = createNewGame({ name: '根回し三郎', job: '法務・コンプラ' });
     const c0 = state2.career;
     state2 = consumeItem(state2, 'nemawashi');
     assert.equal(state2.career, c0 + 3);
@@ -157,8 +183,8 @@ function runTests() {
     state.position = 0;
     state.yaruki = 10;
 
-    // 1回目のゼロ (1マス目: 月曜朝の憂鬱 -15)
-    state = takeTurn(state, 'teiji', [1]); // +2 yaruki = 12, then -15 = -3 -> 0
+    // 1回目のゼロ (1マス目: 月曜朝の通勤ラッシュ -15)
+    state = takeTurn(state, 'teiji', [1]);
     state = stepUntilIdle(state);
     assert.equal(state.strikes, 1);
     assert.equal(state.yaruki, 25);
@@ -168,10 +194,10 @@ function runTests() {
     state = takeTurn(state, 'teiji');
     assert.equal(state.isResting, 0);
 
-    // 2回目のゼロ (22マス目: 無茶振り -22 へ移動させる)
-    state.position = 21;
+    // 2回目のゼロ (19マス目: 無茶振り -20 へ移動させる)
+    state.position = 18;
     state.yaruki = 15;
-    state = takeTurn(state, 'teiji', [1]); // 21 -> 22 (-22 yaruki)
+    state = takeTurn(state, 'teiji', [1]); // 18 -> 19 (-20 yaruki)
     state = stepUntilIdle(state);
     assert.equal(state.strikes, 2);
     assert.equal(state.yaruki, 25);
@@ -191,22 +217,26 @@ function runTests() {
     assert.equal(state.grade, 'D');
   }
 
-  // 8. ゴール到達とエンディング・スコア算出検証
+  // 8. ゴール到達と最終生涯総資産・エンディング・スコア算出検証
   {
     let state = createNewGame({ name: '伝説社員', job: 'エンジニア' });
-    state.position = 58;
-    state.turn = 9;
+    state.position = 33;
+    state.turn = 8;
     state.yaruki = 95;
     state.career = 16;
-    state.money = 220;
-    state = takeTurn(state, 'teiji', [2]); // 58 -> 60 Goal
+    state.rank = 5; // 執行役員
+    state.money = 240;
+    state.assets = [LIFE_ASSETS['city-condo'], LIFE_ASSETS['resort-villa']];
+    state = takeTurn(state, 'teiji', [2]); // 33 -> 35 Goal
     state = stepUntilIdle(state);
-    assert.equal(state.position, 60);
+    assert.equal(state.position, 35);
     assert.equal(state.isFinished, true);
     assert.equal(state.status, 'cleared');
     assert.equal(state.ending, 'legendary');
     assert.equal(state.grade, 'S');
-    assert.ok(state.score > 2000);
+    const nw = calculateNetWorthBreakdown(state);
+    assert.ok(nw.totalNetWorth > 1000, `Expected high total net worth, got ${nw.totalNetWorth}`);
+    assert.ok(state.score > 3000);
     assert.ok(state.ending! in ENDINGS);
     assert.ok(state.newlyUnlockedAchievements.includes('super-fast'));
     assert.ok(state.newlyUnlockedAchievements.includes('millionaire'));
@@ -234,7 +264,7 @@ function runTests() {
     const orig = getAudioSettings();
     setAudioSettings({ se: false });
     assert.equal(audioManager.muted, true, 'audioManager.muted must reflect audioSettings.se=false');
-    audioManager.playSe('roll'); // ミュート時に例外なく無視されること
+    audioManager.playSe('roll');
 
     setAudioSettings({ se: true });
     assert.equal(audioManager.muted, false, 'audioManager.muted must reflect audioSettings.se=true');
@@ -244,15 +274,15 @@ function runTests() {
   // checkEndGame 単体呼び出し互換性
   {
     let state = createNewGame({ name: '単体確認', job: '広報・PR' });
-    state.position = 60;
-    state.turn = 18;
+    state.position = 35;
+    state.turn = 16;
     state.yaruki = 72;
     state = checkEndGame(state);
     assert.equal(state.isFinished, true);
     assert.equal(state.ending, 'stable');
   }
 
-  console.log('ALL SHACHIKU SUGOROKU TESTS PASSED (100/100 simulation runs + unit assertions)!');
+  console.log('ALL SHACHIKU LIFE ROAD TESTS PASSED (100/100 simulation runs + unit assertions)!');
 }
 
 runTests();

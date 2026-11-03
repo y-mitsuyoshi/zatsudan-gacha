@@ -15,6 +15,8 @@ import {
   drawVectorMemoProjectile,
   drawVectorExecutiveBarrier,
   drawVectorReticle,
+  drawSpiralTrackRail,
+  drawCellularSynapseLinks,
 } from '../src/game/spiral/vectorRenderer';
 import { setupTestEnvironment, createMockCanvas, createMockAudio, stepAnimationFrame } from './e2e/testEnv';
 
@@ -80,6 +82,28 @@ describe('M4: Shachiku Spiral Modern 2D Vector & Boss Mechanics Verification', (
     // drawVectorReticle
     assert.doesNotThrow(() => {
       drawVectorReticle(ctx, 320, 320, 400, 250, 2.5);
+    });
+
+    // Cell Survivor additions: drawSpiralTrackRail, drawCellularSynapseLinks, numbered hpValue & hitFlash
+    assert.doesNotThrow(() => {
+      drawSpiralTrackRail(ctx, 320, 320, 290, 3.2);
+      drawCellularSynapseLinks(
+        ctx,
+        [
+          { x: 380, y: 320, radius: 14 },
+          { x: 400, y: 330, radius: 12 },
+          { x: 420, y: 345, radius: 12 },
+        ],
+        'bossMid',
+        1.5,
+        true
+      );
+      drawVectorSegment(ctx, 200, 200, 15, 'president', true, 0.85, undefined, {
+        hpValue: 1850,
+        hitFlash: 0.9,
+        slowed: true,
+        time: 2.0,
+      });
     });
   });
 
@@ -274,6 +298,67 @@ describe('M4: Shachiku Spiral Modern 2D Vector & Boss Mechanics Verification', (
     assert.strictEqual(anyEngine.coinPs.length, 0, 'Zero coin drops left after wave clear');
     assert.strictEqual(anyEngine.chests.filter((c: any) => !c.taken).length, 0, 'Zero untaken chests left after wave clear');
     assert.ok(anyEngine.coins > preClearCoins + 15, 'Both leftover coins and converted chest were credited');
+
+    engine.destroy();
+  });
+
+  it('6. Cell Survivor Overhaul: Zero enemy projectiles/ranged damage, Live DPS tracker, and 1x/2x Speed Toggle', () => {
+    const canvas = createMockCanvas(640, 640);
+    let latestHud: any = null;
+    const engine = new SpiralEngine(canvas, createMockAudio(), {
+      onHud: (h) => {
+        latestHud = h;
+      },
+      onBuild: () => {},
+      onGameOver: () => {},
+      onBanner: () => {},
+    });
+
+    engine.start({ difficulty: 'normal', dmgMul: 1, maxHpBonus: 0, rateMul: 1 });
+    const anyEngine = engine as any;
+
+    // 1. Speed toggle verification
+    assert.strictEqual(engine.getSpeed(), 1);
+    engine.setSpeed(2);
+    assert.strictEqual(engine.getSpeed(), 2);
+
+    // 2. Spawn all 3 bosses at safe outer radius and step gimmicks for 10 seconds
+    anyEngine.chains = [];
+    anyEngine.spawnChain('bossMid');
+    anyEngine.spawnChain('exec');
+    anyEngine.spawnChain('president');
+
+    // Damage bossMid below 50% HP to trigger enrage
+    const bossMid = anyEngine.chains.find((c: any) => c.kind === 'bossMid');
+    for (const seg of bossMid.segs) {
+      seg.hp = Math.floor(seg.maxHp * 0.4);
+    }
+
+    const hpBefore = anyEngine.hp;
+    const shieldBefore = anyEngine.shield;
+
+    for (let f = 0; f < 300; f++) {
+      // Keep chains at outer radius so they don't physically touch core
+      for (let ci = 0; ci < anyEngine.chains.length; ci++) {
+        const c = anyEngine.chains[ci];
+        c.r = 250;
+        anyEngine.updateBossGimmicks(c, ci, 1 / 30);
+      }
+      anyEngine.updateBossProjs(1 / 30);
+    }
+
+    assert.strictEqual(anyEngine.bossProjs.length, 0, 'Enemies must NEVER fire projectiles');
+    assert.strictEqual(anyEngine.hp, hpBefore, 'Player HP must NEVER take ranged damage from bosses');
+    assert.strictEqual(anyEngine.shield, shieldBefore, 'Player Shield must NEVER take ranged damage from bosses');
+    assert.strictEqual(bossMid.bossState.enraged, true, 'bossMid still enrages at <=50% HP');
+
+    // 3. Damage dealt to segments updates live DPS and peak DPS
+    const head = bossMid.segs[0];
+    anyEngine.damageSeg(bossMid, 0, 0, 150, 0, head.x, head.y, false);
+    anyEngine.emitHud();
+    assert.ok(latestHud.dps >= 100, 'Live DPS reflects recent segment damage');
+    assert.ok(latestHud.peakDps >= latestHud.dps, 'Peak DPS tracks maximum DPS achieved');
+    assert.ok(latestHud.segsRemaining > 0, 'segsRemaining tracks total active cellular segments');
 
     engine.destroy();
   });

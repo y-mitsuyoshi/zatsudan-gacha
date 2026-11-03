@@ -41,20 +41,20 @@ export default function ShachikuSugorokuPage() {
           <div className="flex flex-col gap-4 bg-[#12100d] p-4 text-[#fffaf0] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
             <div className="flex items-center gap-3.5">
               <div className="flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-[#f5ca5c] bg-[#b23a2a] font-mono text-white shadow-inner sm:h-14 sm:w-14">
-                <span className="text-[9px] font-black leading-none text-[#f5ca5c]">60 STEP</span>
+                <span className="text-[9px] font-black leading-none text-[#f5ca5c]">LIFE ROAD</span>
                 <span className="mt-0.5 text-lg font-black leading-none">双六</span>
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="font-editorial text-2xl font-black tracking-tight text-[#fffaf0] sm:text-3xl">
-                    社畜すごろく
+                    社畜すごろく：社畜ライフロード
                   </h1>
                   <span className="rounded border border-[#f5ca5c] bg-[#f5ca5c] px-2 py-0.5 font-mono text-[10px] font-black text-[#12100d]">
-                    NEO / TOWER EDITION
+                    SHACHIKU LIFE ROAD EDITION
                   </span>
                 </div>
                 <p className="mt-1 text-xs font-bold tracking-wide text-white/75 sm:text-sm">
-                  定時か残業か、昇進か休養か。選択と出目で駆け上がる60マスの企業タワーボードゲーム
+                  定時退社と億り人への道！キャリア・ルーレットを回し、5大ジオラマ地区と給料日ゲートを駆け抜ける本格キャリアボードゲーム
                 </p>
               </div>
             </div>
@@ -68,10 +68,10 @@ export default function ShachikuSugorokuPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#d4c4a8] px-4 py-2.5 text-[11px] font-black text-[#5c5141] sm:px-6 dark:border-[#3b3226] dark:text-[#cfc2ad]">
             <div className="flex flex-wrap gap-2">
               {[
-                '01 全6フロア・60マス立体盤面',
-                '02 定時(1D6) / 全力残業(2D6)切替',
-                '03 5段階の昇進査定ゲート',
-                '04 全10職種の専用特効＆38種エンディング',
+                '01 全5地区・2.5Dジオラマ盤面マップ',
+                '02 メカニカル・キャリア・ルーレット搭載',
+                '03 給料日ゲート通過ボーナス＆7段階役職昇進',
+                '04 ライフ資産ポートフォリオ＆38種エンディング',
               ].map((item) => (
                 <span
                   key={item}
@@ -81,7 +81,7 @@ export default function ShachikuSugorokuPage() {
                 </span>
               ))}
             </div>
-            <span className="font-mono text-[10px] text-[#8a7d69]">BOARD GAME VER 2.0</span>
+            <span className="font-mono text-[10px] text-[#8a7d69]">LIFE ROAD BOARD VER 3.0</span>
           </div>
         </header>
 
@@ -90,26 +90,25 @@ export default function ShachikuSugorokuPage() {
             <div className="relative flex items-center justify-between gap-4 overflow-hidden rounded-2xl border-2 border-[#3b3022] bg-[#fffaf0] p-5 shadow-[0_6px_0_#261e14] sm:p-6 dark:border-[#594b38] dark:bg-[#1e1913]">
               <div>
                 <p className="font-mono text-[10px] font-black tracking-widest text-[#b23a2a] dark:text-[#f5ca5c]">
-                  CORPORATE SURVIVAL BOARD GAME
+                  SHACHIKU LIFE ROAD — TABLETOP CAREER & ASSET SIMULATION
                 </p>
                 <h2 className="font-editorial mt-1 text-xl font-black text-[#12100d] sm:text-2xl dark:text-[#fffaf0]">
-                  今日も、定時のチャイムは遠く鳴る。
+                  ルーレットを回し、キャリアと資産のハイウェイを駆け抜けろ！
                 </h2>
                 <p className="mt-2 max-w-2xl text-xs font-bold leading-relaxed text-[#5c5141] sm:text-sm dark:text-[#cfc2ad]">
-                  1F「新人研修棟」から6F「役員フロア・決算ボーナス支給日」まで全60マス。
-                  堅実に定時退社で気力を保つか、リスク覚悟の全力残業（2ダイス）で評価と残業代を稼ぐか。
-                  あなたの決断次第で、伝説の執行役員から独立起業・FIREまで38通りの結末が待ち受けます。
+                  臨海エリア「フレッシュマン・ハーバー」から「メトロ・ビジネス街」「マネジメント・キャニオン」「エグゼクティブ・ベイ」、そして最終目的地「ドリーム・リゾートアイランド」まで全36マスの立体ジオラマ・ハイウェイ！
+                  給料日ゲートを通過して給与と配当を受け取り、投資信託や都心マンション、リゾート別荘などのライフ資産を獲得して最高の生涯総資産を目指しましょう。
                 </p>
               </div>
-              <HankoStamp text="出社" variant="teal" className="hidden sm:inline-flex" />
+              <HankoStamp text="出発" variant="teal" className="hidden sm:inline-flex" />
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { badge: 'STANCE', title: '定時 vs 全力残業', text: '1ダイス安全進行か2ダイス高速出世か' },
-                { badge: 'PROMOTE', title: '昇進査定ゲート', text: '社内評価を貯めて新入社員から役員へ' },
-                { badge: 'DECISION', title: '3択の稟議決断', text: '堅実案から一発逆転の勝負手まで選択' },
-                { badge: 'GRADE', title: 'S〜Dランク査定', text: '全38エンディング＆10種の実績バッジ' },
+                { badge: 'ROULETTE', title: 'キャリア・ルーレット', text: '定時スピンか全力残業Wスピンかを選択' },
+                { badge: 'PAYDAY', title: '給料日ゲート通過支給', text: '通過するだけで役職給与＋資産配当を獲得' },
+                { badge: 'JUNCTION', title: 'キャリア分岐ルート', text: '出世ハイウェイかベンチャー挑戦バイパスか' },
+                { badge: 'PORTFOLIO', title: 'ライフ資産＆大決済', text: '不動産・投信・SaaSを集めて億り人へ' },
               ].map((feature) => (
                 <div
                   key={feature.title}

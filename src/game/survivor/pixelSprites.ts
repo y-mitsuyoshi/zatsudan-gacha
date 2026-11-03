@@ -957,9 +957,193 @@ function renderWeaponOrPassiveIcon(id: string): HTMLCanvasElement {
       break;
     }
 
+    case 'icon_dps': {
+      // Blazing crimson-gold arcane burst meter icon
+      pRect(ctx, 4, 14, 3, 6, RAMPS.amber.base);
+      pRect(ctx, 8, 10, 3, 10, RAMPS.gold.base);
+      pRect(ctx, 12, 6, 3, 14, RAMPS.crimson.base);
+      pRect(ctx, 16, 3, 4, 17, RAMPS.gold.light);
+      p(ctx, 17, 4, '#ffffff');
+      p(ctx, 18, 4, '#ffffff');
+      break;
+    }
+
+    case 'icon_grimoire': {
+      // Dark-Gold Corporate Evolution Grimoire Tome
+      pRect(ctx, 4, 3, 16, 18, RAMPS.gold.outline);
+      pRect(ctx, 5, 4, 14, 16, RAMPS.crimson.dark);
+      pRect(ctx, 5, 4, 3, 16, RAMPS.gold.base); // Spine
+      pRect(ctx, 6, 3, 12, 1, RAMPS.whitePaper.base); // Pages top edge
+      // Arcane star sigil on cover
+      pRect(ctx, 11, 8, 4, 8, RAMPS.gold.light);
+      pRect(ctx, 9, 10, 8, 4, RAMPS.gold.light);
+      pRect(ctx, 12, 11, 2, 2, '#ffffff');
+      break;
+    }
+
+    case 'icon_briefcase': {
+      // Executive Leather Briefcase with Gold Locks
+      pRect(ctx, 3, 7, 18, 13, '#261208');
+      pRect(ctx, 4, 8, 16, 11, '#78350f');
+      pRect(ctx, 4, 8, 16, 4, '#92400e');
+      pRect(ctx, 9, 4, 6, 3, '#451a03');
+      pRect(ctx, 10, 5, 4, 2, '#00000000');
+      pRect(ctx, 7, 11, 2, 3, RAMPS.gold.light);
+      pRect(ctx, 15, 11, 2, 3, RAMPS.gold.light);
+      break;
+    }
+
+    case 'fusen': {
+      // Alias for barrier (付箋バリア)
+      pRect(ctx, 4, 4, 16, 16, RAMPS.postItYellow.outline);
+      pRect(ctx, 5, 5, 14, 14, RAMPS.postItYellow.base);
+      pRect(ctx, 5, 5, 14, 3, RAMPS.postItYellow.light);
+      break;
+    }
+
+    case 'beam': {
+      // Laser pointer / plasma beam icon
+      pRect(ctx, 2, 10, 20, 4, RAMPS.sapphire.base);
+      pRect(ctx, 2, 11, 20, 2, '#ffffff');
+      pRect(ctx, 16, 8, 4, 8, RAMPS.gold.light);
+      break;
+    }
+
+    case 'stamp': {
+      // Alias for hanko
+      pRect(ctx, 8, 3, 8, 12, '#92400e');
+      pRect(ctx, 7, 15, 10, 6, RAMPS.crimson.base);
+      break;
+    }
+
+    case 'clip':
+    case 'stapler':
+    case 'tie': {
+      pRect(ctx, 6, 4, 12, 16, RAMPS.crimson.base);
+      pRect(ctx, 8, 6, 8, 12, RAMPS.gold.light);
+      break;
+    }
+
     default: {
       pRect(ctx, 4, 4, 16, 16, '#475569');
       pRect(ctx, 6, 6, 12, 12, '#94a3b8');
+      break;
+    }
+  }
+
+  return canvas;
+}
+
+// =========================================================================
+// 6. 16-Bit Gothic-Corporate Stage Tiles & Floor Landmarks
+// =========================================================================
+
+function renderStageTile(stageId: string, variant: number): HTMLCanvasElement {
+  const { canvas, ctx } = createCrispCanvas(80, 80);
+  const v = variant % 4;
+
+  switch (stageId) {
+    case 'factory': {
+      // Dark industrial steel grates & molten hazard stripes
+      pRect(ctx, 0, 0, 80, 80, '#18130d');
+      pRect(ctx, 1, 1, 78, 78, v % 2 === 0 ? '#211a12' : '#1d160f');
+      // Riveted steel bevels
+      pRect(ctx, 2, 2, 76, 1, '#362a1d');
+      pRect(ctx, 2, 77, 76, 1, '#0e0b07');
+      // Grate mesh slits
+      for (let gy = 12; gy < 68; gy += 12) {
+        for (let gx = 10; gx < 70; gx += 16) {
+          pRect(ctx, gx, gy, 10, 4, '#0c0906');
+          pRect(ctx, gx, gy, 10, 1, '#2e2418');
+        }
+      }
+      // Corner rivets
+      pRect(ctx, 4, 4, 2, 2, '#5c4933');
+      pRect(ctx, 74, 4, 2, 2, '#5c4933');
+      pRect(ctx, 4, 74, 2, 2, '#5c4933');
+      pRect(ctx, 74, 74, 2, 2, '#5c4933');
+      // Hazard stripe accent on variant 1 & 3
+      if (v === 1) {
+        pRect(ctx, 0, 0, 80, 6, '#292013');
+        for (let sx = 0; sx < 80; sx += 16) {
+          pRect(ctx, sx, 1, 8, 4, '#92400e');
+          pRect(ctx, sx + 2, 1, 4, 2, '#d97706');
+        }
+      } else if (v === 3) {
+        //Subtle molten forge glow under grate
+        pRect(ctx, 26, 36, 10, 4, '#7c2d12');
+        pRect(ctx, 28, 37, 6, 2, '#ea580c');
+      }
+      break;
+    }
+
+    case 'datacenter': {
+      // Obsidian cryo-floor with glowing cyan circuit conduits
+      pRect(ctx, 0, 0, 80, 80, '#071118');
+      pRect(ctx, 1, 1, 78, 78, v % 2 === 0 ? '#0b1924' : '#09151e');
+      pRect(ctx, 2, 2, 76, 1, '#153147');
+      // Perforated cold-aisle airflow dots
+      for (let py = 16; py < 66; py += 16) {
+        for (let px = 16; px < 66; px += 16) {
+          pRect(ctx, px, py, 2, 2, '#040a0e');
+          p(ctx, px + 1, py + 1, '#164e63');
+        }
+      }
+      // Circuit conduit traces
+      if (v === 0 || v === 2) {
+        pRect(ctx, 0, 39, 80, 2, '#0e3a4c');
+        pRect(ctx, 39, 0, 2, 80, '#0e3a4c');
+        pRect(ctx, 37, 37, 6, 6, '#155e75');
+        pRect(ctx, 39, 39, 2, 2, '#22d3ee');
+      } else if (v === 1) {
+        pRect(ctx, 18, 0, 2, 80, '#164e63');
+        pRect(ctx, 18, 24, 4, 4, '#38bdf8');
+      }
+      break;
+    }
+
+    case 'boardroom': {
+      // Gothic crimson-and-gold executive marble & velvet carpet
+      pRect(ctx, 0, 0, 80, 80, '#17090d');
+      pRect(ctx, 1, 1, 78, 78, v % 2 === 0 ? '#240f16' : '#1f0c12');
+      // Gold filigree inner border
+      pRect(ctx, 3, 3, 74, 1, '#573612');
+      pRect(ctx, 3, 76, 74, 1, '#573612');
+      pRect(ctx, 3, 3, 1, 74, '#573612');
+      pRect(ctx, 76, 3, 1, 74, '#573612');
+      // Corner diamond ornaments
+      pRect(ctx, 5, 5, 3, 3, '#854d0e');
+      pRect(ctx, 72, 5, 3, 3, '#854d0e');
+      pRect(ctx, 5, 72, 3, 3, '#854d0e');
+      pRect(ctx, 72, 72, 3, 3, '#854d0e');
+      // Center gothic rosette on variant 0
+      if (v === 0) {
+        pRect(ctx, 36, 36, 8, 8, '#3b121d');
+        pRect(ctx, 38, 34, 4, 12, '#713f12');
+        pRect(ctx, 34, 38, 12, 4, '#713f12');
+        pRect(ctx, 39, 39, 2, 2, '#eab308');
+      }
+      break;
+    }
+
+    case 'honsha':
+    default: {
+      // Dark-office carpeted cubicle matrix with subtle geometric weave
+      pRect(ctx, 0, 0, 80, 80, '#0f1424');
+      pRect(ctx, 1, 1, 78, 78, v % 2 === 0 ? '#141b30' : '#12182b');
+      pRect(ctx, 2, 2, 76, 1, '#1e2946');
+      // Subtle carpet weave cross-stitches
+      for (let cy = 14; cy < 72; cy += 20) {
+        for (let cx = 14; cx < 72; cx += 20) {
+          pRect(ctx, cx, cy, 4, 1, '#1c2540');
+          pRect(ctx, cx + 1, cy - 1, 2, 3, '#1c2540');
+        }
+      }
+      // Floor cable molding on variant 2
+      if (v === 2) {
+        pRect(ctx, 0, 38, 80, 4, '#1e293b');
+        pRect(ctx, 0, 39, 80, 1, '#334155');
+      }
       break;
     }
   }
@@ -1006,6 +1190,10 @@ export function getPixelSprite(name: string, frame = 0, flip = false): HTMLCanva
   } else if (name.endsWith('_white')) {
     const enemyKind = name.replace('_white', '');
     sourceCanvas = renderEnemyFrame(enemyKind, safeFrame, true);
+  } else if (name.startsWith('tile_')) {
+    // Format: tile_<stageId> (uses frame as variant 0..3)
+    const stageId = name.replace('tile_', '');
+    sourceCanvas = renderStageTile(stageId, safeFrame);
   } else {
     // Weapon, passive, or UI icon
     sourceCanvas = renderWeaponOrPassiveIcon(name);

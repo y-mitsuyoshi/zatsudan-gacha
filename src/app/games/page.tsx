@@ -8,14 +8,16 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料ブラウザゲーム一覧｜社畜ゲーム・診断ツール',
-  description: '社畜通勤サバイバー、社畜サバイバー、社畜スパイラル、社畜シューティング、社畜すごろく、社畜人狼など、無料で遊べるブラウザゲームを一覧で紹介。スマホ・PC対応、インストール不要。',
+  title: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+  description:
+    '社畜通勤サバイバー、社畜サバイバー、社畜スパイラル、社畜シューティングNEO、社畜すごろくNEO、社畜人狼、定時退社カタパルト、社畜ワイヤー疾走、社畜グラグラ決済タワーの全9作品を完全無料で公開中。スマホ・PC対応、インストール・登録不要。',
   alternates: {
     canonical: '/games',
   },
   openGraph: {
-    title: '無料ブラウザゲーム一覧｜社畜ゲーム・診断ツール',
-    description: '社畜通勤サバイバー、社畜サバイバー、社畜スパイラルなど、無料で遊べるブラウザゲームをまとめて紹介。',
+    title: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+    description:
+      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクション、ワイヤースイング、ビル建設など無料で遊べるブラウザゲーム全9作品をまとめて紹介。',
     url: `${APP_URL}/games`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -24,8 +26,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '無料ブラウザゲーム一覧｜社畜ゲーム・診断ツール',
-    description: '社畜通勤サバイバー、社畜サバイバー、社畜スパイラルなど、無料で遊べるブラウザゲームをまとめて紹介。',
+    title: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+    description:
+      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクション、ワイヤースイング、ビル建設など無料で遊べるブラウザゲーム全9作品をまとめて紹介。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -35,25 +38,28 @@ const games = [
     name: '社畜通勤サバイバー',
     href: '/barricade-defense',
     image: '/assets/defense_cover.jpg',
-    genre: '3Dシューティング',
+    genre: '3Dゲートシューティング',
     tagline: '満員ラッシュを突破して会社へ',
-    description: '自動前進＆自動射撃の3D通勤シューティング。緑ゲートで強化し、段ボールで武器チェンジ。同期を救出して満員電車ボスを突破しよう。全5路線×3難易度＋エンドレス。',
+    description:
+      '自動前進＆自動一斉射撃の3D通勤ゲートシューティング。撃って数値を育てる倍率ゲートや段ボール武器チェンジ、同期救出ケージで分隊を強化し、満員電車ボスを突破しよう。全5路線×3難易度＋エンドレス。',
   },
   {
     name: '社畜サバイバー',
     href: '/shachiku-survivor',
     image: '/assets/survivor_cover.jpg',
-    genre: '10分サバイバル',
+    genre: '10分ホードサバイバル',
     tagline: '18時まで生き残れ',
-    description: '迫りくる業務をかわしながら10分間を生き残るサバイバル。8武器＋6パッシブ、武器進化、4ステージ、図鑑・実績・日課を搭載。',
+    description:
+      '迫りくる業務の大群をかわしながら9:00から18:00までの10分間を生き残るホードサバイバル。8武器＋6パッシブ、進化グリモワールによる8種の伝説進化、4ステージ、図鑑・実績・日課を搭載。',
   },
   {
     name: '社畜スパイラル',
     href: '/shachiku-spiral',
     image: '/assets/spiral_cover.jpg',
-    genre: '防衛シューティング',
-    tagline: '渦巻く業務からコアを守れ',
-    description: '中央のコアを守りながら、渦巻き状に迫る業務の列を迎撃するタワーディフェンス。10種の強化、全15ウェーブ＋エンドレス。',
+    genre: 'ナンバー撃破スパイラル防衛',
+    tagline: '渦巻く業務列を分断せよ',
+    description:
+      '中央のコアを守りながら、渦巻き状に迫るHPナンバー付き業務セグメントの列を迎撃・分断する防衛シューティング。弱点節コンボ、属性シナジー強化、全15ウェーブ＋エンドレス。',
   },
   {
     name: '社畜シューティングNEO',
@@ -61,23 +67,53 @@ const games = [
     image: '/assets/shooting_cover.jpg',
     genre: '弾幕シューティング',
     tagline: '定時退社を目指す弾幕STG',
-    description: '4武器とコンボ・グレイズで高スコアを狙う弾幕シューティング。全6ステージのボス戦＋無限残業ループを収録。',
+    description:
+      '4種のメイン武器＋オプション編隊とハイパーオーバードライブ、コンボ・グレイズで高スコアを狙う本格弾幕シューティング。全6ステージのボス戦＋無限残業ループを収録。',
   },
   {
     name: '社畜すごろくNEO',
     href: '/shachiku-sugoroku',
     image: '/shachiku-sugoroku-ogp.png',
-    genre: 'ボードゲーム',
+    genre: 'ジオラマ人生ボードゲーム',
     tagline: '選択で変わるキャリアボード',
-    description: 'サイコロで60マスを進み、10種の職業と選択イベントで自分だけのキャリアを描くボードゲーム。評価とやる気のバランスが結末を変えます。',
+    description:
+      'ルーレットを回して立体ジオラマ風の60マスを進み、10種の職業と選択イベントで自分だけのキャリアを描くボードゲーム。評価ポイントとやる気のバランスが結末を変えます。',
   },
   {
     name: '社畜人狼',
     href: '/shachiku-jinro',
     image: '/assets/jinro_cover.jpg',
-    genre: '人狼ゲーム',
-    tagline: 'AIと遊べる会社員人狼',
-    description: 'スパイ・人事・総務・イエスマンなど会社ならではの役職が入り乱れる、ひとりでも遊べるソロ人狼ゲーム。',
+    genre: 'AI会社員人狼',
+    tagline: 'AI社員と遊べるソロ人狼',
+    description:
+      '産業スパイ・人事・総務・イエスマンなど会社ならではの役職が入り乱れる、ひとりでもすぐ遊べるAI対戦ソロ人狼ゲーム。会議ログと投票からスパイを見抜こう。',
+  },
+  {
+    name: '社畜ぶっとばし！定時退社カタパルト',
+    href: '/shachiku-catapult',
+    image: '/assets/defense_cover.jpg',
+    genre: 'ぶっとばし飛距離アクション',
+    tagline: '18時ジャストの屋上から大空へ',
+    description:
+      '角度とパワーを決めて本社屋上から定時退社発射！有給ジェットパックと急降下スタンプ、地上のボーナス支給車やエナドリ砲台で加速し、5系統の恒久強化で10,000m先の南国リゾートを目指そう。',
+  },
+  {
+    name: '社畜ワイヤー疾走：終電スイングアクション',
+    href: '/shachiku-wire',
+    image: '/assets/shooting_cover.jpg',
+    genre: 'ワイヤースイング疾走',
+    tagline: '振り子スイングで終電に飛び乗れ',
+    description:
+      '光回線グラップルワイヤーを頭上のアンカーに撃ち込み、振り子物理の遠心力で深夜のビル群を疾走するワンボタンアクション。上昇角で離すPERFECT RELEASEと空中ダッシュで終電を掴め。',
+  },
+  {
+    name: '社畜グラグラ決済タワー：限界ビル建設',
+    href: '/shachiku-stack',
+    image: '/assets/spiral_cover.jpg',
+    genre: 'タイミング高層ビル建設',
+    tagline: '揺れるクレーンから100階を目指せ',
+    description:
+      'クレーンからオフィスフロアをタイミングよく落として超高層ビルを建設！はみ出し部分が切断される「精密スライスモード」と、重心の揺れに挑む「物理バランスモード」の2モードを収録。',
   },
 ];
 
@@ -89,18 +125,18 @@ const tools = [
 ];
 
 const faqs = [
-  { q: '紹介しているゲームは無料ですか？', a: 'はい。すべてブラウザで遊べる無料ゲームです。インストールや会員登録は不要です。' },
-  { q: 'スマートフォンでも遊べますか？', a: 'はい。各ゲームはスマートフォンのブラウザに対応しています。PCではキーボードやマウスでも操作できます。' },
-  { q: 'ゲームの進行状況は保存されますか？', a: 'ゲームによって異なります。スコア、実績、解放状況などはブラウザのlocalStorageに保存される場合があります。' },
-  { q: 'ゲームはどれから遊べばいいですか？', a: '短時間で遊ぶなら社畜すごろくや社畜人狼、アクションが好きなら社畜通勤サバイバーや社畜サバイバーがおすすめです。' },
+  { q: '紹介している9つのゲームはすべて無料ですか？', a: 'はい。全9タイトルすべてブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
+  { q: 'スマートフォンでもPCでも遊べますか？', a: 'はい。各ゲームはスマートフォンのタッチ操作と、PCのマウス・キーボード操作の両方に最適化されています。' },
+  { q: '短時間でサクッと遊べるミニゲームはどれですか？', a: '1回1〜3分で遊べる物理ミニゲームなら「定時退社カタパルト」「社畜ワイヤー疾走」「社畜グラグラ決済タワー」がおすすめです。じっくりやりこむなら「社畜サバイバー」や「社畜通勤サバイバー」も人気です。' },
+  { q: 'ゲームの進行状況やハイスコアは保存されますか？', a: 'はい。ハイスコア、獲得した資金、恒久アップグレード、実績、解放状況はお使いのブラウザのlocalStorageに自動保存されます。' },
 ];
 
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: '無料ブラウザゲーム一覧',
-    description: '社畜ゲームを中心とした無料ブラウザゲームの一覧。',
+    name: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+    description: '社畜ゲーム・懐かしの物理アクションミニゲームを中心とした無料ブラウザゲーム全9作品の一覧。',
     url: `${APP_URL}/games`,
     inLanguage: 'ja-JP',
     mainEntity: {
@@ -155,27 +191,27 @@ export default function GamesPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Game Archive / 6 Titles</p>
+            <p className="paper-kicker">Game Archive / 9 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で遊べる<br className="sm:hidden" />社畜ゲーム一覧
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              通勤ラッシュ、残業、人狼、すごろく。会社という名の戦場を舞台にしたブラウザゲームをまとめました。
-              インストール不要、スマートフォンでも遊べます。
+              通勤ラッシュ、残業サバイバル、人狼、すごろくに加え、定時退社カタパルト・終電ワイヤースイング・限界ビル建設まで全9作品を収録。
+              すべて完全オリジナル制作・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
             <p className="font-label text-[9px] text-[var(--accent)]">Play Note</p>
             <p className="mt-2">
-              すきま時間に遊ぶならすごろく・人狼。長めに遊ぶなら通勤サバイバー・サバイバー・スパイラル・シューティング。
+              1分〜数分のワンボタン爽快プレイならカタパルト・ワイヤー・決済タワー。じっくりビルドや推理を楽しむならサバイバー・スパイラル・すごろく・人狼がおすすめです。
             </p>
           </div>
         </section>
 
         <section aria-labelledby="game-list-heading">
           <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
-            <h2 id="game-list-heading" className="font-editorial text-2xl">ゲーム一覧</h2>
-            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 06</span>
+            <h2 id="game-list-heading" className="font-editorial text-2xl">ゲーム一覧（全9作品）</h2>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 09</span>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {games.map((game, index) => (
@@ -238,8 +274,8 @@ export default function GamesPage() {
 
         <SeoContentSection
           eyebrow="GAME GUIDE"
-          title="6つの無料ブラウザゲーム"
-          intro="短時間で遊べるものから、やりこみ要素のあるものまで。気になるゲームを選んでください。"
+          title="9つの無料ブラウザゲーム"
+          intro="1分で遊べる爽快物理アクションから、じっくり戦略を練るローグライク・ボードゲームまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[
             { href: '/tools', label: '無料ツール一覧', description: 'プロフィール・診断・駅名標' },

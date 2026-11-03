@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Effect, GameDecision, GameDecisionOption } from '@/types/sugoroku';
+import { LIFE_ASSETS } from '@/lib/sugoroku-logic';
 import { HankoStamp, SquareTypeIcon } from './SugorokuIcons';
 
 interface DecisionCardProps {
@@ -11,6 +12,14 @@ interface DecisionCardProps {
 
 function renderOptionEffects(effect: Effect) {
   const chips: { label: string; value: string; positive: boolean }[] = [];
+  if (effect.asset && LIFE_ASSETS[effect.asset]) {
+    const asset = LIFE_ASSETS[effect.asset];
+    chips.push({
+      label: '資産カード',
+      value: `${asset.name}（${asset.value}万）`,
+      positive: true,
+    });
+  }
   if (typeof effect.career === 'number' && effect.career !== 0) {
     chips.push({
       label: '評価',
@@ -27,7 +36,7 @@ function renderOptionEffects(effect: Effect) {
   }
   if (typeof effect.money === 'number' && effect.money !== 0) {
     chips.push({
-      label: '貯金',
+      label: '資金',
       value: `${effect.money > 0 ? '+' : ''}${effect.money}万円`,
       positive: effect.money > 0,
     });
@@ -143,14 +152,14 @@ export function DecisionCard({ decision, onChoose }: DecisionCardProps) {
                   <SquareTypeIcon type="decision" size={15} />
                 </span>
                 <span className="font-mono text-[10px] font-black tracking-widest uppercase">
-                  CAREER DECISION / 稟議決裁
+                  STOP! CAREER JUNCTION / キャリア重要決断
                 </span>
               </div>
               <h2 id="decision-card-title" className="font-editorial mt-1.5 text-xl font-black leading-snug sm:text-2xl">
                 {decision.title}
               </h2>
             </div>
-            <HankoStamp text="稟議" variant="gold" className="bg-white/95 shadow-md" />
+            <HankoStamp text="決裁" variant="gold" className="bg-white/95 shadow-md" />
           </div>
           <p id="decision-card-description" className="mt-2 text-xs font-bold leading-relaxed text-white/90 sm:text-sm">
             {decision.description}
@@ -159,9 +168,9 @@ export function DecisionCard({ decision, onChoose }: DecisionCardProps) {
 
         <div className="space-y-2.5 p-4 sm:p-5">
           <div className="flex items-center justify-between text-[11px] font-black text-[#5c5141] dark:text-[#cfc2ad]">
-            <span>方針を1つ選択して決裁印を押してください</span>
+            <span>ルート・方針を1つ選択して決裁印を押してください</span>
             <span className="rounded bg-[#12100d] px-2 py-0.5 font-mono text-[10px] text-[#f5ca5c]">
-              3 OPTIONS
+              {decision.options.length} OPTIONS
             </span>
           </div>
 
@@ -170,7 +179,7 @@ export function DecisionCard({ decision, onChoose }: DecisionCardProps) {
           ))}
 
           <p className="pt-1 text-center text-[10px] font-bold text-[#6e6250] dark:text-[#b5a790]">
-            社内評価が高いほど昇進査定ゲートを通過しやすくなり、最終ランクが上昇します。
+            社内評価を上げて役職が上がるほど、給料日ゲートの支給額と最終退職金が大幅に増加します。
           </p>
         </div>
       </div>

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { VIEW_W, VIEW_H } from './config';
+import { STAGES, VIEW_W, VIEW_H } from './config';
 import { MAX_PB, MAX_EB, MAX_EN, MAX_IT, MAX_PT, MAX_RING, MAX_TX, type DanmakuSim } from './sim';
 import {
   orbTexture, boltTexture, ringTexture, dotTexture, playerTexture, optionTexture,
-  hitboxTexture, enemyTextures, bossTextures, itemTextures, backgroundTexture, TextLabel,
+  hitboxTexture, sigilTexture, hyperAuraTexture, enemyTextures, bossTextures,
+  itemTextures, backgroundTexture, parallaxOverlayTexture, TextLabel,
 } from './textures';
 
 const WORLD_X = (x: number): number => x - VIEW_W / 2;
@@ -21,10 +22,14 @@ export class DanmakuView {
   private bgMat!: THREE.MeshBasicMaterial;
   private bgMeshes: THREE.Mesh[] = [];
   private bgTex: THREE.Texture | null = null;
+
+  private parallaxMat!: THREE.MeshBasicMaterial;
+  private parallaxMeshes: THREE.Mesh[] = [];
+  private parallaxTex: THREE.Texture | null = null;
   private stageIdx = -1;
 
   private stars: THREE.Points[] = [];
-  private starSpeed = [14, 34];
+  private starSpeed = [18, 42];
 
   private pbMesh!: THREE.InstancedMesh;
   private ebMesh!: THREE.InstancedMesh;
@@ -33,12 +38,19 @@ export class DanmakuView {
   private particleMesh!: THREE.InstancedMesh;
   private ringMesh!: THREE.InstancedMesh;
 
+  private bossSigilSprite!: THREE.Sprite;
+  private bossSigilMat!: THREE.SpriteMaterial;
   private bossSprite!: THREE.Sprite;
   private bossMats!: THREE.SpriteMaterial;
   private bossTex: THREE.Texture[] = [];
+
+  private playerAuraSprite!: THREE.Sprite;
+  private playerAuraMat!: THREE.SpriteMaterial;
   private playerSprite!: THREE.Sprite;
   private optionSprites: THREE.Sprite[] = [];
   private hitboxSprite!: THREE.Sprite;
+  private prevPx = 240;
+  private shipBank = 0;
 
   private labels: TextLabel[] = [];
   private labelSprites: THREE.Sprite[] = [];
@@ -62,7 +74,7 @@ export class DanmakuView {
     this.camera.position.set(0, 0, 10);
     this.camera.lookAt(0, 0, 0);
 
-    // background planes (two copies for seamless scroll)
+    // Primary ground corridor planes (two copies for seamless vertical scroll)
     this.bgMat = new THREE.MeshBasicMaterial({ depthTest: false, depthWrite: false });
     const bgGeo = new THREE.PlaneGeometry(VIEW_W, VIEW_H);
     for (let i = 0; i < 2; i++) {
@@ -74,14 +86,31 @@ export class DanmakuView {
       this.bgMeshes.push(m);
     }
 
-    // starfields
+    // Secondary parallax cyber-grid / skyway overlay layer
+    this.parallaxMat = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0.75,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    for (let i = 0; i < 2; i++) {
+      const m = new THREE.Mesh(bgGeo, this.parallaxMat);
+      m.position.z = -4;
+      m.renderOrder = 1;
+      m.frustumCulled = false;
+      this.scene.add(m);
+      this.parallaxMeshes.push(m);
+    }
+
+    // Multi-depth starfield / atmospheric cyber-sparks
     for (let layer = 0; layer < 2; layer++) {
       const n = layer === 0 ? 130 : 90;
       const pos = new Float32Array(n * 3);
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       const mat = new THREE.PointsMaterial({
-        size: layer === 0 ? 2.2 : 3.4,
+        size: layer === 0 ? 2.4 : 3.8,
         map: dotTexture(),
         transparent: true,
         opacity: layer === 0 ? 0.55 : 0.85,
@@ -141,34 +170,63 @@ export class DanmakuView {
       this.itemMeshes[kind] = mkInst(t, MAX_IT, false, 2);
     }
 
-    // boss / player / options / hitbox
+    // Boss Spell-Circle / Cyber-Sigil Sprite (rotates behind active boss)
+    this.bossSigilMat = new THREE.SpriteMaterial({
+      map: sigilTexture(),
+      transparent: true,
+      opacity: 0.75,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this.bossSigilSprite = new THREE.Sprite(this.bossSigilMat);
+    this.bossSigilSprite.scale.set(220, 220, 1);
+    this.bossSigilSprite.renderOrder = 3;
+    this.bossSigilSprite.visible = false;
+    this.scene.add(this.bossSigilSprite);
+
+    // Boss Warship / Mech Sprite
     this.bossTex = bossTextures();
     this.bossMats = new THREE.SpriteMaterial({ map: this.bossTex[0], transparent: true, depthTest: false });
     this.bossSprite = new THREE.Sprite(this.bossMats);
-    this.bossSprite.scale.set(116, 116, 1);
+    this.bossSprite.scale.set(164, 164, 1);
     this.bossSprite.renderOrder = 4;
     this.bossSprite.visible = false;
     this.scene.add(this.bossSprite);
 
+    // Player Shield / Hyper Overdrive Aura Sprite
+    this.playerAuraMat = new THREE.SpriteMaterial({
+      map: hyperAuraTexture(),
+      transparent: true,
+      opacity: 0,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this.playerAuraSprite = new THREE.Sprite(this.playerAuraMat);
+    this.playerAuraSprite.scale.set(92, 92, 1);
+    this.playerAuraSprite.renderOrder = 5;
+    this.playerAuraSprite.visible = false;
+    this.scene.add(this.playerAuraSprite);
+
+    // Player Strike Craft
     this.playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: playerTexture(), transparent: true, depthTest: false }));
-    this.playerSprite.scale.set(52, 52, 1);
+    this.playerSprite.scale.set(58, 58, 1);
     this.playerSprite.renderOrder = 6;
     this.scene.add(this.playerSprite);
 
     const optTex = optionTexture();
     for (let i = 0; i < 2; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: optTex, transparent: true, depthTest: false, blending: THREE.AdditiveBlending }));
-      s.scale.set(24, 24, 1);
+      s.scale.set(26, 26, 1);
       s.renderOrder = 6;
       this.scene.add(s);
       this.optionSprites.push(s);
     }
     this.hitboxSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: hitboxTexture(), transparent: true, depthTest: false, blending: THREE.AdditiveBlending }));
-    this.hitboxSprite.scale.set(20, 20, 1);
-    this.hitboxSprite.renderOrder = 6;
+    this.hitboxSprite.scale.set(22, 22, 1);
+    this.hitboxSprite.renderOrder = 7;
     this.scene.add(this.hitboxSprite);
 
-    // floating text labels
+    // Floating text labels
     for (let i = 0; i < MAX_TX; i++) {
       const label = new TextLabel();
       const mat = new THREE.SpriteMaterial({ map: label.texture, transparent: true, depthTest: false });
@@ -183,7 +241,7 @@ export class DanmakuView {
       this.labelLast.push('');
     }
 
-    // fullscreen flash quad (follows camera size)
+    // Fullscreen flash quad (follows camera size)
     this.flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthTest: false, depthWrite: false });
     const flash = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.flashMat);
     flash.position.z = 8;
@@ -220,7 +278,7 @@ export class DanmakuView {
     this.camera.top = halfH;
     this.camera.bottom = -halfH;
     this.camera.updateProjectionMatrix();
-    // spread stars across the visible frustum
+    // Spread stars across the visible frustum
     for (const pts of this.stars) {
       const attr = pts.geometry.getAttribute('position') as THREE.BufferAttribute;
       let seed = pts.userData.seed as number;
@@ -239,9 +297,15 @@ export class DanmakuView {
     if (idx === this.stageIdx) return;
     this.stageIdx = idx;
     if (this.bgTex) this.bgTex.dispose();
-    this.bgTex = backgroundTexture(idx, VIEW_W, VIEW_H);
+    this.bgTex = backgroundTexture(idx, 512, 1024);
     this.bgMat.map = this.bgTex;
     this.bgMat.needsUpdate = true;
+
+    if (this.parallaxTex) this.parallaxTex.dispose();
+    this.parallaxTex = parallaxOverlayTexture(idx);
+    this.parallaxMat.map = this.parallaxTex;
+    this.parallaxMat.needsUpdate = true;
+
     const bt = this.bossTex[idx % this.bossTex.length];
     if (bt) {
       this.bossMats.map = bt;
@@ -273,18 +337,36 @@ export class DanmakuView {
     this.resize();
     this.setStage(sim.stageIdx);
 
-    // camera shake (trauma^2)
+    // Camera shake (trauma^2) + subtle horizontal camera sway with ship position
     const allowShake =
       this.shakeEnabled && (typeof window === 'undefined' || !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
     const tr = allowShake ? sim.trauma * sim.trauma : 0;
-    this.camera.position.set((Math.random() - 0.5) * 2 * tr * 13, (Math.random() - 0.5) * 2 * tr * 13, 10);
+    const camSwayX = ((sim.px - 240) / 240) * 4;
+    this.camera.position.set(
+      camSwayX + (Math.random() - 0.5) * 2 * tr * 13,
+      (Math.random() - 0.5) * 2 * tr * 13,
+      10,
+    );
 
-    // background scroll (two wrapped copies covering logical [off-800,off] and [off,off+800])
+    // Primary background scroll (two wrapped copies covering logical [off-800,off] and [off,off+800])
     const off = sim.scroll % VIEW_H;
     if (this.bgMeshes[0]) this.bgMeshes[0].position.y = 800 - off;
     if (this.bgMeshes[1]) this.bgMeshes[1].position.y = -off;
 
-    // starfields drift
+    // Secondary faster parallax cyber-grid layer
+    const pOff = (sim.scroll * 1.65) % VIEW_H;
+    const pSwayX = -((sim.px - 240) / 240) * 14;
+    if (this.parallaxMeshes[0]) {
+      this.parallaxMeshes[0].position.x = pSwayX;
+      this.parallaxMeshes[0].position.y = 800 - pOff;
+    }
+    if (this.parallaxMeshes[1]) {
+      this.parallaxMeshes[1].position.x = pSwayX;
+      this.parallaxMeshes[1].position.y = -pOff;
+    }
+    this.parallaxMat.opacity = sim.hyperActive ? 0.95 : 0.65;
+
+    // Starfields drift
     for (let l = 0; l < this.stars.length; l++) {
       const pts = this.stars[l];
       if (!pts) continue;
@@ -293,31 +375,47 @@ export class DanmakuView {
       if (pts.position.y > 0) pts.position.y -= 160;
     }
 
-    // player bullets
+    // Player bullets
     let n = 0;
     for (const bl of sim.pbullets) {
       if (!bl.alive) continue;
       const rot = Math.atan2(bl.vx, -bl.vy);
-      if (bl.kind === 0) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 20, 38, rot, 1, 0.68, 0.16);
-      else if (bl.kind === 1) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 22, 32, rot, 0.3, 0.85, 1);
-      else if (bl.kind === 2) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 18, 30, rot, 0.75, 0.45, 1);
-      else this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 26, 46, rot, 0.45, 1, 0.55);
+      const boost = sim.hyperActive ? 1.18 : 1;
+      if (bl.kind === 0) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 22 * boost, 40 * boost, rot, 1, 0.74, 0.2);
+      else if (bl.kind === 1) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 24 * boost, 34 * boost, rot, 0.35, 0.88, 1);
+      else if (bl.kind === 2) this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 20 * boost, 32 * boost, rot, 0.82, 0.5, 1);
+      else this.writeInst(this.pbMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 28 * boost, 50 * boost, rot, 0.45, 1, 0.6);
     }
     this.flush(this.pbMesh, n);
 
-    // enemy bullets (gentle pulse)
+    // Enemy bullets (crisp high-visibility neon orbs)
     n = 0;
     let bi = 0;
     for (const bl of sim.ebullets) {
       if (!bl.alive) continue;
-      const pulse = 1 + 0.09 * Math.sin(time * 11 + bi * 1.7);
+      const pulse = 1 + 0.08 * Math.sin(time * 12 + bi * 1.7);
       bi++;
-      if (bl.big) this.writeInst(this.ebMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 24 * pulse, 24 * pulse, 0, 1, 0.55, 0.2);
-      else this.writeInst(this.ebMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 16 * pulse, 16 * pulse, 0, 1, 0.25, 0.4);
+      if (bl.big) {
+        this.writeInst(this.ebMesh, n++, WORLD_X(bl.x), WORLD_Y(bl.y), 26 * pulse, 26 * pulse, 0, 1, 0.58, 0.16);
+      } else {
+        const alt = bi % 3 === 0;
+        this.writeInst(
+          this.ebMesh,
+          n++,
+          WORLD_X(bl.x),
+          WORLD_Y(bl.y),
+          17 * pulse,
+          17 * pulse,
+          0,
+          alt ? 1 : 1,
+          alt ? 0.35 : 0.18,
+          alt ? 0.85 : 0.42,
+        );
+      }
     }
     this.flush(this.ebMesh, n);
 
-    // enemies grouped by kind
+    // Enemies grouped by kind (high-detail 64x64 mecha craft)
     const counts: Record<string, number> = {};
     for (const e of sim.enemies) {
       if (!e.alive) continue;
@@ -327,14 +425,15 @@ export class DanmakuView {
       counts[e.kind] = i + 1;
       if (i >= MAX_EN) continue;
       const pulse = e.tele > 0 ? 1 + 0.14 * Math.sin(time * 30) : 1;
-      const s = (e.r * 2 + 12) * pulse;
-      this.writeInst(mesh, i, WORLD_X(e.x), WORLD_Y(e.y), s, s, 0, 1, 1, 1);
+      const s = (e.r * 2 + 24) * pulse;
+      const bank = Math.sin(e.t * 3) * 0.08;
+      this.writeInst(mesh, i, WORLD_X(e.x), WORLD_Y(e.y), s, s, bank, 1, 1, 1);
     }
     for (const [kind, mesh] of Object.entries(this.enemyMeshes)) {
       this.flush(mesh, Math.min(MAX_EN, counts[kind] ?? 0));
     }
 
-    // items grouped by kind
+    // Items grouped by kind
     const icounts: Record<string, number> = {};
     for (const it of sim.items) {
       if (!it.alive) continue;
@@ -343,7 +442,7 @@ export class DanmakuView {
       const i = icounts[it.kind] ?? 0;
       icounts[it.kind] = i + 1;
       if (i >= MAX_IT) continue;
-      const sz = it.magnet ? 36 + Math.sin(time * 24) * 3 : 34;
+      const sz = it.magnet ? 38 + Math.sin(time * 24) * 3 : 36;
       const bob = it.magnet ? 0 : Math.sin(it.t * 6) * 3;
       this.writeInst(mesh, i, WORLD_X(it.x), WORLD_Y(it.y + bob), sz, sz, 0, 1, 1, 1);
     }
@@ -351,43 +450,93 @@ export class DanmakuView {
       this.flush(mesh, Math.min(MAX_IT, icounts[kind] ?? 0));
     }
 
-    // boss
+    // Boss + Rotating Spell-Circle / Cyber-Sigil
     const b = sim.boss;
-    this.bossSprite.visible = b.alive;
-    if (b.alive) {
-      this.bossSprite.position.set(WORLD_X(b.x), WORLD_Y(b.y), 0);
+    const bossOn = b.alive || b.active;
+    this.bossSprite.visible = bossOn;
+    this.bossSigilSprite.visible = bossOn;
+    if (bossOn) {
+      const bx = WORLD_X(b.x);
+      const by = WORLD_Y(b.y);
+      this.bossSprite.position.set(bx, by, 0);
+      this.bossSigilSprite.position.set(bx, by, -0.5);
+
       const telePulse = b.tele > 0 ? 1 + 0.06 * Math.sin(time * 26) : 1;
-      this.bossSprite.scale.set(116 * telePulse, 116 * telePulse, 1);
-      this.bossSprite.material.rotation = Math.sin(b.t * 0.8) * 0.06;
+      this.bossSprite.scale.set(164 * telePulse, 164 * telePulse, 1);
+      this.bossSprite.material.rotation = Math.sin(b.t * 0.8) * 0.05;
+
+      // Sigil expands and spins faster during Spell Card phases
+      const sigilBase = b.phase >= 1 ? 248 : 196;
+      const sigilPulse = sigilBase + Math.sin(time * 5) * 12;
+      this.bossSigilSprite.scale.set(sigilPulse, sigilPulse, 1);
+      this.bossSigilMat.rotation = time * (b.phase >= 1 ? 1.15 : 0.45);
+      this.bossSigilMat.opacity = b.phase >= 1 ? 0.88 : 0.52;
+      const stAccent = STAGES[b.idx]?.accent ?? '#ffd257';
+      this.bossSigilMat.color.set(b.phase >= 2 ? '#ff5d5d' : stAccent);
+
       if (b.flash > 0) this.bossMats.color.setRGB(1, 0.45 + 0.3 * (1 - b.flash), 0.45 + 0.3 * (1 - b.flash));
       else if (b.tele > 0) this.bossMats.color.setRGB(1, 0.9, 0.6);
       else this.bossMats.color.setRGB(1, 1, 1);
     }
 
-    // player + options + hitbox
+    // Player + Hyper Aura + Options + Hitbox
     const showShip = sim.deadT <= 0 && sim.phase !== 'over';
-    this.playerSprite.visible = showShip && !(sim.invuln > 0 && Math.floor(time * 14) % 2 === 0);
+    const shipVis = showShip && !(sim.invuln > 0 && !sim.hyperActive && Math.floor(time * 14) % 2 === 0);
+    this.playerSprite.visible = shipVis;
     if (showShip) {
-      this.playerSprite.position.set(WORLD_X(sim.px), WORLD_Y(sim.py), 0);
+      const px = WORLD_X(sim.px);
+      const py = WORLD_Y(sim.py);
+      this.playerSprite.position.set(px, py, 0);
+
+      // Smooth banking tilt when strafing horizontally
+      const vx = sim.px - this.prevPx;
+      this.prevPx = sim.px;
+      const targetBank = Math.max(-0.22, Math.min(0.22, -vx * 0.035));
+      this.shipBank += (targetBank - this.shipBank) * 0.25;
+      this.playerSprite.material.rotation = this.shipBank;
+
+      // Player Shield / Hyper Overdrive Aura Sprite
+      const showAura = sim.hyperActive || sim.invuln > 0 || sim.hyper >= 100;
+      this.playerAuraSprite.visible = showAura;
+      if (showAura) {
+        this.playerAuraSprite.position.set(px, py, -0.2);
+        this.playerAuraMat.rotation = -time * (sim.hyperActive ? 2.4 : 1.1);
+        const auraScale = sim.hyperActive
+          ? 104 + Math.sin(time * 18) * 10
+          : sim.hyper >= 100
+            ? 84 + Math.sin(time * 10) * 6
+            : 88;
+        this.playerAuraSprite.scale.set(auraScale, auraScale, 1);
+        this.playerAuraMat.opacity = sim.hyperActive ? 0.92 : sim.hyper >= 100 ? 0.55 : 0.65;
+        this.playerAuraMat.color.set(
+          sim.hyperActive ? '#ffe14d' : sim.hyper >= 100 ? '#f59e0b' : '#54e0ff',
+        );
+      }
+
       for (let k = 0; k < 2; k++) {
         const s = this.optionSprites[k];
         if (!s) continue;
-        s.visible = this.playerSprite.visible;
-        s.position.set(WORLD_X(sim.px + (k === 0 ? -27 : 27)), WORLD_Y(sim.py + 8 + Math.sin(time * 5 + k * 2) * 2), 0);
+        s.visible = shipVis;
+        const ox = sim.focusHeld ? (k === 0 ? -18 : 18) : (k === 0 ? -29 : 29);
+        const oy = sim.focusHeld ? -10 : 8;
+        s.position.set(WORLD_X(sim.px + ox), WORLD_Y(sim.py + oy + Math.sin(time * 5 + k * 2) * 2), 0);
+        s.material.rotation = time * (sim.hyperActive ? 4 : 2) * (k === 0 ? 1 : -1);
       }
-      this.hitboxSprite.visible = this.playerSprite.visible && sim.focusHeld;
-      this.hitboxSprite.position.set(WORLD_X(sim.px), WORLD_Y(sim.py), 0);
+      this.hitboxSprite.visible = shipVis && sim.focusHeld;
+      this.hitboxSprite.position.set(px, py, 0.2);
       if (this.hitboxSprite.visible) {
         const pulse = 1 + 0.12 * Math.sin(time * 12);
-        this.hitboxSprite.scale.set(20 * pulse, 20 * pulse, 1);
+        this.hitboxSprite.scale.set(22 * pulse, 22 * pulse, 1);
+        this.hitboxSprite.material.rotation = time * 1.5;
       }
     } else {
       this.playerSprite.visible = false;
+      this.playerAuraSprite.visible = false;
       for (const s of this.optionSprites) s.visible = false;
       this.hitboxSprite.visible = false;
     }
 
-    // particles (additive fade via color scaling)
+    // Particles (additive fade via color scaling)
     n = 0;
     for (const p of sim.particles) {
       if (!p.alive) continue;
@@ -401,7 +550,7 @@ export class DanmakuView {
     }
     this.flush(this.particleMesh, n);
 
-    // shockwave rings
+    // Shockwave rings
     n = 0;
     for (const r of sim.rings) {
       if (!r.alive) continue;
@@ -414,7 +563,7 @@ export class DanmakuView {
     }
     this.flush(this.ringMesh, n);
 
-    // floating texts
+    // Floating texts
     for (let i = 0; i < MAX_TX; i++) {
       const t = sim.texts[i];
       const spr = this.labelSprites[i];
@@ -436,7 +585,7 @@ export class DanmakuView {
       mat.opacity = Math.min(1, t.life * 2);
     }
 
-    // screen flash
+    // Screen flash
     this.flashMat.opacity = Math.min(0.75, sim.flashA);
     this.flashMat.color.set(sim.flashColor);
 
@@ -463,6 +612,7 @@ export class DanmakuView {
     });
     for (const l of this.labels) l.dispose();
     if (this.bgTex) this.bgTex.dispose();
+    if (this.parallaxTex) this.parallaxTex.dispose();
     this.renderer.dispose();
   }
 }

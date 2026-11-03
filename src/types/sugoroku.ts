@@ -1,4 +1,4 @@
-// 社畜すごろく — 型定義
+// 社畜ライフロード (SHACHIKU LIFE ROAD) — 型定義
 // ロジック (src/lib/sugoroku-logic.ts) は純粋関数のみで構成し、UI はこの型を介して状態を描画する。
 
 /** 選択可能な職業 */
@@ -16,10 +16,30 @@ export type Job =
 
 export type ItemId = 'energy-drink' | 'paid-leave' | 'nemawashi';
 
-/** 所持アイテム */
+/** 所持アイテム（消耗支給品） */
 export interface Item {
   id: ItemId;
   name: string;
+  description: string;
+}
+
+/** 人生資産カード (ライフ資産ポートフォリオ) */
+export type LifeAssetId =
+  | 'income-fund'
+  | 'city-condo'
+  | 'side-saas'
+  | 'patent-license'
+  | 'exec-network'
+  | 'resort-villa';
+
+export interface LifeAsset {
+  id: LifeAssetId;
+  name: string;
+  category: '金融資産' | '不動産' | '事業資産' | '知的財産' | '無形資産';
+  /** 最終決算での資産評価額 (万円) */
+  value: number;
+  /** 給料日ゲート通過時の配当加算 (万円) */
+  dividend: number;
   description: string;
 }
 
@@ -49,6 +69,8 @@ export interface Effect {
   /** 休みターン数 */
   rest?: number;
   item?: ItemId;
+  /** 獲得するライフ資産カード */
+  asset?: LifeAssetId;
   /** 次のターン 1マス固定 (二日酔い) */
   slow?: boolean;
 }
@@ -58,7 +80,10 @@ export interface Outcome {
   effect: Effect;
 }
 
-/** 盤面の 1 マス */
+/** キャリア分岐ジャンクションのルート系統 */
+export type RouteBranch = 'main' | 'elite' | 'venture';
+
+/** 盤面の 1 マス (2.5D ジオラマ座標付き) */
 export interface BoardSquare {
   position: number;
   type: SquareType;
@@ -67,6 +92,14 @@ export interface BoardSquare {
   short: string;
   description: string;
   tone: Tone;
+  /** 所属ディストリクトID (1〜5) */
+  districtId: number;
+  /** ジオラマ盤面上の X 座標 (0〜100%) */
+  x: number;
+  /** ジオラマ盤面上の Y 座標 (0〜100%) */
+  y: number;
+  /** 分岐ルート属性 */
+  branch?: RouteBranch;
   /** 固定の結果 */
   outcome?: Outcome;
   /** 職業別の結果 (なければ outcome) */
@@ -82,6 +115,8 @@ export interface GameDecisionOption {
   flavor: string;
   effect: Effect;
   resultMessage: string;
+  /** ルート選択を伴う場合 */
+  routeSelect?: 'elite' | 'venture';
   /** リスク付き選択肢: chance の確率で effect、外れると fail */
   risk?: { chance: number; fail: Effect; failMessage: string };
 }
@@ -98,7 +133,7 @@ export type Stance = 'teiji' | 'zangyo';
 
 export type GameStatus = 'playing' | 'cleared' | 'gameover';
 
-export type CardKind = 'event' | 'promotion' | 'burnout' | 'goal' | 'gameover' | 'item';
+export type CardKind = 'event' | 'promotion' | 'payday' | 'burnout' | 'goal' | 'gameover' | 'item';
 
 /** 確認待ちのカード (順番に表示) */
 export interface EventCardData {
@@ -112,7 +147,17 @@ export interface EventCardData {
   effect: Effect;
 }
 
-export type LogKind = 'start' | 'roll' | 'rest' | 'event' | 'decision' | 'promotion' | 'item' | 'burnout' | 'finish';
+export type LogKind =
+  | 'start'
+  | 'roll'
+  | 'rest'
+  | 'event'
+  | 'decision'
+  | 'promotion'
+  | 'payday'
+  | 'item'
+  | 'burnout'
+  | 'finish';
 
 export interface LogEntry {
   id: number;
@@ -132,6 +177,16 @@ export interface GateEvent {
   rankName: string;
 }
 
+/** 給料日ゲート通過の記録 (UI の PAYDAY バナー演出用) */
+export interface PaydayEvent {
+  id: number;
+  position: number;
+  baseSalary: number;
+  dividendBonus: number;
+  totalPayout: number;
+  rankName: string;
+}
+
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D';
 
 /** ゲーム全体の状態 */
@@ -142,11 +197,16 @@ export interface GameState {
   yaruki: number;
   /** 社内評価 */
   career: number;
-  /** 貯金 (万円) */
+  /** 所持金・貯金 (万円) */
   money: number;
   /** 役職インデックス (RANKS) */
   rank: number;
+  /** 消耗アイテム */
   items: Item[];
+  /** 保有ライフ資産ポートフォリオ */
+  assets: LifeAsset[];
+  /** District 2 で選択したキャリア分岐ルート */
+  selectedRoute: 'elite' | 'venture' | null;
   turn: number;
   status: GameStatus;
   isFinished: boolean;
@@ -168,6 +228,8 @@ export interface GameState {
   usedDecisions: string[];
   gatesPassed: number[];
   lastGate: GateEvent | null;
+  paydaysPassed: number[];
+  lastPayday: PaydayEvent | null;
 
   path: number[];
   landedOnCounts: Record<number, number>;

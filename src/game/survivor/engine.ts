@@ -29,6 +29,8 @@ export interface HudSnapshot {
   endless: boolean;
   dashCd: number; dashMax: number;
   xpBoostT: number; coinBoostT: number;
+  /** Rolling 1.5s damage-per-second telemetry */
+  dps?: number;
 }
 
 export interface LevelChoice {
@@ -113,6 +115,12 @@ interface Proj {
 
 interface Pool {
   x: number; y: number; r: number; dmg: number; life: number; maxLife: number; tickCd: number;
+  kind?: 'taurine' | 'roast';
+}
+
+interface BeamArc {
+  x1: number; y1: number; x2: number; y2: number;
+  color: string; core: string; life: number; max: number; width: number;
 }
 
 interface EnemyProj { x: number; y: number; vx: number; vy: number; dmg: number; radius: number; life: number }
@@ -121,8 +129,8 @@ interface EnemyProj { x: number; y: number; vx: number; vy: number; dmg: number;
 interface Gem { x: number; y: number; vx: number; vy: number; val: number; age: number; vac?: boolean }
 interface CoinP { x: number; y: number; vx: number; vy: number; val: number; age?: number; vac?: boolean }
 interface Pickup { x: number; y: number; kind: 'heal' | 'magnet' | 'bomb' | 'chest'; bob: number; age?: number; vac?: boolean }
-interface Ring { x: number; y: number; r: number; maxR: number; dmg: number; knock: number; width: number; color: string; hit: Set<Enemy> }
-interface Boom { x: number; y: number; r: number; dmg: number; t: number; dur: number; knock: number; hit: Set<Enemy> }
+interface Ring { x: number; y: number; r: number; maxR: number; dmg: number; knock: number; width: number; color: string; hit: Set<Enemy>; evolved?: boolean }
+interface Boom { x: number; y: number; r: number; dmg: number; t: number; dur: number; knock: number; hit: Set<Enemy>; kind?: 'bomb' | 'hanko' | 'imperial_seal' | 'hotline' }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 interface DmgNum { x: number; y: number; val: number; life: number; crit: boolean }
 
@@ -221,8 +229,10 @@ export class SurvivorEngine {
   private rings: Ring[] = [];
   private booms: Boom[] = [];
   private pools: Pool[] = [];
+  private beams: BeamArc[] = [];
   private parts: Particle[] = [];
   private nums: DmgNum[] = [];
+  private dmgHistory: { t: number; dmg: number }[] = [];
   private spawnT = 0;
   private bossIdx = 0;
   private hudT = 0;
@@ -266,8 +276,8 @@ export class SurvivorEngine {
     this.banned = new Set();
     this.enemies = []; this.projs = []; this.eprojs = []; this.gems = [];
     this.coinPs = []; this.pickups = []; this.rings = []; this.booms = [];
-    this.pools = [];
-    this.parts = []; this.nums = [];
+    this.pools = []; this.beams = [];
+    this.parts = []; this.nums = []; this.dmgHistory = [];
     this.spawnT = 0.5; this.bossIdx = 0;
     this.chests = 0; this.gemsCollected = 0; this.killsByKind = {};
     this.dashCd = 0; this.dashT = 0;
@@ -396,9 +406,21 @@ export class SurvivorEngine {
   }
   private dmgMul(): number { return (1 + 0.08 * this.passiveLv('power')) * this.meta.dmgMul; }
   private speed(): number { return 215 * (1 + 0.06 * this.passiveLv('shoes')) * this.meta.speedMul; }
-  private magnetR(): number { return 120 * (1 + 0.25 * this.passiveLv('magnet')) * this.meta.magnetMul; }
+  private magnetR(): number { return 145 * (1 + 0.25 * this.passiveLv('magnet')) * this.meta.magnetMul; }
   private regen(): number { return 0.8 * this.passiveLv('care'); }
   private cdr(): number { return Math.pow(0.94, this.passiveLv('watch')); }
+  private currentDps(): number {
+    const cutoff = this.time - 1.5;
+    let total = 0;
+    for (let i = this.dmgHistory.length - 1; i >= 0; i--) {
+      if (this.dmgHistory[i].t < cutoff) {
+        this.dmgHistory.splice(0, i + 1);
+        break;
+      }
+      total += this.dmgHistory[i].dmg;
+    }
+    return total / 1.5;
+  }
 
   /* ----- level up ----- */
 
@@ -766,18 +788,18 @@ export class SurvivorEngine {
       switch (w.id) {
         case 'shuriken': {
           if (w.cd > 0) break;
-          const tgt = this.nearestEnemy(540);
+          const tgt = this.nearestEnemy(560);
           if (!tgt) { w.cd = 0.1; break; }
-          w.cd = 1.05 * cdr;
+          w.cd = 0.92 * cdr;
           const n = 1 + Math.floor((w.lv + 1) / 3);
-          const dmg = 11 * (1 + 0.28 * (w.lv - 1)) * dm;
+          const dmg = 12 * (1 + 0.28 * (w.lv - 1)) * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
             const a = base + (i - (n - 1) / 2) * 0.12;
             this.projs.push({
               x: this.px, y: this.py,
-              vx: Math.cos(a) * 560, vy: Math.sin(a) * 560,
+              vx: Math.cos(a) * 580, vy: Math.sin(a) * 580,
               dmg, radius: 10, pierce: 1 + Math.floor(w.lv / 3), life: 1.4,
               kind: 'shuriken', color: '#e2e8f0', blast: 0, homing: 0, age: 0, hit: new Set(),
             });
@@ -789,9 +811,9 @@ export class SurvivorEngine {
           if (w.cd > 0) break;
           const tgt = this.nearestEnemy(480);
           if (!tgt) { w.cd = 0.1; break; }
-          w.cd = 1.5 * cdr;
+          w.cd = 1.42 * cdr;
           const n = 2 + Math.floor(w.lv / 2);
-          const dmg = 8 * (1 + 0.28 * (w.lv - 1)) * dm;
+          const dmg = 9 * (1 + 0.28 * (w.lv - 1)) * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -801,6 +823,19 @@ export class SurvivorEngine {
               vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
               dmg, radius: 9, pierce: 0, life: 1.1,
               kind: 'coffee', color: '#b45309', blast: 0, homing: 0, age: 0, hit: new Set(),
+            });
+          }
+          if (w.lv >= 3 && this.pools.length < 18) {
+            const distP = 110 + rand(0, 70);
+            this.pools.push({
+              x: this.px + Math.cos(base) * distP,
+              y: this.py + Math.sin(base) * distP,
+              r: 36 + w.lv * 3,
+              dmg: dmg * 0.35,
+              life: 2.2,
+              maxLife: 2.2,
+              tickCd: 0.15,
+              kind: 'roast',
             });
           }
           this.sound.shoot();
@@ -815,9 +850,9 @@ export class SurvivorEngine {
           if (w.cd > 0) break;
           const tgt = this.nearestEnemy(520);
           if (!tgt) { w.cd = 0.15; break; }
-          w.cd = 2.2 * cdr;
+          w.cd = 2.05 * cdr;
           const n = 1 + Math.floor(w.lv / 3);
-          const dmg = 15 * (1 + 0.3 * (w.lv - 1)) * dm;
+          const dmg = 16 * (1 + 0.3 * (w.lv - 1)) * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -834,13 +869,13 @@ export class SurvivorEngine {
         }
         case 'bomb': {
           if (w.cd > 0) break;
-          w.cd = Math.max(0.9, 2.5 - 0.12 * w.lv) * cdr;
+          w.cd = Math.max(0.9, 2.4 - 0.12 * w.lv) * cdr;
           const tgt = this.randomEnemyWithin(460);
           const tx = tgt ? tgt.x : this.px + rand(-200, 200);
           const ty = tgt ? tgt.y : this.py + rand(-200, 200);
-          const dmg = 32 * (1 + 0.3 * (w.lv - 1)) * dm;
+          const dmg = 34 * (1 + 0.3 * (w.lv - 1)) * dm;
           this.booms.push({
-            x: tx, y: ty, r: 85 + 9 * w.lv, dmg, t: 0, dur: 0.35, knock: 260, hit: new Set(),
+            x: tx, y: ty, r: 85 + 9 * w.lv, dmg, t: 0, dur: 0.35, knock: 260, hit: new Set(), kind: 'bomb',
           });
           this.burst(tx, ty, '#fb923c', 14, 160);
           this.sound.shoot();
@@ -848,10 +883,10 @@ export class SurvivorEngine {
         }
         case 'hanko': {
           if (w.cd > 0) break;
-          w.cd = Math.max(1.4, 3.2 - 0.15 * w.lv) * cdr;
-          const dmg = 26 * (1 + 0.3 * (w.lv - 1)) * dm;
+          w.cd = Math.max(1.35, 3.0 - 0.15 * w.lv) * cdr;
+          const dmg = 28 * (1 + 0.3 * (w.lv - 1)) * dm;
           this.booms.push({
-            x: this.px, y: this.py, r: 120 + 12 * w.lv, dmg, t: 0, dur: 0.3, knock: 340, hit: new Set(),
+            x: this.px, y: this.py, r: 120 + 12 * w.lv, dmg, t: 0, dur: 0.35, knock: 340, hit: new Set(), kind: 'hanko',
           });
           this.burst(this.px, this.py, '#f472b6', 16, 220);
           this.sound.shoot();
@@ -861,9 +896,9 @@ export class SurvivorEngine {
           if (w.cd > 0) break;
           const tgt = this.nearestEnemy(600);
           if (!tgt) { w.cd = 0.15; break; }
-          w.cd = 1.9 * cdr;
+          w.cd = 1.8 * cdr;
           const n = 1 + Math.floor(w.lv / 2);
-          const dmg = 13 * (1 + 0.28 * (w.lv - 1)) * dm;
+          const dmg = 14 * (1 + 0.28 * (w.lv - 1)) * dm;
           for (let i = 0; i < n; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
             const a = rand(0, Math.PI * 2);
@@ -874,16 +909,21 @@ export class SurvivorEngine {
               kind: 'missile', color: '#4ade80', blast: 34, homing: 6, age: 0, hit: new Set(),
             });
           }
+          // Signal laser trace to target
+          this.beams.push({
+            x1: this.px, y1: this.py, x2: tgt.x, y2: tgt.y,
+            color: '#f43f5e', core: '#fda4af', life: 0.18, max: 0.18, width: 3,
+          });
           this.sound.shoot();
           break;
         }
         case 'bell': {
           if (w.cd > 0) break;
-          w.cd = Math.max(2.2, 5.2 - 0.3 * w.lv) * cdr;
-          const dmg = 22 * (1 + 0.32 * (w.lv - 1)) * dm;
+          w.cd = Math.max(2.1, 5.0 - 0.3 * w.lv) * cdr;
+          const dmg = 24 * (1 + 0.32 * (w.lv - 1)) * dm;
           this.rings.push({
             x: this.px, y: this.py, r: 30, maxR: 190 + 22 * w.lv,
-            dmg, knock: 430, width: 30, color: '#fde047', hit: new Set(),
+            dmg, knock: 430, width: 30, color: '#fde047', hit: new Set(), evolved: false,
           });
           this.sound.hit();
           break;
@@ -892,8 +932,8 @@ export class SurvivorEngine {
           if (w.cd > 0) break;
           const tgt = this.nearestEnemy(600);
           if (!tgt) { w.cd = 0.1; break; }
-          w.cd = 0.65 * cdr;
-          const dmg = 24 * dm;
+          w.cd = 0.6 * cdr;
+          const dmg = 28 * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < 4; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -912,8 +952,8 @@ export class SurvivorEngine {
           if (w.cd > 0) break;
           const tgt = this.nearestEnemy(520);
           if (!tgt) { w.cd = 0.1; break; }
-          w.cd = 0.9 * cdr;
-          const dmg = 22 * dm;
+          w.cd = 0.85 * cdr;
+          const dmg = 25 * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           const angles = [base - 0.2, base, base + 0.2, base + Math.PI - 0.15, base + Math.PI + 0.15];
           for (const a of angles) {
@@ -923,6 +963,18 @@ export class SurvivorEngine {
               vx: Math.cos(a) * 520, vy: Math.sin(a) * 520,
               dmg, radius: 14, pierce: 999, life: 1.3,
               kind: 'caffeine_geyser', color: '#78350f', blast: 0, homing: 0, age: 0, hit: new Set(),
+            });
+          }
+          if (this.pools.length < 18) {
+            this.pools.push({
+              x: this.px + Math.cos(base) * 140,
+              y: this.py + Math.sin(base) * 140,
+              r: 62,
+              dmg: dmg * 0.35,
+              life: 3.0,
+              maxLife: 3.0,
+              tickCd: 0.12,
+              kind: 'roast',
             });
           }
           this.sound.shoot();
@@ -936,8 +988,8 @@ export class SurvivorEngine {
           if (w.cd > 0) break;
           const tgt = this.nearestEnemy(560);
           if (!tgt) { w.cd = 0.15; break; }
-          w.cd = 1.8 * cdr;
-          const dmg = 42 * dm;
+          w.cd = 1.7 * cdr;
+          const dmg = 45 * dm;
           const base = Math.atan2(tgt.y - this.py, tgt.x - this.px);
           for (let i = 0; i < 4; i++) {
             if (this.projs.length >= MAX_PROJECTILES) break;
@@ -954,14 +1006,14 @@ export class SurvivorEngine {
         }
         case 'taurine_supernova': {
           if (w.cd > 0) break;
-          w.cd = 1.6 * cdr;
-          const dmg = 45 * dm;
+          w.cd = 1.55 * cdr;
+          const dmg = 48 * dm;
           for (let c = 0; c < 3; c++) {
             const tgt = this.randomEnemyWithin(480);
             const tx = tgt ? tgt.x + rand(-20, 20) : this.px + rand(-180, 180);
             const ty = tgt ? tgt.y + rand(-20, 20) : this.py + rand(-180, 180);
             this.pools.push({
-              x: tx, y: ty, r: 75, dmg: dmg * 0.35, life: 4.0, maxLife: 4.0, tickCd: 0.1,
+              x: tx, y: ty, r: 75, dmg: dmg * 0.35, life: 4.0, maxLife: 4.0, tickCd: 0.1, kind: 'taurine',
             });
             this.burst(tx, ty, '#84cc16', 12, 140);
           }
@@ -970,12 +1022,21 @@ export class SurvivorEngine {
         }
         case 'emergency_hotline': {
           if (w.cd > 0) break;
-          w.cd = 0.85 * cdr;
+          w.cd = 0.8 * cdr;
           const tgt = this.nearestEnemy(600);
           if (!tgt) break;
-          const dmg = 50 * dm;
+          const dmg = 54 * dm;
           this.booms.push({
-            x: tgt.x, y: tgt.y, r: 110, dmg, t: 0, dur: 0.25, knock: 300, hit: new Set(),
+            x: tgt.x, y: tgt.y, r: 110, dmg, t: 0, dur: 0.3, knock: 300, hit: new Set(), kind: 'hotline',
+          });
+          // Multi-core satellite lightning beam from sky and hero
+          this.beams.push({
+            x1: tgt.x + rand(-30, 30), y1: tgt.y - 360, x2: tgt.x, y2: tgt.y,
+            color: '#0ea5e9', core: '#ffffff', life: 0.28, max: 0.28, width: 7,
+          });
+          this.beams.push({
+            x1: this.px, y1: this.py, x2: tgt.x, y2: tgt.y,
+            color: '#38bdf8', core: '#fde047', life: 0.22, max: 0.22, width: 4,
           });
           this.burst(tgt.x, tgt.y, '#38bdf8', 18, 240);
           this.sound.shoot();
@@ -983,11 +1044,11 @@ export class SurvivorEngine {
         }
         case 'imperial_seal': {
           if (w.cd > 0) break;
-          w.cd = 2.2 * cdr;
-          const dmg = 80 * dm;
+          w.cd = 2.1 * cdr;
+          const dmg = 85 * dm;
           const radius = 240;
           this.booms.push({
-            x: this.px, y: this.py, r: radius, dmg, t: 0, dur: 0.45, knock: 450, hit: new Set(),
+            x: this.px, y: this.py, r: radius, dmg, t: 0, dur: 0.52, knock: 450, hit: new Set(), kind: 'imperial_seal',
           });
           this.burst(this.px, this.py, '#dc2626', 28, 300);
           this.traumaShake.addTrauma(0.5);
@@ -1001,11 +1062,11 @@ export class SurvivorEngine {
         }
         case 'grand_chime': {
           if (w.cd > 0) break;
-          w.cd = 3.5 * cdr;
-          const dmg = 60 * dm;
+          w.cd = 3.4 * cdr;
+          const dmg = 65 * dm;
           this.rings.push({
             x: this.px, y: this.py, r: 40, maxR: 360,
-            dmg, knock: 500, width: 45, color: '#fde047', hit: new Set(),
+            dmg, knock: 500, width: 45, color: '#fde047', hit: new Set(), evolved: true,
           });
           this.traumaShake.addTrauma(0.4);
           for (const e of this.enemies) {
@@ -1314,6 +1375,8 @@ export class SurvivorEngine {
   private damageEnemy(e: Enemy, dmg: number, knock: number, fromX: number, fromY: number, silent: boolean): void {
     if (e.hp <= 0) return;
     const { dmg: final, crit } = this.critRoll(dmg);
+    const dealt = Math.max(0, Math.min(e.hp, final));
+    this.dmgHistory.push({ t: this.time, dmg: dealt });
     e.hp -= final;
     e.flash = 0.09;
     const d = Math.max(1, Math.hypot(e.x - fromX, e.y - fromY));
@@ -1590,6 +1653,11 @@ export class SurvivorEngine {
       n.y -= 46 * dt;
       if (n.life <= 0) this.nums.splice(i, 1);
     }
+    for (let i = this.beams.length - 1; i >= 0; i--) {
+      const b = this.beams[i];
+      b.life -= dt;
+      if (b.life <= 0) this.beams.splice(i, 1);
+    }
     if (this.shakeT > 0) this.shakeT -= dt;
   }
 
@@ -1656,6 +1724,7 @@ export class SurvivorEngine {
       endless: this.endless,
       dashCd: Math.max(0, this.dashCd), dashMax: SurvivorEngine.DASH_MAX,
       xpBoostT: Math.max(0, this.xpBoostT), coinBoostT: Math.max(0, this.coinBoostT),
+      dps: Math.round(this.currentDps()),
     });
   }
 
@@ -1680,17 +1749,31 @@ export class SurvivorEngine {
     const camX = this.px - W / 2 + sx;
     const camY = this.py - H / 2 + sy;
 
-    // floor
+    // 1. Rich 16-bit Tiled Dark-Office Arena
     const night = Math.max(0, Math.min(1, (this.time - 420) / 180));
     ctx.fillStyle = this.stage.floor;
     ctx.fillRect(0, 0, W, H);
 
-    // grid
+    const grid = 80;
+    const gx0 = Math.floor(camX / grid);
+    const gy0 = Math.floor(camY / grid);
+    const cols = Math.ceil(W / grid) + 2;
+    const rows = Math.ceil(H / grid) + 2;
+    for (let gx = gx0; gx < gx0 + cols; gx++) {
+      for (let gy = gy0; gy < gy0 + rows; gy++) {
+        const variant = Math.abs((gx * 3 + gy * 7) % 4);
+        const tileSprite = getPixelSprite(`tile_${this.stage.id}`, variant, false);
+        const tx = Math.round(gx * grid - camX);
+        const ty = Math.round(gy * grid - camY);
+        ctx.drawImage(tileSprite, tx, ty, grid, grid);
+      }
+    }
+
+    // Subtle gothic grid lines over tiles
     ctx.strokeStyle = this.stage.grid;
     ctx.lineWidth = 1;
-    const grid = 80;
-    const x0 = Math.floor(camX / grid) * grid;
-    const y0 = Math.floor(camY / grid) * grid;
+    const x0 = gx0 * grid;
+    const y0 = gy0 * grid;
     ctx.beginPath();
     for (let x = x0; x < camX + W + grid; x += grid) {
       ctx.moveTo(x - camX, 0);
@@ -1702,27 +1785,113 @@ export class SurvivorEngine {
     }
     ctx.stroke();
 
-    // desks decor
+    // 2. Stage-Specific World Landmarks & Ambient Torch/Monitor Lighting Halos
     const cell = 240;
     const cx0 = Math.floor(camX / cell);
     const cy0 = Math.floor(camY / cell);
     for (let cx = cx0; cx < cx0 + W / cell + 2; cx++) {
       for (let cy = cy0; cy < cy0 + H / cell + 2; cy++) {
         const h = hashCell(cx, cy);
-        if (h < 0.55) {
-          const dx = cx * cell + h * 120 - camX;
-          const dy = cy * cell + ((h * 7919) % 1) * 120 - camY;
-          ctx.fillStyle = 'rgba(120,90,60,0.35)';
-          ctx.fillRect(dx, dy, 74, 40);
-          ctx.fillStyle = 'rgba(255,255,255,0.08)';
-          ctx.fillRect(dx + 8, dy + 6, 24, 14);
-          if (h > 0.4) {
-            // pixel plant
-            ctx.fillStyle = '#15803d';
-            ctx.fillRect(dx + 58, dy + 18, 4, 10);
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(dx + 56, dy + 12, 3, 8);
-            ctx.fillRect(dx + 62, dy + 14, 3, 7);
+        if (h < 0.6) {
+          const dx = Math.round(cx * cell + h * 110 - camX);
+          const dy = Math.round(cy * cell + ((h * 7919) % 1) * 110 - camY);
+
+          if (this.stage.id === 'factory') {
+            // Industrial conveyor segment with hazard stripes & molten vent
+            ctx.fillStyle = 'rgba(15,12,8,0.65)';
+            ctx.fillRect(dx - 2, dy + 4, 84, 38);
+            ctx.fillStyle = '#33291f';
+            ctx.fillRect(dx, dy, 80, 36);
+            ctx.fillStyle = '#d97706';
+            for (let s = 4; s < 74; s += 14) {
+              ctx.fillRect(dx + s, dy + 2, 7, 3);
+              ctx.fillRect(dx + s, dy + 31, 7, 3);
+            }
+            ctx.fillStyle = '#1c1610';
+            ctx.fillRect(dx + 6, dy + 8, 68, 20);
+            if (h > 0.35) {
+              // Molten forge vent halo
+              const flicker = 0.14 + 0.05 * Math.sin(this.time * 7 + cx);
+              ctx.fillStyle = `rgba(249,115,22,${flicker})`;
+              ctx.beginPath();
+              ctx.arc(dx + 40, dy + 18, 42, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#ea580c';
+              ctx.fillRect(dx + 32, dy + 13, 16, 10);
+            }
+          } else if (this.stage.id === 'datacenter') {
+            // Obsidian Server Rack Monolith & Cryo Conduit Halo
+            ctx.fillStyle = 'rgba(4,10,16,0.7)';
+            ctx.fillRect(dx - 2, dy + 4, 68, 46);
+            ctx.fillStyle = '#0f2230';
+            ctx.fillRect(dx, dy, 64, 42);
+            ctx.strokeStyle = '#155e75';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(dx, dy, 64, 42);
+            // Blinking server blade LEDs
+            const blinkOn = Math.floor(this.time * 5 + cx + cy) % 2 === 0;
+            ctx.fillStyle = blinkOn ? '#22d3ee' : '#0284c7';
+            ctx.fillRect(dx + 8, dy + 7, 18, 3);
+            ctx.fillRect(dx + 8, dy + 15, 18, 3);
+            ctx.fillRect(dx + 8, dy + 23, 18, 3);
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(dx + 34, dy + 7, 6, 3);
+            ctx.fillRect(dx + 34, dy + 15, 6, 3);
+            // Ambient neon cyan monitor/server halo
+            ctx.fillStyle = 'rgba(34,211,238,0.08)';
+            ctx.beginPath();
+            ctx.arc(dx + 32, dy + 21, 46, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (this.stage.id === 'boardroom') {
+            // Gothic Executive Mahogany Table & Golden Candelabra Torch Pillar
+            ctx.fillStyle = 'rgba(12,4,7,0.7)';
+            ctx.fillRect(dx - 2, dy + 4, 86, 44);
+            ctx.fillStyle = '#45121b';
+            ctx.fillRect(dx, dy, 82, 40);
+            ctx.strokeStyle = '#ca8a04';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(dx + 2, dy + 2, 78, 36);
+            // Golden torch pillar & warm flickering halo
+            const flicker = 0.14 + 0.05 * Math.sin(this.time * 8 + cy);
+            ctx.fillStyle = `rgba(250,204,21,${flicker})`;
+            ctx.beginPath();
+            ctx.arc(dx + 41, dy + 20, 48, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(dx + 38, dy + 17, 6, 6);
+          } else {
+            // HQ Cubicle Matrix: Dark desk, dual glowing monitors, plant, or Magic-Circle Water Cooler
+            ctx.fillStyle = 'rgba(8,11,20,0.55)';
+            ctx.fillRect(dx - 2, dy + 4, 78, 42);
+            ctx.fillStyle = '#2d231e';
+            ctx.fillRect(dx, dy, 74, 38);
+            ctx.strokeStyle = '#47382f';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(dx, dy, 74, 38);
+            // Glowing dual monitors
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(dx + 8, dy + 5, 24, 13);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(dx + 10, dy + 7, 20, 9);
+            ctx.fillStyle = 'rgba(56,189,248,0.09)';
+            ctx.beginPath();
+            ctx.arc(dx + 20, dy + 12, 34, 0, Math.PI * 2);
+            ctx.fill();
+            if (h > 0.42) {
+              // Arcane Water Cooler Magic Circle landmark next to cubicle
+              const sigilX = dx + 58;
+              const sigilY = dy + 19;
+              ctx.strokeStyle = 'rgba(56,189,248,0.32)';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.arc(sigilX, sigilY, 13, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#15803d';
+              ctx.fillRect(dx + 56, dy + 16, 4, 9);
+              ctx.fillStyle = '#4ade80';
+              ctx.fillRect(dx + 54, dy + 11, 3, 7);
+              ctx.fillRect(dx + 60, dy + 13, 3, 6);
+            }
           }
         }
       }
@@ -1731,19 +1900,48 @@ export class SurvivorEngine {
     const sx2 = (x: number) => x - camX;
     const sy2 = (y: number) => y - camY;
 
-    // pools (taurine_supernova)
-    for (const pool of this.pools) {
+    // 3. Bubbling Magma / Roast / Taurine Pools
+    for (let pi = 0; pi < this.pools.length; pi++) {
+      const pool = this.pools[pi];
       const x = sx2(pool.x); const y = sy2(pool.y);
-      const alpha = Math.min(0.6, (pool.life / pool.maxLife) * 0.7);
-      ctx.fillStyle = `rgba(132, 204, 22, ${alpha * 0.4})`;
+      if (x < -pool.r - 20 || y < -pool.r - 20 || x > W + pool.r + 20 || y > H + pool.r + 20) continue;
+      const alpha = Math.min(0.75, (pool.life / pool.maxLife) * 0.85);
+      const isRoast = pool.kind === 'roast';
+      ctx.fillStyle = isRoast
+        ? `rgba(120, 53, 15, ${alpha * 0.55})`
+        : `rgba(132, 204, 22, ${alpha * 0.42})`;
       ctx.beginPath();
       ctx.arc(x, y, pool.r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(217, 249, 157, ${alpha * 0.8})`;
+
+      // Inner dark-core / magma ring
+      ctx.fillStyle = isRoast
+        ? `rgba(217, 119, 6, ${alpha * 0.38})`
+        : `rgba(163, 230, 53, ${alpha * 0.32})`;
+      ctx.beginPath();
+      ctx.arc(x, y, pool.r * (0.62 + 0.08 * Math.sin(this.time * 5 + pi)), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = isRoast
+        ? `rgba(251, 191, 36, ${alpha * 0.85})`
+        : `rgba(217, 249, 157, ${alpha * 0.85})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(x, y, pool.r, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Bubbling surface blisters & rising steam
+      for (let b = 0; b < 4; b++) {
+        const ang = (b * Math.PI) / 2 + pi * 1.3 + this.time * 1.2;
+        const distB = pool.r * (0.25 + ((b * 0.19 + this.time * 0.4) % 0.55));
+        const bx = x + Math.cos(ang) * distB;
+        const by = y + Math.sin(ang) * distB;
+        const br = 2.5 + 1.5 * Math.abs(Math.sin(this.time * 6 + b + pi));
+        ctx.fillStyle = isRoast ? `rgba(254, 243, 199, ${alpha * 0.75})` : `rgba(236, 252, 203, ${alpha * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // faceted diamond gems
@@ -1769,44 +1967,166 @@ export class SurvivorEngine {
       const x = sx2(p.x); const y = sy2(p.y) + Math.sin(p.bob * 4) * 3;
       if (x < -30 || y < -30 || x > W + 30 || y > H + 30) continue;
       if (p.kind === 'chest') {
-        ctx.fillStyle = 'rgba(251,191,36,0.25)';
+        // Golden treasure beacon ring + aura
+        ctx.fillStyle = 'rgba(251,191,36,0.26)';
         ctx.beginPath();
-        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.arc(x, y, 22 + Math.sin(this.time * 6) * 3, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(253,224,71,0.75)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 19, 0, Math.PI * 2);
+        ctx.stroke();
       }
       const sprite = getPixelSprite(p.kind, 0, false);
       ctx.drawImage(sprite, Math.round(x - 14), Math.round(y - 14), 28, 28);
     }
 
-    // explosions / stamps
+    // 4. Explosions / Corporate Hanko Seals / Imperial Decree Stamps
     for (const b of this.booms) {
       const x = sx2(b.x); const y = sy2(b.y);
-      const k = b.t / b.dur;
-      ctx.strokeStyle = `rgba(251,146,60,${1 - k})`;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(x, y, b.r * (0.4 + 0.6 * k), 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = `rgba(251,146,60,${0.25 * (1 - k)})`;
-      ctx.beginPath();
-      ctx.arc(x, y, b.r * (0.4 + 0.6 * k), 0, Math.PI * 2);
-      ctx.fill();
+      const k = Math.min(1, b.t / Math.max(0.01, b.dur));
+      const curR = b.r * (0.4 + 0.6 * k);
+      const alpha = Math.max(0, 1 - k);
+
+      if (b.kind === 'imperial_seal' || b.kind === 'hanko') {
+        const isImperial = b.kind === 'imperial_seal';
+        ctx.strokeStyle = isImperial ? `rgba(250,204,21,${alpha * 0.95})` : `rgba(239,68,68,${alpha * 0.9})`;
+        ctx.lineWidth = isImperial ? 5 : 3.5;
+        ctx.beginPath();
+        ctx.arc(x, y, curR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner vermilion hanko ring & cross grid
+        ctx.strokeStyle = `rgba(220,38,38,${alpha * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, curR * 0.82, 0, Math.PI * 2);
+        ctx.moveTo(x - curR * 0.58, y - curR * 0.58);
+        ctx.lineTo(x + curR * 0.58, y - curR * 0.58);
+        ctx.lineTo(x + curR * 0.58, y + curR * 0.58);
+        ctx.lineTo(x - curR * 0.58, y + curR * 0.58);
+        ctx.closePath();
+        ctx.moveTo(x, y - curR * 0.58);
+        ctx.lineTo(x, y + curR * 0.58);
+        ctx.moveTo(x - curR * 0.58, y);
+        ctx.lineTo(x + curR * 0.58, y);
+        ctx.stroke();
+
+        ctx.fillStyle = isImperial ? `rgba(220,38,38,${0.28 * alpha})` : `rgba(244,63,94,${0.22 * alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, curR, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (b.kind === 'hotline') {
+        ctx.strokeStyle = `rgba(56,189,248,${alpha * 0.95})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(x, y, curR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = `rgba(14,165,233,${0.28 * alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, curR * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = `rgba(251,146,60,${alpha})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(x, y, curR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = `rgba(251,146,60,${0.25 * alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, curR, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    // rings
+
+    // 5. Clockface Resonance Rings (定時の鐘 / 完全定時チャイム)
     for (const r of this.rings) {
       const x = sx2(r.x); const y = sy2(r.y);
-      ctx.strokeStyle = 'rgba(253,224,71,0.85)';
-      ctx.lineWidth = r.width * (1 - r.r / (r.maxR * 1.4));
+      const frac = Math.min(1, r.r / Math.max(1, r.maxR));
+      const alpha = Math.max(0.1, 1 - frac * 0.85);
+      ctx.strokeStyle = r.evolved ? `rgba(56,189,248,${alpha})` : `rgba(253,224,71,${alpha})`;
+      ctx.lineWidth = Math.max(2, r.width * (1 - r.r / (r.maxR * 1.4)));
       ctx.beginPath();
       ctx.arc(x, y, r.r, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Inner gold harmonic ring & 12 clockwork dial ticks
+      ctx.strokeStyle = `rgba(253,224,71,${alpha * 0.75})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, r.r * 0.86, 0, Math.PI * 2);
+      for (let h = 0; h < 12; h++) {
+        const ha = (h * Math.PI) / 6 + this.time * 0.5;
+        ctx.moveTo(x + Math.cos(ha) * (r.r * 0.82), y + Math.sin(ha) * (r.r * 0.82));
+        ctx.lineTo(x + Math.cos(ha) * (r.r * 0.96), y + Math.sin(ha) * (r.r * 0.96));
+      }
+      ctx.stroke();
     }
 
-    // enemies (16-bit retro pixel art with 2-frame animation and hit-flash)
+    // 6. Multi-Core Plasma & Lightning Beams (取引先コール / 緊急ホットライン)
+    for (const b of this.beams) {
+      const x1 = sx2(b.x1); const y1 = sy2(b.y1);
+      const x2 = sx2(b.x2); const y2 = sy2(b.y2);
+      const a = Math.max(0, b.life / b.max);
+      ctx.save();
+      ctx.globalAlpha = a;
+      // Outer plasma glow
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = b.width * 2.2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      const midX = (x1 + x2) / 2 + Math.sin(this.time * 45) * 10;
+      const midY = (y1 + y2) / 2 + Math.cos(this.time * 45) * 10;
+      ctx.lineTo(midX, midY);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      // Inner hot core
+      ctx.strokeStyle = b.core;
+      ctx.lineWidth = Math.max(1.5, b.width * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(midX, midY);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 7. Enemies (16-bit retro pixel art + Boss Dread Sigil Aura)
     const animFrame = Math.floor(this.time * 4) % 2;
+    let activeBoss: Enemy | null = null;
     for (const e of this.enemies) {
+      if (e.boss && e.hp > 0 && !activeBoss) activeBoss = e;
       const x = sx2(e.x); const y = sy2(e.y);
       if (x < -60 || y < -60 || x > W + 60 || y > H + 60) continue;
+
+      // Ominous rotating crimson-and-gold dread aura beneath Bosses
+      if (e.boss) {
+        const auraR = e.radius + 14 + Math.sin(this.time * 5) * 3;
+        ctx.fillStyle = 'rgba(220,38,38,0.18)';
+        ctx.beginPath();
+        ctx.arc(x, y + 4, auraR + 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(239,68,68,0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(x, y + 4, auraR, 0, Math.PI * 2);
+        ctx.stroke();
+        // Rotating 4-point dread diamond sigil
+        ctx.strokeStyle = 'rgba(250,204,21,0.75)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let pIdx = 0; pIdx < 4; pIdx++) {
+          const pa = this.time * 2.2 + (pIdx * Math.PI) / 2;
+          const pxp = x + Math.cos(pa) * auraR;
+          const pyp = y + 4 + Math.sin(pa) * auraR;
+          if (pIdx === 0) ctx.moveTo(pxp, pyp);
+          else ctx.lineTo(pxp, pyp);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
       // shadow
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
@@ -1821,24 +2141,17 @@ export class SurvivorEngine {
 
       if (e.elite) {
         ctx.strokeStyle = '#fde047';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(x, y, e.radius + 3, 0, Math.PI * 2);
         ctx.stroke();
       }
-      if (e.boss) {
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(x, y, e.radius + 5 + Math.sin(this.time * 6) * 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
       if ((e.elite || e.boss) && e.hp < e.maxHp) {
-        const w = e.radius * 2;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(x - w / 2, y - e.radius - 12, w, 5);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(x - w / 2, y - e.radius - 12, (w * Math.max(0, e.hp)) / e.maxHp, 5);
+        const w = e.radius * 2.2;
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(x - w / 2, y - e.radius - 13, w, 5);
+        ctx.fillStyle = e.boss ? '#f59e0b' : '#ef4444';
+        ctx.fillRect(x - w / 2, y - e.radius - 13, (w * Math.max(0, e.hp)) / e.maxHp, 5);
       }
     }
 
@@ -1855,46 +2168,99 @@ export class SurvivorEngine {
       ctx.fill();
     }
 
-    // projectiles (16-bit retro pixel art)
+    // 8. Projectiles with 16-bit Afterimage Trails & Evolved Sigils
     for (const p of this.projs) {
       const x = sx2(p.x); const y = sy2(p.y);
+      if (x < -40 || y < -40 || x > W + 40 || y > H + 40) continue;
       let spriteName: string;
       let size = 18;
+      let evolvedProj = false;
+      let trailColor = 'rgba(226,232,240,0.22)';
       switch (p.kind) {
-        case 'shuriken': spriteName = 'shuriken'; size = 18; break;
-        case 'coffee': spriteName = 'coffee'; size = 16; break;
-        case 'boomerang': spriteName = 'boomerang'; size = 20; break;
-        case 'missile': spriteName = 'phone'; size = 16; break;
-        case 'contract_storm': spriteName = 'contract_storm'; size = 22; break;
-        case 'caffeine_geyser': spriteName = 'caffeine_geyser'; size = 24; break;
-        case 'gold_exchange': spriteName = 'gold_exchange'; size = 24; break;
+        case 'shuriken': spriteName = 'shuriken'; size = 18; trailColor = 'rgba(148,163,184,0.25)'; break;
+        case 'coffee': spriteName = 'coffee'; size = 16; trailColor = 'rgba(217,119,6,0.25)'; break;
+        case 'boomerang': spriteName = 'boomerang'; size = 20; trailColor = 'rgba(253,224,71,0.28)'; break;
+        case 'missile': spriteName = 'phone'; size = 16; trailColor = 'rgba(74,222,128,0.28)'; break;
+        case 'contract_storm': spriteName = 'contract_storm'; size = 24; evolvedProj = true; trailColor = 'rgba(244,63,94,0.38)'; break;
+        case 'caffeine_geyser': spriteName = 'caffeine_geyser'; size = 24; evolvedProj = true; trailColor = 'rgba(251,146,60,0.42)'; break;
+        case 'gold_exchange': spriteName = 'gold_exchange'; size = 26; evolvedProj = true; trailColor = 'rgba(250,204,21,0.45)'; break;
         default: spriteName = 'shuriken'; size = 16; break;
       }
+
+      // Motion afterimage trail
+      const sp = Math.hypot(p.vx, p.vy) || 1;
+      const nx = p.vx / sp;
+      const ny = p.vy / sp;
+      ctx.fillStyle = trailColor;
+      ctx.beginPath();
+      ctx.arc(x - nx * 12, y - ny * 12, size * 0.36, 0, Math.PI * 2);
+      ctx.arc(x - nx * 22, y - ny * 22, size * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (evolvedProj) {
+        ctx.strokeStyle = trailColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
       const sprite = getPixelSprite(spriteName, 0, false);
       ctx.drawImage(sprite, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
     }
 
-    // player barrier orbs & kanban boards
+    // 9. Player Orbital Barriers (付箋バリア & タスク管理結界) with Arcane Rune Ring
     const kanban = this.weapons.find((w) => w.id === 'kanban_barrier');
     const barrier = this.weapons.find((w) => w.id === 'barrier');
     if (kanban && this.hp > 0) {
       const orbs = 4;
       const radius = 95;
+      const hx = this.px - camX;
+      const hy = this.py - camY;
+      // Arcane cyan-gold barrier ring + inscribed diamond connecting orbitals
+      ctx.strokeStyle = 'rgba(34,211,238,0.42)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(hx, hy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(250,204,21,0.38)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < orbs; i++) {
+        const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
+        const ox = hx + Math.cos(a) * radius;
+        const oy = hy + Math.sin(a) * radius;
+        if (i === 0) ctx.moveTo(ox, oy);
+        else ctx.lineTo(ox, oy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
       const sprite = getPixelSprite('kanban_barrier', 0, false);
       for (let i = 0; i < orbs; i++) {
         const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
-        const ox = this.px - camX + Math.cos(a) * radius;
-        const oy = this.py - camY + Math.sin(a) * radius;
+        const ox = hx + Math.cos(a) * radius;
+        const oy = hy + Math.sin(a) * radius;
         ctx.drawImage(sprite, Math.round(ox - 14), Math.round(oy - 14), 28, 28);
       }
     } else if (barrier && this.hp > 0) {
       const orbs = 1 + Math.ceil(barrier.lv / 2);
       const radius = 66 + 5 * barrier.lv;
+      const hx = this.px - camX;
+      const hy = this.py - camY;
+      // Glowing amber-gold rune ring connecting the rotating post-it orbitals
+      ctx.strokeStyle = 'rgba(250,204,21,0.28)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(hx, hy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
       const sprite = getPixelSprite('barrier', 0, false);
       for (let i = 0; i < orbs; i++) {
         const a = this.barrierAngle + (i * Math.PI * 2) / orbs;
-        const ox = this.px - camX + Math.cos(a) * radius;
-        const oy = this.py - camY + Math.sin(a) * radius;
+        const ox = hx + Math.cos(a) * radius;
+        const oy = hy + Math.sin(a) * radius;
         ctx.drawImage(sprite, Math.round(ox - 10), Math.round(oy - 10), 20, 20);
       }
     }
@@ -1969,12 +2335,45 @@ export class SurvivorEngine {
 
     this.renderOffscreenMarkers(camX, camY, W, H);
 
+    // 10. In-Canvas Gothic Dark-Gold Boss Health Bar & Nameplate
+    if (activeBoss) {
+      const barW = Math.min(440, W - 40);
+      const barH = 11;
+      const bx = Math.round((W - barW) / 2);
+      const by = H - 36;
+      const ratio = Math.max(0, Math.min(1, activeBoss.hp / Math.max(1, activeBoss.maxHp)));
+
+      ctx.fillStyle = 'rgba(12,10,8,0.88)';
+      ctx.fillRect(bx - 6, by - 18, barW + 12, barH + 24);
+      ctx.strokeStyle = '#dfb15b';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx - 6, by - 18, barW + 12, barH + 24);
+
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`【役職強襲】${ENEMIES[activeBoss.kind].name}`, bx, by - 5);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#f2e9d8';
+      ctx.fillText(`HP ${Math.ceil(activeBoss.hp)} / ${Math.ceil(activeBoss.maxHp)}`, bx + barW, by - 5);
+
+      ctx.fillStyle = '#1c1412';
+      ctx.fillRect(bx, by, barW, barH);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(bx, by, Math.round(barW * ratio), barH);
+      ctx.fillStyle = 'rgba(253,224,71,0.35)';
+      ctx.fillRect(bx, by, Math.round(barW * ratio), 3);
+      ctx.strokeStyle = '#7f1d1d';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, barW, barH);
+    }
+
     // boss arrival: hazard tape top & bottom
     if (this.bossWarnT > 0) {
       const a = Math.min(1, this.bossWarnT / 0.4) * (0.55 + 0.45 * Math.abs(Math.sin(this.bossWarnT * 9)));
       ctx.globalAlpha = a;
       const band = 18;
-      for (const yy of [H - band]) {
+      for (const yy of [0, H - band]) {
         ctx.fillStyle = '#1a0d0a';
         ctx.fillRect(0, yy, W, band);
         ctx.fillStyle = '#b23a2a';

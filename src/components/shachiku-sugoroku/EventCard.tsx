@@ -2,34 +2,35 @@
 
 import React, { useEffect } from 'react';
 import { BoardSquare, Effect, EventCardData, SquareType } from '@/types/sugoroku';
-import { HankoStamp, SquareTypeIcon } from './SugorokuIcons';
+import { LIFE_ASSETS } from '@/lib/sugoroku-logic';
+import { AssetIcon, HankoStamp, SquareTypeIcon } from './SugorokuIcons';
 
 const TYPE_META: Record<
   SquareType,
   { label: string; headerBg: string; stampText: string; stampVariant: 'red' | 'teal' | 'gold' }
 > = {
   start: {
-    label: '出社ゲート',
+    label: '出発ゲート',
     headerBg: 'bg-gradient-to-r from-[#1f6f5c] to-[#154d3f] text-white',
     stampText: '出社',
     stampVariant: 'teal',
   },
   goal: {
-    label: '決算ボーナス支給日',
+    label: '自由への大決済モニュメント',
     headerBg: 'bg-gradient-to-r from-[#b57c1e] via-[#d49b35] to-[#9c6712] text-[#12100d]',
     stampText: '完走',
     stampVariant: 'gold',
   },
   salary: {
-    label: '給与・賞与支給',
+    label: '給料日ゲート支給',
     headerBg: 'bg-gradient-to-r from-[#b57c1e] to-[#8f5f10] text-white',
     stampText: '支給',
     stampVariant: 'gold',
   },
   item: {
-    label: '備品・アイテム獲得',
-    headerBg: 'bg-gradient-to-r from-[#2d7a4f] to-[#1e5436] text-white',
-    stampText: '支給',
+    label: 'ライフ資産・支給品獲得',
+    headerBg: 'bg-gradient-to-r from-[#047857] to-[#064e3b] text-white',
+    stampText: '資産',
     stampVariant: 'teal',
   },
   'job-specific': {
@@ -39,27 +40,27 @@ const TYPE_META: Record<
     stampVariant: 'gold',
   },
   chance: {
-    label: '運命抽選イベント',
+    label: 'ルーレット抽選イベント',
     headerBg: 'bg-gradient-to-r from-[#c96a22] to-[#964b12] text-white',
     stampText: '抽選',
     stampVariant: 'gold',
   },
   decision: {
-    label: '決断結果通知',
+    label: 'キャリア決断結果通知',
     headerBg: 'bg-gradient-to-r from-[#1d5e96] to-[#134069] text-white',
     stampText: '決裁',
     stampVariant: 'teal',
   },
   event: {
-    label: '業務イベント',
+    label: '業務アクシデント・イベント',
     headerBg: 'bg-gradient-to-r from-[#9e2f20] to-[#6e1e13] text-white',
     stampText: '通達',
     stampVariant: 'red',
   },
   normal: {
-    label: '日常・リフレッシュ',
-    headerBg: 'bg-gradient-to-r from-[#5c5141] to-[#3d352a] text-white',
-    stampText: '確認',
+    label: 'リフレッシュ・日常',
+    headerBg: 'bg-gradient-to-r from-[#0369a1] to-[#0c4a6e] text-white',
+    stampText: '快調',
     stampVariant: 'teal',
   },
 };
@@ -76,6 +77,14 @@ function renderEffectBadges(effect?: Effect) {
   if (!effect) return null;
   const badges: { label: string; val: string; positive: boolean }[] = [];
 
+  if (effect.asset && LIFE_ASSETS[effect.asset]) {
+    const asset = LIFE_ASSETS[effect.asset];
+    badges.push({
+      label: 'ライフ資産獲得',
+      val: `${asset.name}（評価額${asset.value}万円）`,
+      positive: true,
+    });
+  }
   if (typeof effect.yaruki === 'number' && effect.yaruki !== 0) {
     badges.push({
       label: 'やる気',
@@ -92,7 +101,7 @@ function renderEffectBadges(effect?: Effect) {
   }
   if (typeof effect.money === 'number' && effect.money !== 0) {
     badges.push({
-      label: '貯金',
+      label: '所持金',
       val: `${effect.money > 0 ? '+' : ''}${effect.money}万円`,
       positive: effect.money > 0,
     });
@@ -160,6 +169,7 @@ export function EventCard({
   const bodyText = card?.text ?? message ?? square?.description ?? '';
   const pos = card?.squarePosition ?? square?.position ?? 0;
   const effect = card?.effect ?? square?.outcome?.effect;
+  const acquiredAsset = effect?.asset ? LIFE_ASSETS[effect.asset] : null;
 
   const isPromotion = card?.kind === 'promotion';
   const isBurnout = card?.kind === 'burnout' || card?.kind === 'gameover';
@@ -236,6 +246,24 @@ export function EventCard({
             {bodyText}
           </div>
 
+          {/* ライフ資産カード獲得時の特別証書プレビュー */}
+          {acquiredAsset && (
+            <div className="flex items-center gap-3 rounded-xl border-2 border-[#b57c1e] bg-gradient-to-r from-[#fff8e1] to-[#fce8b2] p-3 text-[#12100d] shadow-xs">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#12100d] text-[#f5ca5c]">
+                <AssetIcon assetId={acquiredAsset.id} size={20} />
+              </span>
+              <div className="min-w-0">
+                <p className="font-mono text-[9px] font-black tracking-wider text-[#8a5b0f]">
+                  NEW LIFE ASSET ACQUIRED / 資産ポートフォリオ追加
+                </p>
+                <p className="text-sm font-black">{acquiredAsset.name}</p>
+                <p className="text-[11px] font-bold text-[#5c5141]">
+                  資産評価額 +{acquiredAsset.value}万円 / 給料日ごとの配当 +{acquiredAsset.dividend}万円
+                </p>
+              </div>
+            </div>
+          )}
+
           {renderEffectBadges(effect)}
 
           <div className="pt-1">
@@ -246,7 +274,7 @@ export function EventCard({
             >
               <span>
                 {card?.kind === 'goal' || card?.kind === 'gameover'
-                  ? '最終査定リザルトへ進む'
+                  ? '最終ライフ決算書へ進む'
                   : remainingCount > 1
                     ? `確認して次へ（残り${remainingCount - 1}件）`
                     : '確認して盤面へ戻る'}

@@ -1,6 +1,6 @@
 /**
- * 社畜通勤サバイバー 〜満員電車を突破せよ〜 — game tuning data.
- * 3D lane-runner: hero auto-runs toward the office, auto-fires at the crowd.
+ * 社畜通勤サバイバー 〜社畜スクワッド・ハイウェイ防衛戦〜 — game tuning data.
+ * 3D lane-runner: hero auto-runs toward the office, shoots number barrels & multiplier gates, and commands up to 30 allies.
  */
 
 export const VIEW_W = 480;
@@ -32,34 +32,34 @@ export interface WeaponDef {
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
   pistol: {
-    id: 'pistol', name: '折りたたみ傘', icon: 'umbrella', desc: '通勤の相棒。堅実な連射。',
-    damage: 12, interval: 0.22, count: 1, spread: 0.03, speed: 34,
+    id: 'pistol', name: 'タクティカル傘ライフル', icon: 'umbrella', desc: '標準装備。高速連射でゲートもバレルも撃ち抜く。',
+    damage: 14, interval: 0.16, count: 1, spread: 0.025, speed: 38,
     pierce: 0, splash: 0, slow: 0, duration: Infinity, color: '#fde047',
   },
   smg: {
-    id: 'smg', name: '名刺連打', icon: 'card', desc: '名刺の嵐で薙ぎ払え。',
-    damage: 8, interval: 0.09, count: 1, spread: 0.09, speed: 36,
-    pierce: 0, splash: 0, slow: 0, duration: 14, color: '#fb923c',
+    id: 'smg', name: '連射サブマシン名刺ガン', icon: 'card', desc: '圧倒的弾幕で赤ゲートを瞬時に青へ反転させる。',
+    damage: 10, interval: 0.075, count: 1, spread: 0.08, speed: 40,
+    pierce: 0, splash: 0, slow: 0, duration: 16, color: '#fb923c',
   },
   shotgun: {
-    id: 'shotgun', name: 'カバン旋風', icon: 'briefcase', desc: '回転カバンの5連衝撃波。',
-    damage: 9, interval: 0.55, count: 5, spread: 0.34, speed: 32,
-    pierce: 0, splash: 0, slow: 0, duration: 14, color: '#f87171',
+    id: 'shotgun', name: 'ワイド拡散ブリーフケース', icon: 'briefcase', desc: '5WAY散弾で複数レーンの群衆とバレルを同時粉砕。',
+    damage: 11, interval: 0.44, count: 5, spread: 0.32, speed: 35,
+    pierce: 0, splash: 0, slow: 0, duration: 16, color: '#f87171',
   },
   rifle: {
-    id: 'rifle', name: '貫通定期', icon: 'pass', desc: '貫通する定期券で一列粉砕。',
-    damage: 26, interval: 0.42, count: 1, spread: 0.01, speed: 48,
-    pierce: 3, splash: 0, slow: 0, duration: 14, color: '#67e8f9',
+    id: 'rifle', name: '高出力レーザー定期券', icon: 'pass', desc: '貫通レーザーで縦列の敵とゲートを一気に射抜く。',
+    damage: 30, interval: 0.34, count: 1, spread: 0.01, speed: 50,
+    pierce: 4, splash: 0, slow: 0, duration: 16, color: '#67e8f9',
   },
   launcher: {
-    id: 'launcher', name: '特急ミサイル', icon: 'express', desc: '着弾爆発のノンストップ特急。',
-    damage: 30, interval: 0.8, count: 1, spread: 0.02, speed: 26,
-    pierce: 0, splash: 3.2, slow: 0, duration: 14, color: '#c084fc',
+    id: 'launcher', name: '特急ロケットランチャー', icon: 'express', desc: '大口径着弾爆発で密集ラッシュを一掃する重火器。',
+    damage: 38, interval: 0.68, count: 1, spread: 0.02, speed: 28,
+    pierce: 0, splash: 3.5, slow: 0, duration: 16, color: '#c084fc',
   },
   freeze: {
-    id: 'freeze', name: '冷房直撃', icon: 'freeze', desc: '車内の冷房で群衆を鈍足化。',
-    damage: 7, interval: 0.16, count: 1, spread: 0.08, speed: 30,
-    pierce: 1, splash: 0, slow: 0.5, duration: 14, color: '#a5f3fc',
+    id: 'freeze', name: '極冷クライオ空調砲', icon: 'freeze', desc: '貫通冷気ストリームで群衆の足を止める。',
+    damage: 9, interval: 0.13, count: 1, spread: 0.06, speed: 34,
+    pierce: 1, splash: 0, slow: 0.5, duration: 16, color: '#a5f3fc',
   },
 };
 
@@ -81,12 +81,12 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: Record<EnemyKind, EnemyDef> = {
-  runner: { kind: 'runner', name: 'ダッシュ通勤者', hp: 18, speed: 4.2, damage: 7, score: 50, coins: 3, radius: 0.55, color: '#4ade80', emoji: 'runner' },
-  walker: { kind: 'walker', name: '満員群衆', hp: 44, speed: 2.2, damage: 11, score: 100, coins: 5, radius: 0.65, color: '#facc15', emoji: 'walker' },
-  brute: { kind: 'brute', name: '巨漢リーマン', hp: 120, speed: 1.5, damage: 22, score: 250, coins: 12, radius: 0.9, color: '#f97316', emoji: 'brute' },
-  shield: { kind: 'shield', name: '傘ガード', hp: 78, speed: 1.9, damage: 14, score: 200, coins: 9, radius: 0.7, color: '#38bdf8', emoji: 'shield' },
-  kamikaze: { kind: 'kamikaze', name: '激突チャリ', hp: 24, speed: 6.0, damage: 32, score: 150, coins: 7, radius: 0.55, color: '#f472b6', emoji: 'kamikaze' },
-  boss: { kind: 'boss', name: '満員電車', hp: 1000, speed: 1.1, damage: 45, score: 3000, coins: 150, radius: 1.8, color: '#ef4444', emoji: 'boss' },
+  runner: { kind: 'runner', name: 'ダッシュ通勤者', hp: 16, speed: 3.9, damage: 6, score: 50, coins: 4, radius: 0.55, color: '#4ade80', emoji: 'runner' },
+  walker: { kind: 'walker', name: '満員群衆', hp: 38, speed: 2.1, damage: 10, score: 100, coins: 6, radius: 0.65, color: '#facc15', emoji: 'walker' },
+  brute: { kind: 'brute', name: '巨漢リーマン', hp: 105, speed: 1.4, damage: 20, score: 250, coins: 14, radius: 0.9, color: '#f97316', emoji: 'brute' },
+  shield: { kind: 'shield', name: '傘ガード', hp: 68, speed: 1.8, damage: 12, score: 200, coins: 10, radius: 0.7, color: '#38bdf8', emoji: 'shield' },
+  kamikaze: { kind: 'kamikaze', name: '激突チャリ', hp: 22, speed: 5.6, damage: 28, score: 150, coins: 8, radius: 0.55, color: '#f472b6', emoji: 'kamikaze' },
+  boss: { kind: 'boss', name: '満員電車', hp: 880, speed: 1.05, damage: 40, score: 3000, coins: 160, radius: 1.8, color: '#ef4444', emoji: 'boss' },
 };
 
 export type CourseId = 'city' | 'desert' | 'snow' | 'rain' | 'tunnel';
@@ -104,23 +104,23 @@ export interface CourseDef {
 
 export const COURSES: Record<CourseId, CourseDef> = {
   city: {
-    id: 'city', name: '山手線', icon: 'city', desc: '全500m。まずは会社を目指せ。',
+    id: 'city', name: '山手線', icon: 'city', desc: '全500m。増員ゲートを撃ち抜いて本社を目指せ。',
     waves: 5, sky: ['#0b1026', '#1e2a5a'], ground: '#1f2937',
   },
   desert: {
-    id: 'desert', name: '中央線', icon: 'express', desc: '全600m。ダッシュ通勤者が増加。',
+    id: 'desert', name: '中央線', icon: 'express', desc: '全600m。高速ラッシュとナンバーバレル地帯。',
     waves: 6, sky: ['#1a0f2e', '#5a2a1e'], ground: '#3f2d1c',
   },
   snow: {
-    id: 'snow', name: '終電地下鉄', icon: 'subway', desc: '全700m。硬い敵＋満員電車強化。',
+    id: 'snow', name: '終電地下鉄', icon: 'subway', desc: '全700m。重装リーマン＋強化満員電車を突破せよ。',
     waves: 7, sky: ['#0a1628', '#1e3a5a'], ground: '#243447',
   },
   rain: {
-    id: 'rain', name: '大雨ラッシュ', icon: 'rain', desc: '全800m。視界不良＋激突チャリ大量発生。',
+    id: 'rain', name: '大雨ラッシュ', icon: 'rain', desc: '全800m。暴風雨ハイウェイ＋激突チャリ大群。',
     waves: 8, sky: ['#10131c', '#26344a'], ground: '#1c2430',
   },
   tunnel: {
-    id: 'tunnel', name: '満員トンネル', icon: 'tunnel', desc: '全900m。最終試練。全敵が強化される。',
+    id: 'tunnel', name: '満員トンネル', icon: 'tunnel', desc: '全900m。最終防衛ライン。最大30人編成で挑め。',
     waves: 9, sky: ['#05070f', '#111827'], ground: '#0f1521',
   },
 };
@@ -145,9 +145,9 @@ export interface DifficultyDef {
 }
 
 export const DIFFICULTIES: Record<Difficulty, DifficultyDef> = {
-  easy: { id: 'easy', name: '定時', icon: 'easy', hpMul: 0.7, speedMul: 0.85, dmgMul: 0.7, countMul: 0.8, scoreMul: 0.8, desc: 'ほぼ定時。初めてに。' },
-  normal: { id: 'normal', name: '残業', icon: 'normal', hpMul: 1, speedMul: 1, dmgMul: 1, countMul: 1, scoreMul: 1, desc: '標準的な混雑。' },
-  hard: { id: 'hard', name: '過労死ライン', icon: 'hard', hpMul: 1.5, speedMul: 1.12, dmgMul: 1.4, countMul: 1.25, scoreMul: 1.5, desc: '高スコア狙い社畜向け。' },
+  easy: { id: 'easy', name: '定時', icon: 'easy', hpMul: 0.65, speedMul: 0.82, dmgMul: 0.65, countMul: 0.78, scoreMul: 0.8, desc: '爽快無双バランス。初めてに。' },
+  normal: { id: 'normal', name: '残業', icon: 'normal', hpMul: 0.92, speedMul: 0.96, dmgMul: 0.9, countMul: 0.95, scoreMul: 1, desc: 'ゲート撃ち抜きと編成が熱い標準難度。' },
+  hard: { id: 'hard', name: '過労死ライン', icon: 'hard', hpMul: 1.35, speedMul: 1.08, dmgMul: 1.25, countMul: 1.18, scoreMul: 1.5, desc: '判断力と最大火力が試される熟練社畜向け。' },
 };
 
 export const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];

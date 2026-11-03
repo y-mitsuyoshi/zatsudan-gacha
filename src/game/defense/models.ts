@@ -674,18 +674,18 @@ export interface GateSign {
 const gatePillarGeo = markShared(new THREE.BoxGeometry(0.32, 3.4, 0.32));
 const gateFloorGeo = markShared(new THREE.PlaneGeometry(4.0, 2.6));
 const gateLintelMat = {
-  good: markShared(new THREE.MeshLambertMaterial({ color: 0x15805a, emissive: 0x1fae7a, emissiveIntensity: 0.45 })),
-  bad: markShared(new THREE.MeshLambertMaterial({ color: 0x9c2a1d, emissive: 0xe0452f, emissiveIntensity: 0.45 })),
+  good: markShared(new THREE.MeshLambertMaterial({ color: 0x0ea5e9, emissive: 0x10b981, emissiveIntensity: 0.55 })),
+  bad: markShared(new THREE.MeshLambertMaterial({ color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 0.55 })),
 };
 const gateFloorMat = {
-  good: markShared(new THREE.MeshBasicMaterial({ color: 0x1fae7a, transparent: true, opacity: 0.28, depthWrite: false })),
-  bad: markShared(new THREE.MeshBasicMaterial({ color: 0xe0452f, transparent: true, opacity: 0.24, depthWrite: false })),
+  good: markShared(new THREE.MeshBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.32, depthWrite: false })),
+  bad: markShared(new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.28, depthWrite: false })),
 };
 
 /**
- * Builds a ticket-gate style archway. The curtain shows a header band with the
- * effect category (同期 / 火力 / ガード ...) and a large value, so two gates with
- * the same number (e.g. 同期×2 vs 火力×2) are never ambiguous.
+ * Builds a shootable highway multiplier/addition gate archway.
+ * Stores canvas/texture references in group.userData so DefenseEngine can dynamically
+ * update the displayed number and flip Red -> Blue/Emerald in real time when shot!
  */
 export function buildGateMesh(op: GateOp, val: number, sign?: GateSign, good?: boolean): THREE.Group {
   const g = new THREE.Group();
@@ -706,7 +706,7 @@ export function buildGateMesh(op: GateOp, val: number, sign?: GateSign, good?: b
 
   // 2. Overhead lintel (lit band in the effect colour)
   const lintel = new THREE.Mesh(geoBox, isGood ? gateLintelMat.good : gateLintelMat.bad);
-  lintel.scale.set(colWidth + 0.4, 0.4, 0.36);
+  lintel.scale.set(colWidth + 0.4, 0.44, 0.38);
   lintel.position.set(0, colHeight, 0);
   g.add(lintel);
 
@@ -716,31 +716,82 @@ export function buildGateMesh(op: GateOp, val: number, sign?: GateSign, good?: b
   floor.position.set(0, 0.03, 0.4);
   g.add(floor);
 
-  // 4. Sign curtain
-  const curtainTex = createGateCurtainTexture(sign ?? { main: formatGateLabel(op, val), sub: isGood ? '強化' : '弱体' }, isGood);
+  // 4. Shootable sign curtain (with live reusable canvas)
+  const resolvedSign = sign ?? {
+    main: formatGateLabel(op, val),
+    sub: isGood ? '隊員増強' : '隊員減少',
+  };
+  const { canvas, ctx, tex: curtainTex } = createGateCurtainCanvas(resolvedSign, isGood, op);
   const curtainMat = new THREE.MeshBasicMaterial({
     map: curtainTex,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.94,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
-  const curtainMesh = new THREE.Mesh(new THREE.PlaneGeometry(colWidth - 0.24, colHeight - 0.5), curtainMat);
-  curtainMesh.position.set(0, (colHeight - 0.5) / 2 + 0.22, 0);
+  const curtainMesh = new THREE.Mesh(new THREE.PlaneGeometry(colWidth - 0.24, colHeight - 0.46), curtainMat);
+  curtainMesh.position.set(0, (colHeight - 0.46) / 2 + 0.22, 0);
   g.add(curtainMesh);
 
   g.userData = {
     op,
     val,
     isGood,
+    sign: resolvedSign,
+    lintel,
+    floor,
+    curtain: curtainMesh,
     curtainMesh,
     curtainMat,
+    curtainTex,
+    canvas,
+    ctx,
+    hitBounce: 0,
+    refresh: (nextOp: GateOp, nextVal: number, nextSign?: GateSign, nextGood?: boolean) => {
+      refreshGateMesh(g, nextOp, nextVal, nextSign, nextGood);
+    },
   };
 
   return g;
 }
 
-function formatGateLabel(op: GateOp, val: number): string {
+/**
+ * Dynamically updates a gate mesh's displayed number, subtitle, and Red/Blue-Emerald materials in real time.
+ */
+export function refreshGateMesh(
+  group: THREE.Group,
+  op: GateOp,
+  val: number,
+  sign?: GateSign,
+  good?: boolean
+): void {
+  const ud = group.userData;
+  if (!ud || !ud.ctx || !ud.canvas || !ud.curtainTex) return;
+
+  const isGood = good ?? (op === 'add' || op === 'mult');
+  const resolvedSign: GateSign = sign ?? {
+    main: formatGateLabel(op, val),
+    sub: ud.sign?.sub ?? (isGood ? '隊員増強' : '隊員減少'),
+  };
+
+  ud.op = op;
+  ud.val = val;
+  ud.isGood = isGood;
+  ud.sign = resolvedSign;
+  ud.hitBounce = 1.0;
+
+  if (ud.lintel) {
+    ud.lintel.material = isGood ? gateLintelMat.good : gateLintelMat.bad;
+  }
+  if (ud.floor) {
+    ud.floor.material = isGood ? gateFloorMat.good : gateFloorMat.bad;
+  }
+
+  drawGateCurtain(ud.ctx, ud.canvas.width, ud.canvas.height, resolvedSign, isGood, op);
+  ud.curtainTex.needsUpdate = true;
+}
+
+export function formatGateLabel(op: GateOp, val: number): string {
   switch (op) {
     case 'add': return `+${val}`;
     case 'mult': return `×${val}`;
@@ -759,66 +810,91 @@ function fitFont(ctx: CanvasRenderingContext2D, text: string, weight: string, si
   return s;
 }
 
-function createGateCurtainTexture(sign: GateSign, isGood: boolean): THREE.CanvasTexture {
+function createGateCurtainCanvas(
+  sign: GateSign,
+  isGood: boolean,
+  op: GateOp
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; tex: THREE.CanvasTexture } {
   const W = 256;
-  const H = 212;
+  const H = 220;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
-  const accent = isGood ? '#1fae7a' : '#e0452f';
-  const accentDark = isGood ? '#0d5c40' : '#7a1f14';
+  drawGateCurtain(ctx, W, H, sign, isGood, op);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return { canvas, ctx, tex };
+}
 
-  // Panel
-  ctx.fillStyle = 'rgba(12, 15, 20, 0.86)';
+function drawGateCurtain(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  sign: GateSign,
+  isGood: boolean,
+  op: GateOp
+): void {
+  ctx.clearRect(0, 0, W, H);
+
+  const accent = isGood ? '#0ea5e9' : '#ef4444';
+  const accentSub = isGood ? '#10b981' : '#dc2626';
+  const accentDark = isGood ? '#064e3b' : '#7f1d1d';
+  const bgTint = isGood ? 'rgba(6, 78, 115, 0.84)' : 'rgba(110, 18, 24, 0.84)';
+
+  // Translucent energy curtain panel
+  ctx.fillStyle = bgTint;
   ctx.fillRect(0, 0, W, H);
 
   // Header band with category caption
   ctx.fillStyle = accent;
   ctx.fillRect(0, 0, W, 52);
-  ctx.fillStyle = accentDark;
-  ctx.fillRect(0, 52, W, 5);
+  ctx.fillStyle = accentSub;
+  ctx.fillRect(0, 48, W, 6);
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
-  fitFont(ctx, sign.sub, '900', 32, W - 24);
-  ctx.fillText(sign.sub, W / 2, 28);
+  fitFont(ctx, sign.sub, '900', 30, W - 20);
+  ctx.fillText(sign.sub, W / 2, 26);
 
-  // Main value
-  fitFont(ctx, sign.main, '900', 92, W - 28);
-  ctx.lineWidth = 8;
+  // Big bold number in center
+  fitFont(ctx, sign.main, '900', 102, W - 22);
+  ctx.lineWidth = 10;
   ctx.strokeStyle = accentDark;
-  ctx.strokeText(sign.main, W / 2, 124);
+  ctx.strokeText(sign.main, W / 2, 122);
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(sign.main, W / 2, 124);
+  ctx.fillText(sign.main, W / 2, 122);
 
-  // Direction chevrons (drawn, not glyphs)
-  ctx.fillStyle = accent;
-  for (let i = 0; i < 3; i++) {
-    const cx = W / 2 + (i - 1) * 46;
-    ctx.beginPath();
-    ctx.moveTo(cx - 14, 176);
-    ctx.lineTo(cx + 14, 176);
-    ctx.lineTo(cx, 194);
-    ctx.closePath();
-    ctx.fill();
-  }
+  // Bottom shootable hint strip & chevrons
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+  ctx.fillRect(6, H - 44, W - 12, 38);
 
-  // Frame
+  const shootHint = op === 'add' || op === 'sub' || !isGood ? 'SHOT >> 数値UP' : 'PASS >> 倍率発動';
+  fitFont(ctx, shootHint, '900', 20, W - 32);
+  ctx.fillStyle = isGood ? '#7dd3fc' : '#fecaca';
+  ctx.fillText(shootHint, W / 2, H - 25);
+
+  // Frame border
   ctx.strokeStyle = accent;
-  ctx.lineWidth = 6;
-  ctx.strokeRect(3, 3, W - 6, H - 6);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  ctx.lineWidth = 7;
+  ctx.strokeRect(3.5, 3.5, W - 7, H - 7);
 }
 
-/** Subtle breathing glow on the gate sign */
+/** Subtle breathing glow & hit-pop bounce on the gate sign */
 export function updateGateCurtain(group: THREE.Group, time: number): void {
   const ud = group.userData;
   if (!ud || !ud.curtainMat) return;
   ud.curtainMat.opacity = 0.88 + Math.sin(time * 4) * 0.06;
+  if (ud.hitBounce && ud.hitBounce > 0) {
+    ud.hitBounce = Math.max(0, ud.hitBounce - 0.12);
+    const s = 1 + ud.hitBounce * 0.08;
+    if (ud.curtainMesh) {
+      ud.curtainMesh.scale.set(s, s, 1);
+    }
+  } else if (ud.curtainMesh) {
+    ud.curtainMesh.scale.set(1, 1, 1);
+  }
 }
 
 /* =========================================================================
@@ -1176,36 +1252,163 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
 }
 
 /* =========================================================================
-   6. Procedural 3D Item Crates & SOS Cages (Zero Emojis!)
+   6. Procedural 3D Numbered Barrels / Crates & SOS Cages (Zero Emojis!)
    ========================================================================= */
 
 /**
- * Builds 3D reinforced cargo crate with 3D rotating holographic weapon/item symbol.
+ * Builds a prominent 3D Sprite billboard showing a live HP countdown number
+ * (e.g. "26" -> "22" -> "0") and reward badge (e.g. "[SMG]", "[+SQUAD]", "[BOMB]").
  */
-export function buildCrateMesh(kind: BarrelKind): THREE.Group {
+function createLiveCountdownBillboard(
+  initialHp: number,
+  rewardTag: string,
+  accentColor: string,
+  yOffset: number
+): {
+  sprite: THREE.Sprite;
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  tex: THREE.CanvasTexture;
+} {
+  const canvas = document.createElement('canvas');
+  canvas.width = 192;
+  canvas.height = 112;
+  const ctx = canvas.getContext('2d')!;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  drawCountdownBillboard(ctx, 192, 112, Math.max(0, Math.ceil(initialHp)), rewardTag, accentColor);
+  tex.needsUpdate = true;
+
+  const mat = new THREE.SpriteMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.position.set(0, yOffset, 0);
+  sprite.scale.set(2.3, 1.35, 1);
+  return { sprite, canvas, ctx, tex };
+}
+
+function drawCountdownBillboard(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  hpNum: number,
+  rewardTag: string,
+  accentColor: string
+): void {
+  ctx.clearRect(0, 0, W, H);
+
+  // Outer dark tactical badge
+  ctx.fillStyle = 'rgba(11, 15, 25, 0.90)';
+  ctx.fillRect(6, 4, W - 12, H - 8);
+  ctx.strokeStyle = accentColor;
+  ctx.lineWidth = 5;
+  ctx.strokeRect(6, 4, W - 12, H - 8);
+
+  // Top reward category strip
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(8, 6, W - 16, 30);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#090d16';
+  fitFont(ctx, rewardTag, '900', 21, W - 24);
+  ctx.fillText(rewardTag, W / 2, 21);
+
+  // Giant live HP countdown number
+  const numText = `${Math.max(0, Math.ceil(hpNum))}`;
+  fitFont(ctx, numText, '900', 60, W - 24);
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = '#000000';
+  ctx.strokeText(numText, W / 2, 74);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(numText, W / 2, 74);
+}
+
+/**
+ * Updates the live countdown HP number on a Crate or Cage mesh group.
+ */
+export function updateItemCounter(group: THREE.Group | null | undefined, hp: number, rewardTag?: string): void {
+  if (!group || !group.userData) return;
+  const ud = group.userData;
+  if (!ud.counterCtx || !ud.counterCanvas || !ud.counterTex) return;
+  const displayHp = Math.max(0, Math.ceil(hp));
+  const tag = rewardTag ?? ud.counterTag ?? '[SUPPLY]';
+  if (ud.lastHp === displayHp && ud.counterTag === tag) return;
+  ud.lastHp = displayHp;
+  ud.counterTag = tag;
+  drawCountdownBillboard(
+    ud.counterCtx,
+    ud.counterCanvas.width,
+    ud.counterCanvas.height,
+    displayHp,
+    tag,
+    ud.counterAccent ?? '#facc15'
+  );
+  ud.counterTex.needsUpdate = true;
+}
+
+/**
+ * Builds 3D reinforced cargo barrel/crate with 3D rotating holographic weapon/item symbol
+ * and live HP countdown billboard.
+ */
+export function buildCrateMesh(kind: BarrelKind, initialHp = 26, rewardTag?: string): THREE.Group {
   const g = new THREE.Group();
   g.name = `crate_${kind}`;
 
-  // 1. Reinforced Wooden Cargo Box
-  const crateMat = lam(0x92400e);
-  const box = new THREE.Mesh(geoBox, crateMat);
-  box.scale.set(1.1, 1.1, 1.1);
-  box.position.y = 0.55;
+  // 1. Cylindrical Numbered Supply Barrel + Reinforced Cargo Base
+  const barrelColor =
+    kind === 'weapon' ? 0xd97706 :
+    kind === 'bomb' ? 0xdc2626 :
+    kind === 'coin' ? 0xca8a04 : 0x0284c7;
+  const crateMat = lam(barrelColor);
+  const box = new THREE.Mesh(geoCylinder, crateMat);
+  box.scale.set(1.22, 1.18, 1.22);
+  box.position.y = 0.6;
   g.add(box);
 
-  // Steel Corner Brackets
-  const steelMat = lam(0x475569);
-  const strap = new THREE.Mesh(geoBox, steelMat);
-  strap.scale.set(1.14, 0.2, 1.14);
-  strap.position.y = 0.55;
-  g.add(strap);
+  // Steel Rim Bands
+  const steelMat = lam(0x1e293b);
+  for (const ry of [0.22, 0.6, 0.98]) {
+    const strap = new THREE.Mesh(geoCylinder, steelMat);
+    strap.scale.set(1.26, 0.1, 1.26);
+    strap.position.y = ry;
+    g.add(strap);
+  }
 
   // 2. Floating 3D Holographic Item Icon on Top (Zero Emojis!)
   const holoIcon = buildHolographicIcon(kind);
-  holoIcon.position.y = 1.6;
+  holoIcon.position.y = 1.55;
   g.add(holoIcon);
 
-  g.add(buildBlobShadow(1.1));
+  // 3. Live Countdown Number Billboard
+  const defaultTag =
+    rewardTag ??
+    (kind === 'weapon' ? '[WEAPON]' :
+     kind === 'bomb' ? '[BOMB]' :
+     kind === 'coin' ? '[+COIN]' : '[+GUARD]');
+  const accent =
+    kind === 'weapon' ? '#fde047' :
+    kind === 'bomb' ? '#fb923c' :
+    kind === 'coin' ? '#facc15' : '#38bdf8';
+  const bb = createLiveCountdownBillboard(initialHp, defaultTag, accent, 2.75);
+  g.add(bb.sprite);
+
+  g.userData = {
+    ...g.userData,
+    kind,
+    holoIcon,
+    counterSprite: bb.sprite,
+    counterCanvas: bb.canvas,
+    counterCtx: bb.ctx,
+    counterTex: bb.tex,
+    counterTag: defaultTag,
+    counterAccent: accent,
+    lastHp: Math.ceil(initialHp),
+  };
+
+  g.add(buildBlobShadow(1.15));
   return g;
 }
 
@@ -1257,9 +1460,9 @@ function buildHolographicIcon(kind: BarrelKind): THREE.Group {
 }
 
 /**
- * Builds 3D laser energy cage holding a waving trapped coworker.
+ * Builds 3D laser energy cage holding a waving trapped coworker with live HP countdown billboard.
  */
-export function buildCageMesh(): THREE.Group {
+export function buildCageMesh(initialHp = 40): THREE.Group {
   const g = new THREE.Group();
   g.name = 'cage_sos';
 
@@ -1303,39 +1506,23 @@ export function buildCageMesh(): THREE.Group {
   coworker.position.y = 0.2;
   g.add(coworker);
 
-  // 3D Embossed "RESCUE" Top Beacon Sign (Zero Emojis!)
-  const beacon = createRescueBadgeMesh();
-  beacon.position.y = height + 0.55;
-  g.add(beacon);
+  // Live Countdown Number Billboard ("[+SQUAD]")
+  const bb = createLiveCountdownBillboard(initialHp, '[+SQUAD]', '#10b981', height + 1.45);
+  g.add(bb.sprite);
+
+  g.userData = {
+    ...g.userData,
+    counterSprite: bb.sprite,
+    counterCanvas: bb.canvas,
+    counterCtx: bb.ctx,
+    counterTex: bb.tex,
+    counterTag: '[+SQUAD]',
+    counterAccent: '#10b981',
+    lastHp: Math.ceil(initialHp),
+  };
 
   g.add(buildBlobShadow(1.2));
   return g;
-}
-
-function createRescueBadgeMesh(): THREE.Mesh {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 48;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#10b981';
-  ctx.fillRect(0, 0, 128, 48);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(2, 2, 124, 44);
-  ctx.font = '900 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('RESCUE', 64, 25);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  const mat = new THREE.MeshBasicMaterial({
-    map: tex,
-    transparent: true,
-    side: THREE.DoubleSide,
-  });
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.45), mat);
-  return m;
 }
 
 /** Updates trapped coworker distress wave inside cage */
@@ -1345,4 +1532,70 @@ export function updateCageAnimation(group: THREE.Group, time: number): void {
   const wave = Math.sin(time * 10) * 0.6;
   coworker.userData.leftArm.rotation.z = 1.2 + wave;
   coworker.userData.rightArm.rotation.z = -1.2 - wave;
+}
+
+/* =========================================================================
+   7. Floating 3D Squad Power Counter Badge Above Hero (Zero Emojis!)
+   ========================================================================= */
+
+export function buildSquadCounterSprite(): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  canvas.width = 224;
+  canvas.height = 68;
+  const ctx = canvas.getContext('2d')!;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.SpriteMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(2.5, 0.76, 1);
+  sprite.userData = { canvas, ctx, tex, lastSquad: -1, lastDmg: -1 };
+  updateSquadCounterSprite(sprite, 1, 1);
+  return sprite;
+}
+
+export function updateSquadCounterSprite(sprite: THREE.Sprite | null | undefined, squadSize: number, dmgMul: number): void {
+  if (!sprite || !sprite.userData) return;
+  const ud = sprite.userData as {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    tex: THREE.CanvasTexture;
+    lastSquad: number;
+    lastDmg: number;
+  };
+  const roundedDmg = Math.round(dmgMul * 10) / 10;
+  if (ud.lastSquad === squadSize && ud.lastDmg === roundedDmg) return;
+  ud.lastSquad = squadSize;
+  ud.lastDmg = roundedDmg;
+
+  const W = ud.canvas.width;
+  const H = ud.canvas.height;
+  const ctx = ud.ctx;
+  ctx.clearRect(0, 0, W, H);
+
+  // Pill badge backdrop
+  ctx.fillStyle = 'rgba(6, 24, 44, 0.90)';
+  ctx.fillRect(6, 6, W - 12, H - 12);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(6, 6, W - 12, H - 12);
+
+  // Left block: SQUAD count
+  ctx.fillStyle = '#0ea5e9';
+  ctx.fillRect(8, 8, 114, H - 16);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  fitFont(ctx, `SQUAD ${squadSize}`, '900', 26, 106);
+  ctx.fillText(`SQUAD ${squadSize}`, 65, H / 2);
+
+  // Right block: Power multiplier
+  ctx.fillStyle = '#fde047';
+  fitFont(ctx, `×${roundedDmg.toFixed(1)}`, '900', 25, 86);
+  ctx.fillText(`×${roundedDmg.toFixed(1)}`, 168, H / 2);
+
+  ud.tex.needsUpdate = true;
 }

@@ -83,6 +83,9 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [社畜スパイラル](${BASE_URL}/shachiku-spiral)
 - [社畜通勤サバイバー](${BASE_URL}/barricade-defense)
 - [社畜シューティング](${BASE_URL}/shachiku-shooting)
+- [社畜ぶっとばし！定時退社カタパルト](${BASE_URL}/shachiku-catapult)
+- [社畜ワイヤー疾走：終電スイングアクション](${BASE_URL}/shachiku-wire)
+- [社畜グラグラ決済タワー：限界ビル建設](${BASE_URL}/shachiku-stack)
 `;
 
   return new Response(body, {

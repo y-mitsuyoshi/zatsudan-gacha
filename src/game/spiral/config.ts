@@ -181,19 +181,21 @@ export interface UpgradeDef {
   icon: string;
   desc: string;
   maxLv: number;
+  category?: 'weapon' | 'tech' | 'core';
+  statLabel?: (toLv: number) => string;
 }
 
 export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
-  dmg: { id: 'dmg', name: '書類の束', icon: 'dmg', desc: '弾ダメージ +25%/Lv', maxLv: 8 },
-  rate: { id: 'rate', name: '高速コピー機', icon: 'rate', desc: '連射速度 +12%/Lv', maxLv: 8 },
-  multi: { id: 'multi', name: 'CC追加', icon: 'multi', desc: '同時発射 +1/Lv', maxLv: 4 },
-  pierce: { id: 'pierce', name: 'ホチキス針', icon: 'pierce', desc: '貫通 +1/Lv', maxLv: 5 },
-  crit: { id: 'crit', name: '決裁印', icon: 'crit', desc: 'クリ率 +7%/Lv（2倍）', maxLv: 5 },
-  orb: { id: 'orb', name: '付箋オービタル', icon: 'orb', desc: '周回付箋 +1/Lv（初回2個）', maxLv: 5 },
-  blast: { id: 'blast', name: 'エナドリ爆発', icon: 'blast', desc: '周期範囲爆発を強化', maxLv: 5 },
-  beam: { id: 'beam', name: '定時ビーム', icon: 'beam', desc: '最硬の敵を貫く光', maxLv: 5 },
-  hp: { id: 'hp', name: '社食大盛り', icon: 'hp', desc: '最大HP +25＆回復25', maxLv: 8 },
-  regen: { id: 'regen', name: '仮眠', icon: 'regen', desc: '毎秒 +0.7 HP回復/Lv', maxLv: 5 },
+  dmg: { id: 'dmg', name: '書類の束', icon: 'dmg', desc: '弾ダメージ +25%/Lv', maxLv: 8, category: 'tech', statLabel: (lv) => `ATK ×${Math.pow(1.25, lv).toFixed(2)}` },
+  rate: { id: 'rate', name: '高速コピー機', icon: 'rate', desc: '連射速度 +12%/Lv', maxLv: 8, category: 'tech', statLabel: (lv) => `連射 +${Math.round((Math.pow(1.12, lv) - 1) * 100)}%` },
+  multi: { id: 'multi', name: 'CC追加', icon: 'multi', desc: '同時発射 +1/Lv', maxLv: 4, category: 'weapon', statLabel: (lv) => `${1 + lv}WAY 斉射` },
+  pierce: { id: 'pierce', name: 'ホチキス針', icon: 'pierce', desc: '貫通 +1/Lv', maxLv: 5, category: 'tech', statLabel: (lv) => `貫通 ${lv} 細胞` },
+  crit: { id: 'crit', name: '決裁印', icon: 'crit', desc: 'クリ率 +7%/Lv（2倍）', maxLv: 5, category: 'tech', statLabel: (lv) => `会心率 ${5 + lv * 7}%` },
+  orb: { id: 'orb', name: '付箋オービタル', icon: 'orb', desc: '周回プラズマ刃 +1/Lv（初回2基）', maxLv: 5, category: 'weapon', statLabel: (lv) => `回転刃 ×${lv + 1}基` },
+  blast: { id: 'blast', name: 'エナドリ爆発', icon: 'blast', desc: '周期EMP衝撃波＆押し戻し', maxLv: 5, category: 'weapon', statLabel: (lv) => `範囲 ${140 + 16 * lv}px` },
+  beam: { id: 'beam', name: '定時ビーム', icon: 'beam', desc: '最硬の敵を貫く連鎖電撃光', maxLv: 5, category: 'weapon', statLabel: (lv) => `照射間隔 ${Math.max(2.2, 4.6 - 0.35 * lv).toFixed(1)}s` },
+  hp: { id: 'hp', name: '社食大盛り', icon: 'hp', desc: '最大HP +25＆即時回復25', maxLv: 8, category: 'core', statLabel: (lv) => `最大HP +${lv * 25}` },
+  regen: { id: 'regen', name: '仮眠', icon: 'regen', desc: '毎秒 +0.7 HP自己修復/Lv', maxLv: 5, category: 'core', statLabel: (lv) => `修復 +${(lv * 0.7).toFixed(1)}/s` },
 };
 
 export const UPGRADE_ORDER: UpgradeId[] = [

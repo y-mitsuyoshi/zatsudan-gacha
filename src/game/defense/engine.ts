@@ -10,10 +10,15 @@ import {
   buildWeaponMesh,
   buildBarricadeMesh,
   buildGateMesh,
+  refreshGateMesh,
+  formatGateLabel,
   buildEnemyMesh,
   buildTrainBossMesh,
   buildCrateMesh,
   buildCageMesh,
+  updateItemCounter,
+  buildSquadCounterSprite,
+  updateSquadCounterSprite,
   updateSalarymanAnimation,
   updateBarricadeDurability,
   updateGateCurtain,
@@ -193,6 +198,8 @@ interface GateDef {
   op: GateOp;
   val: number;
   label: string;
+  sub: string;
+  kind: 'squad' | 'dmg' | 'guard' | 'hp' | 'coin';
   isGood: boolean;
   apply: () => void;
 }
@@ -323,6 +330,7 @@ export class DefenseEngine {
 
   // scene objects
   private hero!: THREE.Group;
+  private squadCounter!: THREE.Sprite;
   private barricade!: THREE.Group;
   private muzzleGroup!: THREE.Group;
   private muzzleT = 0;
@@ -570,6 +578,11 @@ export class DefenseEngine {
     this.hero.position.set(0, 0, HERO_Z);
     this.scene.add(this.hero);
 
+    // 1b. Floating 3D Squad Power Counter Badge Above Hero
+    this.squadCounter = buildSquadCounterSprite();
+    this.squadCounter.position.set(0, 2.35, HERO_Z + 0.15);
+    this.scene.add(this.squadCounter);
+
     // 2. Physical 3D Deployable Modular Barricade
     this.barricade = buildBarricadeMesh(1 + this.wallLv, this.guard / this.guardMax);
     this.barricade.position.set(0, 0, BARRICADE_Z);
@@ -792,21 +805,22 @@ export class DefenseEngine {
     for (let d = 14; d < L - 70; d += rand(11, 15)) this.rows.push(d);
     this.rowIdx = 0;
 
+    // Frequent highway multiplier/addition gates for continuous tactical decision-making & shooting
     this.gates = [];
-    for (let d = 55; d < L - 90; d += rand(55, 80)) this.gates.push(d);
+    for (let d = 38; d < L - 75; d += rand(34, 48)) this.gates.push(d);
     this.gateIdx = 0;
 
     const barrelKinds: BarrelKind[] = ['weapon', 'bomb', 'coin', 'repair'];
     this.cratesAt = [];
     let bi = Math.floor(rand(0, 4));
-    for (let d = 30; d < L - 60; d += rand(36, 50)) {
+    for (let d = 24; d < L - 55; d += rand(28, 40)) {
       this.cratesAt.push({ at: d, kind: barrelKinds[bi % 4] });
       bi++;
     }
     this.crateIdx = 0;
 
     this.cagesAt = [];
-    for (let d = 65; d < L - 80; d += rand(75, 100)) this.cagesAt.push(d);
+    for (let d = 48; d < L - 70; d += rand(52, 72)) this.cagesAt.push(d);
     this.cageIdx = 0;
 
     this.elitesAt = [];
@@ -923,27 +937,44 @@ export class DefenseEngine {
     return { hpBarGroup, hpBarFill };
   }
 
-  private updateItemHpBar(item: { hp: number; maxHp?: number; hpBarFill?: THREE.Mesh }, fullWidth: number): void {
+  private updateItemHpBar(item: { g?: THREE.Group; hp: number; maxHp?: number; hpBarFill?: THREE.Mesh }, fullWidth: number): void {
+    updateItemCounter(item.g, item.hp);
     if (!item.hpBarFill) return;
     const max = item.maxHp && item.maxHp > 0 ? item.maxHp : 30;
     const frac = clamp(item.hp / max, 0, 1);
     item.hpBarFill.scale.x = fullWidth * frac;
   }
 
+  private weaponBarrelTag(wid: WeaponId): string {
+    switch (wid) {
+      case 'smg': return '[SMG]';
+      case 'shotgun': return '[SHOTGUN]';
+      case 'rifle': return '[LASER]';
+      case 'launcher': return '[ROCKET]';
+      case 'freeze': return '[FREEZE]';
+      default: return '[WEAPON]';
+    }
+  }
+
   private spawnCrate(kind: BarrelKind): void {
-    const g = buildCrateMesh(kind);
-    const x = LANES[Math.floor(rand(0, LANES.length))];
+    const weapons: WeaponId[] = ['smg', 'shotgun', 'rifle', 'launcher', 'freeze'];
+    const weapon = weapons[Math.floor(Math.random() * weapons.length)];
     const hp = CRATE_HP * (1 + this.endless * 0.2);
-    const { hpBarGroup, hpBarFill } = this.attachItemHpBar(g, 2.15, 1.26, 0xfacc15);
+    const rewardTag =
+      kind === 'weapon' ? this.weaponBarrelTag(weapon) :
+      kind === 'bomb' ? '[BOMB]' :
+      kind === 'coin' ? '[+COIN]' : '[+GUARD]';
+    const g = buildCrateMesh(kind, hp, rewardTag);
+    const x = LANES[Math.floor(rand(0, LANES.length))];
+    const { hpBarGroup, hpBarFill } = this.attachItemHpBar(g, 1.92, 1.26, 0xfacc15);
     g.position.set(x, 0, SPAWN_Z);
     this.scene.add(g);
 
-    const weapons: WeaponId[] = ['smg', 'shotgun', 'rifle', 'launcher', 'freeze'];
     this.crates.push({
       g, kind, x, z: SPAWN_Z,
       hp,
       maxHp: hp,
-      weapon: weapons[Math.floor(Math.random() * weapons.length)],
+      weapon,
       dead: false,
       hpBarGroup,
       hpBarFill,
@@ -951,9 +982,9 @@ export class DefenseEngine {
   }
 
   private spawnCage(): void {
-    const g = buildCageMesh();
+    const g = buildCageMesh(CAGE_HP);
     const x = LANES[Math.floor(rand(0, LANES.length))];
-    const { hpBarGroup, hpBarFill } = this.attachItemHpBar(g, 3.05, 1.38, 0x38bdf8);
+    const { hpBarGroup, hpBarFill } = this.attachItemHpBar(g, 2.55, 1.38, 0x38bdf8);
     g.position.set(x, 0, SPAWN_Z);
     this.scene.add(g);
 
@@ -967,39 +998,161 @@ export class DefenseEngine {
     });
   }
 
+  private createGateDef(
+    op: GateOp,
+    val: number,
+    kind: GateDef['kind'],
+    sub: string,
+    label: string,
+    isGood: boolean
+  ): GateDef {
+    const def: GateDef = {
+      op,
+      val,
+      kind,
+      sub,
+      label,
+      isGood,
+      apply: () => {
+        if (def.kind === 'squad') {
+          this.applySquadGate(def.op, def.val);
+        } else if (def.kind === 'dmg') {
+          if (def.op === 'mult') {
+            this.runDmgMul = Math.min(12, this.runDmgMul * def.val);
+          } else if (def.op === 'add') {
+            this.runDmgMul = Math.min(12, this.runDmgMul + def.val * 0.1);
+          } else if (def.op === 'div') {
+            this.runDmgMul = Math.max(0.25, this.runDmgMul / Math.max(1, def.val));
+          } else {
+            this.runDmgMul = Math.max(0.25, this.runDmgMul - def.val * 0.1);
+          }
+        } else if (def.kind === 'guard') {
+          if (def.isGood) {
+            this.guard = Math.min(this.guardMax, this.guard + def.val);
+            updateBarricadeDurability(this.barricade, this.guard / this.guardMax, this.time);
+          } else {
+            this.damageGuard(def.val);
+          }
+        } else if (def.kind === 'hp') {
+          if (def.isGood) {
+            this.hp = Math.min(this.hpMax, this.hp + def.val);
+          } else {
+            this.damageHp(def.val);
+          }
+        } else if (def.kind === 'coin') {
+          if (def.isGood) {
+            this.coins += def.val;
+          } else {
+            this.coins = Math.max(0, this.coins - def.val);
+          }
+        }
+      },
+    };
+    return def;
+  }
+
   private generateGateDefs(): { left: GateDef; right: GateDef } {
-    const goodPool: GateDef[] = [
-      { op: 'mult', val: 2, label: '×2 隊員倍増', isGood: true, apply: () => this.applySquadGate('mult', 2) },
-      { op: 'add', val: 5, label: '+5 隊員急募', isGood: true, apply: () => this.applySquadGate('add', 5) },
-      { op: 'add', val: 10, label: '+10 大動員', isGood: true, apply: () => this.applySquadGate('add', 10) },
-      { op: 'mult', val: 3, label: '×3 突撃編成', isGood: true, apply: () => this.applySquadGate('mult', 3) },
-      { op: 'mult', val: 3, label: '火力×3', isGood: true, apply: () => { this.runDmgMul = Math.min(12, this.runDmgMul * 3); } },
-      { op: 'mult', val: 2, label: '火力×2', isGood: true, apply: () => { this.runDmgMul = Math.min(12, this.runDmgMul * 2); } },
-      { op: 'add', val: 50, label: 'ガード+50', isGood: true, apply: () => { this.guard = Math.min(this.guardMax, this.guard + 50); updateBarricadeDurability(this.barricade, this.guard / this.guardMax, this.time); } },
-      { op: 'add', val: 25, label: '体力+25', isGood: true, apply: () => { this.hp = Math.min(this.hpMax, this.hp + 25); } },
-      { op: 'add', val: 50, label: '残業代+50', isGood: true, apply: () => { this.coins += 50; } },
-      { op: 'add', val: 40, label: 'ガード+40', isGood: true, apply: () => { this.guard = Math.min(this.guardMax, this.guard + 40); updateBarricadeDurability(this.barricade, this.guard / this.guardMax, this.time); } },
-      { op: 'add', val: 20, label: '体力+20', isGood: true, apply: () => { this.hp = Math.min(this.hpMax, this.hp + 20); } },
-      { op: 'add', val: 30, label: '残業代+30', isGood: true, apply: () => { this.coins += 30; } },
+    const goodFactories: (() => GateDef)[] = [
+      () => this.createGateDef('add', 4, 'squad', '隊員増強', '+4 隊員増員', true),
+      () => this.createGateDef('add', 6, 'squad', '隊員増強', '+6 隊員急募', true),
+      () => this.createGateDef('add', 8, 'squad', '隊員増強', '+8 大動員', true),
+      () => this.createGateDef('mult', 2, 'squad', '隊員倍増', '×2 隊員倍増', true),
+      () => this.createGateDef('mult', 3, 'squad', '突撃編成', '×3 突撃編成', true),
+      () => this.createGateDef('mult', 2, 'dmg', '火力倍率', '火力×2', true),
+      () => this.createGateDef('mult', 3, 'dmg', '火力倍率', '火力×3', true),
+      () => this.createGateDef('add', 45, 'guard', 'ガード補強', 'ガード+45', true),
+      () => this.createGateDef('add', 25, 'hp', 'メンタル回復', '体力+25', true),
+      () => this.createGateDef('add', 40, 'coin', '残業手当', '残業代+40', true),
     ];
 
-    const badPool: GateDef[] = [
-      { op: 'div', val: 2, label: '÷2 途中下車', isGood: false, apply: () => this.applySquadGate('div', 2) },
-      { op: 'sub', val: 5, label: '-5 離脱発生', isGood: false, apply: () => this.applySquadGate('sub', 5) },
-      { op: 'div', val: 2, label: '火力÷2', isGood: false, apply: () => { this.runDmgMul = Math.max(0.25, this.runDmgMul * 0.5); } },
-      { op: 'sub', val: 30, label: 'ガード-30', isGood: false, apply: () => { this.damageGuard(30); } },
-      { op: 'sub', val: 20, label: '体力-20', isGood: false, apply: () => { this.damageHp(20); } },
-      { op: 'sub', val: 30, label: '減給-30', isGood: false, apply: () => { this.coins = Math.max(0, this.coins - 30); } },
+    const badFactories: (() => GateDef)[] = [
+      () => this.createGateDef('sub', 4, 'squad', '隊員減少', '-4 離脱発生', false),
+      () => this.createGateDef('sub', 6, 'squad', '隊員減少', '-6 離脱発生', false),
+      () => this.createGateDef('sub', 8, 'squad', '隊員減少', '-8 途中下車', false),
+      () => this.createGateDef('div', 2, 'squad', '隊員半減', '÷2 途中下車', false),
+      () => this.createGateDef('sub', 20, 'guard', 'ガード損傷', 'ガード-20', false),
+      () => this.createGateDef('sub', 15, 'hp', 'メンタル削り', '体力-15', false),
     ];
 
-    // 60% of the time both sides include the squad multiplier (ad-game staple)
     const leftFirst = Math.random() < 0.5;
-    const good = goodPool[Math.floor(rand(0, goodPool.length))];
-    const bad = badPool[Math.floor(rand(0, badPool.length))];
+    const good = goodFactories[Math.floor(rand(0, goodFactories.length))]();
+    const bad = badFactories[Math.floor(rand(0, badFactories.length))]();
     return {
       left: leftFirst ? good : bad,
       right: leftFirst ? bad : good,
     };
+  }
+
+  /**
+   * Shootable Gate Mechanic:
+   * - Hitting an 'add' gate increases its value (+1 for squad up to +40, +2 for stats up to +150).
+   * - Hitting a negative 'sub' (or 'div') gate reduces its penalty by 1 per shot;
+   *   once it reaches 0 and is hit again, it flips into a positive Blue/Emerald '+1 隊員増員' gate!
+   */
+  private hitGateSide(gateSide: GateDef, mesh: THREE.Group, hx: number, gz: number): void {
+    if (gateSide.op === 'add') {
+      const step = gateSide.kind === 'squad' ? 1 : 2;
+      const cap = gateSide.kind === 'squad' ? 40 : 150;
+      gateSide.val = Math.min(cap, gateSide.val + step);
+      gateSide.isGood = true;
+      gateSide.label =
+        gateSide.kind === 'squad' ? `+${gateSide.val} 隊員増員` :
+        gateSide.kind === 'guard' ? `ガード+${gateSide.val}` :
+        gateSide.kind === 'hp' ? `体力+${gateSide.val}` :
+        gateSide.kind === 'coin' ? `残業代+${gateSide.val}` : `+${gateSide.val}`;
+      refreshGateMesh(
+        mesh,
+        gateSide.op,
+        gateSide.val,
+        { main: formatGateLabel(gateSide.op, gateSide.val), sub: gateSide.sub },
+        true
+      );
+      return;
+    }
+
+    if (gateSide.op === 'div') {
+      // Shooting a division gate converts it into a shootable countdown subtraction gate
+      gateSide.op = 'sub';
+      gateSide.val = 4;
+      gateSide.kind = 'squad';
+      gateSide.sub = '隊員減少';
+      gateSide.isGood = false;
+      gateSide.label = '-4 離脱発生';
+      refreshGateMesh(mesh, 'sub', gateSide.val, { main: `-${gateSide.val}`, sub: gateSide.sub }, false);
+      return;
+    }
+
+    if (gateSide.op === 'sub') {
+      const dec = gateSide.kind === 'squad' ? 1 : 5;
+      gateSide.val -= dec;
+      if (gateSide.val <= 0) {
+        // Flip Red Gate into Blue/Emerald Positive Addition Gate!
+        gateSide.op = 'add';
+        gateSide.val = 1;
+        gateSide.kind = 'squad';
+        gateSide.sub = '隊員増強';
+        gateSide.isGood = true;
+        gateSide.label = '+1 隊員増員';
+        gateSide.apply = () => this.applySquadGate('add', gateSide.val);
+        refreshGateMesh(mesh, 'add', 1, { main: '+1', sub: '隊員増強' }, true);
+        this.lastGateText = '赤ゲート撃破 >> 青ゲート(+1)に反転！';
+        this.floater(hx, 3.3, gz, '青ゲート反転！+1', '#38bdf8');
+        this.spawnRing(hx, 1.5, gz, 2.8, '#10b981');
+        this.sound.pickup();
+      } else {
+        gateSide.label =
+          gateSide.kind === 'squad' ? `-${gateSide.val} 離脱発生` :
+          gateSide.kind === 'guard' ? `ガード-${gateSide.val}` :
+          gateSide.kind === 'hp' ? `体力-${gateSide.val}` : `-${gateSide.val}`;
+        refreshGateMesh(
+          mesh,
+          'sub',
+          gateSide.val,
+          { main: `-${gateSide.val}`, sub: gateSide.sub },
+          false
+        );
+      }
+    }
   }
 
   private applySquadGate(op: GateOp, val: number): void {
@@ -1045,11 +1198,21 @@ export class DefenseEngine {
     const g = new THREE.Group();
     const { left, right } = this.generateGateDefs();
 
-    const leftMesh = buildGateMesh(left.op, left.val);
+    const leftMesh = buildGateMesh(
+      left.op,
+      left.val,
+      { main: formatGateLabel(left.op, left.val), sub: left.sub },
+      left.isGood
+    );
     leftMesh.position.x = -2.25;
     g.add(leftMesh);
 
-    const rightMesh = buildGateMesh(right.op, right.val);
+    const rightMesh = buildGateMesh(
+      right.op,
+      right.val,
+      { main: formatGateLabel(right.op, right.val), sub: right.sub },
+      right.isGood
+    );
     rightMesh.position.x = 2.25;
     g.add(rightMesh);
 
@@ -1553,6 +1716,11 @@ export class DefenseEngine {
     this.hero.rotation.z = clamp((this.targetX - hx) * -0.06, -0.28, 0.28);
     updateSalarymanAnimation(this.hero, this.time, 14);
 
+    if (this.squadCounter) {
+      this.squadCounter.position.set(this.hero.position.x, 2.35 + this.hero.position.y, HERO_Z + 0.15);
+      updateSquadCounterSprite(this.squadCounter, 1 + this.allies.length, this.powerMult());
+    }
+
     // Barricade visual durability
     updateBarricadeDurability(this.barricade, this.guard / this.guardMax, this.time);
 
@@ -1605,7 +1773,7 @@ export class DefenseEngine {
     }
     while (this.cageIdx < this.cagesAt.length && this.dist >= this.cagesAt[this.cageIdx]) {
       this.cageIdx++;
-      if (this.cages.length < 2) this.spawnCage();
+      if (this.cages.length < 3) this.spawnCage();
     }
     while (this.eliteIdx < this.elitesAt.length && this.dist >= this.elitesAt[this.eliteIdx]) {
       this.eliteIdx++;
@@ -1668,6 +1836,7 @@ export class DefenseEngine {
       b.ally = isAlly;
 
       b.m.material = isAlly ? this.boltMats.ally : (this.boltMats[wid] ?? this.boltMats.pistol);
+      b.m.scale.set(0.85, 0.85, 2.35);
       b.m.position.set(b.x, 1.25, b.z);
       b.m.visible = true;
       break;
@@ -1727,18 +1896,27 @@ export class DefenseEngine {
         if (!best || f.z > best.z) best = f;
       }
       if (!best) {
-        a.cd = 0.2;
+        // Also support-fire straight ahead if shootable gates, crates, or cages are on the highway
+        const hasTargetAhead =
+          this.gateObjs.some((gt) => !gt.done && gt.z > -48 && gt.z < HERO_Z - 1) ||
+          this.crates.some((c) => !c.dead && c.z > -48 && c.z < HERO_Z - 1) ||
+          this.cages.some((cg) => !cg.dead && cg.z > -48 && cg.z < HERO_Z - 1);
+        if (!hasTargetAhead) {
+          a.cd = 0.16;
+          return;
+        }
+        a.cd = 0.36;
+        this.spawnBolt(a.g.position.x, a.g.position.z - 0.4, (Math.random() - 0.5) * 0.04, 36, 10 * this.powerMult(), 0, 0, 0, 'smg', true);
         return;
       }
-      a.cd = 0.52;
+      a.cd = 0.36;
 
       const dx = best.x - a.g.position.x;
       const dz = best.z - a.g.position.z;
-      const len = Math.max(0.001, Math.hypot(dx, dz));
-      const sp = 32;
+      const sp = 36;
       const spread = Math.atan2(dx, -dz);
 
-      this.spawnBolt(a.g.position.x, a.g.position.z - 0.4, spread, sp, 9 * this.powerMult(), 0, 0, 0, 'smg', true);
+      this.spawnBolt(a.g.position.x, a.g.position.z - 0.4, spread, sp, 10 * this.powerMult(), 0, 0, 0, 'smg', true);
     });
   }
 
@@ -1854,6 +2032,33 @@ export class DefenseEngine {
             b.m.visible = false;
             break;
           }
+        }
+      }
+
+      if (!b.active) continue;
+
+      // 4. Swept CCD vs Shootable Multiplier / Addition Gates
+      for (const gt of this.gateObjs) {
+        if (gt.done || gt.z <= -48 || gt.z >= HERO_Z - 0.5) continue;
+        const minZ = Math.min(b.prevZ, b.z) - 0.55;
+        const maxZ = Math.max(b.prevZ, b.z) + 0.55;
+        if (gt.z < minZ || gt.z > maxZ) continue;
+
+        const tGate = Math.abs(segZ) > 1e-4 ? clamp((gt.z - b.prevZ) / segZ, 0, 1) : 0;
+        const qx = b.prevX + tGate * segX;
+
+        if (qx >= -4.4 && qx <= -0.15) {
+          this.burst(qx, 1.8, gt.z, 4, 3, '#38bdf8');
+          this.hitGateSide(gt.left, gt.leftMesh, qx, gt.z);
+          b.active = false;
+          b.m.visible = false;
+          break;
+        } else if (qx >= 0.15 && qx <= 4.4) {
+          this.burst(qx, 1.8, gt.z, 4, 3, '#38bdf8');
+          this.hitGateSide(gt.right, gt.rightMesh, qx, gt.z);
+          b.active = false;
+          b.m.visible = false;
+          break;
         }
       }
 

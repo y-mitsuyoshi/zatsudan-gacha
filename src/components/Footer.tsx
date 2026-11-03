@@ -13,6 +13,9 @@ const services = [
   { title: '社畜シューティングNEO', href: '/shachiku-shooting', note: '定時退社の弾幕STG' },
   { title: '社畜すごろくNEO', href: '/shachiku-sugoroku', note: 'キャリアボードゲーム' },
   { title: '社畜人狼', href: '/shachiku-jinro', note: '会社員ソロ人狼' },
+  { title: '定時退社カタパルト', href: '/shachiku-catapult', note: 'ぶっとばし飛距離ゲーム' },
+  { title: '社畜ワイヤー疾走', href: '/shachiku-wire', note: '終電スイングアクション' },
+  { title: '社畜グラグラ決済タワー', href: '/shachiku-stack', note: '限界ビル建設ゲーム' },
   { title: '究極の言い訳ジェネレーター', href: '/excuse-generator', note: '言い逃れ文を作成' },
   { title: '駅名標メーカー', href: '/station-sign-maker', note: 'オリジナル駅名標' },
 ];

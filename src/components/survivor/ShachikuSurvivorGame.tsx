@@ -40,6 +40,7 @@ const DEFAULT_HUD: HudSnapshot = {
   weapons: [], passives: [],
   bossName: '', bossHp: 0, bossMax: 0, endless: false,
   dashCd: 0, dashMax: 2.5, xpBoostT: 0, coinBoostT: 0,
+  dps: 0,
 };
 
 function rankOf(r: { victory: boolean; difficulty: string; time: number; level: number; kills: number }): string {
@@ -248,6 +249,7 @@ export default function ShachikuSurvivorGame() {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [stage, setStage] = useState<StageId>('honsha');
   const [tab, setTab] = useState<TitleTab>('play');
+  const [showGrimoire, setShowGrimoire] = useState(false);
 
   const [records, setRecords] = useState<RecordEntry[]>([]);
   const [bank, setBank] = useState(0);
@@ -648,29 +650,29 @@ export default function ShachikuSurvivorGame() {
     <div className="flex min-h-dvh w-full flex-col items-center bg-[#0f0d0a] px-2 py-3 text-[#f2e9d8] sm:px-4">
       <div className="w-full max-w-[1000px]">
         {/* Corporate Terminal Top Bar */}
-        <header className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#3b3328] bg-[#181410] px-3 py-2 shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+        <header className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#4a3e2e] bg-gradient-to-r from-[#18130f] via-[#211a14] to-[#18130f] px-3 py-2 shadow-[0_4px_14px_rgba(0,0,0,0.65)]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded border border-[#5a4b38] bg-[#241e17]">
-              <PixelIcon name="icon_building" size={20} />
+            <div className="flex h-9 w-9 items-center justify-center rounded border border-[#dfb15b]/60 bg-[#261f17] shadow-[inset_0_0_8px_rgba(223,177,91,0.2)]">
+              <PixelIcon name="icon_building" size={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base font-black tracking-wider text-[#f2e9d8] sm:text-lg">社畜サバイバー</span>
-                <span className="hidden rounded border border-[#5a4b38] bg-[#262019] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#dfb15b] sm:inline-block">
-                  09:00-18:00 SURVIVAL
+                <span className="hidden rounded border border-[#dfb15b]/50 bg-[#2a2115] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#fde047] sm:inline-block">
+                  DARK-OFFICE HORDE SURVIVAL
                 </span>
               </div>
-              <p className="text-[10px] text-[#9c8e78]">
+              <p className="text-[10px] text-[#b7a992]">
                 {inRun
-                  ? `${STAGES[runMeta.stage].name} ／ ${DIFFICULTIES[runMeta.difficulty].name}勤務`
-                  : '16-BIT CORPORATE ACTION ROGUELITE'}
+                  ? `${STAGES[runMeta.stage].name} ／ ${DIFFICULTIES[runMeta.difficulty].name}勤務 （09:00 → 18:00 定時退社）`
+                  : 'ダークオフィス・ホードサバイバル // 社畜覚醒ウェポン進化'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span
-              className="inline-flex h-9 items-center gap-1.5 rounded border border-[#4a3e2e] bg-[#211b15] px-2.5 text-xs font-bold text-[#e4c989]"
+              className="inline-flex h-9 items-center gap-1.5 rounded border border-[#5a4b38] bg-[#211b15] px-2.5 text-xs font-bold text-[#e4c989]"
               title="所持残業代（恒久強化に使用）"
             >
               <PixelIcon name="coin" size={15} />
@@ -683,6 +685,19 @@ export default function ShachikuSurvivorGame() {
               <PixelIcon name={title.icon} size={15} />
               <span>{title.name}</span>
             </span>
+            <button
+              type="button"
+              onClick={() => setShowGrimoire((v) => !v)}
+              className={`inline-flex min-h-[36px] items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-black transition ${
+                showGrimoire
+                  ? 'border-[#fde047] bg-[#362812] text-[#fde047]'
+                  : 'border-[#5a4b38] bg-[#241e17] text-[#dfb15b] hover:border-[#dfb15b]'
+              }`}
+              title="社畜覚醒（ウェポン進化グリモア）早見表を開く"
+            >
+              <PixelIcon name="icon_grimoire" size={15} />
+              <span>進化表</span>
+            </button>
             <AudioToggle variant="compact" />
             {screen === 'playing' && (
               <button
@@ -698,181 +713,286 @@ export default function ShachikuSurvivorGame() {
           </div>
         </header>
 
-        {/* In-Run Tactical HUD */}
+        {/* Collapsible Evolution Grimoire Drawer (accessible anytime) */}
+        {showGrimoire && (
+          <div className="mb-2 rounded-lg border-2 border-[#dfb15b]/70 bg-[#181410] p-3 shadow-[0_6px_24px_rgba(0,0,0,0.8)]">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PixelIcon name="icon_grimoire" size={18} />
+                <span className="text-xs font-black tracking-wide text-[#fde047]">
+                  社畜覚醒（ウェポン進化グリモア）— Lv.8武装 ＋ 対応スキルLv.1 ＋ 宝箱で進化
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGrimoire(false)}
+                className="rounded border border-[#5a4b38] bg-[#241e17] px-2 py-0.5 text-[10px] font-bold text-[#d8ccb8] hover:border-[#dfb15b]"
+              >
+                閉じる
+              </button>
+            </div>
+            <EvolutionGrimoirePanel hud={hud} />
+          </div>
+        )}
+
+        {/* In-Run Dark-Arcade Horde-Survivor HUD */}
         {inRun && (
-          <section className="mb-2 rounded-lg border border-[#3b3328] bg-[#181410] p-2.5 text-xs shadow-md">
-            {/* Row 1: Workday Clock & Timeline, Score, Coins, Kills */}
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-[#2c251d] pb-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded border border-[#4a3e2e] bg-[#241e17] px-2 py-1 font-mono text-sm font-black text-[#f2e9d8]">
-                  <PixelIcon name="icon_clock" size={15} />
-                  <span>{formatClock(hud.time)}</span>
-                  <span className="text-[11px] font-bold text-[#9c8e78]">
-                    {hud.endless ? '[サービス残業]' : '/ 18:00'}
-                  </span>
+          <section className="mb-2 overflow-hidden rounded-lg border-2 border-[#4a3e2e] bg-[#16120e] text-xs shadow-[0_4px_18px_rgba(0,0,0,0.65)]">
+            {/* Full-Width Top Crystalline XP Bar */}
+            <div className="relative flex h-6 w-full items-center overflow-hidden border-b border-[#4a3e2e] bg-[#0a0907] px-2.5">
+              <div
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#059669] via-[#0284c7] to-[#eab308] opacity-85 transition-all duration-150"
+                style={{ width: `${hud.xpNext > 0 ? Math.min(100, (hud.xp / hud.xpNext) * 100) : 0}%` }}
+              />
+              <div className="relative z-10 flex w-full items-center justify-between font-mono text-[11px] font-black">
+                <span className="inline-flex items-center gap-1.5 text-[#fde047] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                  <PixelIcon name="gem_gold" size={14} />
+                  <span>LV. {hud.level}</span>
                 </span>
-                {/* Mini Workday Progress & Boss Schedule Marks */}
-                {!hud.endless && (
-                  <div className="hidden w-36 flex-col gap-0.5 sm:flex">
-                    <div className="flex justify-between text-[9px] font-bold text-[#9c8e78]">
-                      <span>定時進捗</span>
-                      <span className="font-mono">{Math.min(100, Math.floor((hud.time / RUN_SECONDS) * 100))}%</span>
-                    </div>
-                    <div className="relative h-2 w-full overflow-hidden rounded-sm bg-[#0c0a08] ring-1 ring-[#3b3328]">
-                      <div
-                        className="h-full bg-[#83b8ac] transition-all duration-150"
-                        style={{ width: `${Math.min(100, (hud.time / RUN_SECONDS) * 100)}%` }}
-                      />
-                      {BOSS_SCHEDULE.map((b) => (
-                        <span
-                          key={b.atSec}
-                          title={b.title}
-                          className="absolute inset-y-0 w-0.5 bg-[#e0533c]"
-                          style={{ left: `${(b.atSec / RUN_SECONDS) * 100}%` }}
-                        />
-                      ))}
-                    </div>
+                <span className=" tracking-wider text-[#f2e9d8] drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+                  EXP {hud.xp.toLocaleString()} / {hud.xpNext.toLocaleString()} ({Math.min(100, Math.floor((hud.xp / Math.max(1, hud.xpNext)) * 100))}%)
+                </span>
+              </div>
+            </div>
+
+            <div className="p-2.5">
+              {/* Main HUD Grid: Top-Left 6+6 Inventory Slot Grid & Top-Right Telemetry */}
+              <div className="flex flex-col justify-between gap-2.5 lg:flex-row lg:items-center">
+                {/* Left: 6 Weapon Slots (Row 1) + 6 Passive Slots (Row 2) */}
+                <div className="space-y-1.5">
+                  {/* Row 1: 6 Weapon Slots */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="w-8 font-mono text-[10px] font-black text-[#dfb15b]">[武装]</span>
+                    {Array.from({ length: MAX_WEAPON_SLOTS }).map((_, idx) => {
+                      const w = hud.weapons[idx];
+                      if (!w) {
+                        return (
+                          <div
+                            key={`w-empty-${idx}`}
+                            className="flex h-9 w-16 flex-col items-center justify-center rounded border border-dashed border-[#3b3328] bg-[#0e0c0a]/80 font-mono text-[9px] text-[#5a4b38]"
+                          >
+                            W{idx + 1}
+                          </div>
+                        );
+                      }
+                      const evolved = isEvolvedWeapon(w.id);
+                      const recipe = EVOLUTION_RECIPES.find((r) => r.baseWeaponId === w.id);
+                      const hasMatchingPassive = recipe
+                        ? hud.passives.some((p) => p.id === recipe.requiredPassiveId && p.lv >= 1)
+                        : false;
+                      const evoReady = !evolved && w.lv >= 8 && hasMatchingPassive;
+                      return (
+                        <div
+                          key={w.id}
+                          title={`${WEAPONS[w.id]?.name ?? w.id} ${evolved ? '【極・覚醒兵器】' : `Lv.${w.lv}/8`}`}
+                          className={`relative flex h-9 min-w-[68px] flex-col justify-between rounded border px-1.5 py-0.5 ${
+                            evolved
+                              ? 'border-[#fde047] bg-gradient-to-b from-[#422d0b] to-[#261905] text-[#fde047] shadow-[0_0_10px_rgba(250,204,21,0.35)]'
+                              : evoReady
+                                ? 'border-[#22d3ee] bg-[#0f2930] text-[#e0f2fe] shadow-[0_0_8px_rgba(34,211,238,0.3)]'
+                                : w.lv >= 8
+                                  ? 'border-[#83b8ac] bg-[#172622] text-[#f2e9d8]'
+                                  : 'border-[#5a4b38] bg-[#211b15] text-[#f2e9d8]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <PixelIcon name={w.icon} size={15} />
+                            <span className="font-mono text-[10px] font-black leading-none">
+                              {evolved ? '極' : `Lv${w.lv}`}
+                            </span>
+                          </div>
+                          {evolved ? (
+                            <span className="text-center font-mono text-[8px] font-black tracking-widest text-[#fde047]">
+                              AWAKENED
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-0.5">
+                              {Array.from({ length: 8 }).map((__, pipIdx) => (
+                                <span
+                                  key={pipIdx}
+                                  className={`h-1 flex-1 rounded-[1px] ${
+                                    pipIdx < w.lv
+                                      ? evoReady
+                                        ? 'bg-[#22d3ee]'
+                                        : 'bg-[#dfb15b]'
+                                      : 'bg-[#12100d]'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
 
-              <div className="flex items-center gap-3 font-mono text-xs font-bold">
-                <span className="rounded bg-[#241e17] px-2 py-1 text-[#f2e9d8]">
-                  SCORE <strong className="text-[#dfb15b]">{hud.score.toLocaleString()}</strong>
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-[#241e17] px-2 py-1 text-[#e4c989]" title="獲得した残業代">
-                  <PixelIcon name="coin" size={14} />
-                  <span>{hud.coins}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-[#241e17] px-2 py-1 text-[#f2e9d8]" title="処理した業務数">
-                  <PixelIcon name="icon_sword" size={14} />
-                  <span>{hud.kills}</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Row 2: HP & XP Bars */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex w-16 shrink-0 items-center gap-1 font-bold text-[#f2e9d8]">
-                  <PixelIcon name="icon_heart" size={14} />
-                  <span>体力</span>
-                </span>
-                <TwoStageHpBar hp={hud.hp} maxHp={hud.maxHp} />
-                <span className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-[#d8ccb8]">
-                  {hud.hp}/{hud.maxHp}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="inline-flex w-16 shrink-0 items-center gap-1 font-bold text-[#dfb15b]">
-                  <PixelIcon name="icon_level_up" size={14} />
-                  <span className="font-mono">Lv.{hud.level}</span>
-                </span>
-                <Bar value={hud.xp} max={hud.xpNext} className="bg-[#dfb15b]" heightClass="h-2.5" />
-                <span className="w-16 shrink-0 text-right font-mono text-[11px] text-[#9c8e78]">
-                  {hud.xp}/{hud.xpNext}
-                </span>
-              </div>
-            </div>
-
-            {/* Active Buffs */}
-            {(hud.xpBoostT > 0 || hud.coinBoostT > 0) && (
-              <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold">
-                {hud.xpBoostT > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded border border-[#e0533c]/60 bg-[#b23a2a]/40 px-2 py-0.5 text-[#f2e9d8]">
-                    <PixelIcon name="icon_level_up" size={12} />
-                    <span>人事査定タイム（経験値2倍）残り {Math.ceil(hud.xpBoostT)}s</span>
-                  </span>
-                )}
-                {hud.coinBoostT > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded border border-[#dfb15b]/60 bg-[#78571a]/50 px-2 py-0.5 text-[#f2e9d8]">
-                    <PixelIcon name="coin" size={12} />
-                    <span>深夜残業割増（残業代2倍）残り {Math.ceil(hud.coinBoostT)}s</span>
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Row 3: 6 Weapon Slots & 6 Passive Slots */}
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="mr-1 text-[10px] font-bold text-[#9c8e78]">武装</span>
-                {Array.from({ length: MAX_WEAPON_SLOTS }).map((_, idx) => {
-                  const w = hud.weapons[idx];
-                  if (!w) {
-                    return (
-                      <span
-                        key={`w-empty-${idx}`}
-                        className="inline-flex h-6 w-11 items-center justify-center rounded border border-dashed border-[#3b3328] bg-[#12100d]/60 text-[9px] text-[#5a4b38]"
-                      >
-                        --
-                      </span>
-                    );
-                  }
-                  const evolved = isEvolvedWeapon(w.id);
-                  return (
-                    <span
-                      key={w.id}
-                      title={`${WEAPONS[w.id]?.name ?? w.id} ${evolved ? '(進化)' : `Lv.${w.lv}`}`}
-                      className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[10px] font-bold ${
-                        evolved
-                          ? 'border-[#dfb15b] bg-[#362812] text-[#fde047]'
-                          : w.lv >= 8
-                            ? 'border-[#83b8ac] bg-[#172622] text-[#f2e9d8]'
-                            : 'border-[#4a3e2e] bg-[#241e17] text-[#f2e9d8]'
-                      }`}
-                    >
-                      <PixelIcon name={w.icon} size={14} />
-                      <span className="font-mono">{evolved ? '極' : `Lv${w.lv}`}</span>
-                    </span>
-                  );
-                })}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="mr-1 text-[10px] font-bold text-[#9c8e78]">技能</span>
-                {Array.from({ length: MAX_PASSIVE_SLOTS }).map((_, idx) => {
-                  const p = hud.passives[idx];
-                  if (!p) {
-                    return (
-                      <span
-                        key={`p-empty-${idx}`}
-                        className="inline-flex h-6 w-10 items-center justify-center rounded border border-dashed border-[#3b3328] bg-[#12100d]/60 text-[9px] text-[#5a4b38]"
-                      >
-                        --
-                      </span>
-                    );
-                  }
-                  return (
-                    <span
-                      key={p.id}
-                      title={`${PASSIVES[p.id]?.name ?? p.id} Lv.${p.lv}`}
-                      className="inline-flex h-6 items-center gap-1 rounded border border-[#3b3328] bg-[#241e17] px-1.5 text-[10px] font-bold text-[#d8ccb8]"
-                    >
-                      <PixelIcon name={p.icon} size={14} />
-                      <span className="font-mono">Lv{p.lv}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Row 4: Boss Health Bar */}
-            {hud.bossMax > 0 && (
-              <div className="mt-2 rounded border border-[#b23a2a] bg-[#24110e] px-2.5 py-1.5">
-                <div className="mb-1 flex items-center justify-between text-[11px] font-black text-[#f8b4a6]">
-                  <span className="inline-flex items-center gap-1.5">
-                    <PixelIcon name="icon_skull" size={14} />
-                    <span>【役職強襲】{hud.bossName}</span>
-                  </span>
-                  <span className="font-mono text-[#f2e9d8]">
-                    HP {hud.bossHp.toLocaleString()} / {hud.bossMax.toLocaleString()}
-                  </span>
+                  {/* Row 2: 6 Passive Slots with Synergy Indicator Dots */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="w-8 font-mono text-[10px] font-black text-[#83b8ac]">[技能]</span>
+                    {Array.from({ length: MAX_PASSIVE_SLOTS }).map((_, idx) => {
+                      const p = hud.passives[idx];
+                      if (!p) {
+                        return (
+                          <div
+                            key={`p-empty-${idx}`}
+                            className="flex h-8 w-16 items-center justify-center rounded border border-dashed border-[#3b3328] bg-[#0e0c0a]/80 font-mono text-[9px] text-[#5a4b38]"
+                          >
+                            P{idx + 1}
+                          </div>
+                        );
+                      }
+                      const pairedWithEquipped = EVOLUTION_RECIPES.some(
+                        (r) =>
+                          r.requiredPassiveId === p.id &&
+                          hud.weapons.some((w) => w.id === r.baseWeaponId || w.id === r.evolvedId)
+                      );
+                      return (
+                        <div
+                          key={p.id}
+                          title={`${PASSIVES[p.id]?.name ?? p.id} Lv.${p.lv}/5 ${pairedWithEquipped ? '（装備中の武装と進化シナジー成立！）' : ''}`}
+                          className={`relative flex h-8 min-w-[68px] flex-col justify-between rounded border px-1.5 py-0.5 ${
+                            pairedWithEquipped
+                              ? 'border-[#dfb15b]/80 bg-[#282015] text-[#f2e9d8]'
+                              : 'border-[#3b3328] bg-[#1d1813] text-[#d8ccb8]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <PixelIcon name={p.icon} size={14} />
+                            <span className="font-mono text-[10px] font-bold leading-none">Lv{p.lv}</span>
+                            {pairedWithEquipped && (
+                              <span
+                                className="h-1.5 w-1.5 rounded-full bg-[#fde047] shadow-[0_0_4px_#fde047]"
+                                title="進化シナジー対象"
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }).map((__, pipIdx) => (
+                              <span
+                                key={pipIdx}
+                                className={`h-1 flex-1 rounded-[1px] ${
+                                  pipIdx < p.lv ? 'bg-[#83b8ac]' : 'bg-[#12100d]'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-[#e0533c]" heightClass="h-2.5" />
+
+                {/* Right: Work Clock, HP Bar, DPS Meter, Kills, Coins & Score */}
+                <div className="flex flex-1 flex-col justify-between gap-2 lg:max-w-[440px]">
+                  {/* Top Telemetry Strip */}
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded border border-[#5a4b38] bg-[#241e17] px-2 py-1 font-mono text-xs font-black text-[#f2e9d8]">
+                      <PixelIcon name="icon_clock" size={14} />
+                      <span>{formatClock(hud.time)}</span>
+                      <span className="text-[10px] font-bold text-[#9c8e78]">
+                        {hud.endless ? '[無限残業]' : '/ 18:00'}
+                      </span>
+                    </span>
+
+                    <span
+                      className="inline-flex items-center gap-1 rounded border border-[#b23a2a]/70 bg-[#281512] px-2 py-1 font-mono text-xs font-black text-[#fde047]"
+                      title="直近1.5秒間の秒間ダメージ (DPS)"
+                    >
+                      <PixelIcon name="icon_dps" size={14} />
+                      <span>DPS {(hud.dps ?? 0).toLocaleString()}</span>
+                    </span>
+
+                    <span
+                      className="inline-flex items-center gap-1 rounded border border-[#3b3328] bg-[#241e17] px-2 py-1 font-mono text-xs font-bold text-[#f2e9d8]"
+                      title="討伐・処理した業務数"
+                    >
+                      <PixelIcon name="icon_briefcase" size={14} />
+                      <span>{hud.kills.toLocaleString()}</span>
+                    </span>
+
+                    <span
+                      className="inline-flex items-center gap-1 rounded border border-[#3b3328] bg-[#241e17] px-2 py-1 font-mono text-xs font-bold text-[#e4c989]"
+                      title="獲得した残業代コイン"
+                    >
+                      <PixelIcon name="coin" size={14} />
+                      <span>{hud.coins.toLocaleString()}</span>
+                    </span>
+                  </div>
+
+                  {/* HP Bar & Workday Timeline */}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="flex items-center gap-1.5">
+                      <PixelIcon name="icon_heart" size={14} />
+                      <TwoStageHpBar hp={hud.hp} maxHp={hud.maxHp} />
+                      <span className="shrink-0 font-mono text-[11px] font-black text-[#f2e9d8]">
+                        {hud.hp}/{hud.maxHp}
+                      </span>
+                    </div>
+
+                    {!hud.endless ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 text-[10px] font-bold text-[#9c8e78]">定時</span>
+                        <div className="relative h-2.5 flex-1 overflow-hidden rounded-sm bg-[#0c0a08] ring-1 ring-[#3b3328]">
+                          <div
+                            className="h-full bg-[#83b8ac] transition-all duration-150"
+                            style={{ width: `${Math.min(100, (hud.time / RUN_SECONDS) * 100)}%` }}
+                          />
+                          {BOSS_SCHEDULE.map((b) => (
+                            <span
+                              key={b.atSec}
+                              title={b.title}
+                              className="absolute inset-y-0 w-0.5 bg-[#e0533c]"
+                              style={{ left: `${(b.atSec / RUN_SECONDS) * 100}%` }}
+                            />
+                          ))}
+                        </div>
+                        <span className="shrink-0 font-mono text-[10px] font-bold text-[#dfb15b]">
+                          {hud.score.toLocaleString()}pt
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-right font-mono text-xs font-black text-[#dfb15b]">
+                        SCORE {hud.score.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Active Buffs */}
+              {(hud.xpBoostT > 0 || hud.coinBoostT > 0) && (
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold">
+                  {hud.xpBoostT > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded border border-[#e0533c]/60 bg-[#b23a2a]/40 px-2 py-0.5 text-[#f2e9d8]">
+                      <PixelIcon name="icon_level_up" size={12} />
+                      <span>人事査定タイム（経験値2倍）残り {Math.ceil(hud.xpBoostT)}s</span>
+                    </span>
+                  )}
+                  {hud.coinBoostT > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded border border-[#dfb15b]/60 bg-[#78571a]/50 px-2 py-0.5 text-[#f2e9d8]">
+                      <PixelIcon name="coin" size={12} />
+                      <span>深夜残業割増（残業代2倍）残り {Math.ceil(hud.coinBoostT)}s</span>
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Row 4: Boss Health Bar */}
+              {hud.bossMax > 0 && (
+                <div className="mt-2 rounded border border-[#b23a2a] bg-[#24110e] px-2.5 py-1.5">
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-black text-[#f8b4a6]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <PixelIcon name="icon_skull" size={14} />
+                      <span>【役職強襲】{hud.bossName}</span>
+                    </span>
+                    <span className="font-mono text-[#f2e9d8]">
+                      HP {hud.bossHp.toLocaleString()} / {hud.bossMax.toLocaleString()}
+                    </span>
+                  </div>
+                  <Bar value={hud.bossHp} max={hud.bossMax} className="bg-[#e0533c]" heightClass="h-2.5" />
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -888,13 +1008,31 @@ export default function ShachikuSurvivorGame() {
         >
           <canvas ref={canvasRef} className="h-full w-full touch-none select-none" width={960} height={600} />
 
-          {/* In-Game Event Banner */}
+          {/* In-Game Event & Chest Treasure / Evolution Ceremony Banner */}
           {banner && screen === 'playing' && (
             <div
               key={banner.key}
-              className="pointer-events-none absolute inset-x-4 top-4 z-20 mx-auto max-w-[460px] rounded-lg border-2 border-[#dfb15b] bg-[#12100d]/95 px-4 py-2.5 text-center shadow-[0_6px_20px_rgba(0,0,0,0.75)]"
+              className={`pointer-events-none absolute inset-x-4 top-4 z-20 mx-auto max-w-[500px] rounded-lg border-2 px-4 py-2.5 text-center shadow-[0_8px_28px_rgba(0,0,0,0.85)] ${
+                banner.title.includes('【進化】')
+                  ? 'border-[#fde047] bg-gradient-to-r from-[#261805]/95 via-[#422c09]/95 to-[#261805]/95'
+                  : banner.title.includes('【宝箱】')
+                    ? 'border-[#dfb15b] bg-[#1e170d]/95'
+                    : 'border-[#dfb15b] bg-[#12100d]/95'
+              }`}
             >
-              <p className="text-sm font-black tracking-wide text-[#dfb15b] sm:text-base">{banner.title}</p>
+              <div className="flex items-center justify-center gap-2">
+                <PixelIcon
+                  name={
+                    banner.title.includes('【進化】')
+                      ? 'icon_grimoire'
+                      : banner.title.includes('【宝箱】')
+                        ? 'chest'
+                        : 'icon_trophy'
+                  }
+                  size={20}
+                />
+                <p className="text-sm font-black tracking-wide text-[#fde047] sm:text-base">{banner.title}</p>
+              </div>
               <p className="mt-0.5 text-xs text-[#f2e9d8]">{banner.sub}</p>
             </div>
           )}
@@ -1567,8 +1705,67 @@ function DailyTab(props: {
 
 /* ---------------- Level-Up & Evolution Synergy Overlay ---------------- */
 
+function EvolutionGrimoirePanel({ hud }: { hud: HudSnapshot }) {
+  return (
+    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+      {EVOLUTION_RECIPES.map((r) => {
+        const baseDef = WEAPONS[r.baseWeaponId as WeaponId];
+        const pasDef = PASSIVES[r.requiredPassiveId as PassiveId];
+        const ownedBase = hud.weapons.find((w) => w.id === r.baseWeaponId);
+        const ownedEvolved = hud.weapons.some((w) => w.id === r.evolvedId);
+        const ownedPas = hud.passives.some((p) => p.id === r.requiredPassiveId && p.lv >= 1);
+        const readyToEvolve = !ownedEvolved && (ownedBase?.lv ?? 0) >= 8 && ownedPas;
+
+        return (
+          <div
+            key={r.evolvedId}
+            className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-[11px] ${
+              ownedEvolved
+                ? 'border-[#fde047] bg-[#362812] text-[#fde047]'
+                : readyToEvolve
+                  ? 'border-[#22d3ee] bg-[#0f2930] text-[#e0f2fe]'
+                  : ownedBase || ownedPas
+                    ? 'border-[#5a4b38] bg-[#241e17] text-[#f2e9d8]'
+                    : 'border-[#2c251d] bg-[#16130f] text-[#9c8e78]'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <span
+                className={`inline-flex items-center gap-1 rounded px-1 py-0.5 ${
+                  ownedBase ? 'bg-[#3b2e1e] text-[#fde047] font-bold' : ''
+                }`}
+              >
+                <PixelIcon name={baseDef.icon} size={15} />
+                <span className="truncate">{baseDef.name}</span>
+                {ownedBase && <span className="font-mono text-[9px]">Lv{ownedBase.lv}</span>}
+              </span>
+              <span className="text-[#8a7d69]">+</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded px-1 py-0.5 ${
+                  ownedPas ? 'bg-[#1c2e2a] text-[#83b8ac] font-bold' : ''
+                }`}
+              >
+                <PixelIcon name={pasDef.icon} size={14} />
+                <span className="truncate">{pasDef.name}</span>
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1 font-black text-[#dfb15b]">
+              <span>→</span>
+              <PixelIcon name={r.icon} size={16} />
+              <span className="text-[10px]">
+                {ownedEvolved ? '【覚醒済】' : readyToEvolve ? '【宝箱で進化！】' : r.name}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function getChoiceSynergyInfo(c: LevelChoice, hud: HudSnapshot): {
   label: string;
+  badge: string;
   icon: string;
   ready: boolean;
 } | null {
@@ -1581,6 +1778,7 @@ function getChoiceSynergyInfo(c: LevelChoice, hud: HudSnapshot): {
       label: hasPassive
         ? `進化条件達成済 → ${recipe.name}（Lv8＋宝箱で覚醒）`
         : `進化先: ${recipe.name}（要スキル: ${pasDef.name}）`,
+      badge: hasPassive && c.toLv === 8 ? 'EVOLUTION READY!' : hasPassive ? 'SYNERGY PAIR!' : 'EVO RECIPE',
       icon: recipe.icon,
       ready: hasPassive,
     };
@@ -1591,8 +1789,10 @@ function getChoiceSynergyInfo(c: LevelChoice, hud: HudSnapshot): {
     const ownedMatches = matchingRecipes.filter((r) => hud.weapons.some((w) => w.id === r.baseWeaponId));
     if (ownedMatches.length > 0) {
       const names = ownedMatches.map((r) => WEAPONS[r.baseWeaponId as WeaponId].name).join('・');
+      const anyMax = ownedMatches.some((r) => hud.weapons.some((w) => w.id === r.baseWeaponId && w.lv >= 8));
       return {
         label: `所持武装「${names}」の進化条件スキル！`,
+        badge: anyMax ? 'EVOLUTION READY!' : 'SYNERGY PAIR!',
         icon: ownedMatches[0].icon,
         ready: true,
       };
@@ -1600,6 +1800,7 @@ function getChoiceSynergyInfo(c: LevelChoice, hud: HudSnapshot): {
     const allNames = matchingRecipes.map((r) => WEAPONS[r.baseWeaponId as WeaponId].name).join(' / ');
     return {
       label: `進化対応: ${allNames}`,
+      badge: 'EVO RECIPE',
       icon: matchingRecipes[0].icon,
       ready: false,
     };
@@ -1616,15 +1817,16 @@ function LevelUpOverlay(props: {
 }) {
   const { data, hud } = props;
   const [banishMode, setBanishMode] = useState(false);
+  const [showGrimoire, setShowGrimoire] = useState(false);
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-between overflow-y-auto bg-[#12100d]/95 p-3 sm:p-5">
-      <div className="mx-auto w-full max-w-[660px]">
+      <div className="mx-auto w-full max-w-[680px]">
         {/* Header */}
         <div className="text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#dfb15b]/60 bg-[#2a2115] px-3.5 py-1 text-xs font-black text-[#dfb15b]">
             <PixelIcon name="icon_level_up" size={16} />
-            <span>PROMOTION ASSESSMENT // 昇進査定</span>
+            <span>PROMOTION ASSESSMENT // 社畜昇進査定</span>
             {data.pending > 1 && (
               <span className="ml-1 rounded bg-[#b23a2a] px-1.5 py-0.5 font-mono text-[10px] text-white">
                 残り +{data.pending - 1}
@@ -1667,26 +1869,33 @@ function LevelUpOverlay(props: {
                   banishMode
                     ? 'border-red-400 bg-red-950/40 hover:bg-red-900/50'
                     : isMaxStep
-                      ? 'border-[#dfb15b] bg-[#2a2115] hover:bg-[#362b1b] shadow-[0_0_15px_rgba(223,177,91,0.2)]'
+                      ? 'border-[#fde047] bg-[#2c2212] hover:bg-[#382b17] shadow-[0_0_16px_rgba(250,204,21,0.28)]'
                       : synergy?.ready
                         ? 'border-[#83b8ac] bg-[#192622] hover:bg-[#21332e]'
                         : 'border-[#4a3e2e] bg-[#211c16] hover:border-[#dfb15b] hover:bg-[#2a231b]'
                 }`}
               >
                 <div>
-                  {/* Top Row: Category Badge & Key Shortcut */}
+                  {/* Top Row: Category Badge, Synergy Badge & Key Shortcut */}
                   <div className="flex items-center justify-between gap-1">
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
-                        c.kind === 'weapon'
-                          ? 'bg-[#3b231e] text-[#f8b4a6]'
-                          : c.kind === 'passive'
-                            ? 'bg-[#1c2e2a] text-[#83b8ac]'
-                            : 'bg-[#2c251d] text-[#dfb15b]'
-                      }`}
-                    >
-                      {kindBadge}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
+                          c.kind === 'weapon'
+                            ? 'bg-[#3b231e] text-[#f8b4a6]'
+                            : c.kind === 'passive'
+                              ? 'bg-[#1c2e2a] text-[#83b8ac]'
+                              : 'bg-[#2c251d] text-[#dfb15b]'
+                        }`}
+                      >
+                        {kindBadge}
+                      </span>
+                      {synergy?.ready && (
+                        <span className="rounded bg-[#dfb15b] px-1.5 py-0.5 font-mono text-[9px] font-black text-[#12100d]">
+                          {synergy.badge}
+                        </span>
+                      )}
+                    </div>
                     <span className="hidden rounded border border-[#4a3e2e] bg-[#12100d] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#9c8e78] sm:inline-block">
                       [{i + 1}]
                     </span>
@@ -1702,7 +1911,7 @@ function LevelUpOverlay(props: {
                       <div className="mt-1 flex items-center gap-1.5">
                         {c.isNew ? (
                           <span className="rounded bg-[#b23a2a] px-1.5 py-0.5 font-mono text-[10px] font-black text-white">
-                            NEW 習得
+                            NEW! 習得
                           </span>
                         ) : c.toLv > 0 ? (
                           <span className="font-mono text-xs font-black text-[#83b8ac]">
@@ -1742,13 +1951,13 @@ function LevelUpOverlay(props: {
           })}
         </div>
 
-        {/* Reroll & Banish Controls */}
+        {/* Reroll, Banish & Grimoire Controls */}
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           {data.canReroll && !banishMode && (
             <button
               type="button"
               onClick={props.onReroll}
-              className="min-h-[44px] flex-1 rounded-lg border border-[#5a4b38] bg-[#241e17] px-4 py-2 text-xs font-black text-[#f2e9d8] transition hover:border-[#dfb15b] hover:bg-[#2f271d]"
+              className="min-h-[42px] flex-1 rounded-lg border border-[#5a4b38] bg-[#241e17] px-3 py-2 text-xs font-black text-[#f2e9d8] transition hover:border-[#dfb15b] hover:bg-[#2f271d]"
             >
               稟議を引き直す（残1回 / [R]キー）
             </button>
@@ -1757,7 +1966,7 @@ function LevelUpOverlay(props: {
             <button
               type="button"
               onClick={() => setBanishMode(!banishMode)}
-              className={`min-h-[44px] flex-1 rounded-lg border px-4 py-2 text-xs font-black transition ${
+              className={`min-h-[42px] flex-1 rounded-lg border px-3 py-2 text-xs font-black transition ${
                 banishMode
                   ? 'border-[#f2e9d8] bg-[#b23a2a] text-white'
                   : 'border-[#5a4b38] bg-[#241e17] text-[#d8ccb8] hover:border-red-400'
@@ -1766,7 +1975,21 @@ function LevelUpOverlay(props: {
               {banishMode ? '封印モードをキャンセル' : '不要な項目を封印する（残1回）'}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setShowGrimoire((v) => !v)}
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-lg border border-[#dfb15b]/60 bg-[#2a2115] px-3 py-2 text-xs font-black text-[#fde047] transition hover:border-[#fde047]"
+          >
+            <PixelIcon name="icon_grimoire" size={15} />
+            <span>{showGrimoire ? '進化レシピを隠す' : '武器進化レシピ早見表'}</span>
+          </button>
         </div>
+
+        {showGrimoire && (
+          <div className="mt-2.5 rounded-lg border border-[#5a4b38] bg-[#181410] p-2.5">
+            <EvolutionGrimoirePanel hud={hud} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1784,23 +2007,23 @@ function PauseOverlay(props: {
   const { hud, runMeta, onResume, onForfeit, onQuit } = props;
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center overflow-y-auto bg-[#12100d]/92 p-4">
-      <div className="w-full max-w-[440px] rounded-xl border-2 border-[#5a4b38] bg-[#181410] p-4 shadow-2xl">
+      <div className="w-full max-w-[540px] rounded-xl border-2 border-[#5a4b38] bg-[#181410] p-4 shadow-2xl">
         <div className="border-b border-[#2c251d] pb-3 text-center">
           <p className="font-mono text-[10px] font-black tracking-widest text-[#dfb15b]">BREAK TIME // 業務一時休止</p>
           <h2 className="mt-0.5 text-xl font-black text-[#f2e9d8]">一時休憩中</h2>
           <p className="mt-0.5 text-xs text-[#9c8e78]">
-            {STAGES[runMeta.stage].name} ／ {DIFFICULTIES[runMeta.difficulty].name} ／ 経過 {formatTime(hud.time)}
+            {STAGES[runMeta.stage].name} ／ {DIFFICULTIES[runMeta.difficulty].name} ／ 経過 {formatTime(hud.time)} ／ DPS {(hud.dps ?? 0).toLocaleString()}
           </p>
         </div>
 
         {/* Audio Settings in Pause Menu */}
-        <div className="my-3 flex items-center justify-between rounded-lg border border-[#3b3328] bg-[#211c16] px-3 py-2">
+        <div className="my-2.5 flex items-center justify-between rounded-lg border border-[#3b3328] bg-[#211c16] px-3 py-2">
           <span className="text-xs font-bold text-[#d8ccb8]">サウンド設定</span>
           <AudioToggle variant="full" />
         </div>
 
         {/* Current Build Summary */}
-        <div className="mb-3 rounded-lg border border-[#3b3328] bg-[#211c16] p-2.5">
+        <div className="mb-2.5 rounded-lg border border-[#3b3328] bg-[#211c16] p-2.5">
           <p className="mb-1.5 text-[11px] font-bold text-[#9c8e78]">現在の装備・スキル構成</p>
           <div className="flex flex-wrap items-center gap-1.5">
             {hud.weapons.map((w) => (
@@ -1818,6 +2041,15 @@ function PauseOverlay(props: {
               </span>
             ))}
           </div>
+        </div>
+
+        {/* Evolution Grimoire in Pause Menu */}
+        <div className="mb-3 rounded-lg border border-[#3b3328] bg-[#1c1712] p-2.5">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-black text-[#dfb15b]">
+            <PixelIcon name="icon_grimoire" size={14} />
+            <span>社畜覚醒（ウェポン進化グリモア）早見表</span>
+          </p>
+          <EvolutionGrimoirePanel hud={hud} />
         </div>
 
         <div className="space-y-2">

@@ -32,7 +32,7 @@ export const BOSS_PHASES = 3;
 export const COLLECT_LINE_Y = 250;
 
 export interface BossState {
-  alive: boolean; idx: number; x: number; y: number; hp: number; maxHp: number;
+  alive: boolean; active: boolean; idx: number; x: number; y: number; hp: number; maxHp: number;
   t: number; atkT: number; tele: number; pending: number; angle: number;
   burst: number; burstT: number; summonT: number; flash: number; entered: boolean;
   /** 0 = opening attack, 1 = spell card 1, 2 = spell card 2 (final) */
@@ -137,6 +137,18 @@ export class DanmakuSim {
   trailT = 0;
   focusHeld = false;
 
+  /** HYPER OVERDRIVE (残業覚醒) state */
+  hyper = 0;
+  hyperActive = false;
+  hyperTimer = 0;
+
+  get pInv(): number {
+    return this.invuln;
+  }
+  set pInv(v: number) {
+    this.invuln = v;
+  }
+
   diff: Difficulty = 'normal';
   private bMult = 1;
   private eHpMult = 1;
@@ -153,7 +165,7 @@ export class DanmakuSim {
   scroll = 0;
 
   boss: BossState = {
-    alive: false, idx: 0, x: 240, y: -80, hp: 1, maxHp: 1,
+    alive: false, active: false, idx: 0, x: 240, y: -80, hp: 1, maxHp: 1,
     t: 0, atkT: 2, tele: 0, pending: 0, angle: 0, burst: 0, burstT: 0,
     summonT: 7, flash: 0, entered: false, phase: 0, invT: 0, spellClean: true, spellT: 0,
   };
@@ -217,12 +229,16 @@ export class DanmakuSim {
     this.invuln = 1;
     this.deadT = 0;
     this.bombCd = 0;
+    this.hyper = 0;
+    this.hyperActive = false;
+    this.hyperTimer = 0;
     this.trauma = 0;
     this.hitstop = 0;
     this.slowmo = 0;
     this.flashA = 0;
     this.scroll = 0;
     this.boss.alive = false;
+    this.boss.active = false;
     this.boss.phase = 0;
     this.boss.invT = 0;
     for (const a of [this.pbullets, this.ebullets, this.enemies, this.particles, this.texts, this.items, this.rings]) {
@@ -244,7 +260,7 @@ export class DanmakuSim {
     this.slowmo = Math.max(0, this.slowmo - dt);
     this.invuln = Math.max(0, this.invuln - dt);
     this.bombCd = Math.max(0, this.bombCd - dt);
-    this.scroll += dt * (70 + this.stageIdx * 9);
+    this.scroll += dt * (70 + this.stageIdx * 9) * (this.hyperActive ? 1.35 : 1);
 
     if (this.deadT > 0) {
       this.deadT -= dt;
@@ -270,6 +286,17 @@ export class DanmakuSim {
       this.updateTexts(dt);
       this.updateRings(dt);
       return;
+    }
+
+    if (this.hyperActive) {
+      this.hyperTimer -= dt;
+      if (this.hyperTimer <= 0) {
+        this.hyperTimer = 0;
+        this.hyperActive = false;
+        this.convertBulletsToScoreItems(140);
+        this.ring(this.px, this.py, 280, 0x7fe7ff);
+        this.addText(this.px, this.py - 44, 'HYPER END', '#7fe7ff');
+      }
     }
 
     if (this.chain > 0) {
@@ -375,6 +402,7 @@ export class DanmakuSim {
   private spawnBoss(): void {
     const b = this.boss;
     b.alive = true;
+    b.active = true;
     b.entered = false;
     b.idx = this.stageIdx;
     b.x = 240;
@@ -427,8 +455,16 @@ export class DanmakuSim {
 
     this.trailT -= dt;
     if (this.trailT <= 0) {
-      this.trailT = 0.05;
-      this.spawnParticle(this.px + (Math.random() - 0.5) * 8, this.py + 26, 0, 130, 0.28, 5, 0x54e0ff);
+      this.trailT = this.hyperActive ? 0.03 : 0.05;
+      this.spawnParticle(
+        this.px + (Math.random() - 0.5) * (this.hyperActive ? 16 : 8),
+        this.py + 26,
+        0,
+        this.hyperActive ? 180 : 130,
+        0.28,
+        this.hyperActive ? 6.5 : 5,
+        this.hyperActive ? 0xffe14d : 0x54e0ff,
+      );
     }
     this.fireT -= dt;
     if (this.fireT <= 0) this.fireWeapon();
@@ -446,7 +482,7 @@ export class DanmakuSim {
     s.y = y;
     s.vx = vx;
     s.vy = vy;
-    s.dmg = dmg;
+    s.dmg = this.hyperActive ? dmg * 1.45 : dmg;
     s.kind = kind;
     s.retarget = 0;
     s.pierce = pierce;
@@ -500,8 +536,74 @@ export class DanmakuSim {
       this.emitPB(this.px - ox, this.py - 6, 0, -640, 0.6, 0);
       this.emitPB(this.px + ox, this.py - 6, 0, -640, 0.6, 0);
     }
-    this.spawnParticle(this.px - 5, this.py - 28, -50, -230, 0.1, 5, 0xffffff);
-    this.spawnParticle(this.px + 5, this.py - 28, 50, -230, 0.1, 5, 0xffffff);
+
+    if (this.hyperActive) {
+      this.fireT /= 1.6;
+      // Extra homing plasma bolts fire automatically alongside any weapon
+      this.emitPB(this.px - 20, this.py - 14, -75, -520, 1.15 + (lvl - 1) * 0.18, 2);
+      this.emitPB(this.px + 20, this.py - 14, 75, -520, 1.15 + (lvl - 1) * 0.18, 2);
+    }
+
+    this.spawnParticle(this.px - 5, this.py - 28, -50, -230, 0.1, 5, this.hyperActive ? 0xffe14d : 0xffffff);
+    this.spawnParticle(this.px + 5, this.py - 28, 50, -230, 0.1, 5, this.hyperActive ? 0xffe14d : 0xffffff);
+  }
+
+  private chargeHyper(amount: number): void {
+    if (this.hyperActive || this.phase === 'over' || this.deadT > 0) return;
+    this.hyper = Math.min(100, this.hyper + amount);
+  }
+
+  private spawnHomingScoreItem(x: number, y: number): void {
+    let slot = this.items.find((i) => !i.alive);
+    if (!slot) {
+      slot = this.items[0];
+      if (!slot) return;
+      this.collectItem(slot.kind, slot.x, slot.y);
+    }
+    slot.alive = true;
+    slot.x = Math.min(460, Math.max(20, x));
+    slot.y = y;
+    slot.vy = 0;
+    slot.kind = 'score';
+    slot.t = 0;
+    slot.magnet = true;
+  }
+
+  private convertBulletsToScoreItems(radius: number): number {
+    const r2 = radius * radius;
+    let converted = 0;
+    for (const eb of this.ebullets) {
+      if (!eb.alive) continue;
+      if (d2(eb.x, eb.y, this.px, this.py) > r2) continue;
+      eb.alive = false;
+      converted++;
+      this.spawnHomingScoreItem(eb.x, eb.y);
+      this.burst(eb.x, eb.y, 3, 0xffe14d, 140);
+    }
+    return converted;
+  }
+
+  /** Activate HYPER OVERDRIVE (残業覚醒) when hyper >= 100. */
+  useHyper(): boolean {
+    if (this.phase === 'over' || this.deadT > 0 || this.hyperActive || this.hyper < 100) return false;
+    this.hyperActive = true;
+    this.hyperTimer = 7.0;
+    this.hyper = 0;
+    this.pInv = Math.max(this.pInv, 1.5);
+    this.convertBulletsToScoreItems(220);
+    this.ring(this.px, this.py, 440, 0xffe14d);
+    this.burst(this.px, this.py, 28, 0xffe14d, 260);
+    this.flashA = 0.45;
+    this.flashColor = '#ffe14d';
+    this.trauma = Math.min(1, this.trauma + 0.45);
+    this.addText(this.px, this.py - 48, 'HYPER OVERDRIVE!', '#ffe14d');
+    this.events.push({
+      type: 'banner',
+      title: 'HYPER OVERDRIVE // 残業覚醒',
+      sub: '火力2倍・スコア倍率2倍・弾消し発動！',
+      kind: 'stage',
+    });
+    return true;
   }
 
   useBomb(): boolean {
@@ -999,6 +1101,7 @@ export class DanmakuSim {
         if (dd < 30 * 30 && dd > 15 * 15) {
           b.grazed = true;
           this.graze++;
+          this.chargeHyper(3.5);
           this.addScore(100);
         }
       }
@@ -1125,10 +1228,12 @@ export class DanmakuSim {
   private damageEnemy(e: Enemy, dmg: number, award: boolean): void {
     if (!e.alive) return;
     e.hp -= dmg;
+    if (award) this.chargeHyper(0.15);
     if (e.hp > 0) return;
     e.alive = false;
     this.kills++;
-    this.chain++;
+    if (award) this.chargeHyper(2.2);
+    this.chain += this.hyperActive ? 2 : 1;
     this.chainT = 4;
     if (this.chain > this.maxChain) this.maxChain = this.chain;
     this.addScore(e.score);
@@ -1143,6 +1248,7 @@ export class DanmakuSim {
   private damageBoss(dmg: number): void {
     const b = this.boss;
     if (!b.alive || !b.entered || b.invT > 0) return;
+    this.chargeHyper(0.15);
     const floor = this.bossPhaseFloor();
     b.hp = Math.max(floor, b.hp - dmg);
     b.flash = 1;
@@ -1152,6 +1258,7 @@ export class DanmakuSim {
     }
     if (b.hp > 0) return;
     b.alive = false;
+    b.active = false;
     const st = STAGES[b.idx];
     const value = Math.round(8000 * (this.stageIdx + 1) * (1 + this.loop * 0.5));
     this.finishSpell();
@@ -1160,7 +1267,7 @@ export class DanmakuSim {
       if (e.alive) this.damageEnemy(e, 9999, false);
     }
     this.addScore(value);
-    this.chain += 8;
+    this.chain += this.hyperActive ? 16 : 8;
     this.chainT = 4;
     if (this.chain > this.maxChain) this.maxChain = this.chain;
     this.burst(b.x, b.y, 42, 0xffe14d, 330);
@@ -1191,6 +1298,8 @@ export class DanmakuSim {
     this.misses++;
     this.chain = 0;
     this.chainT = 0;
+    this.hyperActive = false;
+    this.hyperTimer = 0;
     this.hitstop = Math.max(this.hitstop, 0.12);
     this.slowmo = Math.max(this.slowmo, 0.9);
     this.flashA = 0.35;
@@ -1239,6 +1348,7 @@ export class DanmakuSim {
 
   private collectItem(kind: DropItem['kind'], x: number, y: number): void {
     this.pickups++;
+    this.chargeHyper(2.0);
     switch (kind) {
       case 'score':
         this.addScore(600 + this.stage * 120);
@@ -1267,7 +1377,7 @@ export class DanmakuSim {
   }
 
   private addScore(base: number): void {
-    const mult = (1 + Math.min(this.chain, 150) * 0.01) * this.scoreMult;
+    const mult = (1 + Math.min(this.chain, 150) * 0.01) * this.scoreMult * (this.hyperActive ? 2 : 1);
     this.score += Math.round(base * mult);
     while (this.extendIdx < EXTENDS.length && this.score >= (EXTENDS[this.extendIdx] ?? Infinity)) {
       this.extendIdx++;

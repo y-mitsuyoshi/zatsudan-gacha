@@ -196,6 +196,64 @@ export function LockIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
+export function StarIcon({
+  className = 'w-3.5 h-3.5',
+  filled = true,
+  color = '#fbbf24',
+}: {
+  className?: string;
+  filled?: boolean;
+  color?: string;
+}) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={filled ? color : 'none'} stroke={filled ? color : '#475569'} strokeWidth="2">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+export function FastForwardIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polygon points="13 19 22 12 13 5 13 19" fill="currentColor" />
+      <polygon points="2 19 11 12 2 5 2 19" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function CrosshairIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <line x1="22" y1="12" x2="18" y2="12" />
+      <line x1="6" y1="12" x2="2" y2="12" />
+      <line x1="12" y1="6" x2="12" y2="2" />
+      <line x1="12" y1="22" x2="12" y2="18" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function SkullBossIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2a8 8 0 0 0-8 8c0 2.9 1.5 5.4 3.8 6.8L8 21h8l.2-4.2A8 8 0 0 0 20 10a8 8 0 0 0-8-8z" fill="#ef4444" fillOpacity="0.22" stroke="#f87171" />
+      <circle cx="9" cy="11" r="1.5" fill="#fecaca" />
+      <circle cx="15" cy="11" r="1.5" fill="#fecaca" />
+      <line x1="10" y1="17" x2="10" y2="21" stroke="#f87171" />
+      <line x1="14" y1="17" x2="14" y2="21" stroke="#f87171" />
+    </svg>
+  );
+}
+
+export function DpsBoltIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="#f59e0b" stroke="#fde047" />
+    </svg>
+  );
+}
+
 /**
  * Returns a high-contrast vector icon for upgrade cards and HUD items without any emojis.
  */

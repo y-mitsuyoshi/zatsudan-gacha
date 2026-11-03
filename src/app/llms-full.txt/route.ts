@@ -25,6 +25,18 @@ export function GET() {
 
 ${categorySections}
 
+## 収録ブラウザゲーム一覧（全9作品・無料・登録不要）
+
+- 社畜通勤サバイバー (${BASE_URL}/barricade-defense): 満員ラッシュを突破する3Dゲートシューティング
+- 社畜サバイバー (${BASE_URL}/shachiku-survivor): 18時まで生き残る10分ホードサバイバル
+- 社畜スパイラル (${BASE_URL}/shachiku-spiral): 渦巻くナンバー業務列を分断する防衛シューティング
+- 社畜シューティングNEO (${BASE_URL}/shachiku-shooting): 定時退社を目指す本格弾幕シューティング
+- 社畜すごろくNEO (${BASE_URL}/shachiku-sugoroku): ルーレットで進むジオラマ会社員ボードゲーム
+- 社畜人狼 (${BASE_URL}/shachiku-jinro): AI社員と心理戦を楽しめる会社員ソロ人狼ゲーム
+- 社畜ぶっとばし！定時退社カタパルト (${BASE_URL}/shachiku-catapult): 屋上から大空へ飛び出す飛距離アップグレードアクション
+- 社畜ワイヤー疾走：終電スイングアクション (${BASE_URL}/shachiku-wire): 振り子物理でビル群を飛ぶワンボタンワイヤーアクション
+- 社畜グラグラ決済タワー：限界ビル建設 (${BASE_URL}/shachiku-stack): クレーンからフロアを積むタイミング高層ビル建設ゲーム
+
 ## 利用について
 
 このお題データは、雑談やアイスブレイクの話題づくりに自由に利用できます。Webサイトや記事で紹介する場合は、${BASE_URL}/ へのリンクを掲載してください。

@@ -53,12 +53,12 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
 
   return (
     <div className="overflow-hidden rounded-2xl border-2 border-[#3b3022] bg-[#f4ece0] shadow-[0_10px_0_#261e14,0_18px_36px_rgba(0,0,0,0.28)] dark:border-[#6e5a3e] dark:bg-[#1b1712]">
-      {/* 上部バー：人事部配属エントリー */}
+      {/* 上部バー：人事部配属＆キャリア・クルーザー登録 */}
       <div className="border-b-2 border-[#3b3022] bg-[#12100d] px-5 py-4 text-[#fffaf0] sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="font-mono text-[10px] font-black tracking-[0.25em] text-[#f5ca5c]">
-              PERSONNEL ENTRY FORM / 新規配属登録
+              SHACHIKU LIFE ROAD ENTRY / 社員証＆キャリア・クルーザー登録
             </p>
             <h2 className="font-editorial mt-1 text-2xl font-black sm:text-3xl">
               社員証の発行と配属部門の選択
@@ -82,7 +82,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
         }}
         className="space-y-6 p-5 sm:p-8"
       >
-        {/* ステップ1：氏名入力 + 社員証リアルタイムプレビュー */}
+        {/* ステップ1：氏名入力 + 社員証＆専用車両プレビュー */}
         <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="rounded-xl border-2 border-[#3b3022] bg-[#fffaf0] p-4 dark:border-[#594b38] dark:bg-[#241f18]">
             <div className="mb-2 flex items-center justify-between">
@@ -113,23 +113,23 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
               required
             />
             <div className="mt-1.5 flex items-center justify-between text-[11px] font-bold text-[#6e6250] dark:text-[#b5a790]">
-              <span>盤面コマと最終査定通知書に刻印されます</span>
+              <span>キャリア・クルーザーのナンバープレートと最終決算書に刻印されます</span>
               <span className="font-mono">{formState.name.length}/20</span>
             </div>
           </div>
 
-          {/* 社員証プレビュー */}
+          {/* 社員証＆専用クルーザープレビュー */}
           <div className="relative overflow-hidden rounded-xl border-2 border-[#3b3022] bg-gradient-to-br from-[#231f1a] to-[#12100d] p-4 text-[#fffaf0] shadow-md">
             <div className="flex items-start justify-between border-b border-white/15 pb-2.5">
               <div>
                 <p className="font-mono text-[9px] font-black tracking-widest text-[#f5ca5c]">
-                  CORPORATE ID CARD
+                  CORPORATE ID & CRUISER LICENSE
                 </p>
                 <p className="mt-0.5 text-base font-black">
                   {trimmedName || '（氏名未入力）'}
                 </p>
                 <p className="text-xs font-bold text-white/75">
-                  配属：{formState.job}（{selectedProfile.code}）
+                  配属：{formState.job}（{selectedProfile.code}） / {selectedProfile.vehicleName}
                 </p>
               </div>
               <div
@@ -148,7 +148,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
                 </p>
               </div>
               <div className="rounded-lg bg-white/10 px-2 py-1.5">
-                <p className="text-[9px] font-bold text-white/70">初期貯金</p>
+                <p className="text-[9px] font-bold text-white/70">初期資金</p>
                 <p className="font-mono text-sm font-black text-[#7adbc2]">
                   {selectedProfile.startMoney}万
                 </p>
@@ -170,7 +170,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
         {/* ステップ2：職業（配属部門）選択 */}
         <fieldset>
           <legend className="mb-2.5 block text-xs font-black tracking-wide text-[#12100d] dark:text-[#fffaf0]">
-            STEP 2. 配属部門（全10職種）を選択 — 職種ごとに専用特効マスと初期支給品が変化
+            STEP 2. 配属部門（全10職種）を選択 — 職種ごとに専用特効マス・初期資金・支給品が変化
           </legend>
           <div
             className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
@@ -208,7 +208,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
                           {job}
                         </span>
                         <span className="font-mono text-[10px] font-black text-[#6e6250] dark:text-[#b5a790]">
-                          {profile.code}
+                          {profile.code} / {profile.vehicleName}
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs font-bold text-[#5c5141] dark:text-[#cfc2ad]">
@@ -226,7 +226,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
                       <span>初期品: {item.name}</span>
                     </span>
                     <span className="font-mono">
-                      評価+{profile.startCareer} / {profile.startMoney}万円
+                      評価+{profile.startCareer} / 資金{profile.startMoney}万円
                     </span>
                   </div>
                 </button>
@@ -240,18 +240,18 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
           {[
             {
               step: 'RULE 01',
-              title: '定時か残業かを選べ',
-              text: '毎ターン「定時退社(1ダイス・気力回復)」か「全力残業(2ダイス・評価&残業代UP・気力消費)」を選択！',
+              title: 'キャリア・ルーレット＆走行モード',
+              text: '毎ターン「定時スピン(1〜6・気力回復)」か「全力残業Wスピン(2〜12・評価&残業代UP・気力消費)」を選択してルーレットを回そう！',
             },
             {
               step: 'RULE 02',
-              title: '昇進査定ゲートを突破せよ',
-              text: '12・24・36・48・56マス目の昇進ゲート通過時、社内評価が足りていれば役職と給与がアップ！',
+              title: '給料日ゲート通過で自動支給',
+              text: '盤面4ヶ所の黄金「給料日ゲート」は、止まらなくても通過するだけで役職給与＋保有ライフ資産の配当が自動支給される！',
             },
             {
               step: 'RULE 03',
-              title: 'メンタル3回崩壊に注意',
-              text: 'やる気0で1回休み。3回ゼロになると「産業医ストップ」で強制休職となるため有給やエナドリを活用！',
+              title: 'ライフ資産を集めて億り人へ',
+              text: '投資信託・都心マンション・副業SaaS・リゾート別荘などの資産カードを集め、ゴールで最終生涯総資産を競おう！',
             },
           ].map((rule) => (
             <div
@@ -278,7 +278,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ formState, setFormState, o
             disabled={isSubmitDisabled}
             className="flex min-h-[54px] w-full items-center justify-center gap-3 rounded-xl border-2 border-[#12100d] border-b-[6px] bg-[#b23a2a] px-6 py-4 text-lg font-black text-white shadow-md transition hover:bg-[#992f20] active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45"
           >
-            <span>タイムカードを打刻して出社する（ゲーム開始）</span>
+            <span>キャリア・クルーザーに乗り込んで出発する（ゲーム開始）</span>
           </button>
           {isSubmitDisabled && (
             <p

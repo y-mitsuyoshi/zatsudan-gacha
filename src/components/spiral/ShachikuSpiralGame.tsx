@@ -24,7 +24,7 @@ import {
 } from '@/game/spiral/storage';
 import {
   DIFFICULTIES, DIFFICULTY_ORDER, META_UPGRADES, FINAL_WAVE, formatTime, CENTER,
-  STAGES, STAGE_ORDER,
+  STAGES, STAGE_ORDER, UPGRADES, UPGRADE_ORDER,
   type Difficulty, type StageId,
 } from '@/game/spiral/config';
 import {
@@ -33,6 +33,7 @@ import {
   BriefcaseIcon, ChipIcon, DatabaseIcon, CalendarIcon, TrophyIcon,
   PauseIcon, PlayIcon, RefreshIcon,
   CheckIcon, LockIcon, TechUpgradeIcon,
+  StarIcon, FastForwardIcon, CrosshairIcon, SkullBossIcon, DpsBoltIcon,
 } from './SpiralIcons';
 
 type Screen = 'title' | 'playing' | 'build' | 'paused' | 'result';
@@ -44,6 +45,7 @@ const DEFAULT_HUD: HudSnapshot = {
   build: { dmg: 12, interval: 0.45, count: 1, pierce: 0, crit: 0.05, orbN: 0, blastLv: 0, beamLv: 0 },
   levels: [], bossName: '', bossHp: 0, bossMax: 0, endless: false,
   shield: 20, maxShield: 60, bossWave: false, waveSpawnTotal: 1, clearing: false,
+  dps: 0, peakDps: 0, speedScale: 1, segsRemaining: 0,
 };
 
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
@@ -57,24 +59,41 @@ function Bar({ value, max, className }: { value: number; max: number; className:
   );
 }
 
-const RARITY_STYLES: Record<UpgradeRarity, { border: string; badge: string; badgeText: string; glow: string }> = {
+const RARITY_STYLES: Record<UpgradeRarity, {
+  border: string;
+  headerBg: string;
+  badge: string;
+  badgeText: string;
+  glow: string;
+  emblemRing: string;
+  starColor: string;
+}> = {
   common: {
-    border: 'border-[#263244] hover:border-[#38bdf8]',
-    badge: 'bg-[#1e293b] text-[#94a3b8]',
-    badgeText: 'STANDARD',
-    glow: 'bg-[#0f172a]',
+    border: 'border-[#0284c7] hover:border-[#38bdf8]',
+    headerBg: 'bg-gradient-to-r from-[#0369a1] to-[#0c4a6e] text-[#e0f2fe]',
+    badge: 'bg-[#0c4a6e] text-[#38bdf8]',
+    badgeText: 'NORMAL',
+    glow: 'bg-[#0b1526]',
+    emblemRing: 'border-[#38bdf8]/60 bg-[#082f49]/60 text-[#38bdf8]',
+    starColor: '#38bdf8',
   },
   rare: {
-    border: 'border-[#0284c7] hover:border-[#38bdf8]',
-    badge: 'bg-[#0369a1] text-[#e0f2fe]',
-    badgeText: 'TACTICAL',
-    glow: 'bg-[#0c192c]',
+    border: 'border-[#9333ea] hover:border-[#c084fc]',
+    headerBg: 'bg-gradient-to-r from-[#7e22ce] to-[#4c1d95] text-[#f3e8ff]',
+    badge: 'bg-[#581c87] text-[#e9d5ff]',
+    badgeText: 'RARE',
+    glow: 'bg-[#150d2a]',
+    emblemRing: 'border-[#c084fc]/70 bg-[#3b0764]/60 text-[#e879f9]',
+    starColor: '#c084fc',
   },
   epic: {
-    border: 'border-[#d97706] hover:border-[#fbbf24]',
-    badge: 'bg-[#b45309] text-[#fef3c7]',
-    badgeText: 'EXECUTIVE',
-    glow: 'bg-[#1c160d]',
+    border: 'border-[#f59e0b] hover:border-[#fde047]',
+    headerBg: 'bg-gradient-to-r from-[#d97706] via-[#b45309] to-[#78350f] text-[#fef3c7]',
+    badge: 'bg-[#78350f] text-[#fde047]',
+    badgeText: 'EPIC',
+    glow: 'bg-[#1c1408]',
+    emblemRing: 'border-[#fbbf24]/80 bg-[#451a03]/70 text-[#fde047]',
+    starColor: '#fbbf24',
   },
 };
 
@@ -103,6 +122,8 @@ export default function ShachikuSpiralGame() {
   const [stageSel, setStageSel] = useState<StageId>('hq');
   const [tab, setTab] = useState<TitleTab>('play');
   const [manualAimActive, setManualAimActive] = useState(false);
+  const [manualAimLocked, setManualAimLocked] = useState(false);
+  const [speedScale, setSpeedScale] = useState<1 | 2>(1);
 
   const [records, setRecords] = useState<SpiralRecord[]>([]);
   const [bank, setBank] = useState(0);
@@ -111,6 +132,24 @@ export default function ShachikuSpiralGame() {
   const [ach, setAch] = useState<AchState>({ unlocked: {}, claimed: {} });
   const [daily, setDaily] = useState<DailyState>({ date: '', progress: {}, claimed: {} });
   const [runMeta, setRunMeta] = useState<{ difficulty: Difficulty; stage: StageId }>({ difficulty: 'normal', stage: 'hq' });
+
+  const toggleSpeed = useCallback(() => {
+    const next: 1 | 2 = speedScale === 1 ? 2 : 1;
+    setSpeedScale(next);
+    engineRef.current?.setSpeed(next);
+  }, [speedScale]);
+
+  const toggleAimMode = useCallback(() => {
+    if (manualAimLocked || manualAimActive) {
+      setManualAimLocked(false);
+      setManualAimActive(false);
+      engineRef.current?.clearAim();
+    } else {
+      setManualAimLocked(true);
+      setManualAimActive(true);
+      engineRef.current?.setAim(CENTER, CENTER - 200);
+    }
+  }, [manualAimLocked, manualAimActive]);
 
   // Shared BGM integration
   const bgmTrack: BgmTrackId | null =
@@ -248,9 +287,11 @@ export default function ShachikuSpiralGame() {
       onBanner: (title, sub) => showBanner(title, sub),
     });
     engineRef.current = engine;
+    engine.setSpeed(speedScale);
 
     keysRef.current = new Set();
     setManualAimActive(false);
+    setManualAimLocked(false);
     setRunMeta({ difficulty: d, stage: st });
     lastSettledRunRef.current = null;
     setResult(null);
@@ -264,7 +305,7 @@ export default function ShachikuSpiralGame() {
       maxHpBonus: 10 * (m.hp ?? 0),
       rateMul: 1 + 0.02 * (m.rate ?? 0),
     });
-  }, [destroyEngine, finishRun, showBanner, changeScreen]);
+  }, [destroyEngine, finishRun, showBanner, changeScreen, speedScale]);
 
   const pauseGame = useCallback(() => {
     engineRef.current?.setPaused(true);
@@ -320,6 +361,9 @@ export default function ShachikuSpiralGame() {
         keysRef.current.add(m);
         pushMove();
       }
+      if ((e.key === 'f' || e.key === 'F') && screenRef.current === 'playing') {
+        toggleSpeed();
+      }
       if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
         if (screenRef.current === 'playing') pauseGame();
         else if (screenRef.current === 'paused') resumeGame();
@@ -329,7 +373,7 @@ export default function ShachikuSpiralGame() {
       const m = map(e.key);
       if (m) {
         keysRef.current.delete(m);
-        if (keysRef.current.size === 0) {
+        if (keysRef.current.size === 0 && !manualAimLocked) {
           engineRef.current?.clearAim();
           setManualAimActive(false);
         } else {
@@ -343,7 +387,7 @@ export default function ShachikuSpiralGame() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
     };
-  }, [pushMove, pauseGame, resumeGame, build, chooseUpgrade]);
+  }, [pushMove, pauseGame, resumeGame, build, chooseUpgrade, toggleSpeed, manualAimLocked]);
 
   useEffect(() => {
     const onVis = () => {
@@ -358,6 +402,7 @@ export default function ShachikuSpiralGame() {
     setBuild(null);
     setResult(null);
     setManualAimActive(false);
+    setManualAimLocked(false);
     setStats(loadStats());
     setAch(loadAch());
     setDaily(loadDaily());
@@ -423,25 +468,31 @@ export default function ShachikuSpiralGame() {
     : 0;
   const hpPercent = hud.maxHp > 0 ? hud.hp / hud.maxHp : 0;
   const hpBarColor = hpPercent > 0.45 ? 'bg-[#06b6d4]' : hpPercent > 0.22 ? 'bg-[#f59e0b]' : 'bg-[#ef4444]';
+  const levelMap = new Map(hud.levels.map((l) => [l.id, l.lv]));
 
   return (
-    <div className="flex min-h-dvh w-full flex-col items-center bg-[#070a12] px-2 py-3 text-[#e2e8f0] selection:bg-[#f59e0b] selection:text-[#070a12]">
+    <div className="flex min-h-dvh w-full flex-col items-center bg-[#050811] px-2 py-2.5 text-[#e2e8f0] selection:bg-[#f59e0b] selection:text-[#070a12]">
       <div className="w-full max-w-[680px]">
-        {/* Tactical Header Bar */}
-        <header className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-[#1e293b] bg-[#0f172a] px-3 py-2 shadow-[0_4px_0_#020617]">
+        {/* Top Threat & Telemetry Bar (Cell Survivor Arcade Style) */}
+        <header className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-[#1e293b] bg-[#0c1322] px-3 py-2 shadow-[0_4px_0_#020617]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center border border-[#38bdf8]/40 bg-[#090d16]">
+            <div className="flex h-9 w-9 items-center justify-center border border-[#38bdf8]/50 bg-[#070b14] shadow-[0_0_12px_rgba(56,189,248,0.2)]">
               <SpiralLogoIcon className="h-5 w-5 text-[#38bdf8]" />
             </div>
             <div>
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-[#38bdf8]">
-                CORP-DEFENSE // TERMINAL-09
-              </p>
-              <p className="text-sm font-black tracking-wider text-[#f8fafc]">社畜スパイラル</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-mono text-[9px] font-black tracking-[0.18em] text-[#38bdf8]">
+                  CELL-SURVIVOR // CORE DEFENSE
+                </p>
+                <span className="border border-[#06b6d4]/40 bg-[#083344]/60 px-1.5 py-0.2 font-mono text-[8px] font-bold text-[#67e8f9]">
+                  NO ENEMY BULLETS
+                </span>
+              </div>
+              <p className="text-sm font-black tracking-wider text-[#f8fafc]">社畜スパイラル // 増殖細胞迎撃</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <div className="flex h-9 items-center gap-1.5 border border-[#78350f] bg-[#1c1409] px-2.5 text-xs font-bold text-[#fbbf24]">
               <CreditIcon className="h-4 w-4 shrink-0" />
               <span className="font-mono">{bank.toLocaleString()}</span>
@@ -450,58 +501,151 @@ export default function ShachikuSpiralGame() {
               <span className="mr-1 font-mono text-[10px] text-[#38bdf8]">RANK:</span>
               <span className="text-[#f1f5f9]">{title.name}</span>
             </div>
+            {(screen === 'playing' || screen === 'paused' || screen === 'build') && (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleSpeed}
+                  className={`flex h-9 items-center gap-1 border px-2.5 font-mono text-xs font-black transition ${
+                    speedScale === 2
+                      ? 'border-[#fbbf24] bg-[#451a03] text-[#fde047] shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                      : 'border-[#334155] bg-[#090d16] text-[#94a3b8] hover:border-[#38bdf8] hover:text-[#f8fafc]'
+                  }`}
+                  aria-label="倍速切替"
+                  title="ゲーム速度 1x / 2x 切替 (Fキー)"
+                >
+                  <FastForwardIcon className="h-3.5 w-3.5" />
+                  <span>{speedScale}x SPEED</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleAimMode}
+                  className={`flex h-9 items-center gap-1 border px-2.5 font-mono text-xs font-black transition ${
+                    manualAimActive || manualAimLocked
+                      ? 'border-[#38bdf8] bg-[#0c192c] text-[#38bdf8]'
+                      : 'border-[#10b981]/60 bg-[#064e3b]/50 text-[#6ee7b7]'
+                  }`}
+                  aria-label="照準モード切替"
+                  title="自動追尾 / 手動照準 切替"
+                >
+                  <CrosshairIcon className="h-3.5 w-3.5" />
+                  <span>{manualAimActive || manualAimLocked ? 'MANUAL' : 'AUTO'}</span>
+                </button>
+              </>
+            )}
             <AudioToggle variant="compact" />
             {screen === 'playing' && (
               <button
                 type="button"
                 onClick={pauseGame}
-                className="flex h-11 w-11 items-center justify-center border border-[#38bdf8]/50 bg-[#0c192c] text-[#38bdf8] transition hover:bg-[#152c4a]"
+                className="flex h-9 w-9 items-center justify-center border border-[#38bdf8]/50 bg-[#0c192c] text-[#38bdf8] transition hover:bg-[#152c4a]"
                 aria-label="一時停止"
                 title="一時停止 (P / Esc)"
               >
-                <PauseIcon className="h-5 w-5" />
+                <PauseIcon className="h-4 w-4" />
               </button>
             )}
           </div>
         </header>
 
-        {/* In-Game Tactical Telemetry HUD */}
+        {/* Cell Survivor Threat & DPS Telemetry HUD */}
         {(screen === 'playing' || screen === 'paused' || screen === 'build') && (
-          <section className="mb-2 border border-[#1e293b] bg-[#0f172a] p-2.5 text-xs shadow-[0_4px_0_#020617]">
-            {/* Row 1: Primary Wave / Score / Credits / Kills */}
-            <div className="mb-2 grid grid-cols-4 gap-1.5 border-b border-[#1e293b] pb-2 font-mono">
-              <div className="border-l-2 border-[#38bdf8] bg-[#090d16] px-2 py-1">
-                <p className="text-[9px] text-[#64748b]">WAVE</p>
-                <p className="text-xs font-black text-[#38bdf8]">
-                  {hud.wave}{hud.endless ? ' [OT]' : ` / ${hud.totalWaves}`}
+          <section className="mb-2 border border-[#1e293b] bg-[#0c1322] p-2.5 text-xs shadow-[0_4px_0_#020617]">
+            {/* Row 1: Wave Gauge + Boss Indicator + Live DPS Meter + Score/Coins */}
+            <div className="mb-2 grid grid-cols-2 gap-1.5 border-b border-[#1e293b] pb-2 font-mono sm:grid-cols-5">
+              <div className="border-l-2 border-[#38bdf8] bg-[#070b14] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">WAVE PROGRESS</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black text-[#38bdf8]">
+                    W{hud.wave}{hud.endless ? ' [OT]' : `/${hud.totalWaves}`}
+                  </p>
+                  {hud.bossWave && <SkullBossIcon className="h-3.5 w-3.5 text-[#f87171]" />}
+                </div>
+              </div>
+
+              <div className="border-l-2 border-[#f59e0b] bg-[#070b14] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">LIVE DPS // 瞬間火力</p>
+                <p className="flex items-center gap-1 text-xs font-black text-[#fde047]">
+                  <DpsBoltIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span>{(hud.dps ?? 0).toLocaleString()} DMG/s</span>
                 </p>
               </div>
-              <div className="border-l-2 border-[#fbbf24] bg-[#090d16] px-2 py-1">
+
+              <div className="border-l-2 border-[#ec4899] bg-[#070b14] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">CELLS LEFT // 残細胞</p>
+                <p className="flex items-center justify-between text-xs font-black text-[#f472b6]">
+                  <span>{hud.segsRemaining} 節</span>
+                  <span className="text-[10px] text-[#94a3b8]">({hud.chainsLeft}列)</span>
+                </p>
+              </div>
+
+              <div className="border-l-2 border-[#fbbf24] bg-[#070b14] px-2 py-1">
                 <p className="text-[9px] text-[#64748b]">SCORE</p>
                 <p className="text-xs font-black text-[#fbbf24]">{hud.score.toLocaleString()}</p>
               </div>
-              <div className="border-l-2 border-[#f59e0b] bg-[#090d16] px-2 py-1">
-                <p className="text-[9px] text-[#64748b]">OVERTIME PAY</p>
-                <p className="flex items-center gap-1 text-xs font-black text-[#fde047]">
-                  <CreditIcon className="h-3.5 w-3.5" />
-                  <span>{hud.coins}</span>
-                </p>
-              </div>
-              <div className="border-l-2 border-[#f472b6] bg-[#090d16] px-2 py-1">
-                <p className="text-[9px] text-[#64748b]">SLICED</p>
-                <p className="flex items-center gap-1 text-xs font-black text-[#f472b6]">
-                  <BurstIcon className="h-3.5 w-3.5" />
-                  <span>{hud.segs}</span>
-                </p>
+
+              <div className="col-span-2 border-l-2 border-[#10b981] bg-[#070b14] px-2 py-1 sm:col-span-1">
+                <p className="text-[9px] text-[#64748b]">COINS / SLICED</p>
+                <div className="flex items-center justify-between text-xs font-black">
+                  <span className="flex items-center gap-1 text-[#fde047]">
+                    <CreditIcon className="h-3.5 w-3.5" />
+                    {hud.coins}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-[#34d399]">
+                    <BurstIcon className="h-3 w-3" />
+                    {hud.segs}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Row 2: Core HP & Shield Dual Gauges */}
-            <div className="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              <div className="flex items-center gap-2 bg-[#090d16] px-2 py-1">
-                <div className="flex w-14 shrink-0 items-center gap-1 font-mono text-[10px] font-bold text-[#38bdf8]">
+            {/* Row 2: Wave Sweep Progress Gauge with Boss Checkpoint Indicator */}
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-1 items-center gap-2">
+                <span className="flex items-center gap-1 font-mono text-[10px] font-black text-[#38bdf8]">
+                  <SkullBossIcon className="h-3.5 w-3.5" />
+                  <span>{hud.bossWave ? 'BOSS WAVE' : `NEXT: ${nextBoss}`}</span>
+                </span>
+                <div className="relative h-2.5 flex-1 overflow-hidden bg-[#070b14] ring-1 ring-[#1e293b]">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      hud.bossWave
+                        ? 'bg-gradient-to-r from-[#dc2626] via-[#f59e0b] to-[#fde047]'
+                        : 'bg-gradient-to-r from-[#0284c7] via-[#06b6d4] to-[#22c55e]'
+                    }`}
+                    style={{ width: `${hud.clearing ? 100 : waveClearRatio}%` }}
+                  />
+                </div>
+                <span className="font-mono text-[10px] font-bold text-[#cbd5e1]">
+                  {Math.round(hud.clearing ? 100 : waveClearRatio)}%
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                {hud.clearing && (
+                  <span className="border border-[#fbbf24] bg-[#451a03] px-2 py-0.5 font-bold text-[#fde047]">
+                    VACUUM // 全報酬吸引中
+                  </span>
+                )}
+                {hud.chests > 0 && (
+                  <span className="border border-[#f59e0b] bg-[#451a03] px-2 py-0.5 font-bold text-[#fde047]">
+                    宝箱×{hud.chests}
+                  </span>
+                )}
+                {hud.drops > 0 && (
+                  <span className="border border-[#10b981] bg-[#064e3b] px-2 py-0.5 font-bold text-[#6ee7b7]">
+                    回収×{hud.drops}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Row 3: Core HP & Shield Dual Gauges */}
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <div className="flex items-center gap-2 bg-[#070b14] px-2 py-1 ring-1 ring-[#1e293b]">
+                <div className="flex w-16 shrink-0 items-center gap-1 font-mono text-[10px] font-bold text-[#38bdf8]">
                   <HpIcon className="h-3.5 w-3.5" />
-                  <span>CORE</span>
+                  <span>CORE HP</span>
                 </div>
                 <Bar value={hud.hp} max={hud.maxHp} className={hpBarColor} />
                 <span className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-[#e2e8f0]">
@@ -509,9 +653,9 @@ export default function ShachikuSpiralGame() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 bg-[#090d16] px-2 py-1">
-                <span className="w-14 shrink-0 font-mono text-[10px] font-bold text-[#7dd3fc]">
-                  SHIELD
+              <div className="flex items-center gap-2 bg-[#070b14] px-2 py-1 ring-1 ring-[#1e293b]">
+                <span className="w-16 shrink-0 font-mono text-[10px] font-bold text-[#7dd3fc]">
+                  BARRIER
                 </span>
                 <Bar value={hud.shield} max={hud.maxShield} className="bg-[#38bdf8]" />
                 <span className="w-14 shrink-0 text-right font-mono text-[11px] font-bold text-[#7dd3fc]">
@@ -520,102 +664,15 @@ export default function ShachikuSpiralGame() {
               </div>
             </div>
 
-            {/* Row 3: Wave Sweep Progress & Threat Badges */}
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-1 items-center gap-2">
-                <span className="font-mono text-[9px] font-bold text-[#64748b]">SWEEP</span>
-                <div className="h-1.5 flex-1 bg-[#090d16] ring-1 ring-[#1e293b]">
-                  <div
-                    className="h-full bg-[#22c55e] transition-all duration-300"
-                    style={{ width: `${hud.clearing ? 100 : waveClearRatio}%` }}
-                  />
-                </div>
-                <span className="font-mono text-[10px] text-[#94a3b8]">
-                  残敵 {hud.chainsLeft}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                {hud.clearing ? (
-                  <span className="border border-[#fbbf24] bg-[#451a03] px-2 py-0.5 font-bold text-[#fde047]">
-                    回収中 // VACUUM ACTIVE
-                  </span>
-                ) : hud.bossWave ? (
-                  <span className="border border-[#ef4444] bg-[#450a0a] px-2 py-0.5 font-bold text-[#fca5a5]">
-                    DECISION MAKER // 決裁者戦
-                  </span>
-                ) : (
-                  <span className="border border-[#334155] bg-[#090d16] px-2 py-0.5 text-[#94a3b8]">
-                    NEXT: {nextBoss}
-                  </span>
-                )}
-                <span
-                  className={`border px-2 py-0.5 font-bold ${
-                    manualAimActive
-                      ? 'border-[#38bdf8] bg-[#0c192c] text-[#38bdf8]'
-                      : 'border-[#1e293b] bg-[#090d16] text-[#64748b]'
-                  }`}
-                >
-                  {manualAimActive ? 'AIM: MANUAL' : 'AIM: AUTO-HEAD'}
-                </span>
-                {hud.chests > 0 && (
-                  <span className="border border-[#f59e0b] bg-[#451a03] px-2 py-0.5 font-bold text-[#fde047]">
-                    宝箱×{hud.chests}
-                  </span>
-                )}
-                {hud.drops > 0 && (
-                  <span className="border border-[#10b981] bg-[#064e3b] px-2 py-0.5 font-bold text-[#6ee7b7]">
-                    吸引中×{hud.drops}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Row 4: Active Armament Telemetry */}
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#38bdf8]">
-                <BlasterIcon className="h-3.5 w-3.5" />
-                <span>ATK {hud.build.dmg}</span>
-                <span className="text-[#64748b]">×{hud.build.count}</span>
-                <span className="text-[#fbbf24]">貫{hud.build.pierce}</span>
-              </span>
-              {hud.build.orbN > 0 && (
-                <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#38bdf8]">
-                  <DroneIcon className="h-3.5 w-3.5" />
-                  <span>×{hud.build.orbN}</span>
-                </span>
-              )}
-              {hud.build.blastLv > 0 && (
-                <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#fb923c]">
-                  <EnergyDrinkIcon className="h-3.5 w-3.5" />
-                  <span>Lv.{hud.build.blastLv}</span>
-                </span>
-              )}
-              {hud.build.beamLv > 0 && (
-                <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#fde047]">
-                  <LaserBeamIcon className="h-3.5 w-3.5" />
-                  <span>Lv.{hud.build.beamLv}</span>
-                </span>
-              )}
-              {hud.levels.map((l) => (
-                <span
-                  key={l.id}
-                  className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-1.5 py-0.5 font-mono text-[10px]"
-                >
-                  <TechUpgradeIcon id={l.id} className="h-3 w-3 text-[#38bdf8]" />
-                  <span className="font-bold text-[#fbbf24]">{l.lv}</span>
-                </span>
-              ))}
-            </div>
-
             {/* Active Boss Health Gauge */}
             {hud.bossMax > 0 && (
               <div className="mt-2 flex items-center gap-2 border border-[#dc2626] bg-[#2a0808] px-2.5 py-1.5">
+                <SkullBossIcon className="h-4 w-4 shrink-0 text-[#f87171]" />
                 <span className="w-28 shrink-0 truncate font-mono text-xs font-black text-[#fca5a5]">
                   {hud.bossName}
                 </span>
-                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-[#ef4444]" />
-                <span className="w-20 shrink-0 text-right font-mono text-[11px] font-bold text-[#fecaca]">
+                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-gradient-to-r from-[#dc2626] to-[#f59e0b]" />
+                <span className="w-24 shrink-0 text-right font-mono text-[11px] font-bold text-[#fecaca]">
                   {hud.bossHp}/{hud.bossMax}
                 </span>
               </div>
@@ -650,7 +707,7 @@ export default function ShachikuSpiralGame() {
             }}
             onPointerMove={(e) => {
               if (screenRef.current !== 'playing') return;
-              if (e.pointerType === 'mouse' && e.buttons === 0) return;
+              if (e.pointerType === 'mouse' && e.buttons === 0 && !manualAimLocked) return;
               const rect = e.currentTarget.getBoundingClientRect();
               const x = ((e.clientX - rect.left) / rect.width) * 640;
               const y = ((e.clientY - rect.top) / rect.height) * 640;
@@ -663,13 +720,13 @@ export default function ShachikuSpiralGame() {
               } catch {
                 /* ignore */
               }
-              if (keysRef.current.size === 0) {
+              if (keysRef.current.size === 0 && !manualAimLocked) {
                 engineRef.current?.clearAim();
                 setManualAimActive(false);
               }
             }}
             onPointerCancel={() => {
-              if (keysRef.current.size === 0) {
+              if (keysRef.current.size === 0 && !manualAimLocked) {
                 engineRef.current?.clearAim();
                 setManualAimActive(false);
               }
@@ -703,70 +760,101 @@ export default function ShachikuSpiralGame() {
             />
           )}
 
-          {/* Build Tree Modal Overlay */}
+          {/* 3-Card Roguelite Skill Selection Modal (Cell Survivor Style) */}
           {screen === 'build' && build && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#070a12]/88 p-3">
-              <div className="max-h-full w-full max-w-[520px] overflow-y-auto border-2 border-[#334155] bg-[#0f172a] p-4 shadow-[0_8px_0_#020617]">
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#050811]/92 p-2.5 sm:p-4">
+              <div className="max-h-full w-full max-w-[540px] overflow-y-auto border-2 border-[#38bdf8]/60 bg-[#0b1323] p-3.5 shadow-[0_0_32px_rgba(14,165,233,0.28)] sm:p-4">
                 <div className="flex items-center justify-between border-b border-[#1e293b] pb-2.5">
                   <div className="flex items-center gap-2">
-                    <WaveIcon className="h-5 w-5 text-[#38bdf8]" />
+                    <div className="flex h-8 w-8 items-center justify-center border border-[#38bdf8] bg-[#082f49]">
+                      <WaveIcon className="h-4 w-4 text-[#38bdf8]" />
+                    </div>
                     <div>
-                      <p className="font-mono text-[10px] font-bold tracking-widest text-[#38bdf8]">
-                        {build.fromChest ? 'CHEST REWARD // WEAPON EVOLUTION' : `WAVE ${build.wave} // TACTICAL UPGRADE`}
+                      <p className="font-mono text-[10px] font-black tracking-[0.2em] text-[#38bdf8]">
+                        {build.fromChest ? 'CHEST BONUS // CELLULAR EVOLUTION' : `WAVE ${build.wave} CLEAR // SELECT SKILL`}
                       </p>
-                      <h2 className="text-lg font-black tracking-wide text-[#f8fafc]">
-                        {build.fromChest ? '宝箱解析完了 — 兵装進化選択' : `第${build.wave}波 迎撃兵装の承認`}
+                      <h2 className="text-base font-black tracking-wide text-[#f8fafc] sm:text-lg">
+                        {build.fromChest ? '宝箱モジュール解放 — 強化スキル選択' : `第${build.wave}波突破 — 迎撃モジュール進化`}
                       </h2>
                     </div>
                   </div>
-                  <span className="border border-[#1e293b] bg-[#090d16] px-2 py-1 font-mono text-[10px] text-[#94a3b8]">
-                    [1][2][3] 選択
+                  <span className="border border-[#1e293b] bg-[#070b14] px-2 py-1 font-mono text-[10px] text-[#94a3b8]">
+                    [1][2][3] キー対応
                   </span>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-2.5">
+                {/* 3 Tall Roguelite Upgrade Cards */}
+                <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                   {build.choices.map((c, idx) => {
                     const style = RARITY_STYLES[c.rarity ?? 'common'];
+                    const upgDef = UPGRADES[c.id as keyof typeof UPGRADES];
+                    const statDelta = upgDef?.statLabel
+                      ? upgDef.statLabel(c.toLv)
+                      : c.kind === 'bonus'
+                        ? '即時リカバリー発動'
+                        : '出力パラメータ強化';
+                    const totalStars = c.maxLv > 0 ? Math.min(6, c.maxLv) : 1;
+                    const filledStars = c.maxLv > 0 ? Math.min(totalStars, c.toLv) : 1;
+
                     return (
                       <button
                         type="button"
                         key={`${c.kind}:${c.id}`}
                         onClick={() => chooseUpgrade(`${c.kind}:${c.id}`)}
-                        className={`group flex min-h-[68px] items-center gap-3 border-2 ${style.border} ${style.glow} p-3 text-left transition active:translate-y-0.5`}
+                        className={`group flex flex-col justify-between overflow-hidden border-2 ${style.border} ${style.glow} text-left transition hover:-translate-y-0.5 active:translate-y-0`}
                       >
-                        <div className="pointer-events-none flex h-12 w-12 shrink-0 items-center justify-center border border-[#334155] bg-[#090d16] group-hover:border-[#38bdf8]">
-                          <TechUpgradeIcon id={c.id} className="h-6 w-6 text-[#38bdf8]" />
+                        {/* Rarity Header Banner */}
+                        <div className={`flex w-full items-center justify-between px-2.5 py-1 font-mono text-[10px] font-black tracking-widest ${style.headerBg}`}>
+                          <span>{style.badgeText}</span>
+                          <span>#{idx + 1}</span>
                         </div>
-                        <div className="pointer-events-none flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[10px] font-bold text-[#64748b]">#{idx + 1}</span>
-                            <p className="text-sm font-black text-[#f8fafc] group-hover:text-[#38bdf8]">{c.name}</p>
-                            <span className={`px-1.5 py-0.5 font-mono text-[9px] font-bold ${style.badge}`}>
-                              {style.badgeText}
-                            </span>
-                            {c.isNew ? (
-                              <span className="bg-[#059669] px-1.5 py-0.5 font-mono text-[9px] font-bold text-white">
+
+                        {/* Card Body: Emblem + Title + Star Rank Bar + Stat Delta */}
+                        <div className="flex flex-1 flex-col items-center p-3 text-center">
+                          <div className={`flex h-14 w-14 items-center justify-center rounded-full border-2 ${style.emblemRing} shadow-[0_0_16px_rgba(56,189,248,0.2)] transition group-hover:scale-105`}>
+                            <TechUpgradeIcon id={c.id} className="h-7 w-7" />
+                          </div>
+
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <p className="text-sm font-black text-[#f8fafc] group-hover:text-[#38bdf8]">
+                              {c.name}
+                            </p>
+                            {c.isNew && (
+                              <span className="bg-[#10b981] px-1.5 py-0.2 font-mono text-[9px] font-black text-[#052e16]">
                                 NEW
                               </span>
-                            ) : c.toLv > 0 ? (
-                              <span className="font-mono text-xs font-bold text-[#fbbf24]">
-                                Lv.{c.toLv}{c.maxLv > 0 ? `/${c.maxLv}` : ''}
-                              </span>
-                            ) : null}
+                            )}
                           </div>
-                          <p className="mt-1 text-xs text-[#94a3b8]">{c.desc}</p>
-                          {c.maxLv > 0 && (
-                            <div className="mt-1.5 flex gap-1">
-                              {Array.from({ length: c.maxLv }).map((_, pipIdx) => (
-                                <span
-                                  key={pipIdx}
-                                  className={`h-1 flex-1 ${
-                                    pipIdx < c.toLv ? 'bg-[#38bdf8]' : 'bg-[#1e293b]'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          )}
+
+                          {/* SVG Star Rank Bar */}
+                          <div className="mt-1.5 flex items-center justify-center gap-0.5">
+                            {Array.from({ length: totalStars }).map((_, sIdx) => (
+                              <StarIcon
+                                key={sIdx}
+                                className="h-3.5 w-3.5"
+                                filled={sIdx < filledStars}
+                                color={style.starColor}
+                              />
+                            ))}
+                          </div>
+
+                          <p className="mt-1 font-mono text-[10px] font-bold text-[#fbbf24]">
+                            {c.maxLv > 0 ? `RANK Lv.${c.toLv} / ${c.maxLv}` : 'INSTANT SUPPLY'}
+                          </p>
+
+                          <p className="mt-1.5 text-[11px] leading-snug text-[#cbd5e1]">
+                            {c.desc}
+                          </p>
+
+                          {/* Clear Stat Delta Preview */}
+                          <div className="mt-2.5 w-full border border-[#1e293b] bg-[#070b14] px-2 py-1 font-mono text-[10px] font-bold text-[#38bdf8]">
+                            {statDelta}
+                          </div>
+                        </div>
+
+                        {/* Select Action Footer */}
+                        <div className="w-full border-t border-[#1e293b] bg-[#070b14]/90 py-1.5 text-center font-mono text-[10px] font-black tracking-wider text-[#94a3b8] group-hover:bg-[#0284c7] group-hover:text-white">
+                          SELECT MODULE
                         </div>
                       </button>
                     );
@@ -778,10 +866,10 @@ export default function ShachikuSpiralGame() {
                     <button
                       type="button"
                       onClick={() => engineRef.current?.rerollBuild()}
-                      className="flex min-h-[44px] w-full items-center justify-center gap-2 border border-[#78350f] bg-[#1c1409] py-2.5 text-xs font-bold text-[#fbbf24] transition hover:border-[#f59e0b] hover:bg-[#291d0c]"
+                      className="flex min-h-[44px] w-full items-center justify-center gap-2 border border-[#f59e0b] bg-[#1c1409] py-2.5 text-xs font-black text-[#fbbf24] transition hover:bg-[#291d0c]"
                     >
                       <RefreshIcon className="h-4 w-4 text-[#fbbf24]" />
-                      <span>稟議差し戻し / 選択肢リロール（残り1回・[R]キー）</span>
+                      <span>REROLL MODULES // 選択肢リロール（残り1回・[R]キー）</span>
                     </button>
                   </div>
                 )}
@@ -799,7 +887,7 @@ export default function ShachikuSpiralGame() {
                 <PauseIcon className="mx-auto mt-2 h-8 w-8 text-[#fbbf24]" />
                 <p className="mt-2 text-xl font-black tracking-wider text-[#f8fafc]">作戦一時待機</p>
                 <p className="mt-1 text-xs text-[#94a3b8]">
-                  ドラッグ中は手動照準・指を離すと最寄り頭部へ自動照準
+                  ドラッグ中は手動照準・指を離すと最寄り細胞ヘッドへ自動照準
                 </p>
 
                 <div className="mt-4 flex justify-center">
@@ -836,8 +924,73 @@ export default function ShachikuSpiralGame() {
           )}
         </div>
 
+        {/* Bottom Active Weapon & Module Dock (10 Modules with SVG Icons, Level Badge & Star Pips) */}
+        {(screen === 'playing' || screen === 'paused' || screen === 'build') && (
+          <section
+            aria-label="アクティブ兵装ドック"
+            className="mt-2 border border-[#1e293b] bg-[#0c1322] p-2 shadow-[0_4px_0_#020617]"
+          >
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px]">
+              <span className="font-black tracking-wider text-[#38bdf8]">
+                ACTIVE WEAPON & MODULE DOCK // 迎撃モジュールスロット
+              </span>
+              <span className="text-[#94a3b8]">
+                ATK {hud.build.dmg} / 連射 {(1 / hud.build.interval).toFixed(1)}発/s / 弾数×{hud.build.count} / 貫通 {hud.build.pierce} / 会心 {Math.round(hud.build.crit * 100)}%
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-10">
+              {UPGRADE_ORDER.map((id) => {
+                const def = UPGRADES[id];
+                const lv = levelMap.get(id) ?? 0;
+                const unlocked = lv > 0;
+                const maxStars = Math.min(5, def.maxLv);
+                const filledStars = Math.min(maxStars, lv);
+                return (
+                  <div
+                    key={id}
+                    title={`${def.name}: ${def.desc}`}
+                    className={`flex flex-col items-center justify-between border p-1.5 text-center transition ${
+                      unlocked
+                        ? 'border-[#38bdf8]/80 bg-[#082f49]/40 shadow-[0_0_10px_rgba(56,189,248,0.2)]'
+                        : 'border-[#1e293b] bg-[#070b14] opacity-50'
+                    }`}
+                  >
+                    <div className="flex w-full items-center justify-between font-mono text-[8px]">
+                      <span className={unlocked ? 'font-black text-[#38bdf8]' : 'text-[#475569]'}>
+                        {unlocked ? `Lv.${lv}` : 'LOCK'}
+                      </span>
+                      {lv >= def.maxLv && (
+                        <span className="bg-[#f59e0b] px-1 font-black text-[#090d16]">MAX</span>
+                      )}
+                    </div>
+                    <div className="my-1">
+                      <TechUpgradeIcon
+                        id={id}
+                        className={`h-5 w-5 ${unlocked ? 'text-[#38bdf8]' : 'text-[#475569]'}`}
+                      />
+                    </div>
+                    <p className="w-full truncate text-[9px] font-bold text-[#e2e8f0]">
+                      {def.name}
+                    </p>
+                    <div className="mt-0.5 flex items-center justify-center gap-0.5">
+                      {Array.from({ length: maxStars }).map((_, pipIdx) => (
+                        <StarIcon
+                          key={pipIdx}
+                          className="h-2 w-2"
+                          filled={pipIdx < filledStars}
+                          color={lv >= def.maxLv ? '#fbbf24' : '#38bdf8'}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <p className="mt-2 text-center font-mono text-[11px] text-[#64748b]">
-          [操作] 画面タップ＆ドラッグ: 手動照準 / 指を離す: 頭部を自動追尾 / 敵ドロップ＆解放宝箱は中央コアへ自動吸引回収
+          [操作] ドラッグ: 手動照準 / 指を離す: 先頭細胞を自動追尾 / [F] または上部ボタン: 1x・2x倍速切替 / 敵弾なし・中心コア接触前に数値細胞を撃ち抜け
         </p>
       </div>
     </div>

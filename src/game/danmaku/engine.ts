@@ -33,6 +33,9 @@ export interface HudSnapshot {
   power: number;
   weapon: WeaponId;
   difficulty: Difficulty;
+  hyper: number;
+  hyperActive: boolean;
+  hyperTimer: number;
   bossActive: boolean;
   bossHp: number;
   bossMax: number;
@@ -123,12 +126,32 @@ export class DanmakuEngine {
   private prevPickups = 0;
   private prevBossAlive = false;
   private prevPhase: Phase = 'fly';
+  private prevHyperActive = false;
+  private prevHyperReady = false;
 
   private onKeyDown = (e: KeyboardEvent) => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
     this.keys.add(e.code);
-    if (e.code === 'KeyX' || e.code === 'KeyK') this.useBomb();
-    if (e.code === 'KeyC') this.cycleWeapon();
+    if (e.code === 'KeyX' || e.code === 'KeyK') {
+      if ((e.shiftKey || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) && this.sim.hyper >= 100 && !this.sim.hyperActive) {
+        this.triggerHyper();
+      } else {
+        this.useBomb();
+      }
+    }
+    if (e.code === 'KeyC') {
+      if (this.sim.hyper >= 100 && !this.sim.hyperActive) {
+        this.triggerHyper();
+      } else {
+        this.cycleWeapon();
+      }
+    }
+    if (e.code === 'KeyV' || e.code === 'KeyQ') {
+      this.cycleWeapon();
+    }
+    if (e.code === 'KeyZ' || e.code === 'Space') {
+      this.triggerHyper();
+    }
   };
   private onKeyUp = (e: KeyboardEvent) => {
     this.keys.delete(e.code);
@@ -336,6 +359,18 @@ export class DanmakuEngine {
     }
   }
 
+  triggerHyper(): void {
+    if (this.paused || this.destroyed) return;
+    if (this.sim.useHyper()) {
+      this.sound.capture();
+      this.pushHud();
+    }
+  }
+
+  useHyper(): void {
+    this.triggerHyper();
+  }
+
   cycleWeapon(): void {
     if (this.paused || this.destroyed) return;
     this.sim.cycleWeapon();
@@ -415,7 +450,13 @@ export class DanmakuEngine {
       this.sound.bigBoom();
       saveContinue({ stage: s.stage + 1, score: s.score, weapon: s.weapon, weaponLevel: s.power, difficulty: s.diff });
     }
-    const phaseChanged = s.phase !== this.prevPhase || s.boss.alive !== this.prevBossAlive;
+    const hyperReady = s.hyper >= 100 && !s.hyperActive;
+    if (hyperReady && !this.prevHyperReady) this.sound.power();
+    const phaseChanged =
+      s.phase !== this.prevPhase ||
+      s.boss.alive !== this.prevBossAlive ||
+      s.hyperActive !== this.prevHyperActive ||
+      hyperReady !== this.prevHyperReady;
     this.prevKills = s.kills;
     this.prevGraze = s.graze;
     this.prevPower = s.power;
@@ -424,6 +465,8 @@ export class DanmakuEngine {
     this.prevBombs = s.bombs;
     this.prevBossAlive = s.boss.alive;
     this.prevPhase = s.phase;
+    this.prevHyperActive = s.hyperActive;
+    this.prevHyperReady = hyperReady;
 
     let forceHud = phaseChanged;
     for (const ev of s.events.splice(0, s.events.length)) {
@@ -487,6 +530,9 @@ export class DanmakuEngine {
         power: s.power,
         weapon: s.weapon,
         difficulty: s.diff,
+        hyper: Math.min(100, Math.max(0, Math.round(s.hyper * 10) / 10)),
+        hyperActive: s.hyperActive,
+        hyperTimer: Math.max(0, Math.round(s.hyperTimer * 10) / 10),
         bossActive: b.alive && b.entered,
         bossHp: Math.max(0, Math.round(b.hp)),
         bossMax: Math.max(1, Math.round(b.maxHp)),

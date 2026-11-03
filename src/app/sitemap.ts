@@ -132,5 +132,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.6,
     },
+    {
+      url: `${BASE_URL}/shachiku-catapult`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/shachiku-wire`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/shachiku-stack`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
   ];
 }

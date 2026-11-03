@@ -1,19 +1,192 @@
 /**
- * Dark & Pop Modern 2D Vector Renderer
+ * Dark & Pop Modern 2D Vector Renderer — Cell Survivor Hyper-Turret Overhaul
  * Pure HTML5 Canvas 2D vector drawing for Shachiku Spiral Defense.
  * ZERO EMOJIS — all sprites, entities, drops, and orbitals are crisp, high-contrast procedural vector graphics.
  */
 
 // ==========================================
-// 1. Player Cyber-Office Core Reactor
+// 0. Spiral Track Rail & Cellular Synapse Links
 // ==========================================
 
 /**
- * Draws the player corporate reactor core.
+ * Draws the Cell Survivor-style glowing Archimedean spiral guide rail on the arena floor
+ * (`r = 28` out to `arenaR - 14`) with distance nodes (`100m`, `75m`, `50m`, `25m DANGER`)
+ * and animated chevron pulses flowing inward toward the core, plus a pulsing danger perimeter ring (`r = 46`).
+ */
+export function drawSpiralTrackRail(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  arenaR: number,
+  time: number
+): void {
+  ctx.save();
+  ctx.translate(centerX, centerY);
+
+  const minR = 28;
+  const maxR = arenaR - 14;
+  const turns = 3.25;
+  const totalTheta = turns * Math.PI * 2;
+  const steps = 140;
+
+  // 1. Outer recessed rail track bed
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps;
+    const theta = u * totalTheta - time * 0.18;
+    const r = minR + u * (maxR - minR);
+    const x = Math.cos(theta) * r;
+    const y = Math.sin(theta) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(14, 165, 233, 0.11)';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // 2. Inner crisp neon guide rail
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.24)';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  // 3. Animated inward-flowing chevron pulses along the spiral rail
+  const pulseCount = 14;
+  const flowPhase = (time * 0.55) % 1;
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.48)';
+  ctx.lineWidth = 1.8;
+  for (let p = 0; p < pulseCount; p++) {
+    // Flow inward: u decreases as time increases
+    const u = (1 - ((p / pulseCount + flowPhase) % 1));
+    const theta = u * totalTheta - time * 0.18;
+    const r = minR + u * (maxR - minR);
+    const x = Math.cos(theta) * r;
+    const y = Math.sin(theta) * r;
+    // Tangent pointing inward along spiral
+    const tangentAngle = theta - Math.PI / 2 - 0.16;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tangentAngle);
+    ctx.beginPath();
+    ctx.moveTo(-4, -3.5);
+    ctx.lineTo(3, 0);
+    ctx.lineTo(-4, 3.5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 4. Distance Milestone Nodes along the Spiral Track (100m, 75m, 50m, 25m DANGER)
+  const milestones: Array<{ u: number; label: string; color: string }> = [
+    { u: 0.92, label: '100m', color: '#38bdf8' },
+    { u: 0.68, label: '75m', color: '#38bdf8' },
+    { u: 0.44, label: '50m', color: '#f59e0b' },
+    { u: 0.20, label: '25m DANGER', color: '#ef4444' },
+  ];
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const m of milestones) {
+    const theta = m.u * totalTheta;
+    const r = minR + m.u * (maxR - minR);
+    const mx = Math.cos(theta) * r;
+    const my = Math.sin(theta) * r;
+
+    ctx.fillStyle = '#090d16';
+    ctx.beginPath();
+    ctx.arc(mx, my, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = m.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = m.color;
+    ctx.fillText(m.label, mx, my - 10);
+  }
+
+  // 5. Pulsing Danger Perimeter Ring around Center Core (r = 46)
+  const dangerPulse = 0.35 + 0.25 * Math.sin(time * 5.5);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 46, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(239, 68, 68, ${dangerPulse})`;
+  ctx.lineWidth = 2.2;
+  if (ctx.setLineDash) ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  if (ctx.setLineDash) ctx.setLineDash([]);
+
+  // Subtle danger zone inner tint
+  const dzGrad = ctx.createRadialGradient(0, 0, 16, 0, 0, 46);
+  dzGrad.addColorStop(0, 'rgba(239, 68, 68, 0.02)');
+  dzGrad.addColorStop(0.8, `rgba(239, 68, 68, ${dangerPulse * 0.16})`);
+  dzGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+  ctx.fillStyle = dzGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 46, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Draws glowing cellular synapse connectors between consecutive segments (`segs[i-1]` to `segs[i]`)
+ * so each chain looks like a living, slithering segmented organism.
+ */
+export function drawCellularSynapseLinks(
+  ctx: CanvasRenderingContext2D,
+  segs: ReadonlyArray<{ x: number; y: number; radius: number }>,
+  kind: string,
+  time: number,
+  enraged = false
+): void {
+  if (segs.length < 2) return;
+  const color = enraged ? '#ff2222' : getKindColor(kind);
+
+  ctx.save();
+  // Outer translucent cellular membrane bridge
+  ctx.strokeStyle = hexWithAlpha(color, 0.28);
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i];
+    if (i === 0) ctx.moveTo(s.x, s.y);
+    else ctx.lineTo(s.x, s.y);
+  }
+  ctx.stroke();
+
+  // Inner bright neural axon filament
+  ctx.strokeStyle = hexWithAlpha('#ffffff', 0.55);
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+
+  // Animated synapse pulse nodes traveling from tail to head
+  const pulsePos = 1 - ((time * 2.2) % 1);
+  for (let i = 1; i < segs.length; i++) {
+    const a = segs[i - 1];
+    const b = segs[i];
+    const px = b.x + (a.x - b.x) * pulsePos;
+    const py = b.y + (a.y - b.y) * pulsePos;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ==========================================
+// 1. Player Cyber-Office Core Reactor & Hyper-Turret
+// ==========================================
+
+/**
+ * Draws the player corporate reactor core with a Cell Survivor directional hyper-turret barrel.
  * Features:
  * - Sleek cyber-office corporate reactor core
  * - Glowing cyan/amber energy rings
- * - Multi-layer rotating turbine notches & thrusters
+ * - Multi-layer rotating turbine notches & directional dual-rail turret barrel
+ * - Muzzle flash burst on every shot
  * - Pulsating shield arcs and two-stage HP gauge ring
  */
 export function drawVectorCore(
@@ -23,7 +196,8 @@ export function drawVectorCore(
   r: number,
   hpRatio: number,
   shieldRatio: number,
-  angle: number
+  angle: number,
+  muzzleFlash = 0
 ): void {
   ctx.save();
   ctx.translate(x, y);
@@ -34,24 +208,24 @@ export function drawVectorCore(
   // 1. Drop shadow / reactor ambient floor occlusion
   ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   ctx.beginPath();
-  ctx.ellipse(0, r * 0.75, r * 1.05, r * 0.35, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, r * 0.75, r * 1.15, r * 0.38, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 2. Outer cybernetic armor chassis (dark slate with neon trim)
+  // 2. Outer cybernetic armor chassis (octagonal-accented dark slate with neon trim)
   ctx.beginPath();
-  ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+  ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
   ctx.fillStyle = '#0f172a';
   ctx.fill();
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.2;
   ctx.strokeStyle = '#1e293b';
   ctx.stroke();
 
   // 3. Health arc (smooth green-to-cyan gauge)
   if (clampedHp > 0) {
     ctx.beginPath();
-    ctx.arc(0, 0, r + 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clampedHp);
+    ctx.arc(0, 0, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clampedHp);
     ctx.strokeStyle = clampedHp > 0.4 ? '#06b6d4' : clampedHp > 0.2 ? '#f59e0b' : '#ef4444';
-    ctx.lineWidth = 2.8;
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.stroke();
   }
@@ -61,9 +235,9 @@ export function drawVectorCore(
     const shieldArc = Math.min(Math.PI * 2, Math.PI * 2 * Math.min(1, clampedShield));
     ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, r + 8, -Math.PI / 2, -Math.PI / 2 + shieldArc);
+    ctx.arc(0, 0, r + 9, -Math.PI / 2, -Math.PI / 2 + shieldArc);
     ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 2.4;
     ctx.shadowColor = '#38bdf8';
     ctx.shadowBlur = 8;
     ctx.lineCap = 'round';
@@ -88,43 +262,77 @@ export function drawVectorCore(
   }
   ctx.restore();
 
-  // 6. Inner Reactor Power Cell (glowing radial gradient)
-  const cellGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 0.65);
+  // 6. Directional Hyper-Turret Barrel Assembly (tracks aimAngle / target)
+  ctx.save();
+  ctx.rotate(angle);
+  const recoilOffset = muzzleFlash > 0 ? -Math.min(3.5, muzzleFlash * 28) : 0;
+  ctx.translate(recoilOffset, 0);
+
+  // Turret dual rail housing
+  ctx.fillStyle = '#1e293b';
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.6;
+  drawRoundedRect(ctx, r * 0.25, -5.5, r * 1.05, 11, 2.5);
+  ctx.fill();
+  ctx.stroke();
+
+  // Inner plasma accelerator channel
+  ctx.fillStyle = '#7dd3fc';
+  ctx.fillRect(r * 0.45, -2, r * 0.8, 4);
+
+  // Muzzle brake tip
+  ctx.fillStyle = '#f8fafc';
+  ctx.beginPath();
+  ctx.moveTo(r * 1.25, -4.5);
+  ctx.lineTo(r * 1.48, -2.5);
+  ctx.lineTo(r * 1.48, 2.5);
+  ctx.lineTo(r * 1.25, 4.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Vibrant Muzzle Flash Burst when firing
+  if (muzzleFlash > 0) {
+    const flashScale = Math.min(1.4, 0.6 + muzzleFlash * 8);
+    ctx.save();
+    ctx.translate(r * 1.52, 0);
+    ctx.scale(flashScale, flashScale);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(16, 0);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(4, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(2, 0, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // 7. Inner Reactor Power Cell (glowing radial gradient)
+  const cellGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 0.68);
   cellGrad.addColorStop(0, '#ffffff');
   cellGrad.addColorStop(0.35, '#38bdf8');
   cellGrad.addColorStop(0.75, '#0284c7');
   cellGrad.addColorStop(1, '#0f172a');
   ctx.beginPath();
-  ctx.arc(0, 0, r * 0.65, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 0.68, 0, Math.PI * 2);
   ctx.fillStyle = cellGrad;
   ctx.fill();
   ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.6;
   ctx.stroke();
-
-  // 7. Aiming Turret / Thruster Node (points along angle)
-  ctx.save();
-  ctx.rotate(angle);
-  ctx.fillStyle = '#f8fafc';
-  ctx.beginPath();
-  ctx.moveTo(r * 0.8, -3);
-  ctx.lineTo(r * 1.18, 0);
-  ctx.lineTo(r * 0.8, 3);
-  ctx.closePath();
-  ctx.fill();
-
-  // Thruster energy dot
-  ctx.fillStyle = '#38bdf8';
-  ctx.beginPath();
-  ctx.arc(r * 0.85, 0, 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
 
   ctx.restore();
 }
 
 // ==========================================
-// 2. Enemy Chains & Vector Head Crests
+// 2. Cell Survivor Numbered Capsule Segments & Head Crests
 // ==========================================
 
 export interface VectorSegmentOptions {
@@ -132,11 +340,27 @@ export interface VectorSegmentOptions {
   stunned?: boolean;
   shielded?: boolean;
   time?: number;
+  /** Exact remaining HP to display inside the cellular orb */
+  hpValue?: number;
+  /** >0 when recently hit: triggers white flash + squash-and-stretch pulse */
+  hitFlash?: number;
+  /** >0 when slowed by EMP/Cryo blast */
+  slowed?: boolean;
 }
 
 /**
- * Draws a bioluminescent capsule segment or specialized head crest.
- * Replaces all enemy emojis with crisp, high-contrast vector motifs.
+ * Formats segment HP for crisp inside-orb display ("85", "940", "1.2K").
+ */
+export function formatCellHp(hp: number): string {
+  const clean = Math.max(1, Math.ceil(hp));
+  if (clean >= 10000) return `${(clean / 1000).toFixed(0)}K`;
+  if (clean >= 1000) return `${(clean / 1000).toFixed(1)}K`;
+  return String(clean);
+}
+
+/**
+ * Draws a Cell Survivor-style numbered glossy cellular capsule segment or specialized head crest.
+ * Every segment renders as a vibrant cellular orb with its current HP boldly displayed in the center.
  */
 export function drawVectorSegment(
   ctx: CanvasRenderingContext2D,
@@ -155,6 +379,8 @@ export function drawVectorSegment(
   const clampedHp = Math.max(0, Math.min(1, Number.isFinite(hpRatio) ? hpRatio : 1));
   const enraged = options.enraged ?? false;
   const stunned = options.stunned ?? false;
+  const slowed = options.slowed ?? false;
+  const hitFlash = options.hitFlash ?? 0;
   const t = options.time ?? 0;
 
   // Stun vibration jitter
@@ -164,44 +390,76 @@ export function drawVectorSegment(
     ctx.translate(jitterX, jitterY);
   }
 
+  // Hit squash-and-stretch pulse
+  if (hitFlash > 0) {
+    const k = Math.min(1, hitFlash / 0.14);
+    const sx = 1 + k * 0.18;
+    const sy = 1 - k * 0.12;
+    ctx.scale(sx, sy);
+  }
+
   // 1. Ground contact shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
   ctx.beginPath();
-  ctx.ellipse(0, r * 0.65, r * 0.85, r * 0.28, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, r * 0.68, r * 0.88, r * 0.3, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  const baseColor = enraged ? '#ff2222' : slowed ? '#38bdf8' : getKindColor(kind);
 
   if (!isHead) {
     // ----------------------------------------------------
-    // Body Segment: Bioluminescent Capsule with Neon Joint
+    // Body Segment: Glossy Numbered Cell Survivor Capsule
     // ----------------------------------------------------
-    const baseColor = getKindColor(kind);
-
-    // Outer bioluminescent shell
+    // Outer cellular membrane glow
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#090d16';
+    ctx.fillStyle = hitFlash > 0 ? '#ffffff' : '#090d16';
     ctx.fill();
 
-    // Circuit glow ring
-    ctx.strokeStyle = baseColor;
-    ctx.lineWidth = 2.2;
+    // Rich cellular cytoplasm radial fill
+    if (hitFlash <= 0) {
+      const innerGrad = ctx.createRadialGradient(-r * 0.25, -r * 0.25, r * 0.1, 0, 0, r);
+      innerGrad.addColorStop(0, hexWithAlpha(baseColor, 0.92));
+      innerGrad.addColorStop(0.65, hexWithAlpha(baseColor, 0.48));
+      innerGrad.addColorStop(1, '#090d16');
+      ctx.fillStyle = innerGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Crisp outer cell wall ring + HP progress rim
+    ctx.strokeStyle = hitFlash > 0 ? '#ffffff' : baseColor;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Inner core tech fill
-    const innerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.7);
-    innerGrad.addColorStop(0, hexWithAlpha(baseColor, 0.85));
-    innerGrad.addColorStop(0.65, hexWithAlpha(baseColor, 0.25));
-    innerGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = innerGrad;
+    // Glossy specular crescent highlight (top-left)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.beginPath();
-    ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2);
+    ctx.ellipse(-r * 0.28, -r * 0.32, r * 0.42, r * 0.2, -0.45, 0, Math.PI * 2);
     ctx.fill();
 
-    // Joint connection pin
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(2, r * 0.22), 0, Math.PI * 2);
-    ctx.fill();
+    // Render HP number boldly inside the center of the cell
+    if (options.hpValue !== undefined && options.hpValue > 0) {
+      const hpText = formatCellHp(options.hpValue);
+      const fontSize = Math.max(8, Math.min(12, Math.round(r * (hpText.length >= 4 ? 0.68 : 0.78))));
+      ctx.font = `900 ${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(2, 6, 23, 0.92)';
+      ctx.lineWidth = 2.8;
+      ctx.strokeText(hpText, 0, 0.5);
+      ctx.fillStyle = hitFlash > 0 ? '#0f172a' : '#ffffff';
+      ctx.fillText(hpText, 0, 0.5);
+    } else {
+      // Fallback nucleus dot when hpValue is not provided
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(2, r * 0.22), 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Stun electricity arcs if active
     if (stunned) {
@@ -209,39 +467,42 @@ export function drawVectorSegment(
     }
   } else {
     // ----------------------------------------------------
-    // Head Segment: Vector Crests per Corporate Archetype
+    // Head Segment: Vector Crests + Numbered Core Badge
     // ----------------------------------------------------
-    const primaryColor = enraged ? '#ff2222' : getKindColor(kind);
+    const primaryColor = baseColor;
 
     // Boss warning aura / Threat ring
     if (kind === 'bossMid' || kind === 'exec' || kind === 'president') {
       ctx.save();
       ctx.beginPath();
       ctx.arc(0, 0, r + 5 + Math.sin(t * 8) * 2, 0, Math.PI * 2);
-      ctx.strokeStyle = enraged ? 'rgba(239, 68, 68, 0.8)' : hexWithAlpha(primaryColor, 0.6);
+      ctx.strokeStyle = enraged ? 'rgba(239, 68, 68, 0.85)' : hexWithAlpha(primaryColor, 0.65);
       ctx.lineWidth = 2.5;
       if (ctx.setLineDash) ctx.setLineDash([4, 4]);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Head base capsule body
+    // Head base cellular body
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = hitFlash > 0 ? '#ffffff' : '#0f172a';
     ctx.fill();
-    ctx.strokeStyle = primaryColor;
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = hitFlash > 0 ? '#ffffff' : primaryColor;
+    ctx.lineWidth = 2.8;
     ctx.stroke();
 
     // Glowing core gradient
-    const headGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.85);
-    headGrad.addColorStop(0, hexWithAlpha(primaryColor, 0.4));
-    headGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = headGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
-    ctx.fill();
+    if (hitFlash <= 0) {
+      const headGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, 1, 0, 0, r * 0.92);
+      headGrad.addColorStop(0, hexWithAlpha(primaryColor, 0.72));
+      headGrad.addColorStop(0.7, hexWithAlpha(primaryColor, 0.28));
+      headGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = headGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Draw unique vector head crest
     drawHeadCrest(ctx, kind, r, primaryColor, t, enraged);
@@ -249,10 +510,24 @@ export function drawVectorSegment(
     // Mini health arc on top of head
     if (clampedHp < 1.0) {
       ctx.beginPath();
-      ctx.arc(0, 0, r + 2.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clampedHp);
+      ctx.arc(0, 0, r + 2.8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clampedHp);
       ctx.strokeStyle = clampedHp > 0.4 ? '#22c55e' : '#ef4444';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.2;
       ctx.stroke();
+    }
+
+    // Bold HP number inside the head cell
+    if (options.hpValue !== undefined && options.hpValue > 0) {
+      const hpText = formatCellHp(options.hpValue);
+      const fontSize = Math.max(9, Math.min(13, Math.round(r * (hpText.length >= 4 ? 0.66 : 0.76))));
+      ctx.font = `900 ${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(2, 6, 23, 0.95)';
+      ctx.lineWidth = 3.2;
+      ctx.strokeText(hpText, 0, 1);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText(hpText, 0, 1);
     }
 
     // Stun electricity arcs
@@ -647,12 +922,11 @@ export function drawVectorChest(
 }
 
 // ==========================================
-// 4. Holographic Defense Drones (Orbitals)
+// 4. Rotating Plasma Saws (Orbitals)
 // ==========================================
 
 /**
- * Draws a stylized holographic defense drone / rotating energy card.
- * Replaces legacy orbital emojis with high-tech orbiting drones.
+ * Draws a Cell Survivor-style rotating plasma saw / holographic cutter drone.
  */
 export function drawVectorOrbital(
   ctx: CanvasRenderingContext2D,
@@ -662,15 +936,22 @@ export function drawVectorOrbital(
 ): void {
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(angle);
+  ctx.rotate(angle * 2.2);
 
-  // 1. Drone diamond fuselage
-  const s = 9.5;
+  const outerR = 11.5;
+  const innerR = 7.2;
+  const teeth = 6;
+
+  // 1. Saw blade outer plasma teeth
   ctx.beginPath();
-  ctx.moveTo(s * 1.2, 0);
-  ctx.lineTo(0, -s * 0.7);
-  ctx.lineTo(-s * 0.8, 0);
-  ctx.lineTo(0, s * 0.7);
+  for (let i = 0; i < teeth; i++) {
+    const a1 = (i * Math.PI * 2) / teeth;
+    const aMid = a1 + Math.PI / teeth;
+    const a2 = ((i + 1) * Math.PI * 2) / teeth;
+    if (i === 0) ctx.moveTo(Math.cos(a1) * innerR, Math.sin(a1) * innerR);
+    ctx.lineTo(Math.cos(aMid - 0.14) * outerR, Math.sin(aMid - 0.14) * outerR);
+    ctx.lineTo(Math.cos(a2) * innerR, Math.sin(a2) * innerR);
+  }
   ctx.closePath();
   ctx.fillStyle = '#0f172a';
   ctx.fill();
@@ -678,29 +959,17 @@ export function drawVectorOrbital(
   ctx.lineWidth = 1.8;
   ctx.stroke();
 
-  // 2. Wing energy card fins
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.5;
+  // 2. Inner golden energy ring
   ctx.beginPath();
-  ctx.moveTo(-s * 0.2, -s * 0.7);
-  ctx.lineTo(-s * 0.9, -s * 1.2);
-  ctx.moveTo(-s * 0.2, s * 0.7);
-  ctx.lineTo(-s * 0.9, s * 1.2);
+  ctx.arc(0, 0, 5.2, 0, Math.PI * 2);
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.6;
   ctx.stroke();
 
-  // 3. Glowing central energy core
+  // 3. Glowing central plasma core
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 4. Rear thruster flame
-  ctx.fillStyle = '#38bdf8';
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.8, -2);
-  ctx.lineTo(-s * 1.5, 0);
-  ctx.lineTo(-s * 0.8, 2);
-  ctx.closePath();
+  ctx.arc(0, 0, 2.6, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -747,7 +1016,7 @@ export function drawVectorLaser(
 }
 
 /**
- * Draws player fired projectile bolts.
+ * Draws Cell Survivor-style glowing energy capsule projectiles with plasma tail.
  */
 export function drawVectorProjectile(
   ctx: CanvasRenderingContext2D,
@@ -763,29 +1032,40 @@ export function drawVectorProjectile(
   const angle = Math.atan2(vy, vx);
   ctx.rotate(angle);
 
-  const len = crit ? 18 : 14;
-  const h = crit ? 4 : 3;
+  const len = crit ? 22 : 16;
+  const h = crit ? 4.8 : 3.6;
 
-  // Additive laser bolt
+  // Additive plasma capsule bolt
   ctx.globalCompositeOperation = 'lighter';
 
-  // Outer glow
+  // Trailing wake
+  ctx.strokeStyle = crit ? 'rgba(245, 158, 11, 0.45)' : 'rgba(56, 189, 248, 0.42)';
+  ctx.lineWidth = h * 1.4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.85, 0);
+  ctx.lineTo(len * 0.35, 0);
+  ctx.stroke();
+
+  // Outer energy capsule
   ctx.fillStyle = crit ? '#f59e0b' : '#38bdf8';
   ctx.beginPath();
-  ctx.moveTo(len * 0.5, 0);
-  ctx.lineTo(-len * 0.5, -h);
-  ctx.lineTo(-len * 0.3, 0);
-  ctx.lineTo(-len * 0.5, h);
+  ctx.moveTo(len * 0.55, 0);
+  ctx.lineTo(len * 0.15, -h);
+  ctx.lineTo(-len * 0.5, -h * 0.75);
+  ctx.lineTo(-len * 0.32, 0);
+  ctx.lineTo(-len * 0.5, h * 0.75);
+  ctx.lineTo(len * 0.15, h);
   ctx.closePath();
   ctx.fill();
 
-  // Hot inner core
+  // Hot white inner core
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(len * 0.45, 0);
-  ctx.lineTo(-len * 0.3, -h * 0.5);
-  ctx.lineTo(-len * 0.15, 0);
-  ctx.lineTo(-len * 0.3, h * 0.5);
+  ctx.moveTo(len * 0.48, 0);
+  ctx.lineTo(len * 0.1, -h * 0.48);
+  ctx.lineTo(-len * 0.25, 0);
+  ctx.lineTo(len * 0.1, h * 0.48);
   ctx.closePath();
   ctx.fill();
 

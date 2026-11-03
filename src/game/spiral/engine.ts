@@ -20,10 +20,11 @@ import {
   drawVectorOrbital,
   drawVectorLaser,
   drawVectorProjectile,
-  drawVectorMemoProjectile,
   drawVectorExecutiveBarrier,
   drawVectorReticle,
   drawVectorChest,
+  drawSpiralTrackRail,
+  drawCellularSynapseLinks,
 } from './vectorRenderer';
 
 /* ---------------- public types ---------------- */
@@ -52,6 +53,13 @@ export interface HudSnapshot {
   waveSpawnTotal: number;
   /** true during the short post-wave "回収" interlude (drops are vacuumed in) */
   clearing: boolean;
+  /** Rolling 1.5s live DPS and run peak DPS */
+  dps?: number;
+  peakDps?: number;
+  /** Game speed multiplier (1x or 2x) */
+  speedScale?: 1 | 2;
+  /** Active + queued segment count */
+  segsRemaining?: number;
 }
 
 export type UpgradeRarity = 'common' | 'rare' | 'epic';
@@ -113,6 +121,7 @@ interface Seg {
   hp: number; maxHp: number;
   radius: number;
   hitCd: number; orbCd: number;
+  flashT?: number;
 }
 
 interface BossState {
@@ -148,6 +157,7 @@ interface Chain {
   segRadius: number; boss: boolean;
   name: string;
   stunT: number;
+  slowT?: number;
   bossState: BossState;
 }
 
@@ -175,7 +185,7 @@ const CHEST_AUTO_OPEN_R = 64;
 const CLEAR_INTERLUDE_SEC = 1.15;
 /** Coins granted per unopened chest converted at wave end. */
 const CHEST_CONVERT_COINS = 40;
-interface BeamFx { x2: number; y2: number; t: number }
+interface BeamFx { x1?: number; y1?: number; x2: number; y2: number; t: number; color?: string; width?: number }
 interface Ring { x: number; y: number; r: number; maxR: number; t: number; dur: number; color: string }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 
@@ -229,6 +239,7 @@ export class SpiralEngine {
   private phase: 'build' | 'wave' | 'over' = 'build';
   private over = false;
   private endless = false;
+  private speedScale: 1 | 2 = 1;
 
   private diff = DIFFICULTIES.normal;
   private stage = STAGES.hq;
@@ -287,6 +298,11 @@ export class SpiralEngine {
   private clearStampT = 0;
   /** coin pickup flash on the core */
   private coreFlashT = 0;
+  /** turret muzzle flash timer */
+  private muzzleFlashT = 0;
+  /** rolling 1.5s damage window for live DPS telemetry */
+  private dmgHistory: Array<{ t: number; dmg: number }> = [];
+  private peakDps = 0;
 
   // Commercial juice integration
   private shake: TraumaScreenShake = new TraumaScreenShake({ maxOffset: 16, maxAngle: 0.04, decayRate: 1.5 });
@@ -351,7 +367,8 @@ export class SpiralEngine {
     this.currentChoices = [];
     this.clearT = 0; this.waveSpawnTotal = 0;
     this.bossIntroT = 0; this.bossIntroName = '';
-    this.clearStampT = 0; this.coreFlashT = 0;
+    this.clearStampT = 0; this.coreFlashT = 0; this.muzzleFlashT = 0;
+    this.dmgHistory = []; this.peakDps = 0;
     this.hudT = 0;
     this.shake.reset();
     this.hitstop.reset();
@@ -368,14 +385,15 @@ export class SpiralEngine {
 
   private loop = (now: number, gen: number): void => {
     if (gen !== this.activeGen || this.destroyed) return;
-    const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
+    const rawDt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
     this.last = now;
+    const dt = rawDt * this.speedScale;
 
     // HitStop micro-freeze check
-    const { frozen } = this.hitstop.update(dt);
+    const { frozen } = this.hitstop.update(rawDt);
     if (frozen) {
       // Hitstop micro-freeze: update screen shake and render impact frame
-      this.shake.update(dt);
+      this.shake.update(rawDt);
       this.render();
       this.raf = safeRaf((n) => this.loop(n, gen));
       return;
@@ -385,11 +403,11 @@ export class SpiralEngine {
     else if (!this.paused && !this.over && this.phase === 'build') this.updateBuildFx(dt);
     else if (!this.paused && this.over) this.updateOverFx(dt);
 
-    this.shake.update(dt);
+    this.shake.update(rawDt);
     this.dmgNumbers.update(dt);
     this.render();
 
-    this.hudT += dt;
+    this.hudT += rawDt;
     if (this.hudT >= 0.12) { this.hudT = 0; this.emitHud(); }
     this.raf = safeRaf((n) => this.loop(n, gen));
   };
@@ -415,6 +433,13 @@ export class SpiralEngine {
   }
 
   setPaused(p: boolean): void { this.paused = p; }
+  setSpeed(scale: 1 | 2): void {
+    this.speedScale = scale;
+    this.emitHud();
+  }
+  getSpeed(): 1 | 2 {
+    return this.speedScale;
+  }
   setMove(x: number, y: number): void { this.moveX = x; this.moveY = y; }
   /** Aim at a world point (player stays center-fixed). */
   setAim(x: number, y: number): void {
@@ -709,6 +734,7 @@ export class SpiralEngine {
     if (this.bossIntroT > 0) this.bossIntroT = Math.max(0, this.bossIntroT - dt);
     if (this.clearStampT > 0) this.clearStampT = Math.max(0, this.clearStampT - dt);
     if (this.coreFlashT > 0) this.coreFlashT = Math.max(0, this.coreFlashT - dt);
+    if (this.muzzleFlashT > 0) this.muzzleFlashT = Math.max(0, this.muzzleFlashT - dt);
   }
 
   /** Wave defeated: clear hazards and start sucking every remaining drop into the core. */
@@ -828,13 +854,17 @@ export class SpiralEngine {
       }
 
       c.wobble += dt * 2;
+      if (c.slowT && c.slowT > 0) {
+        c.slowT = Math.max(0, c.slowT - dt);
+      }
+      const speedMul = c.slowT && c.slowT > 0 ? 0.55 : 1;
 
       // Spiral contraction — smooth continuous descent
       // Avoid endless orbit clamping at center core:
       // When radius reaches core threshold (<= 28), initiate direct breach assault!
       if (c.r > 24) {
-        c.r = Math.max(16, c.r - c.shrink * dt);
-        c.theta += c.angular * c.dir * dt;
+        c.r = Math.max(16, c.r - c.shrink * speedMul * dt);
+        c.theta += c.angular * speedMul * c.dir * dt;
       }
 
       const rEff = c.r + Math.sin(c.wobble) * 10;
@@ -850,8 +880,8 @@ export class SpiralEngine {
         const bdy = this.py - head.y;
         const bd = Math.hypot(bdx, bdy);
         if (bd > 1) {
-          head.x += (bdx / bd) * (c.shrink * 1.6) * dt;
-          head.y += (bdy / bd) * (c.shrink * 1.6) * dt;
+          head.x += (bdx / bd) * (c.shrink * 1.6 * speedMul) * dt;
+          head.y += (bdy / bd) * (c.shrink * 1.6 * speedMul) * dt;
         }
       } else {
         // Smooth spiral guidance with gentle homing (14%)
@@ -861,6 +891,7 @@ export class SpiralEngine {
 
       if (head.hitCd > 0) head.hitCd -= dt;
       if (head.orbCd > 0) head.orbCd -= dt;
+      if (head.flashT && head.flashT > 0) head.flashT = Math.max(0, head.flashT - dt);
 
       // Distance-Verlet Follow Physics (No rigid step clamp!)
       // Segments maintain continuous distance constraint without rubber-banding or detaching
@@ -870,6 +901,7 @@ export class SpiralEngine {
         const prev = c.segs[i - 1];
         if (s.hitCd > 0) s.hitCd -= dt;
         if (s.orbCd > 0) s.orbCd -= dt;
+        if (s.flashT && s.flashT > 0) s.flashT = Math.max(0, s.flashT - dt);
 
         const fdx = prev.x - s.x;
         const fdy = prev.y - s.y;
@@ -926,10 +958,10 @@ export class SpiralEngine {
   }
 
   /**
-   * Updates boss-specific attack patterns:
-   * - Wave 5 (課長): Urgent memo spread barrage & enrage state under 50% HP
-   * - Wave 10 (役員): Sweeping conference laser & rotation direction reversal
-   * - Wave 15 (社長): Golden executive barrier, minion chain summon & radial shockwaves
+   * Updates boss-specific gimmicks (Cell Survivor style — ZERO enemy projectiles or ranged player damage!):
+   * - Wave 5 (課長): Enrage speed surge under 50% HP + periodic crimson reinforcement aura pulse
+   * - Wave 10 (役員): Rotation direction reversal + non-damaging conference scanner haste surge
+   * - Wave 15 (社長): Golden executive frontal barrier, minion chain summons & non-damaging imperial roar
    */
   private updateBossGimmicks(c: Chain, _ci: number, dt: number): void {
     const head = c.segs[0];
@@ -943,7 +975,7 @@ export class SpiralEngine {
     const hpRatio = maxHp > 0 ? currentHp / maxHp : 0;
 
     // ==========================================
-    // Wave 5: 課長 (bossMid) — Memo Spread & Enrage
+    // Wave 5: 課長 (bossMid) — Enrage & Reinforcement Aura (No Projectiles!)
     // ==========================================
     if (c.kind === 'bossMid') {
       // Enrage check at 50% HP
@@ -951,33 +983,30 @@ export class SpiralEngine {
         b.enraged = true;
         c.angular *= 1.35;
         this.shake.addTrauma(0.45);
-        this.ev.onBanner('課長激怒モード！', '「本日中必着だ！！」連射速度上昇！');
+        this.ev.onBanner('課長激怒モード！', '進行速度上昇＆督促オーラ発動！');
       }
 
       b.memoCd -= dt;
-      const memoInterval = b.enraged ? 1.7 : 3.0;
+      const auraInterval = b.enraged ? 1.8 : 3.0;
       if (b.memoCd <= 0) {
-        b.memoCd = memoInterval;
-        const memoCount = b.enraged ? 7 : 5;
-        const baseAngle = Math.atan2(this.py - head.y, this.px - head.x);
-        for (let i = 0; i < memoCount; i++) {
-          const spread = (i - (memoCount - 1) / 2) * 0.15;
-          const a = baseAngle + spread;
-          const speed = b.enraged ? 240 : 200;
-          this.bossProjs.push({
-            x: head.x, y: head.y,
-            vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-            dmg: 10, radius: 7, life: 2.4,
-            kind: 'memo',
-          });
+        b.memoCd = auraInterval;
+        // Non-damaging visual督促オーラ ring that reinforces body segments slightly
+        this.rings.push({
+          x: head.x, y: head.y,
+          r: 12, maxR: 92,
+          t: 0, dur: 0.45,
+          color: '239,68,68',
+        });
+        for (let i = 1; i < c.segs.length; i++) {
+          const seg = c.segs[i];
+          seg.hp = Math.min(seg.maxHp, seg.hp + (b.enraged ? 4 : 2));
         }
-        this.sound.shoot();
         this.burst(head.x, head.y, '#ef4444', 8, 140);
       }
     }
 
     // ==========================================
-    // Wave 10: 役員 (exec) — Sweeping Laser & Reversal
+    // Wave 10: 役員 (exec) — Reversal & Scanner Haste Surge (No Ranged Damage!)
     // ==========================================
     if (c.kind === 'exec') {
       // Rotation direction reversal
@@ -990,11 +1019,11 @@ export class SpiralEngine {
         this.ev.onBanner('役員会議 方針転換！', '業務の旋回方向が逆転した！');
       }
 
-      // Sweeping conference laser
+      // Non-damaging visual scanner / haste surge
       b.laserCooldown -= dt;
       if (b.laserCooldown <= 0 && !b.laserCharging && !b.laserFiring) {
         b.laserCharging = true;
-        b.laserTelegraphT = 1.5; // 1.5s telegraph warning
+        b.laserTelegraphT = 1.5;
       }
 
       if (b.laserCharging) {
@@ -1006,6 +1035,12 @@ export class SpiralEngine {
           b.laserDuration = 1.4;
           b.laserAngle -= 0.65;
           b.laserSweepSpeed = 1.15;
+          this.rings.push({
+            x: head.x, y: head.y,
+            r: 14, maxR: 120,
+            t: 0, dur: 0.5,
+            color: '220,38,38',
+          });
           this.sound.boss();
         }
       }
@@ -1013,17 +1048,9 @@ export class SpiralEngine {
       if (b.laserFiring) {
         b.laserDuration -= dt;
         b.laserAngle += b.laserSweepSpeed * dt;
-
-        // Check swept line intersection with player core
-        const laserLen = 380;
-        const lx1 = head.x; const ly1 = head.y;
-        const lx2 = head.x + Math.cos(b.laserAngle) * laserLen;
-        const ly2 = head.y + Math.sin(b.laserAngle) * laserLen;
-
-        const distToPlayer = distToSegment(this.px, this.py, lx1, ly1, lx2, ly2);
-        if (distToPlayer < 18 && this.iframes <= 0) {
-          this.damagePlayer(16);
-          this.shake.addTrauma(0.5);
+        // Haste surge: advances slightly faster along the spiral during scan (zero ranged player damage!)
+        if (c.r > 26) {
+          c.r = Math.max(24, c.r - c.shrink * 0.35 * dt);
         }
 
         if (b.laserDuration <= 0) {
@@ -1034,7 +1061,7 @@ export class SpiralEngine {
     }
 
     // ==========================================
-    // Wave 15: 社長 (president) — Golden Barrier, Minions & Radial Shockwaves
+    // Wave 15: 社長 (president) — Golden Barrier, Minions & Imperial Roar (No Ranged Damage!)
     // ==========================================
     if (c.kind === 'president') {
       // Align frontal executive barrier
@@ -1057,11 +1084,11 @@ export class SpiralEngine {
         this.ev.onBanner('社長「総力戦だ！！」', '追加護衛部隊が突入！');
       }
 
-      // Radial Shockwaves
+      // Non-damaging Radial Imperial Roar Shockwave
       b.shockwaveCd -= dt;
       if (b.shockwaveCd <= 0 && !b.shockwaveCharging) {
         b.shockwaveCharging = true;
-        b.shockwaveTelegraphT = 1.5; // 1.5s telegraph warning
+        b.shockwaveTelegraphT = 1.5;
       }
 
       if (b.shockwaveCharging) {
@@ -1069,21 +1096,18 @@ export class SpiralEngine {
         if (b.shockwaveTelegraphT <= 0) {
           b.shockwaveCharging = false;
           b.shockwaveCd = 6.8;
-          // Unleash radial shockwave!
+          // Visual gold shockwave roar + slight advance surge (zero ranged player damage!)
           this.rings.push({
             x: head.x, y: head.y,
             r: 10, maxR: 340,
             t: 0, dur: 0.9,
             color: '251,191,36',
           });
-          this.shake.addTrauma(0.65);
-          this.sound.boss();
-
-          // Shockwave deals damage if player is within blast wave radius without iframes
-          const distToHead = Math.hypot(this.px - head.x, this.py - head.y);
-          if (distToHead < 180 && this.iframes <= 0) {
-            this.damagePlayer(15);
+          if (c.r > 32) {
+            c.r = Math.max(24, c.r - 8);
           }
+          this.shake.addTrauma(0.45);
+          this.sound.boss();
         }
       }
     }
@@ -1129,25 +1153,9 @@ export class SpiralEngine {
     if (this.hp <= 0) this.hp = 0;
   }
 
-  private updateBossProjs(dt: number): void {
-    for (let i = this.bossProjs.length - 1; i >= 0; i--) {
-      const p = this.bossProjs[i];
-      p.life -= dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-
-      // Check collision with player
-      const pr = 16;
-      if (dist2(p.x, p.y, this.px, this.py) < (p.radius + pr) * (p.radius + pr)) {
-        this.damagePlayer(p.dmg);
-        this.bossProjs.splice(i, 1);
-        continue;
-      }
-
-      if (p.life <= 0) {
-        this.bossProjs.splice(i, 1);
-      }
-    }
+  private updateBossProjs(_dt: number): void {
+    // Cell Survivor rule: enemies never shoot projectiles at the player.
+    if (this.bossProjs.length > 0) this.bossProjs.length = 0;
   }
 
   /** Head-preferential targeting: killing the head collapses the chain. */
@@ -1205,14 +1213,15 @@ export class SpiralEngine {
         this.fireCd = 0.1;
       } else {
         this.fireCd = this.interval();
+        this.muzzleFlashT = 0.085;
         const n = this.shotCount();
         for (let i = 0; i < n; i++) {
           if (this.projs.length >= MAX_PROJECTILES) break;
           const a = base + (i - (n - 1) / 2) * 0.13;
           const crit = Math.random() < this.critCh();
           this.projs.push({
-            x: this.px, y: this.py,
-            vx: Math.cos(a) * 540, vy: Math.sin(a) * 540,
+            x: this.px + Math.cos(a) * 16, y: this.py + Math.sin(a) * 16,
+            vx: Math.cos(a) * 580, vy: Math.sin(a) * 580,
             dmg: this.shotDmg() * (crit ? 2 : 1), radius: 6,
             pierce: this.pierce(), life: 1.2, crit, hit: new Set(),
           });
@@ -1224,7 +1233,7 @@ export class SpiralEngine {
     // orbitals
     const orbN = this.orbN();
     if (orbN > 0) {
-      this.orbAngle += dt * 2.6;
+      this.orbAngle += dt * 2.8;
       const R = this.orbR();
       const dmg = this.orbDmg();
       for (let i = 0; i < orbN; i++) {
@@ -1254,15 +1263,16 @@ export class SpiralEngine {
       }
     }
 
-    // blast
+    // blast (AOE cryo/EMP shockwave — damages, pushes chains back slightly & slows advance!)
     if (this.levels.blast > 0) {
       this.blastCd -= dt;
       if (this.blastCd <= 0) {
         this.blastCd = 3.2;
         const R = this.blastR();
         const dmg = this.blastDmg();
-        this.rings.push({ x: this.px, y: this.py, r: 20, maxR: R, t: 0, dur: 0.35, color: '251,146,60' });
-        this.burst(this.px, this.py, '#fb923c', 14, 220);
+        this.rings.push({ x: this.px, y: this.py, r: 20, maxR: R, t: 0, dur: 0.35, color: '56,189,248' });
+        this.rings.push({ x: this.px, y: this.py, r: 10, maxR: R * 0.85, t: 0, dur: 0.3, color: '251,146,60' });
+        this.burst(this.px, this.py, '#38bdf8', 16, 240);
         for (const ch of this.chests) {
           if (ch.taken) continue;
           if (dist2(this.px, this.py, ch.x, ch.y) < (R + 20) * (R + 20)) {
@@ -1275,19 +1285,25 @@ export class SpiralEngine {
         }
         for (let ci = this.chains.length - 1; ci >= 0; ci--) {
           const c = this.chains[ci];
+          let chainHit = false;
           for (let si = c.segs.length - 1; si >= 0; si--) {
             const s = c.segs[si];
             if (dist2(this.px, this.py, s.x, s.y) < (R + s.radius) * (R + s.radius)) {
+              chainHit = true;
               this.damageSeg(c, ci, si, dmg, 260, this.px, this.py, false);
               if (this.phase !== 'wave') return;
             }
+          }
+          if (chainHit && this.chains.includes(c)) {
+            c.slowT = Math.max(c.slowT ?? 0, 1.1);
+            c.r = Math.min(ARENA_R, c.r + 10);
           }
         }
         this.sound.hit();
       }
     }
 
-    // beam
+    // beam (High-energy rail-beam + chain lightning arcs to nearby segments!)
     if (this.levels.beam > 0) {
       this.beamCd -= dt;
       if (this.beamCd <= 0) {
@@ -1296,8 +1312,33 @@ export class SpiralEngine {
           this.beamCd = 0.3;
         } else {
           this.beamCd = Math.max(2.2, 4.6 - 0.35 * this.levels.beam);
-          this.beams.push({ x2: tgt.seg.x, y2: tgt.seg.y, t: 0.4 });
+          const tx = tgt.seg.x;
+          const ty = tgt.seg.y;
+          this.beams.push({ x1: this.px, y1: this.py, x2: tx, y2: ty, t: 0.4, color: '#fbbf24', width: 4.5 });
           this.damageSeg(tgt.chain, tgt.ci, tgt.si, this.beamDmg(), 200, this.px, this.py, false);
+          // Chain lightning arcs to up to (1 + beamLv) nearby segments
+          if (this.phase === 'wave') {
+            let prevX = tx;
+            let prevY = ty;
+            const maxArcs = Math.min(4, this.levels.beam);
+            const chainDmg = this.beamDmg() * 0.45;
+            for (let arc = 0; arc < maxArcs && this.chains.length > 0; arc++) {
+              const c = this.chains[arc % this.chains.length];
+              if (!c || c.segs.length === 0) continue;
+              const segIdx = Math.min(c.segs.length - 1, arc + 1);
+              const arcSeg = c.segs[segIdx];
+              if (!arcSeg || (arcSeg.x === prevX && arcSeg.y === prevY)) continue;
+              this.beams.push({
+                x1: prevX, y1: prevY,
+                x2: arcSeg.x, y2: arcSeg.y,
+                t: 0.32, color: '#38bdf8', width: 2.8,
+              });
+              prevX = arcSeg.x;
+              prevY = arcSeg.y;
+              this.damageSeg(c, this.chains.indexOf(c), segIdx, chainDmg, 90, this.px, this.py, false);
+              if (this.phase !== 'wave') break;
+            }
+          }
           this.sound.hit();
         }
       }
@@ -1475,6 +1516,10 @@ export class SpiralEngine {
     }
 
     s.hp -= dmg;
+    s.flashT = 0.14;
+    if (dmg > 0) {
+      this.dmgHistory.push({ t: this.runTime, dmg });
+    }
     this.dmgNumbers.spawn(s.x + rand(-6, 6), s.y - s.radius - 2, Math.round(dmg), crit ? 'crit' : 'normal');
     this.sound.hit();
 
@@ -1782,20 +1827,41 @@ export class SpiralEngine {
     this.ev.onGameOver(result);
   }
 
+  private computeDps(): { dps: number; peakDps: number } {
+    const windowSec = 1.5;
+    const cutoff = this.runTime - windowSec;
+    while (this.dmgHistory.length > 0 && this.dmgHistory[0].t < cutoff) {
+      this.dmgHistory.shift();
+    }
+    let total = 0;
+    for (let i = 0; i < this.dmgHistory.length; i++) {
+      total += this.dmgHistory[i].dmg;
+    }
+    const dps = Math.round(total / windowSec);
+    if (dps > this.peakDps) this.peakDps = dps;
+    return { dps, peakDps: this.peakDps };
+  }
+
   private emitHud(): void {
     let bossName = '';
     let bossHp = 0;
     let bossMax = 0;
+    let liveSegs = 0;
     for (const c of this.chains) {
+      liveSegs += c.segs.length;
       if (c.boss && c.segs[0] && c.segs[0].hp > 0) {
         bossName = c.name;
         let hp = 0; let max = 0;
         for (const s of c.segs) { hp += Math.max(0, s.hp); max += s.maxHp; }
         bossHp = Math.ceil(hp);
         bossMax = Math.ceil(max);
-        break;
       }
     }
+    let queuedSegs = 0;
+    for (const q of this.queue) {
+      queuedSegs += CHAINS[q.kind]?.segs ?? 5;
+    }
+    const { dps, peakDps } = this.computeDps();
     const checkWave = this.phase === 'build' && !this.buildFromChest ? this.wave + 1 : Math.max(1, this.wave);
     const bossWave = bossMax > 0 || wavePlan(checkWave).some((p) => CHAINS[p.kind].boss);
     this.ev.onHud({
@@ -1820,6 +1886,10 @@ export class SpiralEngine {
       bossWave,
       waveSpawnTotal: Math.max(1, this.waveSpawnTotal),
       clearing: this.clearT > 0,
+      dps,
+      peakDps,
+      speedScale: this.speedScale,
+      segsRemaining: liveSegs + queuedSegs,
     });
   }
 
@@ -1857,15 +1927,19 @@ export class SpiralEngine {
       ctx.lineTo(CENTER + Math.cos(a) * ARENA_R, CENTER + Math.sin(a) * ARENA_R);
       ctx.stroke();
     }
+
+    // 1.5 Cell Survivor Visible Spiral Track Rail & Danger Perimeter Zone
+    drawSpiralTrackRail(ctx, CENTER, CENTER, ARENA_R, this.runTime);
+
     // Arena border
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.arc(CENTER, CENTER, ARENA_R, 0, Math.PI * 2);
     ctx.stroke();
 
     // Inner core defense perimeter ring
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.28)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.24)';
     if (ctx.setLineDash) ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(CENTER, CENTER, MOVE_R, 0, Math.PI * 2);
@@ -1912,10 +1986,19 @@ export class SpiralEngine {
       ctx.stroke();
     }
 
-    // 4. Laser Beams (Additive Blend)
+    // 4. Laser Beams & Chain Lightning Arcs (Additive Blend)
     for (const b of this.beams) {
       const alpha = Math.max(0, b.t / 0.4);
-      drawVectorLaser(ctx, this.px, this.py, b.x2, b.y2, 4, '#fbbf24', alpha);
+      drawVectorLaser(
+        ctx,
+        b.x1 ?? this.px,
+        b.y1 ?? this.py,
+        b.x2,
+        b.y2,
+        b.width ?? 4,
+        b.color ?? '#fbbf24',
+        alpha
+      );
     }
 
     // 5. Boss Attack Telegraphs & Gimmicks
@@ -1925,10 +2008,10 @@ export class SpiralEngine {
       if (!head) continue;
       const b = c.bossState;
 
-      // Wave 10 Conference Laser Telegraph
+      // Wave 10 Conference Scanner Telegraph
       if (b.laserCharging) {
         ctx.save();
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
         ctx.lineWidth = 1.5;
         if (ctx.setLineDash) ctx.setLineDash([6, 6]);
         ctx.beginPath();
@@ -1938,11 +2021,11 @@ export class SpiralEngine {
         ctx.restore();
       }
 
-      // Wave 10 Conference Laser Active Sweeping Beam
+      // Wave 10 Conference Scanner Active Beam (Non-damaging visual haste scanner)
       if (b.laserFiring) {
         const lx2 = head.x + Math.cos(b.laserAngle) * 380;
         const ly2 = head.y + Math.sin(b.laserAngle) * 380;
-        drawVectorLaser(ctx, head.x, head.y, lx2, ly2, 7, '#dc2626', 0.95);
+        drawVectorLaser(ctx, head.x, head.y, lx2, ly2, 5, '#dc2626', 0.75);
       }
 
       // Wave 15 Executive Barrier
@@ -1962,18 +2045,10 @@ export class SpiralEngine {
       }
     }
 
-    // 6. Chains & Segments (Tail to Head, with articulated spine links)
+    // 6. Chains & Numbered Cell Segments (Tail to Head, with Cellular Synapse Links)
     for (const c of this.chains) {
       if (c.segs.length > 1) {
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        for (let i = 0; i < c.segs.length; i++) {
-          const s = c.segs[i];
-          if (i === 0) ctx.moveTo(s.x, s.y);
-          else ctx.lineTo(s.x, s.y);
-        }
-        ctx.stroke();
+        drawCellularSynapseLinks(ctx, c.segs, c.kind, this.runTime, c.bossState?.enraged);
       }
       for (let i = c.segs.length - 1; i >= 0; i--) {
         const s = c.segs[i];
@@ -1990,6 +2065,9 @@ export class SpiralEngine {
           {
             enraged: c.bossState?.enraged,
             stunned: c.stunT > 0,
+            slowed: (c.slowT ?? 0) > 0,
+            hpValue: s.hp,
+            hitFlash: s.flashT ?? 0,
             time: this.runTime,
           }
         );
@@ -2017,12 +2095,7 @@ export class SpiralEngine {
       drawVectorProjectile(ctx, p.x, p.y, p.vx, p.vy, p.crit, this.runTime);
     }
 
-    // 8. Boss Urgent Memo Spread Projectiles
-    for (const bp of this.bossProjs) {
-      drawVectorMemoProjectile(ctx, bp.x, bp.y, bp.vx, bp.vy, this.runTime);
-    }
-
-    // 9. Orbitals (Holographic Defense Drones)
+    // 8. Orbitals (Rotating Plasma Saws)
     const orbN = this.orbN();
     if (orbN > 0 && this.hp > 0) {
       const R = this.orbR();
@@ -2034,7 +2107,7 @@ export class SpiralEngine {
       }
     }
 
-    // 10. Player Corporate Reactor Core
+    // 10. Player Corporate Reactor Core & Hyper-Turret
     if (this.hp > 0) {
       const nearest = this.nearestSeg(380);
       const blink = this.iframes > 0 && Math.floor(this.runTime * 14) % 2 === 0;
@@ -2055,7 +2128,7 @@ export class SpiralEngine {
             : nearest
               ? Math.atan2(nearest.seg.y - this.py, nearest.seg.x - this.px)
               : this.runTime * 1.5;
-        drawVectorCore(ctx, this.px, this.py, 16, hpRatio, shieldRatio, aimingAngle);
+        drawVectorCore(ctx, this.px, this.py, 16, hpRatio, shieldRatio, aimingAngle, this.muzzleFlashT);
       }
 
       // Laser Targeting Reticle (manual aim sight or auto-lock on nearest segment)
@@ -2146,15 +2219,6 @@ export class SpiralEngine {
 
     ctx.restore();
   }
-}
-
-// Distance from point to line segment helper
-function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
-  const l2 = dist2(x1, y1, x2, y2);
-  if (l2 === 0) return Math.hypot(px - x1, py - y1);
-  let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
 }
 
 export { UPGRADE_ORDER };

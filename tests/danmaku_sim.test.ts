@@ -169,4 +169,47 @@ describe('DanmakuSim — Item Collection & Combat Mechanics', () => {
     assert.equal(sim.pickups, MAX_IT, 'All items must be auto-collected upon transitioning to next stage');
     assert.equal(sim.items.filter((i) => i.alive).length, 0);
   });
+
+  it('charges HYPER OVERDRIVE via graze/kills/items, converts nearby bullets on activation, and exits safely with bullet conversion on expiration', () => {
+    const sim = new DanmakuSim();
+    sim.reset({ stage: 1, score: 0, lives: 3, weapon: 'rensa', power: 3, difficulty: 'normal' });
+    sim.px = 240;
+    sim.py = 600;
+
+    // Cannot activate before reaching 100%
+    assert.equal(sim.useHyper(), false);
+
+    // Graze a bullet (+3.5 hyper)
+    sim.ebullets[0] = { alive: true, x: 240 + 22, y: 600, vx: 0, vy: 10, big: false, grazed: false };
+    sim.step(1 / 60, { ...IDLE_INPUT, ty: 600 });
+    assert.ok(sim.hyper >= 3.5, 'Grazing should charge hyper gauge');
+
+    // Fill hyper to 100% and place enemy bullets inside and outside the 220px blast radius
+    sim.hyper = 100;
+    sim.ebullets[0] = { alive: true, x: 240, y: 500, vx: 0, vy: 80, big: false, grazed: false }; // 100px away (inside 220px)
+    sim.ebullets[1] = { alive: true, x: 240, y: 420, vx: 0, vy: 80, big: true, grazed: false };  // 180px away (inside 220px)
+    sim.ebullets[2] = { alive: true, x: 240, y: 200, vx: 0, vy: 80, big: false, grazed: false }; // 400px away (outside 220px)
+
+    assert.equal(sim.useHyper(), true, 'useHyper should succeed when hyper is 100%');
+    assert.equal(sim.hyperActive, true);
+    assert.equal(sim.hyperTimer, 7.0);
+    assert.equal(sim.hyper, 0);
+    assert.ok(sim.invuln >= 1.5, 'Activating hyper should grant at least 1.5s invulnerability');
+
+    // Bullets within 220px converted into auto-homing score items; distant bullet remains
+    assert.equal(sim.ebullets[0]!.alive, false, 'Bullet at 100px must be converted');
+    assert.equal(sim.ebullets[1]!.alive, false, 'Bullet at 180px must be converted');
+    assert.equal(sim.ebullets[2]!.alive, true, 'Bullet at 400px should remain active');
+    const homingScoreItems = sim.items.filter((it) => it.alive && it.kind === 'score' && it.magnet);
+    assert.equal(homingScoreItems.length, 2, 'Two enemy bullets should become homing score items');
+
+    // Place a bullet within 140px just before hyperTimer expires (safe exit test)
+    sim.hyperTimer = 0.01;
+    sim.ebullets[3] = { alive: true, x: 240, y: 500, vx: 0, vy: 60, big: false, grazed: false }; // 100px away (inside 140px)
+    sim.step(1 / 30, { ...IDLE_INPUT, ty: 600 });
+
+    assert.equal(sim.hyperActive, false, 'Hyper should end when timer reaches 0');
+    assert.equal(sim.hyperTimer, 0);
+    assert.equal(sim.ebullets[3]!.alive, false, 'Bullet within 140px should be converted on hyper expiration');
+  });
 });

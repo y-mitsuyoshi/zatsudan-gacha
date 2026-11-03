@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ItemId, Job, SquareType } from '@/types/sugoroku';
+import { ItemId, Job, LifeAssetId, SquareType } from '@/types/sugoroku';
 
 interface IconProps {
   className?: string;
@@ -35,7 +35,7 @@ export const SquareTypeIcon: React.FC<{ type: SquareType; className?: string; si
     case 'salary':
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-          <circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity="0.15" />
+          <circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity="0.18" />
           <path d="m9 7 3 4 3-4" />
           <path d="M8 12h8" />
           <path d="M8 15h8" />
@@ -232,6 +232,66 @@ export const ItemIcon: React.FC<{ itemId: ItemId | string; className?: string; s
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="currentColor" fillOpacity="0.15" />
           <path d="M8 9h8" />
           <path d="M8 13h5" />
+        </svg>
+      );
+  }
+};
+
+export const AssetIcon: React.FC<{ assetId: LifeAssetId | string; className?: string; size?: number }> = ({
+  assetId,
+  className = '',
+  size = 18,
+}) => {
+  switch (assetId) {
+    case 'income-fund':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+          <path d="M3 3v18h18" />
+          <path d="m19 9-5 5-4-4-3 3" />
+          <circle cx="19" cy="9" r="2" fill="currentColor" />
+        </svg>
+      );
+    case 'city-condo':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+          <rect x="5" y="2" width="14" height="20" rx="2" fill="currentColor" fillOpacity="0.15" />
+          <path d="M9 6h2M13 6h2M9 10h2M13 10h2M9 14h2M13 14h2M10 22v-4h4v4" />
+        </svg>
+      );
+    case 'side-saas':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+          <rect x="2" y="3" width="20" height="14" rx="2" fill="currentColor" fillOpacity="0.15" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+          <path d="m9 8 2 2 4-4" />
+        </svg>
+      );
+    case 'patent-license':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+          <circle cx="12" cy="8" r="6" fill="currentColor" fillOpacity="0.15" />
+          <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+        </svg>
+      );
+    case 'resort-villa':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+          <path d="m3 12 9-8 9 8" />
+          <path d="M5 10v10h14V10" fill="currentColor" fillOpacity="0.15" />
+          <path d="M2 20c2-1 4-1 6 0s4 1 6 0 4-1 6 0" />
+        </svg>
+      );
+    case 'exec-network':
+    default:
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+          <circle cx="12" cy="5" r="3" />
+          <circle cx="5" cy="19" r="3" />
+          <circle cx="19" cy="19" r="3" />
+          <line x1="10.5" y1="7.5" x2="6.5" y2="16.5" />
+          <line x1="13.5" y1="7.5" x2="17.5" y2="16.5" />
+          <line x1="8" y1="19" x2="16" y2="19" />
         </svg>
       );
   }

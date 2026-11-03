@@ -234,7 +234,7 @@ function WeaponRing({ weaponId, durationLeft }: { weaponId: WeaponId; durationLe
   const frac = isTimed ? Math.max(0, Math.min(1, durationLeft / durationMax)) : 1;
 
   return (
-    <div className="flex items-center gap-2 rounded-md bg-slate-900/90 px-2.5 py-1 border border-slate-700/80">
+    <div className="flex flex-1 min-w-[168px] items-center gap-2 rounded-lg bg-slate-900/95 px-2.5 py-1.5 border border-cyan-500/40 shadow-sm">
       <div className="relative flex h-8 w-8 shrink-0 items-center justify-center text-amber-300">
         <svg className="absolute inset-0 -rotate-90" width="32" height="32">
           <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(148,163,184,0.2)" strokeWidth="2.5" />
@@ -252,11 +252,19 @@ function WeaponRing({ weaponId, durationLeft }: { weaponId: WeaponId; durationLe
         </svg>
         <WeaponSvgIcon weaponId={weaponId} />
       </div>
-      <div className="flex flex-col leading-tight">
-        <span className="text-xs font-black text-slate-100">{w.name}</span>
-        <span className="text-[10px] font-mono text-slate-400">
-          {isTimed ? `残り ${Math.ceil(durationLeft)}秒` : '標準携行'}
-        </span>
+      <div className="flex flex-1 flex-col leading-tight">
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-xs font-black text-white">{w.name}</span>
+          <span className="text-[10px] font-mono font-bold text-amber-300">
+            {isTimed ? `${Math.ceil(durationLeft)}s` : '常時'}
+          </span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-950 border border-slate-700">
+          <div
+            className={`h-full transition-all duration-100 ${isTimed ? 'bg-amber-400' : 'bg-emerald-400'}`}
+            style={{ width: `${frac * 100}%` }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -265,9 +273,14 @@ function WeaponRing({ weaponId, durationLeft }: { weaponId: WeaponId; durationLe
 function RouteTransitMonitor({ hud, courseId }: { hud: HudSnapshot; courseId: CourseId }) {
   const theme = COURSE_THEME[courseId];
   const progressPct = Math.max(0, Math.min(100, ((hud.distTotal - hud.distLeft) / (hud.distTotal || 1)) * 100));
+  const isPositiveGate =
+    hud.lastGate.includes('+') ||
+    hud.lastGate.includes('×') ||
+    hud.lastGate.includes('回復') ||
+    hud.lastGate.includes('反転');
 
   return (
-    <div className="mb-2.5 rounded-lg border border-slate-700/90 bg-[#11161f] p-2.5 shadow-inner">
+    <div className="mb-2.5 rounded-xl border-2 border-slate-700/90 bg-[#0f1520] p-2.5 shadow-[0_6px_20px_rgba(0,0,0,0.5)]">
       {/* Top Station Signboard Strip */}
       <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">
         <div className="flex items-center gap-2">
@@ -302,35 +315,67 @@ function RouteTransitMonitor({ hud, courseId }: { hud: HudSnapshot; courseId: Co
         </div>
       </div>
 
-      {/* Railway Line Track Progress Bar */}
-      <div className="mb-2.5">
-        <div className="mb-1 flex items-center justify-between text-[10px] font-bold">
-          <span className="text-slate-400">出発ホーム</span>
-          <span className="font-mono font-black text-emerald-300">
-            本社ビル改札まで あと {hud.distLeft}m
+      {/* Top Highway Progress Tracker: START (自宅駅) to GOAL (本社ビル) */}
+      <div className="mb-2.5 rounded-lg border border-slate-800 bg-slate-950/80 px-2.5 py-1.5">
+        <div className="mb-1 flex items-center justify-between text-[10px] font-black">
+          <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-cyan-300">START (自宅駅)</span>
+          <span className="font-mono text-xs font-black text-emerald-300">
+            残り {hud.distLeft}m
           </span>
-          <span className="text-amber-300">本社駅</span>
+          <span className="rounded bg-amber-950/90 border border-amber-500/40 px-1.5 py-0.5 font-mono text-amber-300">
+            GOAL (本社ビル)
+          </span>
         </div>
-        <div className="relative h-2.5 w-full rounded-full bg-slate-950 border border-slate-700/80 overflow-hidden">
+        <div className="relative h-3 w-full rounded-full bg-slate-900 border border-slate-700/90 overflow-hidden">
           <div
             className={`h-full transition-all duration-150 ${theme.barClass}`}
             style={{ width: `${progressPct}%` }}
           />
-          {/* Station nodes */}
+          {/* Gate & Boss highway markers */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-1.5">
             {Array.from({ length: hud.totalWaves + 1 }).map((_, idx) => {
+              const isBossNode = idx === hud.totalWaves;
               const nodePct = (idx / Math.max(1, hud.totalWaves)) * 100;
               const passed = progressPct >= nodePct - 1;
               return (
                 <span
                   key={idx}
-                  className={`h-1.5 w-1.5 rounded-full border ${
-                    passed ? 'bg-white border-slate-900' : 'bg-slate-800 border-slate-600'
+                  className={`flex items-center justify-center rounded-full border font-mono text-[7px] font-black ${
+                    isBossNode
+                      ? 'h-3 w-3 bg-red-600 border-amber-300 text-white'
+                      : passed
+                        ? 'h-2 w-2 bg-cyan-300 border-slate-950'
+                        : 'h-2 w-2 bg-slate-800 border-slate-500'
                   }`}
-                />
+                >
+                  {isBossNode ? 'B' : ''}
+                </span>
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Center-Top Squad & Firepower Callouts */}
+      <div className="mb-2.5 grid grid-cols-2 gap-2">
+        <div className="flex items-center justify-between rounded-lg border-2 border-cyan-400/70 bg-cyan-950/75 px-3 py-1.5 shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+          <div className="flex flex-col leading-tight">
+            <span className="font-mono text-[9px] font-black tracking-wider text-cyan-300">SQUAD SIZE</span>
+            <span className="text-xs font-black text-white">部隊規模: {1 + hud.allies}人</span>
+          </div>
+          <span className="rounded-md bg-cyan-400/20 border border-cyan-300/50 px-2 py-0.5 font-mono text-sm font-black text-cyan-200">
+            {1 + hud.allies}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border-2 border-amber-400/70 bg-amber-950/75 px-3 py-1.5 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+          <div className="flex flex-col leading-tight">
+            <span className="font-mono text-[9px] font-black tracking-wider text-amber-300">FIREPOWER</span>
+            <span className="text-xs font-black text-white">火力倍率: ×{hud.runDmgMul.toFixed(1)}</span>
+          </div>
+          <span className="rounded-md bg-amber-400/20 border border-amber-300/50 px-2 py-0.5 font-mono text-sm font-black text-amber-200">
+            ×{hud.runDmgMul.toFixed(1)}
+          </span>
         </div>
       </div>
 
@@ -352,37 +397,32 @@ function RouteTransitMonitor({ hud, courseId }: { hud: HudSnapshot; courseId: Co
         </div>
       </div>
 
-      {/* Bottom Tactical Strip: Weapon, Gate Buff, Squad Size, Combo */}
+      {/* Bottom Tactical Strip: Active Weapon + Timer Bar & Combo */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-2">
         <WeaponRing weaponId={hud.weapon} durationLeft={hud.weaponT} />
 
         <div className="flex items-center gap-2">
-          {hud.runDmgMul > 1.01 && (
-            <div className="flex items-center gap-1 rounded-md bg-amber-950/80 px-2 py-1 text-xs font-black text-amber-300 border border-amber-500/40">
-              <span>火力</span>
-              <span className="font-mono text-white">×{hud.runDmgMul.toFixed(1)}</span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5 rounded-md bg-emerald-950/80 px-2.5 py-1 text-xs font-black text-emerald-300 border border-emerald-500/40">
-            <span>同期編成</span>
-            <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-white">
-              {1 + hud.allies}名
-            </span>
-          </div>
-
-          <div className="flex flex-col items-end font-mono text-[10px] font-bold leading-tight">
+          <div className="flex flex-col items-end rounded-md bg-slate-900 px-2.5 py-1 border border-slate-800 font-mono text-[10px] font-bold leading-tight">
             <span className="text-amber-300">{hud.combo} 連撃</span>
             <span className="text-slate-400">{hud.kills} 撃破</span>
           </div>
         </div>
       </div>
 
-      {/* Last Gate Passed Log */}
+      {/* Animated Last Gate Feedback Banner */}
       {hud.lastGate && (
-        <div className="mt-2 flex items-center justify-center gap-2 rounded bg-slate-950/90 border border-slate-800 px-2.5 py-1 text-[10px] font-bold text-slate-300">
-          <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-slate-400">IC改札履歴</span>
-          <span className="text-amber-300">{hud.lastGate}</span>
+        <div
+          key={hud.lastGate}
+          className={`mt-2 flex items-center justify-center gap-2 rounded-md border px-3 py-1 text-xs font-black shadow-sm transition-all ${
+            isPositiveGate
+              ? 'border-cyan-400/70 bg-cyan-950/85 text-cyan-200'
+              : 'border-rose-500/70 bg-rose-950/85 text-rose-200'
+          }`}
+        >
+          <span className="rounded bg-slate-950/80 px-1.5 py-0.5 font-mono text-[9px] text-amber-300">
+            増員マルチプライヤーゲート
+          </span>
+          <span>{hud.lastGate}</span>
         </div>
       )}
 
@@ -735,7 +775,7 @@ export default function BarricadeDefenseGame() {
             </span>
             <div>
               <p className="text-sm font-black tracking-wide text-slate-100 leading-tight">社畜通勤サバイバー</p>
-              <p className="font-mono text-[9px] font-bold tracking-widest text-amber-400/90">COMMUTER RUSH DEFENSE</p>
+              <p className="font-mono text-[9px] font-bold tracking-widest text-amber-400/90">社畜スクワッド・ハイウェイ防衛戦</p>
             </div>
           </div>
 
@@ -892,7 +932,7 @@ export default function BarricadeDefenseGame() {
         </div>
 
         <p className="mt-2 text-center text-[11px] font-medium text-slate-400">
-          左右ドラッグ／タップで移動（PC: ←→ / A D）・緑改札で強化・段ボール接触／射撃で装備補給・SOS救出で同期増員
+          左右ドラッグ／タップで移動（PC: ←→ / A D）・増員マルチプライヤーゲートを射撃強化・撃ち抜きナンバーバレルで武装補給
         </p>
       </div>
     </div>
@@ -939,7 +979,7 @@ function TitleOverlay(props: {
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b0e14] via-[#0b0e14]/65 to-transparent flex flex-col justify-end p-3">
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 rounded bg-emerald-500/20 border border-emerald-400/50 px-2 py-0.5 font-mono text-[10px] font-black text-emerald-300">
-              JR / METRO 3D LANE DEFENSE
+              社畜スクワッド・ハイウェイ防衛戦
             </span>
             <span className="font-mono text-[10px] font-bold text-amber-300">
               残業代貯金: {bank.toLocaleString()}
@@ -1052,7 +1092,7 @@ function TitleOverlay(props: {
           <div className="flex items-center gap-1.5">
             <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-300">定期券</span>
             <span className="font-black text-white">{COURSES[course].name}</span>
-            <span className="text-slate-400">⇒</span>
+            <span className="font-mono text-slate-400">&gt;&gt;</span>
             <span className="font-black text-emerald-300">本社ビル ({COURSES[course].waves * 100}m)</span>
           </div>
           <span className="font-mono text-[11px] font-bold text-amber-300">{DIFFICULTIES[difficulty].name}勤務</span>
@@ -1116,11 +1156,11 @@ function TitleOverlay(props: {
 
       {showHelp && (
         <div className="mt-2 space-y-1.5 rounded-lg border border-slate-700 bg-slate-900/95 p-3 text-[11px] leading-relaxed text-slate-200">
-          <p className="font-black text-amber-300">■ 通勤サバイバル手引書</p>
-          <p><b>1. 車線移動</b>: 画面を左右にドラッグ／タップ（PCは ←→ / A D）。自動で前進しながら前方の群衆へ射撃します。</p>
-          <p><b>2. IC改札ゲート</b>: 緑ゲートは強化（隊員倍増・火力×2・ガード回復）、赤ゲートは弱体化。有利なレーンを選んで通過しましょう。</p>
-          <p><b>3. 補給箱＆SOS救出</b>: 段ボール箱やSOSケージは「射撃で壊す」か「直接ぶつかる」ことで即回収！ゴール到達時には画面内の未回収物資も自動回収されます。</p>
-          <p><b>4. 満員電車(BOSS)</b>: 終盤に出現する満員電車の体当たり攻撃は、予告リングから横に避けて回避。倒せなくても本社改札へ到達すればクリア可能です。</p>
+          <p className="font-black text-amber-300">■ 社畜スクワッド・ハイウェイ防衛戦 手引書</p>
+          <p><b>1. 車線移動＆一斉射撃</b>: 画面を左右にドラッグ／タップ（PCは ←→ / A D）。分隊全員で弾幕を張りながら前方の群衆やゲートを撃ち抜きます。</p>
+          <p><b>2. 増員マルチプライヤーゲート</b>: ゲートは射撃するたびに数値がカウントアップ！赤色（マイナス）のゲートも連射で撃ち抜けば青色（プラス増員）のゲートへ大逆転します。</p>
+          <p><b>3. 撃ち抜きナンバーバレル＆SOSケージ</b>: 数字付きバレルやSOSケージは残りカウントを0にするか直接接触で即回収！強力な特殊武装や同期隊員が合流します。</p>
+          <p><b>4. 満員電車(BOSS)</b>: 終盤に出現する満員電車の突進攻撃は、予告リングから横に避けて回避。大部隊の集中砲火で突破して本社ビルを目指しましょう。</p>
         </div>
       )}
 

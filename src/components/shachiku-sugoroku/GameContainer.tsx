@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GameState, Stance } from '@/types/sugoroku';
+import { GameState, PaydayEvent, Stance } from '@/types/sugoroku';
 import {
+  BOARD_SIZE,
   FLOORS,
   GAME_BOARD,
   JOB_PROFILES,
   RANKS,
+  calculateNetWorthBreakdown,
   consumeItem,
   dismissCard,
   moveOneStep,
@@ -22,7 +24,7 @@ import { ResultCard } from './ResultCard';
 import { DiceComponent } from './DiceComponent';
 import { EventCard } from './EventCard';
 import { DecisionCard } from './DecisionCard';
-import { GateArchIcon, ItemIcon, JobIcon } from './SugorokuIcons';
+import { AssetIcon, GateArchIcon, ItemIcon, JobIcon } from './SugorokuIcons';
 
 interface GameContainerProps {
   initialState: GameState;
@@ -49,17 +51,31 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
   const [isPaused, setIsPaused] = useState(false);
   const [statPops, setStatPops] = useState<StatDeltaPop[]>([]);
   const [shakeHud, setShakeHud] = useState(false);
+  const [paydayBanner, setPaydayBanner] = useState<PaydayEvent | null>(null);
 
   const activeCard = gameState.cards?.[0] ?? null;
   const showResultScreen = gameState.isFinished && !activeCard;
 
-  // BGM統合: プレイ中は 'sugoroku-board' (ポーズ中は一時停止)、リザルト画面では ResultCard 側とも同期
   useBgm(showResultScreen ? 'sugoroku-result' : 'sugoroku-board', isPaused);
 
   const gameStateRef = useRef(gameState);
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // 給料日ゲート（PAYDAY）通過時の祝賀トーストバナー表示
+  const lastPaydayIdRef = useRef<number | null>(initialState.lastPayday?.id ?? null);
+  useEffect(() => {
+    const currentPayday = gameState.lastPayday;
+    if (currentPayday && currentPayday.id !== lastPaydayIdRef.current) {
+      lastPaydayIdRef.current = currentPayday.id;
+      setPaydayBanner(currentPayday);
+      const timer = window.setTimeout(() => {
+        setPaydayBanner((curr) => (curr?.id === currentPayday.id ? null : curr));
+      }, 3600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [gameState.lastPayday]);
 
   // ステータス増減のポップ演出＆ダメージシェイク検出
   const prevStatsRef = useRef({
@@ -89,7 +105,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
       newPops.push({ id: baseId + 2, label: `評価 ${dc > 0 ? '+' : ''}${dc}pt`, positive: dc > 0 });
     }
     if (dm !== 0) {
-      newPops.push({ id: baseId + 3, label: `貯金 ${dm > 0 ? '+' : ''}${dm}万`, positive: dm > 0 });
+      newPops.push({ id: baseId + 3, label: `資金 ${dm > 0 ? '+' : ''}${dm}万`, positive: dm > 0 });
     }
 
     if (newPops.length > 0) {
@@ -112,12 +128,14 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
   const currentSquare = boardMap.get(gameState.position);
   const career = gameState.career ?? 0;
   const money = gameState.money ?? 0;
+  const assets = gameState.assets ?? [];
+  const netWorthInfo = useMemo(() => calculateNetWorthBreakdown(gameState), [gameState]);
   const rankInfo = RANKS[gameState.rank ?? 0] ?? RANKS[0];
   const nextRankInfo = RANKS.find((r) => r.index > (gameState.rank ?? 0) && r.gatePosition > gameState.position);
   const profile = JOB_PROFILES[gameState.job];
   const stageLabel = getFloorLabel(gameState.position);
-  const progress = Math.max(0, Math.min(100, (gameState.position / 60) * 100));
-  const remaining = Math.max(0, 60 - gameState.position);
+  const progress = Math.max(0, Math.min(100, (gameState.position / BOARD_SIZE) * 100));
+  const remaining = Math.max(0, BOARD_SIZE - gameState.position);
 
   // 1歩ずつのホップ移動タイマー（カード表示中・決断中・ポーズ中は停止）
   useEffect(() => {
@@ -130,12 +148,12 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
       if (!isMoving) setIsMoving(true);
       const moveTimer = window.setTimeout(() => {
         setGameState((prevState) => moveOneStep(prevState));
-      }, 310);
+      }, 290);
       return () => window.clearTimeout(moveTimer);
     }
 
     if (isMoving) {
-      const finishTimer = window.setTimeout(() => setIsMoving(false), 260);
+      const finishTimer = window.setTimeout(() => setIsMoving(false), 240);
       return () => window.clearTimeout(finishTimer);
     }
   }, [
@@ -185,7 +203,6 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
     }
     if ((gameState.pendingMoves || 0) !== 0) return;
 
-    // 休みターンの場合はダイスを振らず即時消化
     if (gameState.isResting > 0) {
       audioManager.playSe('click');
       setGameState((prev) => takeTurn(prev, stance));
@@ -208,6 +225,27 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
     isRolling,
     stance,
   ]);
+
+  // キーボード Space / Enter でルーレット回転（モーダルが開いていない時）
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLButtonElement
+      ) {
+        return;
+      }
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (!activeCard && !gameState.pendingDecision && !isPaused && !gameState.isFinished) {
+          e.preventDefault();
+          handleTakeTurn();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeCard, gameState.pendingDecision, isPaused, gameState.isFinished, handleTakeTurn]);
 
   const handleUseItem = (itemId: string) => {
     if (
@@ -248,6 +286,31 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
 
   return (
     <>
+      {/* 給料日ゲート（PAYDAY）通過時の祝賀フローティングバナー */}
+      {paydayBanner && (
+        <div
+          className="fixed top-4 left-1/2 z-50 -translate-x-1/2 animate-[bounce_0.5s_ease-out_2]"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border-3 border-[#12100d] bg-gradient-to-r from-[#fff3b0] via-[#f5ca5c] to-[#eab308] px-5 py-3 text-[#12100d] shadow-[0_8px_0_#12100d,0_16px_32px_rgba(0,0,0,0.45)]">
+            <span className="rounded-lg bg-[#12100d] px-2.5 py-1 font-mono text-xs font-black text-[#fde073]">
+              PAYDAY!
+            </span>
+            <div>
+              <p className="text-sm font-black sm:text-base">
+                給料日ゲート通過支給 +{paydayBanner.totalPayout}万円！
+              </p>
+              <p className="text-[11px] font-bold text-[#3b2f1e]">
+                役職（{paydayBanner.rankName}）給与 +{paydayBanner.baseSalary}万
+                {paydayBanner.dividendBonus > 0 ? ` ＋ 資産配当 +${paydayBanner.dividendBonus}万` : ''}
+                {' / やる気+12回復'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeCard && (
         <EventCard
           card={activeCard}
@@ -276,7 +339,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                   PAUSE & HANDBOOK
                 </p>
                 <h2 id="pause-modal-title" className="font-editorial text-xl font-black">
-                  就業規則・ポーズメニュー
+                  社畜ライフロード規定・ポーズメニュー
                 </h2>
               </div>
               <button
@@ -299,7 +362,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
 
               <div className="rounded-xl border border-[#c9b99b] bg-[#fffaf0] p-3.5 dark:border-[#3b3226] dark:bg-[#181410]">
                 <h3 className="mb-2 text-xs font-black tracking-wider text-[#12100d] dark:text-[#fffaf0]">
-                  昇進査定ゲート一覧（通過時に社内評価を満たせば昇進＆賞与UP）
+                  昇進査定＆給料日テーブル（給料日ゲート #05・#13・#21・#29 通過時に支給）
                 </h3>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {RANKS.filter((r) => r.gatePosition > 0).map((r) => {
@@ -314,11 +377,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                         }`}
                       >
                         <div className="flex items-center justify-between font-mono text-[10px] font-black">
-                          <span>#{r.gatePosition}マス</span>
+                          <span>#{String(r.gatePosition).padStart(2, '0')}マス</span>
                           <span>必要評価 {r.requiredCareer}pt</span>
                         </div>
                         <p className="mt-0.5 font-black">{r.name}</p>
-                        <p className="text-[10px] font-bold opacity-80">給与加算 +{r.salaryBonus}万</p>
+                        <p className="text-[10px] font-bold opacity-80">給料日 +{r.salaryBonus}万</p>
                       </div>
                     );
                   })}
@@ -334,7 +397,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                   }}
                   className="min-h-[46px] flex-1 rounded-xl border-2 border-[#12100d] border-b-[4px] bg-[#1f6f5c] px-4 py-2.5 text-sm font-black text-white"
                 >
-                  業務を再開する
+                  ゲームを再開する
                 </button>
                 <button
                   type="button"
@@ -345,7 +408,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                   }}
                   className="min-h-[46px] rounded-xl border-2 border-[#12100d] border-b-[4px] bg-[#fffaf0] px-4 py-2.5 text-sm font-black text-[#b23a2a]"
                 >
-                  退職して社員登録へ戻る
+                  最初からやり直す
                 </button>
               </div>
             </div>
@@ -373,11 +436,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                 {rankInfo.name}
               </span>
               <span className="hidden text-xs font-bold text-white/75 sm:inline">
-                （{gameState.job}）
+                （{gameState.job} / {profile.vehicleName}）
               </span>
             </div>
             <p className="text-[10px] font-bold text-white/70">
-              {stageLabel} — 残り {remaining} マス
+              {stageLabel} — ゴールまで残り {remaining} マス
             </p>
           </div>
         </div>
@@ -409,7 +472,11 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             </span>
             <span className="opacity-40">|</span>
             <span>
-              貯金 <strong className="font-mono text-[#7adbc2]">{money}万</strong>
+              所持金 <strong className="font-mono text-[#7adbc2]">{money}万</strong>
+            </span>
+            <span className="opacity-40">|</span>
+            <span>
+              推定総資産 <strong className="font-mono text-[#fde073]">{netWorthInfo.totalNetWorth}万</strong>
             </span>
           </div>
 
@@ -422,16 +489,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
               setIsPaused(true);
             }}
             className="inline-flex min-h-[38px] items-center gap-1 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-black text-white transition hover:bg-white/20"
-            aria-label="ポーズ・就業規則を開く"
+            aria-label="ポーズ・規定を開く"
           >
-            <span>規則・一時停止</span>
+            <span>規定・一時停止</span>
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* 左カラム：立体キャリアボード */}
-        <section className="order-1 lg:col-span-8" aria-label="キャリアボード">
+        {/* 左カラム：2.5D ジオラマ・ライフロード盤面 */}
+        <section className="order-1 lg:col-span-8" aria-label="社畜ライフロード盤面">
           <GameBoard
             position={gameState.position}
             playerName={gameState.playerName}
@@ -443,17 +510,19 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             slowNextTurn={gameState.slowNextTurn ?? false}
             rankIndex={gameState.rank ?? 0}
             career={career}
+            assetsCount={assets.length}
+            selectedRoute={gameState.selectedRoute}
           />
         </section>
 
-        {/* 右カラム：社員ダッシュボード＆サイコロ司令室 */}
-        <aside className="order-2 space-y-4 lg:col-span-4" aria-label="社員ステータスとダイス操作">
-          {/* ダイス＆働き方スタンス指令パネル（最上部に配置して操作しやすくする） */}
+        {/* 右カラム：キャリア・ルーレット＆資産ポートフォリオ指令室 */}
+        <aside className="order-2 space-y-4 lg:col-span-4" aria-label="社員ステータスとルーレット操作">
+          {/* キャリア・ルーレット＆働き方スタンス指令パネル */}
           <section className="overflow-hidden rounded-xl border-2 border-[#3b3022] bg-[#f4ece0] shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
             <div className="border-b-2 border-[#3b3022] bg-[#12100d] px-4 py-2.5 text-[#fffaf0]">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] font-black tracking-widest text-[#f5ca5c]">
-                  TURN ACTION / 勤務スタンス選択
+                  CAREER ROULETTE / 走行モード選択
                 </span>
                 <span className="font-mono text-xs font-black">
                   TURN {gameState.turn}
@@ -462,10 +531,10 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             </div>
 
             <div className="space-y-3.5 p-4">
-              {/* 定時 vs 全力残業 スタンス切替 */}
+              {/* 定時クルーズ vs 全力残業ブースト スタンス切替 */}
               <div>
                 <p className="mb-1.5 text-[11px] font-black text-[#5c5141] dark:text-[#cfc2ad]">
-                  1. 今ターンの働き方を選択（盤面の到達予測が変化）
+                  1. 今ターンの走行スタンスを選択（盤面の到達予測が変化）
                 </p>
                 <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="働き方スタンス">
                   <button
@@ -488,7 +557,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                         定時退社
                       </span>
                       <span className="rounded bg-[#1f6f5c] px-1.5 py-0.5 font-mono text-[9px] font-black text-white">
-                        1D6
+                        1SPIN
                       </span>
                     </div>
                     <p className="mt-1 text-[10px] font-bold text-[#175445] dark:text-[#84dfb0]">
@@ -516,7 +585,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                         全力残業
                       </span>
                       <span className="rounded bg-[#b23a2a] px-1.5 py-0.5 font-mono text-[9px] font-black text-white">
-                        2D6
+                        W-SPIN
                       </span>
                     </div>
                     <p className="mt-1 text-[10px] font-bold text-[#9e2f20] dark:text-[#f7a89c]">
@@ -531,7 +600,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                 <div className="space-y-1.5">
                   {(gameState.diceBoost || 0) > 0 && (
                     <div className="rounded-lg border border-[#b57c1e] bg-[#fff3cf] px-3 py-1.5 text-xs font-black text-[#8a5b0f] dark:bg-[#382b10] dark:text-[#f5ca5c]">
-                      エナドリ効果発動中：次の出目合計 +{gameState.diceBoost} マス！
+                      エナドリ効果発動中：次のルーレット出目 +{gameState.diceBoost} マス！
                     </div>
                   )}
                   {gameState.slowNextTurn && (
@@ -547,7 +616,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                 </div>
               )}
 
-              {/* 3Dサイコロとロールボタン */}
+              {/* メカニカル・キャリア・ルーレットとスピンボタン */}
               <div className="rounded-xl border-2 border-[#3b3022] bg-[#fffaf0] p-3.5 dark:border-[#594b38] dark:bg-[#14110d]">
                 <DiceComponent
                   isRolling={isRolling}
@@ -556,6 +625,8 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                   diceCount={stance === 'zangyo' ? 2 : 1}
                   boost={gameState.diceBoost ?? 0}
                   onRollComplete={handleDiceRollComplete}
+                  onTriggerRoll={handleTakeTurn}
+                  disabled={isBusy || gameState.isFinished}
                 />
 
                 <button
@@ -571,16 +642,16 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                   }`}
                 >
                   {isRolling
-                    ? 'ダイス抽選中…'
+                    ? 'ルーレット回転中…'
                     : isMoving || (gameState.pendingMoves || 0) !== 0
-                      ? `盤面を移動中…（残り${Math.abs(gameState.pendingMoves || 0)}マス）`
+                      ? `キャリアロード走行中…（残り${Math.abs(gameState.pendingMoves || 0)}マス）`
                       : activeCard
                         ? 'イベントカード確認中…'
                         : gameState.isResting > 0
                           ? `休養ターンを消化する（残り${gameState.isResting}回）`
                           : stance === 'zangyo'
-                            ? '全力残業で2ダイスを振る！'
-                            : 'サイコロを振って進む'}
+                            ? '全力残業Wルーレットを回す！'
+                            : 'キャリア・ルーレットを回して進む'}
                 </button>
               </div>
             </div>
@@ -602,20 +673,20 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                 <p className="mt-0.5 text-[10px] font-bold text-[#5c5141] dark:text-[#cfc2ad]">
                   {nextRankInfo
                     ? `次査定(#${nextRankInfo.gatePosition}): ${nextRankInfo.requiredCareer}pt`
-                    : '最高査定ライン到達'}
+                    : '最高役職ライン到達'}
                 </p>
               </div>
 
               <div className="rounded-xl border-2 border-[#3b3022] bg-[#fffaf0] p-3 dark:border-[#594b38] dark:bg-[#14110d]">
                 <p className="text-[10px] font-black text-[#6e6250] dark:text-[#b5a790]">
-                  貯金・ボーナス累計
+                  所持金・キャッシュ
                 </p>
                 <p className="mt-0.5 font-mono text-2xl font-black text-[#1f6f5c] dark:text-[#7adbc2]">
                   {money}
                   <span className="ml-0.5 text-xs font-bold">万円</span>
                 </p>
                 <p className="mt-0.5 text-[10px] font-bold text-[#5c5141] dark:text-[#cfc2ad]">
-                  役職加算 +{rankInfo.salaryBonus}万/給料日
+                  給料日基本給 +{rankInfo.salaryBonus}万
                 </p>
               </div>
             </div>
@@ -624,7 +695,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             <div className="rounded-xl border border-[#c9b99b] bg-[#fffaf0] p-3 dark:border-[#3b3226] dark:bg-[#14110d]">
               <div className="mb-1 flex items-center justify-between text-[11px] font-black text-[#12100d] dark:text-[#fffaf0]">
                 <span>ゴールまでの進捗</span>
-                <span className="font-mono">{gameState.position} / 60 マス</span>
+                <span className="font-mono">{gameState.position} / {BOARD_SIZE} マス</span>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full border border-[#3b3022] bg-[#e6dac6] dark:bg-[#2a241c]">
                 <div
@@ -643,11 +714,58 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             </div>
           </section>
 
-          {/* 所持アイテム（支給品）パネル */}
+          {/* ライフ資産ポートフォリオ（人生資産カード一覧） */}
+          <section className="rounded-xl border-2 border-[#3b3022] bg-[#f4ece0] p-4 shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
+            <div className="mb-2.5 flex items-center justify-between">
+              <div>
+                <h2 className="text-xs font-black tracking-wider text-[#12100d] dark:text-[#fffaf0]">
+                  ライフ資産ポートフォリオ
+                </h2>
+                <p className="text-[10px] font-bold text-[#6e6250] dark:text-[#b5a790]">
+                  資産評価額: +{netWorthInfo.assetValue}万円 / 推定生涯総資産: {netWorthInfo.totalNetWorth}万円
+                </p>
+              </div>
+              <span className="rounded bg-[#12100d] px-2 py-0.5 font-mono text-[10px] font-black text-[#f5ca5c]">
+                {assets.length} 資産
+              </span>
+            </div>
+
+            {assets.length > 0 ? (
+              <div className="space-y-2">
+                {assets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="flex items-center gap-2.5 rounded-xl border-2 border-[#b57c1e] bg-gradient-to-r from-[#fffdf5] to-[#fef5d8] p-2.5 text-[#12100d]"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#12100d] text-[#f5ca5c]">
+                      <AssetIcon assetId={asset.id} size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="truncate text-xs font-black">{asset.name}</p>
+                        <span className="shrink-0 rounded bg-[#1f6f5c] px-1.5 py-0.5 font-mono text-[9px] font-black text-white">
+                          評価 {asset.value}万
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-bold text-[#5c5141]">
+                        {asset.category} / 給料日配当 +{asset.dividend}万円
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-[#8a7d69] bg-[#fffaf0]/60 p-3 text-center text-xs font-bold text-[#6e6250] dark:bg-[#14110d]">
+                保有ライフ資産はまだありません（緑の資産マス・抽選・決断で獲得可能）
+              </p>
+            )}
+          </section>
+
+          {/* 所持アイテム（消耗支給品）パネル */}
           <section className="rounded-xl border-2 border-[#3b3022] bg-[#f4ece0] p-4 shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
             <div className="mb-2.5 flex items-center justify-between">
               <h2 className="text-xs font-black tracking-wider text-[#12100d] dark:text-[#fffaf0]">
-                ビジネスバッグ（所持品）
+                ビジネスバッグ（消耗支給品）
               </h2>
               <span className="rounded bg-[#12100d] px-2 py-0.5 font-mono text-[10px] font-black text-[#f5ca5c]">
                 {gameState.items.length} 個
@@ -685,7 +803,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
               </div>
             ) : (
               <p className="rounded-xl border border-dashed border-[#8a7d69] bg-[#fffaf0]/60 p-3 text-center text-xs font-bold text-[#6e6250] dark:bg-[#14110d]">
-                所持品はありません（緑色の支給マスで入手可能）
+                支給品はありません
               </p>
             )}
           </section>
@@ -693,7 +811,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
           {/* 業務日報ログ */}
           <section className="rounded-xl border-2 border-[#3b3022] bg-[#f4ece0] p-4 shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
             <h2 className="mb-2 text-xs font-black tracking-wider text-[#12100d] dark:text-[#fffaf0]">
-              業務日報（直近の出来事）
+              ライフロード日報（直近の出来事）
             </h2>
             <p
               className="mb-3 rounded-lg border border-[#8a7d69] bg-[#fffaf0] p-2.5 text-xs font-bold leading-relaxed text-[#12100d] whitespace-pre-line dark:border-[#594b38] dark:bg-[#14110d] dark:text-[#fffaf0]"
@@ -727,7 +845,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
         </aside>
       </div>
 
-      {/* モバイル用フローティングダイスボタン */}
+      {/* モバイル用フローティング・ルーレットスピンボタン */}
       <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 lg:hidden">
         <button
           type="button"
@@ -736,18 +854,18 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
           className={`flex min-h-[50px] items-center gap-2 rounded-full border-2 border-[#12100d] border-b-[5px] px-5 py-3 text-sm font-black text-white shadow-lg disabled:opacity-50 ${
             stance === 'zangyo' ? 'bg-[#b23a2a]' : 'bg-[#1f6f5c]'
           }`}
-          aria-label="サイコロを振る"
+          aria-label="ルーレットを回す"
         >
           <span>
             {isRolling
-              ? '抽選中…'
+              ? '回転中…'
               : isMoving
-                ? '移動中…'
+                ? '走行中…'
                 : gameState.isResting > 0
                   ? `休養消化(${gameState.isResting})`
                   : stance === 'zangyo'
-                    ? '残業2ダイス'
-                    : '定時1ダイス'}
+                    ? '残業Wスピン'
+                    : '定時スピン'}
           </span>
         </button>
       </div>
