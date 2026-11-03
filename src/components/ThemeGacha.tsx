@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ArrowsPointingOutIcon,
     CheckIcon,
     ClipboardIcon,
     ExclamationCircleIcon,
+    SpeakerWaveIcon,
     StarIcon as StarIconOutline,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { callGeminiAPI } from '@/lib/api-config';
@@ -75,6 +78,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
     const [digDeeperError, setDigDeeperError] = useState('');
     const [copyMessage, setCopyMessage] = useState('');
     const [copyStatus, setCopyStatus] = useState<'success' | 'error'>('success');
+    const [isPresentationOpen, setIsPresentationOpen] = useState(false);
     const { history, addHistory, clearHistory } = useHistory();
     const { favorites, toggleFavorite, clearFavorites } = useFavorites();
 
@@ -111,6 +115,41 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
             }
             if (copyTimerRef.current !== null) {
                 window.clearTimeout(copyTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+            return;
+        }
+        window.speechSynthesis.cancel();
+    }, [currentTheme]);
+
+    useEffect(() => {
+        if (!isPresentationOpen) {
+            return;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsPresentationOpen(false);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [isPresentationOpen]);
+
+    useEffect(() => {
+        return () => {
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
             }
         };
     }, []);
@@ -196,6 +235,21 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         }
         copyTimerRef.current = window.setTimeout(() => setCopyMessage(''), 2500);
     }, []);
+
+    const speakTheme = useCallback(() => {
+        if (!currentTheme || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+            setCopyStatus('error');
+            setCopyMessage('このブラウザでは読み上げに対応していません。');
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(currentTheme);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+        trackEvent('theme_spoken');
+    }, [currentTheme]);
 
     const spinGacha = useCallback(() => {
         if (isSpinning) {
@@ -444,7 +498,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                 <p className="text-2xl md:text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-relaxed">
                                     {currentTheme}
                                 </p>
-                                <div className="mt-4 flex items-center justify-center gap-1.5">
+                                <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -475,6 +529,27 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                         ) : (
                                             <StarIconOutline className="h-5 w-5" />
                                         )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsPresentationOpen(true);
+                                            trackEvent('presentation_opened');
+                                        }}
+                                        className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                        aria-label="お題を大きく表示"
+                                        title="お題を大きく表示"
+                                    >
+                                        <ArrowsPointingOutIcon className="h-5 w-5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={speakTheme}
+                                        className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                        aria-label="お題を読み上げる"
+                                        title="お題を読み上げる"
+                                    >
+                                        <SpeakerWaveIcon className="h-5 w-5" />
                                     </button>
                                     <ShareButtons
                                         compact
@@ -641,6 +716,66 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                             ),
                         },
                     ]} />
+                </div>
+            )}
+
+            {isPresentationOpen && currentTheme && (
+                <div
+                    className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="お題の拡大表示"
+                    onClick={() => setIsPresentationOpen(false)}
+                >
+                    <div className="flex min-h-full items-center justify-center">
+                        <div
+                            className="relative w-full max-w-4xl rounded-3xl border border-white/20 bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 text-center shadow-2xl dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 sm:p-10"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setIsPresentationOpen(false)}
+                                className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                                aria-label="拡大表示を閉じる"
+                            >
+                                <XMarkIcon className="h-6 w-6" />
+                            </button>
+                            <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300">
+                                {currentCategoryMeta ? `${currentCategoryMeta.emoji} ${currentCategoryMeta.name}` : 'お題'}
+                            </span>
+                            <p className="mt-5 text-3xl font-black leading-tight text-indigo-700 dark:text-indigo-300 sm:text-5xl">
+                                {currentTheme}
+                            </p>
+                            <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        copyText(currentTheme, 'お題をコピーしました');
+                                        trackEvent('theme_copied', { theme: currentTheme });
+                                    }}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                                >
+                                    <ClipboardIcon className="h-4 w-4" />
+                                    コピー
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={speakTheme}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-indigo-300 bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-200"
+                                >
+                                    <SpeakerWaveIcon className="h-4 w-4" />
+                                    読み上げ
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPresentationOpen(false)}
+                                    className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                                >
+                                    閉じる
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

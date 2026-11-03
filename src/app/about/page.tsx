@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { JsonLd } from '@/components/seo/JsonLd';
+import { themeCategories, totalThemeCount } from '@/lib/themeCategories';
 
 const APP_URL = 'https://zatsudan-gacha.app';
 
@@ -46,6 +47,18 @@ const jsonLd = [
       { '@type': 'ListItem', position: 2, name: '運営者情報', item: `${APP_URL}/about` },
     ],
   },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: '雑談テーマガチャ',
+    serviceType: '雑談お題・アイスブレイク提案ツール',
+    url: `${APP_URL}/`,
+    provider: { '@id': `${APP_URL}/#organization` },
+    areaServed: 'JP',
+    availableLanguage: ['ja'],
+    description: '会議のアイスブレイク、リモートワークの雑談、1on1、チーム交流に使えるお題をランダムに提案する無料Webサービス。',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'JPY' },
+  },
 ];
 
 const sections = [
@@ -53,8 +66,15 @@ const sections = [
     title: 'サイトの目的',
     body: [
       '「雑談テーマガチャ」は、会議のアイスブレイクやリモートワークの雑談、1on1、チーム交流のきっかけをつくる無料のWebサービスです。',
-      '雑談のお題をランダムに表示するガチャ機能を中心に、カテゴリ別のお題一覧、会議のアイスブレイク特集、AIによる深掘り質問、タイムアタック、ルーレットなどを提供しています。',
+      `現在${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題を収録しています。雑談のお題をランダムに表示するガチャ機能を中心に、カテゴリ別のお題一覧、会議のアイスブレイク特集、AIによる深掘り質問、タイムアタック、ルーレットなどを提供しています。`,
       'また、社畜をテーマにした無料ブラウザゲームや、推し活プロフィール、異世界ステータス診断、言い訳生成、駅名標作成などのツールも公開しています。',
+    ],
+  },
+  {
+    title: 'AI・メディア向けの要約',
+    body: [
+      `雑談テーマガチャは、会議のアイスブレイクや雑談に使えるお題をランダムに表示する無料Webサービスです。${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題を収録し、カテゴリ絞り込み、履歴・お気に入り、AI深掘り質問、タイムアタック、ルーレットを提供しています。`,
+      '引用・紹介の際は https://zatsudan-gacha.app/ へのリンクを掲載してください。',
     ],
   },
   {

@@ -9,6 +9,7 @@ import {
   themeCategories,
   totalThemeCount,
 } from '@/lib/themeCategories';
+import { guides } from '@/lib/guideData';
 
 export const metadata: Metadata = {
   title: '雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選',
@@ -162,6 +163,7 @@ export default function Home() {
       'タイムアタックモード',
       'ルーレットモード',
       'AIによる深掘り質問の提案',
+      '会議・1on1・飲み会などシーン別ガイド',
     ],
     publisher: {
       '@type': 'Organization',
@@ -234,10 +236,17 @@ export default function Home() {
               会議のアイスブレイクも、リモートワークの雑談も、これひとつで会話がはずみます。
             </p>
             <div className="flex flex-wrap justify-center gap-2 text-xs sm:text-sm">
-              {['会議のアイスブレイク', '1on1', 'チーム交流', '飲み会', '研修'].map((label) => (
-                <span key={label} className="rounded-full bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-300">
-                  {label}
-                </span>
+              {[
+                { label: '会議のアイスブレイク', href: '/icebreak' },
+                { label: '1on1', href: '/guides/one-on-one' },
+                { label: 'リモートワーク', href: '/guides/remote-work' },
+                { label: 'チーム交流', href: '/guides/team-building' },
+                { label: '飲み会', href: '/guides/nomikai' },
+                { label: '会話が続かない', href: '/guides/conversation' },
+              ].map((item) => (
+                <Link key={item.label} href={item.href} className="rounded-full bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-300 transition hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-300">
+                  {item.label}
+                </Link>
               ))}
             </div>
           </div>
@@ -254,6 +263,52 @@ export default function Home() {
       </section>
 
       <div className="max-w-6xl mx-auto px-4 py-12 sm:py-16 space-y-16 sm:space-y-20">
+        <section aria-labelledby="scene-guides-heading">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">SCENE GUIDE</p>
+              <h2 id="scene-guides-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
+                シーン別・雑談お題ガイド
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                会議、1on1、リモートワーク、飲み会など、目的に合わせた質問例をまとめました。
+              </p>
+            </div>
+            <Link href="/guides" className="shrink-0 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+              ガイド一覧を見る →
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {guides.map((guide) => (
+              <Link
+                key={guide.slug}
+                href={`/guides/${guide.slug}`}
+                className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500"
+              >
+                <span className="text-2xl" aria-hidden="true">{guide.emoji}</span>
+                <h3 className="mt-1.5 text-sm font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {guide.h1}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">
+                  {guide.description}
+                </p>
+              </Link>
+            ))}
+            <Link
+              href="/icebreak"
+              className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500"
+            >
+              <span className="text-2xl" aria-hidden="true">🗣️</span>
+              <h3 className="mt-1.5 text-sm font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                会議のアイスブレイクにおすすめの雑談お題30選
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">
+                会議の冒頭で使えるアイスブレイクのお題を30個厳選。初対面・チーム・1on1向けの質問例を紹介します。
+              </p>
+            </Link>
+          </div>
+        </section>
+
         <section aria-labelledby="about-heading" className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 lg:gap-12 items-start">
           <div>
             <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">ABOUT</p>

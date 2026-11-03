@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { themeCategories } from '@/lib/themeCategories';
+import { guides } from '@/lib/guideData';
 
 export const dynamic = 'force-static';
 
@@ -34,6 +35,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.9,
     },
+    {
+      url: `${BASE_URL}/guides`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    ...guides.map((guide) => ({
+      url: `${BASE_URL}/guides/${guide.slug}`,
+      lastModified,
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    })),
     {
       url: `${BASE_URL}/tools`,
       lastModified,

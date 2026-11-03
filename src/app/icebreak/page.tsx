@@ -5,6 +5,7 @@ import { ThemeList } from '@/components/ThemeList';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { ShareButtons } from '@/components/ShareButtons';
 import { themeCategories, totalThemeCount } from '@/lib/themeCategories';
+import { guides } from '@/lib/guideData';
 
 const APP_URL = 'https://zatsudan-gacha.app';
 
@@ -351,6 +352,39 @@ export default function IcebreakPage() {
                 </Link>
               );
             })}
+          </div>
+        </section>
+
+        <section aria-labelledby="related-guides-heading" className="mb-12">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 id="related-guides-heading" className="text-2xl font-black text-gray-900 dark:text-white mb-2">
+                他のシーン別ガイド
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                1on1、リモートワーク、飲み会など、目的別の質問例も用意しています。
+              </p>
+            </div>
+            <Link href="/guides" className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+              ガイド一覧を見る →
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {guides.map((guide) => (
+              <Link
+                key={guide.slug}
+                href={`/guides/${guide.slug}`}
+                className="group rounded-xl border border-gray-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500"
+              >
+                <span className="text-2xl" aria-hidden="true">{guide.emoji}</span>
+                <h3 className="mt-1.5 text-sm font-black text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {guide.h1}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">
+                  {guide.description}
+                </p>
+              </Link>
+            ))}
           </div>
         </section>
 

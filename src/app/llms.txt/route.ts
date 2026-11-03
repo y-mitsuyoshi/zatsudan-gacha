@@ -1,5 +1,6 @@
 import { themeData } from '@/lib/themeData';
 import { themeCategories, totalThemeCount } from '@/lib/themeCategories';
+import { guides } from '@/lib/guideData';
 
 export const dynamic = 'force-static';
 
@@ -26,7 +27,7 @@ export function GET() {
 
 ## 概要
 
-「雑談テーマガチャ」は、ボタンひとつで雑談のお題をランダムに表示するWebアプリです。「何を話せばいいかわからない」「会議の冒頭が気まずい」という場面で、会話のきっかけを提供します。お題はすべて日本語で、カテゴリ別に選べます。履歴とお気に入りはブラウザのlocalStorageに保存され、ログインは不要です。
+「雑談テーマガチャ」は、ボタンひとつで雑談のお題をランダムに表示する日本語のWebアプリです。「何を話せばいいかわからない」「会議の冒頭が気まずい」という場面で、会話のきっかけを提供します。お題はすべて日本語で、カテゴリ別に選べます。履歴とお気に入りはブラウザのlocalStorageに保存され、ログインは不要です。会議・1on1・リモートワーク・飲み会などシーン別のガイド、無料ブラウザゲーム、プロフィール作成などのツールも提供しています。
 
 ## カテゴリ
 
@@ -64,6 +65,8 @@ ${categoryLines}
 ## 主要ページ
 
 - [トップページ・お題ガチャ](${BASE_URL}/)
+- [シーン別・雑談お題ガイド](${BASE_URL}/guides)
+${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).join('\n')}
 - [会議のアイスブレイクにおすすめの雑談お題30選](${BASE_URL}/icebreak)
 - [カテゴリ一覧](${BASE_URL}/themes)
 - [無料ブラウザゲーム一覧](${BASE_URL}/games)

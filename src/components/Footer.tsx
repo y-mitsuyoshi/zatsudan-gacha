@@ -120,6 +120,9 @@ export const Footer: React.FC = () => {
                 <Link href="/tools" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
                   無料ツール一覧
                 </Link>
+                <Link href="/guides" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  シーン別ガイド
+                </Link>
                 <Link href="/icebreak" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
                   会議のアイスブレイク
                 </Link>
