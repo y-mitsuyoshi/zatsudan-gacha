@@ -6,6 +6,10 @@ import { SetupForm } from '@/components/shachiku-sugoroku/SetupForm';
 import { GameContainer } from '@/components/shachiku-sugoroku/GameContainer';
 import { GameState, SetupFormState } from '@/types/sugoroku';
 import { createNewGame } from '@/lib/sugoroku-logic';
+import { SeoContentSection } from '@/components/seo/SeoContentSection';
+import { GAME_SEO_DATA, buildGameJsonLd } from '@/lib/gameSeoData';
+
+const game = GAME_SEO_DATA.sugoroku;
 
 export default function ShachikuSugorokuPage() {
   const [formState, setFormState] = useState<SetupFormState>({
@@ -109,6 +113,23 @@ export default function ShachikuSugorokuPage() {
           )}
         </main>
       </div>
+      <SeoContentSection
+        variant="light"
+        className="bg-[#f3e8d0] dark:bg-[#171512]"
+        eyebrow="GAME GUIDE"
+        title={`${game.name}の特徴と遊び方`}
+        intro={game.description}
+        features={game.features}
+        steps={game.steps}
+        faqs={game.faqs}
+        related={game.related}
+        breadcrumbs={[
+          { label: '雑談テーマガチャ', href: '/' },
+          { label: '無料ゲーム一覧', href: '/games' },
+          { label: game.name },
+        ]}
+        jsonLd={buildGameJsonLd(game)}
+      />
     </div>
   );
 }

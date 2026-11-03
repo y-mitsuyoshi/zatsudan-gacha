@@ -16,6 +16,34 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
+function serializeJsonLd(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': 'https://zatsudan-gacha.app/#organization',
+  name: '雑談テーマガチャ',
+  url: 'https://zatsudan-gacha.app/',
+  logo: 'https://zatsudan-gacha.app/favicon.png',
+  description: '会議のアイスブレイクや雑談に使えるお題、無料ブラウザゲーム、プロフィール作成ツールを提供する日本語Webサイト。',
+  publishingPrinciples: 'https://zatsudan-gacha.app/about',
+  sameAs: ['https://x.com/zatsudan_gacha'],
+};
+
+const webSiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': 'https://zatsudan-gacha.app/#website',
+  name: '雑談テーマガチャ',
+  alternateName: ['雑談ガチャ', 'お題ガチャ', '雑談お題ジェネレーター'],
+  url: 'https://zatsudan-gacha.app/',
+  description: '会議のアイスブレイクやリモートワークの雑談に使える雑談お題、無料ブラウザゲーム、プロフィール作成ツールを提供する日本語Webサイト。',
+  inLanguage: 'ja-JP',
+  publisher: { '@id': 'https://zatsudan-gacha.app/#organization' },
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://zatsudan-gacha.app"),
   applicationName: "雑談テーマガチャ",
@@ -134,6 +162,14 @@ export default function RootLayout({
           <Footer />
           <AdSenseScript />
         </Providers>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(webSiteJsonLd) }}
+        />
       </body>
     </html>
   );

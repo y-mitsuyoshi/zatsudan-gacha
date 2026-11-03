@@ -303,10 +303,10 @@ export default function DanmakuGame() {
         {screen === 'title' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 overflow-y-auto bg-gradient-to-b from-[#0b1026]/95 via-[#101a3a]/95 to-black/95 p-6 text-center">
             <div className="text-[11px] font-bold tracking-[0.3em] text-cyan-300">NEO DANMAKU STG</div>
-            <h1 className="text-4xl font-black leading-tight tracking-wide">
+            <p className="text-4xl font-black leading-tight tracking-wide">
               社畜<span className="bg-gradient-to-r from-yellow-200 to-orange-400 bg-clip-text text-transparent">シューティング</span>
               <span className="text-cyan-300">NEO</span>
-            </h1>
+            </p>
             <p className="text-sm text-gray-300">WebGL弾幕STG — 残機制・チェイン・グレイズ・<br />スペルカード取得でハイスコアを狙え！</p>
 
             <div className="grid w-full max-w-sm grid-cols-2 gap-2">

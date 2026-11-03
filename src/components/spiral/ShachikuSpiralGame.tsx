@@ -380,7 +380,7 @@ export default function ShachikuSpiralGame() {
         <div className="mb-2 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 backdrop-blur">
           <div className="flex items-center gap-2">
             <SpiralLogoIcon className="h-6 w-6 text-cyan-400" />
-            <h1 className="text-base font-black tracking-wider text-cyan-400">社畜スパイラル</h1>
+            <p className="text-base font-black tracking-wider text-cyan-400">社畜スパイラル</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-950/40 px-2 py-1 text-xs font-bold text-amber-300">
@@ -666,8 +666,8 @@ function TitleOverlay(props: {
           <Image
             src="/assets/spiral_cover.jpg"
             alt="Cybernetic Syndicate Spiral"
-            width={1376}
-            height={768}
+            width={800}
+            height={447}
             className="h-28 w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-2.5">

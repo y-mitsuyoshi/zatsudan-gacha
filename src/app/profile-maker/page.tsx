@@ -13,6 +13,10 @@ import {
   loadProfileDraft,
   saveProfileDraft,
 } from '@/lib/profile-draft';
+import { SeoContentSection } from '@/components/seo/SeoContentSection';
+import { TOOL_SEO_DATA, buildToolJsonLd } from '@/lib/toolSeoData';
+
+const tool = TOOL_SEO_DATA.profile;
 
 const TEMPLATES: { key: Template; label: string; swatch: string }[] = [
   { key: 'simple', label: 'シンプル', swatch: 'bg-white border-gray-300' },
@@ -212,6 +216,21 @@ export default function ProfileMakerPage() {
           ))}
         </section>
       </div>
+
+      <SeoContentSection
+        variant="light"
+        eyebrow="TOOL GUIDE"
+        title={`${tool.name}の使い方とFAQ`}
+        intro={tool.description}
+        faqs={tool.faqs}
+        related={tool.related}
+        breadcrumbs={[
+          { label: '雑談テーマガチャ', href: '/' },
+          { label: '無料ツール一覧', href: '/tools' },
+          { label: tool.name },
+        ]}
+        jsonLd={buildToolJsonLd(tool)}
+      />
 
       {isPreviewOpen && (
         <div

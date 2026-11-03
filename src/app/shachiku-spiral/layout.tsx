@@ -15,7 +15,20 @@ export const metadata: Metadata = {
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
     type: 'website',
-    images: ['/ogp.png'],
+    images: [
+      {
+        url: '/assets/spiral_cover.jpg',
+        width: 800,
+        height: 447,
+        alt: '社畜スパイラル',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '社畜スパイラル | 渦巻く業務の列からコアを守る15ウェーブ',
+    description: '渦巻きながら迫る業務の列を迎撃！10種の強化・全15ウェーブ＋エンドレスの無料ブラウザ防衛ゲーム。',
+    images: ['/assets/spiral_cover.jpg'],
   },
 };
 

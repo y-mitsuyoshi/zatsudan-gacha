@@ -41,7 +41,7 @@ echo "==> Generated route integrity"
 npx tsx -e "
 import fs from 'node:fs';
 import { themeCategories } from './src/lib/themeCategories';
-const required = ['out/index.html','out/privacy.html','out/themes.html','out/icebreak.html','out/llms.txt','out/llms-full.txt','out/sitemap.xml','out/robots.txt','out/404.html'];
+const required = ['out/index.html','out/privacy.html','out/themes.html','out/icebreak.html','out/games.html','out/tools.html','out/about.html','out/profile-maker.html','out/isekai-status.html','out/excuse-generator.html','out/station-sign-maker.html','out/llms.txt','out/llms-full.txt','out/sitemap.xml','out/robots.txt','out/404.html'];
 const missing = required.filter((file) => !fs.existsSync(file));
 const categoryMissing = themeCategories.filter((c) => !fs.existsSync('out/themes/' + c.slug + '.html')).map((c) => c.slug);
 if (missing.length || categoryMissing.length) {
@@ -50,9 +50,14 @@ if (missing.length || categoryMissing.length) {
   process.exit(1);
 }
 const sitemap = fs.readFileSync('out/sitemap.xml', 'utf8');
-if (!sitemap.includes('/privacy') || !sitemap.includes('/themes/hobby')) process.exit(1);
+if (!['/privacy','/themes/hobby','/games','/tools','/about'].every((path) => sitemap.includes(path))) process.exit(1);
 const notFound = fs.readFileSync('out/404.html', 'utf8');
 if (!notFound.includes('noindex')) process.exit(1);
+const gamePages = ['out/barricade-defense.html','out/shachiku-shooting.html','out/shachiku-spiral.html','out/shachiku-survivor.html','out/shachiku-jinro.html','out/shachiku-sugoroku.html'];
+if (gamePages.some((file) => !fs.readFileSync(file, 'utf8').includes('VideoGame'))) process.exit(1);
+const toolPages = ['out/profile-maker.html','out/isekai-status.html','out/excuse-generator.html','out/station-sign-maker.html'];
+if (toolPages.some((file) => !fs.readFileSync(file, 'utf8').includes('WebApplication'))) process.exit(1);
+if (fs.readFileSync('out/index.html', 'utf8').includes('fonts.googleapis.com')) process.exit(1);
 console.log('OK: ' + (required.length + themeCategories.length) + ' generated routes verified');
 "
 

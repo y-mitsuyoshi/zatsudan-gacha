@@ -541,10 +541,10 @@ export default function ShachikuSurvivorGame() {
     <div className="flex min-h-dvh w-full flex-col items-center bg-[#0a0e1f] px-2 py-4 text-white">
       <div className="w-full max-w-[1000px]">
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="flex items-center gap-2 text-lg font-black tracking-wide">
+          <p className="flex items-center gap-2 text-lg font-black tracking-wide">
             <PixelIcon name="icon_building" size={20} />
             <span>社畜サバイバー</span>
-          </h1>
+          </p>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-xs">
               <PixelIcon name="coin" size={14} />
@@ -756,8 +756,8 @@ function TitleOverlay(props: {
         <Image
           src="/assets/survivor_cover.jpg"
           alt="Salaryman Survivors"
-          width={1376}
-          height={768}
+          width={800}
+          height={447}
           className="h-32 w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-2.5">

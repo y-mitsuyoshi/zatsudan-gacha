@@ -52,7 +52,6 @@ const sections = [
       '・Google AdSense（Google LLC）: 広告配信',
       '・Google Gemini API（Google LLC）: AIによる文章・質問の生成',
       '・Firebase Hosting / Cloud Functions（Google LLC）: サイト配信・サーバー処理',
-      '・Google Fonts（Google LLC）: フォント配信',
     ],
   },
   {

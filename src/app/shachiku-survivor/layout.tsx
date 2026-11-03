@@ -15,7 +15,20 @@ export const metadata: Metadata = {
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
     type: 'website',
-    images: ['/ogp.png'],
+    images: [
+      {
+        url: '/assets/survivor_cover.jpg',
+        width: 800,
+        height: 447,
+        alt: '社畜サバイバー',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '社畜サバイバー | 18時まで生き残る10分サバイバル',
+    description: '8武器×6パッシブ×武器進化×ボス4体。9:00から18時までの10分間を生き残る無料ブラウザサバイバル。',
+    images: ['/assets/survivor_cover.jpg'],
   },
 };
 

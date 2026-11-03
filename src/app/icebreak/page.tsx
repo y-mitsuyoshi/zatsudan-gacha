@@ -192,6 +192,20 @@ export default function IcebreakPage() {
     ],
   };
 
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: '会議のアイスブレイクにおすすめの雑談お題30選',
+    description: '会議の冒頭やリモートワークの雑談で使えるアイスブレイクのお題を30個厳選。初対面・チーム・1on1向けの質問例を紹介します。',
+    mainEntityOfPage: `${APP_URL}/icebreak`,
+    image: `${APP_URL}/ogp.png`,
+    inLanguage: 'ja-JP',
+    datePublished: '2026-10-31',
+    dateModified: '2026-11-03',
+    author: { '@id': `${APP_URL}/#organization` },
+    publisher: { '@id': `${APP_URL}/#organization` },
+  };
+
   return (
     <main className="min-h-screen bg-slate-100 dark:bg-slate-900 text-gray-800 dark:text-gray-100 transition-colors duration-300">
       <script
@@ -205,6 +219,10 @@ export default function IcebreakPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(articleJsonLd) }}
       />
 
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-12">

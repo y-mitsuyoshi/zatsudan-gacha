@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { callExcuseGeneratorAPI } from '@/lib/api-config';
 import { copyToClipboard } from '@/lib/clipboard';
+import { SeoContentSection } from '@/components/seo/SeoContentSection';
+import { TOOL_SEO_DATA, buildToolJsonLd } from '@/lib/toolSeoData';
 import { ClockIcon, ClipboardIcon, CheckIcon, ShareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const SITUATIONS = [
@@ -33,6 +35,8 @@ const TONES = [
 
 const TONE_VALUES = TONES.map((item) => item.value);
 const SITUATION_VALUES = SITUATIONS.map((item) => item.value);
+
+const tool = TOOL_SEO_DATA.excuse;
 
 const HISTORY_STORAGE_KEY = 'excuse_history';
 const MAX_HISTORY_ITEMS = 20;
@@ -499,6 +503,21 @@ function ExcuseGeneratorContent() {
                     <p>※AIが生成する言い訳は自己責任でご利用ください。人間関係の悪化について責任は負いかねます。</p>
                 </div>
             </div>
+
+            <SeoContentSection
+                variant="light"
+                eyebrow="TOOL GUIDE"
+                title={`${tool.name}の使い方とFAQ`}
+                intro={tool.description}
+                faqs={tool.faqs}
+                related={tool.related}
+                breadcrumbs={[
+                    { label: '雑談テーマガチャ', href: '/' },
+                    { label: '無料ツール一覧', href: '/tools' },
+                    { label: tool.name },
+                ]}
+                jsonLd={buildToolJsonLd(tool)}
+            />
 
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar {

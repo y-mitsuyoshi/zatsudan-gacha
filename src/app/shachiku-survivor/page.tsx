@@ -1,18 +1,30 @@
-'use client';
+import ShachikuSurvivorClient from '@/components/survivor/ShachikuSurvivorClient';
+import { SeoContentSection } from '@/components/seo/SeoContentSection';
+import { GAME_SEO_DATA, buildGameJsonLd } from '@/lib/gameSeoData';
 
-import dynamic from 'next/dynamic';
-
-const ShachikuSurvivorGame = dynamic(() => import('@/components/survivor/ShachikuSurvivorGame'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-dvh w-full items-center justify-center bg-[#0a0e1f] text-white">出社準備中…</div>
-  ),
-});
+const game = GAME_SEO_DATA.survivor;
 
 export default function Page() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-[#0a0e1f]">
-      <ShachikuSurvivorGame />
+    <main className="bg-[#0a0e1f]">
+      <h1 className="sr-only">{game.h1}</h1>
+      <ShachikuSurvivorClient />
+      <SeoContentSection
+        variant="dark"
+        eyebrow="GAME GUIDE"
+        title={`${game.name}の特徴と遊び方`}
+        intro={game.description}
+        features={game.features}
+        steps={game.steps}
+        faqs={game.faqs}
+        related={game.related}
+        breadcrumbs={[
+          { label: '雑談テーマガチャ', href: '/' },
+          { label: '無料ゲーム一覧', href: '/games' },
+          { label: game.name },
+        ]}
+        jsonLd={buildGameJsonLd(game)}
+      />
     </main>
   );
 }

@@ -458,7 +458,7 @@ export default function BarricadeDefenseGame() {
       <div className="w-full max-w-[520px]">
         {/* header */}
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="text-lg font-black tracking-wide">社畜通勤サバイバー</h1>
+          <p className="text-lg font-black tracking-wide">社畜通勤サバイバー</p>
           <div className="flex gap-2">
             <button onClick={toggleMute} className="rounded-lg bg-white/10 px-2 py-1 text-xs font-bold" aria-label="ミュート切替">
               {muted ? '消音' : '音量'}
@@ -667,8 +667,8 @@ function TitleOverlay(props: {
         <Image
           src="/assets/defense_cover.jpg"
           alt="Commuter Defense 3D"
-          width={1376}
-          height={768}
+          width={800}
+          height={447}
           className="h-32 w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-2.5">

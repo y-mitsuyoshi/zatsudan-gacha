@@ -114,6 +114,12 @@ export const Footer: React.FC = () => {
             
             <div className="text-center md:text-right">
               <nav aria-label="フッターナビゲーション" className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 mb-3 text-sm">
+                <Link href="/games" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  無料ゲーム一覧
+                </Link>
+                <Link href="/tools" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  無料ツール一覧
+                </Link>
                 <Link href="/icebreak" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
                   会議のアイスブレイク
                 </Link>
@@ -122,6 +128,9 @@ export const Footer: React.FC = () => {
                 </Link>
                 <Link href="/#faq" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
                   よくある質問
+                </Link>
+                <Link href="/about" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
+                  運営者情報
                 </Link>
                 <Link href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
                   プライバシーポリシー

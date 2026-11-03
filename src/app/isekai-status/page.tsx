@@ -7,6 +7,10 @@ import { ActionButtons } from '@/components/isekai-status/ActionButtons';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { IsekaiFormState, IsekaiStatus } from '@/types';
 import { generateIsekaiStatus } from '@/lib/isekai-logic';
+import { SeoContentSection } from '@/components/seo/SeoContentSection';
+import { TOOL_SEO_DATA, buildToolJsonLd } from '@/lib/toolSeoData';
+
+const tool = TOOL_SEO_DATA.isekai;
 
 export default function IsekaiStatusPage() {
   const [formState, setFormState] = useState<IsekaiFormState>({
@@ -53,37 +57,8 @@ export default function IsekaiStatusPage() {
     '#異世界転生ステータスカード',
   ].join('\n') : undefined;
 
-  // JSON-LD schema markup for SEO
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "異世界転生ステータスカード",
-    "description": "5つの質問に答えて、あなたが異世界に転生した時のステータスカードを作成するエンターテイメントアプリ",
-    "url": "https://zatsudan-gacha.app/isekai-status",
-    "applicationCategory": "GameApplication",
-    "operatingSystem": "Any",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "JPY"
-    },
-    "creator": {
-      "@type": "Organization",
-      "name": "ざつだんガチャ"
-    },
-    "audience": {
-      "@type": "Audience",
-      "audienceType": "ゲーム好き、ファンタジー好き、エンターテイメント好き"
-    },
-    "keywords": "異世界転生, ステータスカード, RPG, キャラクター診断, 性格診断, ファンタジー"
-  };
-
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
-      />
       <div className="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-8 font-sans transition-colors duration-300 pb-0">
         <div className="max-w-7xl mx-auto">
           <header className="flex justify-between items-center mb-8">
@@ -232,6 +207,20 @@ export default function IsekaiStatusPage() {
           </section>
         </div>
       </div>
+      <SeoContentSection
+        variant="light"
+        eyebrow="TOOL GUIDE"
+        title={`${tool.name}の使い方とFAQ`}
+        intro={tool.description}
+        faqs={tool.faqs}
+        related={tool.related}
+        breadcrumbs={[
+          { label: '雑談テーマガチャ', href: '/' },
+          { label: '無料ツール一覧', href: '/tools' },
+          { label: tool.name },
+        ]}
+        jsonLd={buildToolJsonLd(tool)}
+      />
     </>
   );
 }

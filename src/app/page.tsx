@@ -428,12 +428,24 @@ export default function Home() {
 
         <section aria-labelledby="other-tools-heading">
           <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">OTHER TOOLS</p>
-          <h2 id="other-tools-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-3">
-            他のツールでも遊ぶ
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            雑談だけじゃない、コミュニケーションを楽しむための無料ツールを用意しています。
-          </p>
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 id="other-tools-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-3">
+                他のツールでも遊ぶ
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                雑談だけじゃない、コミュニケーションを楽しむための無料ツールを用意しています。
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-x-4 gap-y-1">
+              <Link href="/tools" className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                無料ツール一覧を見る →
+              </Link>
+              <Link href="/games" className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                無料ゲーム一覧を見る →
+              </Link>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {otherTools.map((tool) => (
               <Link

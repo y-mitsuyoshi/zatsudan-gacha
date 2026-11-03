@@ -29,10 +29,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${BASE_URL}/games`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/tools`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: `${BASE_URL}/icebreak`,
       lastModified,
       changeFrequency: 'monthly',
       priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/about`,
+      lastModified,
+      changeFrequency: 'yearly',
+      priority: 0.4,
     },
     {
       url: `${BASE_URL}/privacy`,
