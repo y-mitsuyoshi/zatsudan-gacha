@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { VIEW_W, VIEW_H } from './config';
-import { MAX_PB, MAX_EB, MAX_EN, MAX_PT, MAX_RING, MAX_TX, type DanmakuSim } from './sim';
+import { MAX_PB, MAX_EB, MAX_EN, MAX_IT, MAX_PT, MAX_RING, MAX_TX, type DanmakuSim } from './sim';
 import {
   orbTexture, boltTexture, ringTexture, dotTexture, playerTexture, optionTexture,
   hitboxTexture, enemyTextures, bossTextures, itemTextures, backgroundTexture, TextLabel,
@@ -134,11 +134,11 @@ export class DanmakuView {
 
     const et = enemyTextures();
     for (const [kind, t] of Object.entries(et)) {
-      this.enemyMeshes[kind] = mkInst(t, 24, false, 3);
+      this.enemyMeshes[kind] = mkInst(t, MAX_EN, false, 3);
     }
     const it = itemTextures();
     for (const [kind, t] of Object.entries(it)) {
-      this.itemMeshes[kind] = mkInst(t, 10, false, 2);
+      this.itemMeshes[kind] = mkInst(t, MAX_IT, false, 2);
     }
 
     // boss / player / options / hitbox
@@ -325,13 +325,13 @@ export class DanmakuView {
       if (!mesh) continue;
       const i = counts[e.kind] ?? 0;
       counts[e.kind] = i + 1;
-      if (i >= 24) continue;
+      if (i >= MAX_EN) continue;
       const pulse = e.tele > 0 ? 1 + 0.14 * Math.sin(time * 30) : 1;
       const s = (e.r * 2 + 12) * pulse;
       this.writeInst(mesh, i, WORLD_X(e.x), WORLD_Y(e.y), s, s, 0, 1, 1, 1);
     }
     for (const [kind, mesh] of Object.entries(this.enemyMeshes)) {
-      this.flush(mesh, Math.min(24, counts[kind] ?? 0));
+      this.flush(mesh, Math.min(MAX_EN, counts[kind] ?? 0));
     }
 
     // items grouped by kind
@@ -342,11 +342,13 @@ export class DanmakuView {
       if (!mesh) continue;
       const i = icounts[it.kind] ?? 0;
       icounts[it.kind] = i + 1;
-      if (i >= 10) continue;
-      this.writeInst(mesh, i, WORLD_X(it.x), WORLD_Y(it.y + Math.sin(it.t * 6) * 3), 34, 34, 0, 1, 1, 1);
+      if (i >= MAX_IT) continue;
+      const sz = it.magnet ? 36 + Math.sin(time * 24) * 3 : 34;
+      const bob = it.magnet ? 0 : Math.sin(it.t * 6) * 3;
+      this.writeInst(mesh, i, WORLD_X(it.x), WORLD_Y(it.y + bob), sz, sz, 0, 1, 1, 1);
     }
     for (const [kind, mesh] of Object.entries(this.itemMeshes)) {
-      this.flush(mesh, Math.min(10, icounts[kind] ?? 0));
+      this.flush(mesh, Math.min(MAX_IT, icounts[kind] ?? 0));
     }
 
     // boss

@@ -1,17 +1,79 @@
 /**
  * 社畜サバイバー — WebAudio SFX (no assets, all synthesized).
+ * ON/OFF と音量は全社畜ゲーム共通のオーディオ設定 (効果音) に連動する。
  */
+
+import { getAudioSettings, subscribeAudioSettings } from '@/game/common/audioSettings';
 
 export class SurvivorSound {
   private ctx: AudioContext | null = null;
+  private master: GainNode | null = null;
+  /** local override (legacy API); effective mute = local || shared SE off */
   private muted = false;
+  private seOn = true;
+  private seVolume = 0.8;
+  private unsubscribe: (() => void) | null = null;
   private lastPlay: Record<string, number> = {};
+  private timers = new Set<number>();
+
+  constructor() {
+    try {
+      const s = getAudioSettings();
+      this.seOn = s.se;
+      this.seVolume = s.seVolume;
+      this.unsubscribe = subscribeAudioSettings((next) => {
+        this.seOn = next.se;
+        this.seVolume = next.seVolume;
+        this.applyVolume();
+      });
+    } catch {
+      /* settings unavailable (SSR/tests) */
+    }
+  }
+
+  /** Stop listening to shared settings and cancel scheduled jingles. */
+  dispose(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+    this.cancelScheduled();
+  }
+
+  /** Cancel queued multi-note jingles (e.g. when leaving a run mid-fanfare). */
+  cancelScheduled(): void {
+    if (typeof window !== 'undefined') this.timers.forEach((t) => window.clearTimeout(t));
+    this.timers.clear();
+  }
+
+  private later(fn: () => void, ms: number): void {
+    if (typeof window === 'undefined') return;
+    const id = window.setTimeout(() => {
+      this.timers.delete(id);
+      fn();
+    }, ms);
+    this.timers.add(id);
+  }
+
+  private applyVolume(): void {
+    if (!this.master || !this.ctx) return;
+    try {
+      this.master.gain.setValueAtTime(this.isSilent() ? 0 : this.seVolume / 0.8, this.ctx.currentTime);
+    } catch {
+      /* noop */
+    }
+  }
+
+  private isSilent(): boolean {
+    return this.muted || !this.seOn || this.seVolume <= 0;
+  }
 
   unlock(): void {
     try {
       if (!this.ctx) {
         const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.connect(this.ctx.destination);
+        this.applyVolume();
       }
       if (this.ctx.state === 'suspended') void this.ctx.resume();
     } catch {
@@ -37,6 +99,7 @@ export class SurvivorSound {
 
   setMuted(m: boolean): void {
     this.muted = m;
+    this.applyVolume();
   }
 
   private throttle(key: string, ms: number): boolean {
@@ -47,7 +110,7 @@ export class SurvivorSound {
   }
 
   private tone(freq: number, dur: number, type: OscillatorType, vol: number, slide = 0): void {
-    if (this.muted) return;
+    if (this.isSilent()) return;
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     try {
@@ -60,7 +123,7 @@ export class SurvivorSound {
       g.gain.setValueAtTime(vol, t);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       osc.connect(g);
-      g.connect(ctx.destination);
+      g.connect(this.master ?? ctx.destination);
       osc.start(t);
       osc.stop(t + dur + 0.02);
     } catch {
@@ -105,8 +168,8 @@ export class SurvivorSound {
 
   levelup(): void {
     this.tone(523, 0.12, 'triangle', 0.08);
-    window.setTimeout(() => this.tone(659, 0.12, 'triangle', 0.08), 90);
-    window.setTimeout(() => this.tone(784, 0.18, 'triangle', 0.09), 180);
+    this.later(() => this.tone(659, 0.12, 'triangle', 0.08), 90);
+    this.later(() => this.tone(784, 0.18, 'triangle', 0.09), 180);
   }
 
   select(): void {
@@ -115,14 +178,14 @@ export class SurvivorSound {
 
   chest(): void {
     this.tone(392, 0.12, 'triangle', 0.08);
-    window.setTimeout(() => this.tone(523, 0.12, 'triangle', 0.08), 100);
-    window.setTimeout(() => this.tone(659, 0.12, 'triangle', 0.08), 200);
-    window.setTimeout(() => this.tone(1046, 0.25, 'triangle', 0.09), 300);
+    this.later(() => this.tone(523, 0.12, 'triangle', 0.08), 100);
+    this.later(() => this.tone(659, 0.12, 'triangle', 0.08), 200);
+    this.later(() => this.tone(1046, 0.25, 'triangle', 0.09), 300);
   }
 
   boss(): void {
     this.tone(110, 0.5, 'sawtooth', 0.1, -40);
-    window.setTimeout(() => this.tone(110, 0.5, 'sawtooth', 0.1, -40), 350);
+    this.later(() => this.tone(110, 0.5, 'sawtooth', 0.1, -40), 350);
   }
 
   heal(): void {
@@ -131,11 +194,11 @@ export class SurvivorSound {
 
   victory(): void {
     const seq = [523, 659, 784, 1046, 784, 1046];
-    seq.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.18, 'triangle', 0.09), i * 130));
+    seq.forEach((f, i) => this.later(() => this.tone(f, 0.18, 'triangle', 0.09), i * 130));
   }
 
   defeat(): void {
     const seq = [392, 349, 311, 262];
-    seq.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.25, 'sawtooth', 0.07), i * 170));
+    seq.forEach((f, i) => this.later(() => this.tone(f, 0.25, 'sawtooth', 0.07), i * 170));
   }
 }

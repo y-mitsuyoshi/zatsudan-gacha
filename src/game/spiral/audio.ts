@@ -1,19 +1,38 @@
 /**
  * 社畜スパイラルディフェンス — WebAudio SFX (all synthesized, no assets).
+ * Linked with shared audioSettings (getAudioSettings().se / subscribeAudioSettings).
  */
+
+import { getAudioSettings, subscribeAudioSettings, type AudioSettings } from '../common/audioSettings';
 
 export class SpiralSound {
   private ctx: AudioContext | null = null;
   private muted = false;
+  private seOn = true;
+  private seVolume = 0.8;
+  private unsub: (() => void) | null = null;
   private lastPlay: Record<string, number> = {};
+
+  constructor() {
+    if (typeof window === 'undefined') return;
+    this.applySettings(getAudioSettings());
+    this.unsub = subscribeAudioSettings((s) => this.applySettings(s));
+  }
+
+  private applySettings(s: AudioSettings): void {
+    this.seOn = s.se;
+    this.seVolume = s.seVolume;
+  }
 
   unlock(): void {
     try {
-      if (!this.ctx) {
-        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        this.ctx = new AC();
+      if (!this.ctx && typeof window !== 'undefined') {
+        const AC =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AC) this.ctx = new AC();
       }
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      if (this.ctx?.state === 'suspended') void this.ctx.resume();
     } catch {
       /* audio unavailable */
     }
@@ -21,7 +40,7 @@ export class SpiralSound {
 
   suspend(): void {
     try {
-      void this.ctx?.suspend();
+      if (this.ctx?.state === 'running') void this.ctx.suspend();
     } catch {
       /* noop */
     }
@@ -39,6 +58,11 @@ export class SpiralSound {
     this.muted = m;
   }
 
+  destroy(): void {
+    this.unsub?.();
+    this.unsub = null;
+  }
+
   private throttle(key: string, ms: number): boolean {
     const now = performance.now();
     if (now - (this.lastPlay[key] ?? 0) < ms) return true;
@@ -46,18 +70,19 @@ export class SpiralSound {
     return false;
   }
 
-  private tone(freq: number, dur: number, type: OscillatorType, vol: number, slide = 0): void {
-    if (this.muted) return;
+  private tone(freq: number, dur: number, type: OscillatorType, vol: number, slide = 0, delaySec = 0): void {
+    if (this.muted || !this.seOn) return;
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     try {
-      const t = ctx.currentTime;
+      const t = ctx.currentTime + delaySec;
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
+      const gainVal = Math.max(0.0002, vol * this.seVolume);
       osc.type = type;
       osc.frequency.setValueAtTime(freq, t);
       if (slide !== 0) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq + slide), t + dur);
-      g.gain.setValueAtTime(vol, t);
+      g.gain.setValueAtTime(gainVal, t);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       osc.connect(g);
       g.connect(ctx.destination);
@@ -84,7 +109,7 @@ export class SpiralSound {
   }
 
   coin(): void {
-    if (this.throttle('coin', 90)) return;
+    if (this.throttle('coin', 70)) return;
     this.tone(1320, 0.08, 'sine', 0.045, 440);
   }
 
@@ -94,18 +119,18 @@ export class SpiralSound {
   }
 
   upgrade(): void {
-    this.tone(523, 0.1, 'triangle', 0.07);
-    window.setTimeout(() => this.tone(784, 0.16, 'triangle', 0.08), 90);
+    this.tone(523, 0.1, 'triangle', 0.07, 0, 0);
+    this.tone(784, 0.16, 'triangle', 0.08, 0, 0.09);
   }
 
   waveClear(): void {
     const seq = [523, 659, 784];
-    seq.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.14, 'triangle', 0.08), i * 110));
+    seq.forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.08, 0, i * 0.11));
   }
 
   boss(): void {
-    this.tone(110, 0.5, 'sawtooth', 0.1, -40);
-    window.setTimeout(() => this.tone(110, 0.5, 'sawtooth', 0.1, -40), 350);
+    this.tone(110, 0.5, 'sawtooth', 0.1, -40, 0);
+    this.tone(110, 0.5, 'sawtooth', 0.1, -40, 0.35);
   }
 
   heal(): void {
@@ -114,11 +139,11 @@ export class SpiralSound {
 
   victory(): void {
     const seq = [523, 659, 784, 1046, 784, 1046];
-    seq.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.18, 'triangle', 0.09), i * 130));
+    seq.forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.09, 0, i * 0.13));
   }
 
   defeat(): void {
     const seq = [392, 349, 311, 262];
-    seq.forEach((f, i) => window.setTimeout(() => this.tone(f, 0.25, 'sawtooth', 0.07), i * 170));
+    seq.forEach((f, i) => this.tone(f, 0.25, 'sawtooth', 0.07, 0, i * 0.17));
   }
 }

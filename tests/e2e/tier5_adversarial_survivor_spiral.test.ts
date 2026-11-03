@@ -986,10 +986,14 @@ describe('Tier 5: Adversarial Coverage Hardening (Survivor & Spiral)', () => {
       const distanceBefore = Math.hypot(chest.x - 320, chest.y - 320);
 
       chain.segs.splice(1, 2);
-      for (let frame = 0; frame < 120; frame++) anyEngine.updateChests(1 / 60);
+      for (let frame = 0; frame < 20; frame++) anyEngine.updateChests(1 / 60);
 
-      assert.strictEqual(chest.taken, false, 'Chest is not silently discarded');
+      assert.strictEqual(chest.free, true, 'Detached chest is marked free');
       assert.ok(Math.hypot(chest.x - 320, chest.y - 320) < distanceBefore, 'Chest drifts toward the core');
+
+      for (let frame = 0; frame < 120; frame++) anyEngine.updateChests(1 / 60);
+      assert.strictEqual(chest.taken, true, 'Chest auto-opens upon reaching the center core');
+      assert.ok(anyEngine.score >= 200, 'Opening detached chest awards chest score and upgrade');
       engine.destroy();
     });
   });

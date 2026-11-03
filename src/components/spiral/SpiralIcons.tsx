@@ -250,6 +250,10 @@ export function TechUpgradeIcon({ id, className = 'w-6 h-6' }: { id: string; cla
     case 'beam':
       return <LaserBeamIcon className={className} />;
     case 'hp':
+    case 'heal0':
+    case 'heal1':
+    case 'heal2':
+    case 'bonus_heal':
       // Bento energy pack
       return (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

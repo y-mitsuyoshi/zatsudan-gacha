@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { AudioToggle } from '@/components/game/AudioToggle';
 import { SetupForm } from '@/components/shachiku-sugoroku/SetupForm';
 import { GameContainer } from '@/components/shachiku-sugoroku/GameContainer';
+import { HankoStamp } from '@/components/shachiku-sugoroku/SugorokuIcons';
 import { GameState, SetupFormState } from '@/types/sugoroku';
 import { createNewGame } from '@/lib/sugoroku-logic';
 import { SeoContentSection } from '@/components/seo/SeoContentSection';
@@ -27,70 +29,101 @@ export default function ShachikuSugorokuPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--paper)] p-3 font-sans transition-colors duration-300 sm:p-8">
-      {/* tabletop texture */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#c9b38a_0.7px,transparent_0.7px)] [background-size:20px_20px] opacity-40 dark:opacity-20" aria-hidden="true" />
+    <div className="relative min-h-screen overflow-hidden bg-[#efe6d5] p-3 font-sans transition-colors duration-300 sm:p-6 dark:bg-[#14110d]">
+      {/* 盤面テーブルクロス・設計図テクスチャ */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(#8a7d69_0.75px,transparent_0.75px)] [background-size:20px_20px] opacity-30 dark:opacity-15"
+        aria-hidden="true"
+      />
 
       <div className="relative mx-auto max-w-7xl">
-        <header className="mb-6 border border-[var(--line)] bg-[var(--paper-strong)] shadow-[4px_4px_0_var(--paper-shadow)]">
-          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="font-label flex h-14 w-14 shrink-0 items-center justify-center border border-[var(--line-strong)] bg-[var(--paper-muted)] text-[10px] font-bold text-[var(--accent)] sm:h-16 sm:w-16">
-                60<span className="sr-only">マス</span>
+        <header className="mb-5 overflow-hidden rounded-2xl border-2 border-[#3b3022] bg-[#f4ece0] shadow-[0_8px_0_#261e14] dark:border-[#6e5a3e] dark:bg-[#1e1913]">
+          <div className="flex flex-col gap-4 bg-[#12100d] p-4 text-[#fffaf0] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-[#f5ca5c] bg-[#b23a2a] font-mono text-white shadow-inner sm:h-14 sm:w-14">
+                <span className="text-[9px] font-black leading-none text-[#f5ca5c]">60 STEP</span>
+                <span className="mt-0.5 text-lg font-black leading-none">双六</span>
               </div>
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-2">
-                  <h1 className="font-editorial text-2xl tracking-tight text-[var(--ink)] sm:text-4xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="font-editorial text-2xl font-black tracking-tight text-[#fffaf0] sm:text-3xl">
                     社畜すごろく
                   </h1>
-                  <span className="font-label border border-[var(--ink)] bg-[var(--ink)] px-2 py-0.5 text-[9px] text-[var(--paper-strong)]">
-                    NEO
+                  <span className="rounded border border-[#f5ca5c] bg-[#f5ca5c] px-2 py-0.5 font-mono text-[10px] font-black text-[#12100d]">
+                    NEO / TOWER EDITION
                   </span>
                 </div>
-                <p className="mt-1 text-xs font-bold tracking-wide text-[var(--ink-soft)] sm:text-sm">
-                  選択で変わる、あなたのキャリアボード
+                <p className="mt-1 text-xs font-bold tracking-wide text-white/75 sm:text-sm">
+                  定時か残業か、昇進か休養か。選択と出目で駆け上がる60マスの企業タワーボードゲーム
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-label hidden border border-[var(--line)] bg-[var(--paper-muted)] px-3 py-1.5 text-[9px] text-[var(--ink-soft)] sm:inline-flex">
-                60 squares / 10 jobs
-              </span>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <AudioToggle variant="compact" />
               <ThemeToggleButton />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 border-t border-[var(--line)] px-4 py-3 sm:px-6">
-            {['サイコロで進む', '選択イベント', '評価ポイント', '全10職業'].map((item, index) => (
-              <span key={item} className="font-label border border-[var(--line)] bg-[var(--paper-muted)] px-3 py-1 text-[9px] text-[var(--ink-soft)]">
-                {String(index + 1).padStart(2, '0')} {item}
-              </span>
-            ))}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#d4c4a8] px-4 py-2.5 text-[11px] font-black text-[#5c5141] sm:px-6 dark:border-[#3b3226] dark:text-[#cfc2ad]">
+            <div className="flex flex-wrap gap-2">
+              {[
+                '01 全6フロア・60マス立体盤面',
+                '02 定時(1D6) / 全力残業(2D6)切替',
+                '03 5段階の昇進査定ゲート',
+                '04 全10職種の専用特効＆38種エンディング',
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-md border border-[#c9b99b] bg-[#fffaf0] px-2.5 py-0.5 text-[10px] font-black text-[#12100d] dark:border-[#3b3226] dark:bg-[#262019] dark:text-[#fffaf0]"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+            <span className="font-mono text-[10px] text-[#8a7d69]">BOARD GAME VER 2.0</span>
           </div>
         </header>
 
         {!gameState && (
-          <section className="mb-6 grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
-            <div className="relative overflow-hidden border border-[var(--line)] bg-[var(--paper-strong)] p-5 shadow-[3px_3px_0_var(--paper-shadow)] sm:p-6">
-              <p className="paper-kicker">Story</p>
-              <h2 className="font-editorial mt-2 text-xl text-[var(--ink)] sm:text-2xl">
-                今日も、定時の鐘は遠い。
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-                月曜の朝から始まる、社畜のキャリアすごろく。サイコロを振ってマスを進み、仕事のイベントを乗り越えよう。
-                途中で訪れる選択イベントでは「評価」と「やる気」のバランスを考えて、自分だけの結末を目指そう。
-              </p>
+          <section className="mb-6 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+            <div className="relative flex items-center justify-between gap-4 overflow-hidden rounded-2xl border-2 border-[#3b3022] bg-[#fffaf0] p-5 shadow-[0_6px_0_#261e14] sm:p-6 dark:border-[#594b38] dark:bg-[#1e1913]">
+              <div>
+                <p className="font-mono text-[10px] font-black tracking-widest text-[#b23a2a] dark:text-[#f5ca5c]">
+                  CORPORATE SURVIVAL BOARD GAME
+                </p>
+                <h2 className="font-editorial mt-1 text-xl font-black text-[#12100d] sm:text-2xl dark:text-[#fffaf0]">
+                  今日も、定時のチャイムは遠く鳴る。
+                </h2>
+                <p className="mt-2 max-w-2xl text-xs font-bold leading-relaxed text-[#5c5141] sm:text-sm dark:text-[#cfc2ad]">
+                  1F「新人研修棟」から6F「役員フロア・決算ボーナス支給日」まで全60マス。
+                  堅実に定時退社で気力を保つか、リスク覚悟の全力残業（2ダイス）で評価と残業代を稼ぐか。
+                  あなたの決断次第で、伝説の執行役員から独立起業・FIREまで38通りの結末が待ち受けます。
+                </p>
+              </div>
+              <HankoStamp text="出社" variant="teal" className="hidden sm:inline-flex" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+
+            <div className="grid grid-cols-2 gap-2.5">
               {[
-                { title: '60マス', text: '6つの章をめぐる' },
-                { title: '選択イベント', text: '評価とやる気を選ぶ' },
-                { title: 'アイテム', text: 'ピンチをチャンスに' },
-                { title: 'ランク判定', text: 'S〜Dで結果発表' },
-              ].map((feature, index) => (
-                <div key={feature.title} className="border border-[var(--line)] bg-[var(--paper-strong)] p-3">
-                  <span className="font-label text-[9px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
-                  <p className="mt-1 text-xs font-black text-[var(--ink)]">{feature.title}</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--ink-soft)]">{feature.text}</p>
+                { badge: 'STANCE', title: '定時 vs 全力残業', text: '1ダイス安全進行か2ダイス高速出世か' },
+                { badge: 'PROMOTE', title: '昇進査定ゲート', text: '社内評価を貯めて新入社員から役員へ' },
+                { badge: 'DECISION', title: '3択の稟議決断', text: '堅実案から一発逆転の勝負手まで選択' },
+                { badge: 'GRADE', title: 'S〜Dランク査定', text: '全38エンディング＆10種の実績バッジ' },
+              ].map((feature) => (
+                <div
+                  key={feature.title}
+                  className="rounded-xl border-2 border-[#3b3022] bg-[#fffaf0] p-3 shadow-xs dark:border-[#594b38] dark:bg-[#1e1913]"
+                >
+                  <span className="rounded bg-[#12100d] px-1.5 py-0.5 font-mono text-[9px] font-black text-[#f5ca5c]">
+                    {feature.badge}
+                  </span>
+                  <p className="mt-1.5 text-xs font-black text-[#12100d] dark:text-[#fffaf0]">
+                    {feature.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-bold leading-snug text-[#5c5141] dark:text-[#cfc2ad]">
+                    {feature.text}
+                  </p>
                 </div>
               ))}
             </div>
@@ -99,7 +132,7 @@ export default function ShachikuSugorokuPage() {
 
         <main role="main">
           {!gameState ? (
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto max-w-4xl">
               <SetupForm
                 formState={formState}
                 setFormState={setFormState}
@@ -111,6 +144,7 @@ export default function ShachikuSugorokuPage() {
           )}
         </main>
       </div>
+
       <SeoContentSection
         variant="light"
         eyebrow="GAME GUIDE"

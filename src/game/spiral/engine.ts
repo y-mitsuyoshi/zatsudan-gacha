@@ -44,7 +44,17 @@ export interface HudSnapshot {
   levels: { id: UpgradeId; icon: string; lv: number }[];
   bossName: string; bossHp: number; bossMax: number;
   endless: boolean;
+  /** shield (absorbs damage before HP) */
+  shield: number; maxShield: number;
+  /** true when the current/upcoming wave contains a boss */
+  bossWave: boolean;
+  /** enemy chains spawned+queued this wave vs. defeated, for the wave progress gauge */
+  waveSpawnTotal: number;
+  /** true during the short post-wave "回収" interlude (drops are vacuumed in) */
+  clearing: boolean;
 }
+
+export type UpgradeRarity = 'common' | 'rare' | 'epic';
 
 export interface UpgradeChoice {
   kind: 'upgrade' | 'bonus';
@@ -54,6 +64,10 @@ export interface UpgradeChoice {
   desc: string;
   toLv: number;
   isNew: boolean;
+  /** visual rarity tier of the card */
+  rarity: UpgradeRarity;
+  /** max level of the upgrade (0 for bonus) */
+  maxLv: number;
 }
 
 export interface BuildData {
@@ -150,7 +164,17 @@ interface BossProj {
   kind: 'memo';
 }
 
-interface CoinP { x: number; y: number; vx: number; vy: number; val: number }
+/** Coin / energy-pack drop. val < 0 = energy pack (heal + shield). */
+interface CoinP { x: number; y: number; vx: number; vy: number; val: number; age?: number }
+
+/** Drops older than this are force-homed into the core so nothing lingers on screen. */
+const DROP_FORCE_HOME_SEC = 2.4;
+/** Free (detached) chests within this radius of the core are auto-opened. */
+const CHEST_AUTO_OPEN_R = 64;
+/** Post-wave vacuum interlude length (drops/chests are sucked into the core). */
+const CLEAR_INTERLUDE_SEC = 1.15;
+/** Coins granted per unopened chest converted at wave end. */
+const CHEST_CONVERT_COINS = 40;
 interface BeamFx { x2: number; y2: number; t: number }
 interface Ring { x: number; y: number; r: number; maxR: number; t: number; dur: number; color: string }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
@@ -252,6 +276,17 @@ export class SpiralEngine {
   private queue: SpawnReq[] = [];
   private hudT = 0;
   private chainKills: Record<string, number> = {};
+  /** >0 while the post-wave vacuum interlude plays (phase stays 'wave', no spawns) */
+  private clearT = 0;
+  /** chains spawned (incl. splits) + queued at wave start, for the progress gauge */
+  private waveSpawnTotal = 0;
+  /** boss arrival cinematic timer (canvas WARNING overlay) */
+  private bossIntroT = 0;
+  private bossIntroName = '';
+  /** wave-clear canvas stamp timer */
+  private clearStampT = 0;
+  /** coin pickup flash on the core */
+  private coreFlashT = 0;
 
   // Commercial juice integration
   private shake: TraumaScreenShake = new TraumaScreenShake({ maxOffset: 16, maxAngle: 0.04, decayRate: 1.5 });
@@ -311,6 +346,13 @@ export class SpiralEngine {
     this.chainKills = {};
     this.paused = false; this.over = false; this.endless = false;
     this.phase = 'build';
+    this.aimAngle = null;
+    this.buildFromChest = false;
+    this.currentChoices = [];
+    this.clearT = 0; this.waveSpawnTotal = 0;
+    this.bossIntroT = 0; this.bossIntroName = '';
+    this.clearStampT = 0; this.coreFlashT = 0;
+    this.hudT = 0;
     this.shake.reset();
     this.hitstop.reset();
     this.dmgNumbers.clear();
@@ -335,12 +377,13 @@ export class SpiralEngine {
       // Hitstop micro-freeze: update screen shake and render impact frame
       this.shake.update(dt);
       this.render();
-      this.raf = requestAnimationFrame((n) => this.loop(n, gen));
+      this.raf = safeRaf((n) => this.loop(n, gen));
       return;
     }
 
     if (!this.paused && !this.over && this.phase === 'wave') this.update(dt);
     else if (!this.paused && !this.over && this.phase === 'build') this.updateBuildFx(dt);
+    else if (!this.paused && this.over) this.updateOverFx(dt);
 
     this.shake.update(dt);
     this.dmgNumbers.update(dt);
@@ -384,14 +427,31 @@ export class SpiralEngine {
     this.over = false;
     this.endless = true;
     this.hp = this.maxHp;
+    this.shield = Math.max(this.shield, Math.round(this.maxShield / 2));
+    this.iframes = 0;
+    // A finished run must not leak live entities into the overtime build/wave
+    this.chains = []; this.queue = [];
+    this.projs = []; this.bossProjs = [];
+    this.coinPs = []; this.chests = [];
+    this.clearT = 0; this.bossIntroT = 0; this.clearStampT = 0;
+    this.aimAngle = null;
     this.phase = 'build';
     this.emitBuild();
+    this.emitHud();
     this.ev.onBanner('残業突入！', '渦は終わらない…どこまで耐えられるか');
   }
 
   /* ----- build phase ----- */
 
-  private buildChoices(): UpgradeChoice[] {
+  private rarityOf(id: UpgradeId, toLv: number): UpgradeRarity {
+    const def = UPGRADES[id];
+    const weapon = id === 'orb' || id === 'blast' || id === 'beam';
+    if ((weapon && toLv === 1) || toLv >= def.maxLv) return 'epic';
+    if (weapon || id === 'multi' || id === 'pierce' || id === 'crit') return 'rare';
+    return 'common';
+  }
+
+  private buildChoices(fromChest = false): UpgradeChoice[] {
     const pool: UpgradeChoice[] = [];
     for (const id of UPGRADE_ORDER) {
       const lv = this.levels[id];
@@ -400,6 +460,7 @@ export class SpiralEngine {
         pool.push({
           kind: 'upgrade', id, name: def.name, icon: def.icon, desc: def.desc,
           toLv: lv + 1, isNew: lv === 0,
+          rarity: this.rarityOf(id, lv + 1), maxLv: def.maxLv,
         });
       }
     }
@@ -408,10 +469,15 @@ export class SpiralEngine {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     const picks = pool.slice(0, 3);
+    // Chests always offer at least one rare-or-better card (reward feel)
+    if (fromChest && picks.length > 0 && !picks.some((p) => p.rarity !== 'common')) {
+      const better = pool.slice(3).find((p) => p.rarity !== 'common');
+      if (better) picks[picks.length - 1] = better;
+    }
     while (picks.length < 3) {
       picks.push(picks.length % 2 === 0
-        ? { kind: 'bonus', id: `coins${picks.length}`, name: '臨時ボーナス', icon: 'bonus_coin', desc: '残業手当 +80', toLv: 0, isNew: false }
-        : { kind: 'bonus', id: `heal${picks.length}`, name: '栄養ドリンク', icon: 'bonus_heal', desc: 'HPを全回復', toLv: 0, isNew: false });
+        ? { kind: 'bonus', id: `coins${picks.length}`, name: '臨時ボーナス', icon: 'bonus_coin', desc: '残業手当 +80', toLv: 0, isNew: false, rarity: 'common', maxLv: 0 }
+        : { kind: 'bonus', id: `heal${picks.length}`, name: '栄養ドリンク', icon: 'bonus_heal', desc: 'HPを全回復', toLv: 0, isNew: false, rarity: 'common', maxLv: 0 });
     }
     return picks;
   }
@@ -463,7 +529,7 @@ export class SpiralEngine {
   rerollBuild(): void {
     if (this.phase !== 'build' || this.over || this.rerollLeft <= 0) return;
     this.rerollLeft -= 1;
-    this.currentChoices = this.buildChoices();
+    this.currentChoices = this.buildChoices(this.buildFromChest);
     this.sound.upgrade();
     this.ev.onBuild({ wave: this.buildFromChest ? this.wave : this.wave + 1, choices: this.currentChoices, canReroll: false, fromChest: this.buildFromChest });
   }
@@ -473,7 +539,12 @@ export class SpiralEngine {
   private startWave(): void {
     this.wave += 1;
     this.waveTime = 0;
+    this.clearT = 0;
     this.queue = [];
+    // Never carry live hazards/drops across waves (they would be frozen during build)
+    this.projs = []; this.bossProjs = [];
+    this.flushDrops();
+    this.chests = this.chests.filter((c) => !c.taken && this.chains.includes(c.chain));
     const plan = wavePlan(this.wave);
     for (const item of plan) {
       const count = Math.max(1, Math.round(item.count * this.diff.countMul * this.stage.countMul));
@@ -482,15 +553,15 @@ export class SpiralEngine {
       }
     }
     this.queue.sort((a, b) => a.at - b.at);
+    this.waveSpawnTotal = this.queue.length + this.chains.length;
     this.phase = 'wave';
     const bossItem = plan.find((p) => CHAINS[p.kind].boss);
     if (bossItem) {
       const def = CHAINS[bossItem.kind];
-      this.ev.onBanner(`WARNING: ${def.name} 接近！`, `第${this.wave}波・統括リーダー迎撃！頭部を狙え！`);
-      this.sound.boss();
-      this.shake.addTrauma(0.45);
+      this.ev.onBanner(`第${this.wave}波 — 決裁者襲来`, `${def.name}が接近中。頭部を狙え！`);
+      this.shake.addTrauma(0.25);
     } else {
-      this.ev.onBanner(`WAVE ${this.wave}`, '渦巻く業務列を迎撃せよ！');
+      this.ev.onBanner(`第${this.wave}波`, this.wave === 1 ? '業務列を撃ち落とせ。タップで照準、離すと自動照準' : '渦巻く業務列を迎撃せよ！');
     }
     this.emitHud();
   }
@@ -550,6 +621,15 @@ export class SpiralEngine {
     }
     this.chains.push(chain);
 
+    if (def.boss) {
+      // Boss arrival cinematic: canvas WARNING tape + rumble
+      this.bossIntroT = 2.2;
+      this.bossIntroName = def.name;
+      this.sound.boss();
+      this.shake.addTrauma(0.6);
+      this.hitstop.triggerMs(80);
+      this.ev.onBanner(`WARNING — ${def.name}`, '頭部を破壊すると1.5秒スタン！');
+    }
     // Treasure chest in the gap between chain segments (moves with the chain)
     if (this.chests.length < 4 && Math.random() < (kind === 'mail' ? 0.16 : 0.3)) {
       const midStart = Math.max(1, Math.floor(segs.length / 2));
@@ -576,8 +656,15 @@ export class SpiralEngine {
   /* ----- update ----- */
 
   private update(dt: number): void {
+    // Post-wave interlude: no enemies, drops/chests are vacuumed into the core
+    if (this.clearT > 0) {
+      this.updateClearing(dt);
+      return;
+    }
+
     this.waveTime += dt;
     this.runTime += dt;
+    this.tickTimers(dt);
 
     // Player is FIXED at the center core (ad-game style)
     this.px = CENTER;
@@ -602,32 +689,130 @@ export class SpiralEngine {
     this.updateCoins(dt);
     this.updateFx(dt);
 
-    // wave clear
-    if (this.queue.length === 0 && this.chains.length === 0) {
-      const bonus = Math.round((10 + this.wave * 2) * this.stage.coinMul);
-      this.coins += bonus;
-      this.score += Math.round(200 * this.wave * this.diff.scoreMul * this.stage.scoreMul);
-      this.sound.waveClear();
-      if (!this.endless && this.wave >= FINAL_WAVE) {
-        this.finishRun(true);
-        return;
-      }
-      this.phase = 'build';
-      this.ev.onBanner(`WAVE ${this.wave} 制圧！`, `報酬 +${bonus} — 強化を選択してください`);
-      this.emitBuild();
-      this.emitHud();
-      return;
-    }
-
     if (this.hp <= 0) {
       this.hp = 0;
       this.finishRun(false);
+      return;
     }
+
+    // A chest opened this frame switched us into its pick modal; resolve the
+    // wave clear after the pick so the chest reward is never overridden.
+    if (this.phase !== 'wave' || this.over) return;
+
+    // wave clear → start the vacuum interlude
+    if (this.queue.length === 0 && this.chains.length === 0) {
+      this.beginClear();
+    }
+  }
+
+  private tickTimers(dt: number): void {
+    if (this.bossIntroT > 0) this.bossIntroT = Math.max(0, this.bossIntroT - dt);
+    if (this.clearStampT > 0) this.clearStampT = Math.max(0, this.clearStampT - dt);
+    if (this.coreFlashT > 0) this.coreFlashT = Math.max(0, this.coreFlashT - dt);
+  }
+
+  /** Wave defeated: clear hazards and start sucking every remaining drop into the core. */
+  private beginClear(): void {
+    this.clearT = CLEAR_INTERLUDE_SEC;
+    this.clearStampT = 1.4;
+    this.projs = [];
+    this.bossProjs = [];
+    this.iframes = 0;
+    this.sound.waveClear();
+    this.shake.addTrauma(0.2);
+    // Every untaken chest is released and flies to the core
+    for (const ch of this.chests) if (!ch.taken) ch.free = true;
+  }
+
+  private updateClearing(dt: number): void {
+    this.runTime += dt;
+    this.tickTimers(dt);
+    this.clearT -= dt;
+    this.orbAngle += dt * 2.6;
+    this.updateCoins(dt, true);
+    this.updateClearChests(dt);
+    this.updateFx(dt);
+    for (let i = this.rings.length - 1; i >= 0; i--) {
+      const r = this.rings[i];
+      r.t += dt; r.r += 520 * dt;
+      if (r.t >= r.dur || r.r >= r.maxR) this.rings.splice(i, 1);
+    }
+    const pending = this.coinPs.length > 0 || this.chests.some((c) => !c.taken);
+    // Leave early once everything is in (but give the stamp a moment to read)
+    if (this.clearT <= 0 || (!pending && this.clearT < CLEAR_INTERLUDE_SEC - 0.6)) {
+      this.finishClear();
+    }
+  }
+
+  /** Chests fly straight into the core during the interlude and convert to coins. */
+  private updateClearChests(dt: number): void {
+    for (const ch of this.chests) {
+      ch.spin += dt * 6;
+      if (ch.taken) { ch.openT -= dt; continue; }
+      const dx = CENTER - ch.x; const dy = CENTER - ch.y;
+      const d = Math.hypot(dx, dy);
+      const step = Math.max(420, d * 4) * dt;
+      if (d <= Math.max(18, step)) {
+        this.convertChest(ch);
+      } else {
+        ch.x += (dx / d) * step;
+        ch.y += (dy / d) * step;
+      }
+    }
+    this.chests = this.chests.filter((c) => !c.taken || c.openT > 0);
+  }
+
+  private convertChest(ch: Chest): void {
+    if (ch.taken) return;
+    ch.taken = true;
+    ch.openT = 0.45;
+    const val = Math.round(CHEST_CONVERT_COINS * this.stage.coinMul);
+    this.coins += val;
+    this.score += 200;
+    this.coreFlashT = 0.3;
+    this.burst(ch.x, ch.y, '#fde047', 18, 240);
+    this.dmgNumbers.spawn(CENTER, CENTER - 34, `宝箱 +${val}`, 'custom', {
+      color: '#fde68a', strokeColor: '#78350f', strokeWidth: 3, fontSize: 15, fontFamily: 'sans-serif', initialScale: 1.4,
+    });
+    this.sound.coin();
+  }
+
+  private finishClear(): void {
+    this.clearT = 0;
+    // Guarantee: anything still in flight is credited, nothing stays on screen
+    this.flushDrops();
+    for (const ch of this.chests) if (!ch.taken) this.convertChest(ch);
+    this.chests = [];
+    const bonus = Math.round((10 + this.wave * 2) * this.stage.coinMul);
+    this.coins += bonus;
+    this.score += Math.round(200 * this.wave * this.diff.scoreMul * this.stage.scoreMul);
+    if (!this.endless && this.wave >= FINAL_WAVE) {
+      this.finishRun(true);
+      return;
+    }
+    this.phase = 'build';
+    this.ev.onBanner(`第${this.wave}波 制圧`, `残業手当 +${bonus} — 強化を1つ選択`);
+    this.emitBuild();
+    this.emitHud();
+  }
+
+  /** Instantly credit every drop still on screen (no drop is ever lost or frozen). */
+  private flushDrops(): void {
+    for (const c of this.coinPs) this.collectDrop(c, false);
+    this.coinPs = [];
   }
 
   private updateBuildFx(dt: number): void {
     this.orbAngle += dt * 2;
+    this.tickTimers(dt);
     this.updateChests(dt);
+    // Drops keep flying into the core while a pick modal is open (never freeze on screen)
+    this.updateCoins(dt);
+    this.updateFx(dt);
+  }
+
+  private updateOverFx(dt: number): void {
+    this.tickTimers(dt);
     this.updateFx(dt);
   }
 
@@ -723,22 +908,14 @@ export class SpiralEngine {
           s.hitCd = 0.9;
           this.damagePlayer(c.contact);
 
-          // Knock the player away so contact grinds are escapable
-          const pdx = this.px - s.x; const pdy = this.py - s.y;
-          const pd = Math.max(1, Math.hypot(pdx, pdy));
-          const nx = this.px + (pdx / pd) * 65;
-          const ny = this.py + (pdy / pd) * 65;
-          const nd = Math.hypot(nx - CENTER, ny - CENTER);
-          if (nd > MOVE_R) {
-            this.px = CENTER + ((nx - CENTER) / nd) * MOVE_R;
-            this.py = CENTER + ((ny - CENTER) / nd) * MOVE_R;
-          } else {
-            this.px = nx;
-            this.py = ny;
-          }
+          // Push the chain slightly outward so contact grinds are escapable;
+          // the player core itself remains fixed at CENTER.
+          c.r = Math.min(ARENA_R, c.r + 22);
+          this.px = CENTER;
+          this.py = CENTER;
 
           // If breaching core at extreme proximity, breach segment self-destructs
-          if (c.r <= 24 && si === 0) {
+          if (c.r <= 46 && si === 0) {
             this.burst(head.x, head.y, '#f59e0b', 16, 240);
             this.killSeg(c, ci, 0);
           }
@@ -868,12 +1045,14 @@ export class SpiralEngine {
         b.minionsSummoned = 1;
         this.spawnChain('mail');
         this.spawnChain('claim');
+        this.waveSpawnTotal += 2;
         this.shake.addTrauma(0.5);
         this.ev.onBanner('社長「全社朝礼を始める！」', '護衛メール・クレーム列が召集された！');
       } else if (hpRatio < 0.35 && b.minionsSummoned === 1) {
         b.minionsSummoned = 2;
         this.spawnChain('doc');
         this.spawnChain('claim');
+        this.waveSpawnTotal += 2;
         this.shake.addTrauma(0.55);
         this.ev.onBanner('社長「総力戦だ！！」', '追加護衛部隊が突入！');
       }
@@ -1052,6 +1231,13 @@ export class SpiralEngine {
         const a = this.orbAngle + (i * Math.PI * 2) / orbN;
         const ox = this.px + Math.cos(a) * R;
         const oy = this.py + Math.sin(a) * R;
+        for (const ch of this.chests) {
+          if (ch.taken) continue;
+          if (dist2(ox, oy, ch.x, ch.y) < (17 + 20) * (17 + 20)) {
+            this.openChest(ch);
+            if (this.phase !== 'wave') return;
+          }
+        }
         for (let ci = 0; ci < this.chains.length; ci++) {
           const c = this.chains[ci];
           for (let si = 0; si < c.segs.length; si++) {
@@ -1077,6 +1263,16 @@ export class SpiralEngine {
         const dmg = this.blastDmg();
         this.rings.push({ x: this.px, y: this.py, r: 20, maxR: R, t: 0, dur: 0.35, color: '251,146,60' });
         this.burst(this.px, this.py, '#fb923c', 14, 220);
+        for (const ch of this.chests) {
+          if (ch.taken) continue;
+          if (dist2(this.px, this.py, ch.x, ch.y) < (R + 20) * (R + 20)) {
+            this.openChest(ch);
+            if (this.phase !== 'wave') {
+              this.sound.hit();
+              return;
+            }
+          }
+        }
         for (let ci = this.chains.length - 1; ci >= 0; ci--) {
           const c = this.chains[ci];
           for (let si = c.segs.length - 1; si >= 0; si--) {
@@ -1160,9 +1356,14 @@ export class SpiralEngine {
 
   /** Chest opened → pause for a 3-choice weapon evolution pick. */
   private openChest(c: Chest): void {
-    if (this.phase !== 'wave' || this.over) return;
+    if (c.taken || this.over) return;
+    if (this.clearT > 0 || this.phase !== 'wave') {
+      this.convertChest(c);
+      return;
+    }
     c.taken = true;
     c.openT = 0.45;
+    this.coreFlashT = 0.35;
     this.burst(c.x, c.y, '#fde047', 26, 300);
     this.rings.push({ x: c.x, y: c.y, r: 10, maxR: 70, t: 0, dur: 0.4, color: '253,224,71' });
     this.hitstop.triggerMs(90);
@@ -1173,7 +1374,7 @@ export class SpiralEngine {
     // trigger build with evolution-flavoured choices
     this.phase = 'build';
     this.buildFromChest = true;
-    this.currentChoices = this.buildChoices();
+    this.currentChoices = this.buildChoices(true);
     this.ev.onBuild({ wave: this.wave, choices: this.currentChoices, canReroll: this.rerollLeft > 0, fromChest: true });
   }
 
@@ -1186,7 +1387,12 @@ export class SpiralEngine {
         ch.openT -= dt;
         continue;
       }
-      const attached = this.chains.includes(ch.chain) && ch.chain.segs.includes(ch.segA) && ch.chain.segs.includes(ch.segB) && ch.segA.hp > 0 && ch.segB.hp > 0;
+      const attached =
+        this.chains.includes(ch.chain) &&
+        ch.chain.segs.includes(ch.segA) &&
+        ch.chain.segs.includes(ch.segB) &&
+        ch.segA.hp > 0 &&
+        ch.segB.hp > 0;
       if (!attached) {
         ch.free = true;
       }
@@ -1194,15 +1400,33 @@ export class SpiralEngine {
         const dx = CENTER - ch.x;
         const dy = CENTER - ch.y;
         const distance = Math.hypot(dx, dy);
-        if (distance > 1) {
-          const speed = 28;
-          ch.x += (dx / distance) * speed * dt;
-          ch.y += (dy / distance) * speed * dt;
+        const step = Math.max(240, distance * 2.8) * dt;
+        if (distance > step) {
+          ch.x += (dx / distance) * step;
+          ch.y += (dy / distance) * step;
+        } else {
+          ch.x = CENTER;
+          ch.y = CENTER;
+        }
+        if (Math.hypot(CENTER - ch.x, CENTER - ch.y) <= CHEST_AUTO_OPEN_R) {
+          if (this.phase === 'wave' && !this.over && this.clearT <= 0) {
+            this.openChest(ch);
+          } else if (this.clearT > 0) {
+            this.convertChest(ch);
+          }
         }
         continue;
       }
       ch.x = (ch.segA.x + ch.segB.x) / 2;
       ch.y = (ch.segA.y + ch.segB.y) / 2;
+      if (
+        Math.hypot(CENTER - ch.x, CENTER - ch.y) <= CHEST_AUTO_OPEN_R &&
+        this.phase === 'wave' &&
+        !this.over &&
+        this.clearT <= 0
+      ) {
+        this.openChest(ch);
+      }
     }
     this.chests = this.chests.filter((c) => !c.taken || c.openT > -0.6);
   }
@@ -1363,7 +1587,7 @@ export class SpiralEngine {
       this.sound.segDown();
       if (Math.random() < 0.22) this.dropCoin(s.x, s.y, Math.round(c.coins * this.stage.coinMul));
       if (Math.random() < 0.02) {
-        this.coinPs.push({ x: s.x, y: s.y, vx: 0, vy: 0, val: -20 });
+        this.dropBento(s.x, s.y);
       }
 
       const tail = c.segs.splice(si);
@@ -1408,6 +1632,7 @@ export class SpiralEngine {
       stunT: 0.35,
       bossState: { ...parent.bossState, enraged: false, barrierActive: false, barrierHp: 0 },
     });
+    this.waveSpawnTotal += 1;
     // Slice juice
     this.burst(cutX, cutY, '#ffffff', 14, 300);
     this.rings.push({ x: cutX, y: cutY, r: 6, maxR: 42, t: 0, dur: 0.3, color: '255,255,255' });
@@ -1425,50 +1650,85 @@ export class SpiralEngine {
   }
 
   private dropCoin(x: number, y: number, val: number): void {
-    if (this.coinPs.length >= MAX_COINS) return;
-    this.coinPs.push({ x, y, vx: rand(-70, 70), vy: rand(-70, 70), val });
+    if (this.coinPs.length >= MAX_COINS) {
+      const oldest = this.coinPs.shift();
+      if (oldest) this.collectDrop(oldest, false);
+    }
+    this.coinPs.push({ x, y, vx: rand(-70, 70), vy: rand(-70, 70), val, age: 0 });
   }
 
-  private updateCoins(dt: number): void {
+  private dropBento(x: number, y: number): void {
+    if (this.coinPs.length >= MAX_COINS) {
+      const oldest = this.coinPs.shift();
+      if (oldest) this.collectDrop(oldest, false);
+    }
+    this.coinPs.push({ x, y, vx: rand(-45, 45), vy: rand(-45, 45), val: -20, age: 0 });
+  }
+
+  private collectDrop(c: CoinP, withFx = true): void {
+    if (c.val < 0) {
+      const healAmt = Math.abs(c.val);
+      this.hp = Math.min(this.maxHp, this.hp + healAmt);
+      this.shield = Math.min(this.maxShield, this.shield + healAmt);
+      if (withFx) {
+        this.coreFlashT = 0.28;
+        this.dmgNumbers.spawn(CENTER, CENTER - 16, `+${healAmt}`, 'heal');
+        this.ev.onBanner('エナジーパック回収！', 'HPとシールドが回復！');
+        this.sound.heal();
+      }
+    } else {
+      this.coins += c.val;
+      this.score += c.val * 5;
+      if (withFx) {
+        this.coreFlashT = Math.max(this.coreFlashT, 0.14);
+        this.sound.coin();
+      }
+    }
+  }
+
+  private updateCoins(dt: number, fast = false): void {
     for (let i = this.coinPs.length - 1; i >= 0; i--) {
       const c = this.coinPs[i];
-      const dx = this.px - c.x;
-      const dy = this.py - c.y;
+      c.age = (c.age ?? 0) + dt;
+      const dx = CENTER - c.x;
+      const dy = CENTER - c.y;
       const distance = Math.hypot(dx, dy);
+      const collectDistance = c.val < 0 ? 36 : 32;
 
-      if (distance > 0.001) {
-        const pull = distance < 150 ? 2600 : 1150;
-        c.vx += (dx / distance) * pull * dt;
-        c.vy += (dy / distance) * pull * dt;
-      }
-
-      const drag = Math.max(0, 1 - 2.2 * dt);
-      c.vx *= drag;
-      c.vy *= drag;
-
-      const speed = Math.hypot(c.vx, c.vy);
-      const maxSpeed = 560;
-      if (speed > maxSpeed) {
-        c.vx = (c.vx / speed) * maxSpeed;
-        c.vy = (c.vy / speed) * maxSpeed;
-      }
-
-      c.x += c.vx * dt;
-      c.y += c.vy * dt;
-
-      const collectDistance = c.val < 0 ? 34 : 30;
-      if (Math.hypot(this.px - c.x, this.py - c.y) <= collectDistance) {
+      if (c.age >= DROP_FORCE_HOME_SEC || distance <= collectDistance) {
         this.coinPs.splice(i, 1);
-        if (c.val < 0) {
-          this.hp = Math.min(this.maxHp, this.hp + 20);
-          this.shield = Math.min(this.maxShield, this.shield + 20);
-          this.dmgNumbers.spawn(this.px, this.py - 14, '+20', 'heal');
-          this.ev.onBanner('エナジーパック回収！', 'HPとシールドが回復！');
-          this.sound.heal();
-        } else {
-          this.coins += c.val;
-          this.score += c.val * 5;
-          this.sound.coin();
+        this.collectDrop(c, true);
+        continue;
+      }
+
+      if (fast || c.age >= 0.18) {
+        const homedSpeed = fast
+          ? Math.max(620, distance * 5.5)
+          : Math.min(760, 340 + c.age * 420);
+        const step = homedSpeed * dt;
+        if (distance <= Math.max(collectDistance, step)) {
+          this.coinPs.splice(i, 1);
+          this.collectDrop(c, true);
+          continue;
+        }
+        c.vx = (dx / distance) * homedSpeed;
+        c.vy = (dy / distance) * homedSpeed;
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+      } else {
+        if (distance > 0.001) {
+          const pull = 1800;
+          c.vx += (dx / distance) * pull * dt;
+          c.vy += (dy / distance) * pull * dt;
+        }
+        const drag = Math.max(0, 1 - 4.5 * dt);
+        c.vx *= drag;
+        c.vy *= drag;
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+        if (Math.hypot(CENTER - c.x, CENTER - c.y) <= collectDistance) {
+          this.coinPs.splice(i, 1);
+          this.collectDrop(c, true);
         }
       }
     }
@@ -1500,6 +1760,9 @@ export class SpiralEngine {
   }
 
   private finishRun(victory: boolean): void {
+    this.flushDrops();
+    for (const ch of this.chests) if (!ch.taken) this.convertChest(ch);
+    this.chests = [];
     this.over = true;
     this.phase = 'over';
     const upgradeLevels: Record<string, number> = {};
@@ -1533,6 +1796,8 @@ export class SpiralEngine {
         break;
       }
     }
+    const checkWave = this.phase === 'build' && !this.buildFromChest ? this.wave + 1 : Math.max(1, this.wave);
+    const bossWave = bossMax > 0 || wavePlan(checkWave).some((p) => CHAINS[p.kind].boss);
     this.ev.onHud({
       hp: Math.ceil(this.hp), maxHp: this.maxHp,
       wave: Math.max(1, this.wave), totalWaves: FINAL_WAVE,
@@ -1550,6 +1815,11 @@ export class SpiralEngine {
         .map((id) => ({ id, icon: UPGRADES[id].icon, lv: this.levels[id] })),
       bossName, bossHp, bossMax,
       endless: this.endless,
+      shield: Math.ceil(this.shield),
+      maxShield: this.maxShield,
+      bossWave,
+      waveSpawnTotal: Math.max(1, this.waveSpawnTotal),
+      clearing: this.clearT > 0,
     });
   }
 
@@ -1572,22 +1842,29 @@ export class SpiralEngine {
     ctx.fillStyle = g0;
     ctx.fillRect(-20, -20, W + 40, W + 40);
 
-    // Subtle holographic radar grid
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)';
+    // Subtle holographic radar grid + sector lines
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.055)';
     ctx.lineWidth = 1;
     for (let r = 60; r <= ARENA_R; r += 60) {
       ctx.beginPath();
       ctx.arc(CENTER, CENTER, r, 0, Math.PI * 2);
       ctx.stroke();
     }
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      ctx.beginPath();
+      ctx.moveTo(CENTER + Math.cos(a) * 36, CENTER + Math.sin(a) * 36);
+      ctx.lineTo(CENTER + Math.cos(a) * ARENA_R, CENTER + Math.sin(a) * ARENA_R);
+      ctx.stroke();
+    }
     // Arena border
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(CENTER, CENTER, ARENA_R, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Movement boundary ring
+    // Inner core defense perimeter ring
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.28)';
     if (ctx.setLineDash) ctx.setLineDash([5, 5]);
     ctx.beginPath();
@@ -1595,19 +1872,33 @@ export class SpiralEngine {
     ctx.stroke();
     if (ctx.setLineDash) ctx.setLineDash([]);
 
-    // 2. Bento Drops & Energy Packs (Zero emojis)
+    // 2. Bento Drops & Credit Chips (Zero emojis, with vacuum trails)
     for (const c of this.coinPs) {
       if (c.val < 0) {
         drawVectorBento(ctx, c.x, c.y, this.runTime);
       } else {
-        // High-tech scrap/credit crystal
+        // Motion trail toward core
+        const speed = Math.hypot(c.vx, c.vy);
+        if (speed > 80) {
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(c.x - c.vx * 0.035, c.y - c.vy * 0.035);
+          ctx.stroke();
+        }
+        // High-contrast corporate credit chip
         ctx.fillStyle = '#fbbf24';
         ctx.beginPath();
-        ctx.arc(c.x, c.y, 4.5, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, 5.2, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fef08a';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(c.x - 1.2, c.y - 1.2, 1.5, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -1671,8 +1962,19 @@ export class SpiralEngine {
       }
     }
 
-    // 6. Chains & Segments (Tail to Head)
+    // 6. Chains & Segments (Tail to Head, with articulated spine links)
     for (const c of this.chains) {
+      if (c.segs.length > 1) {
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < c.segs.length; i++) {
+          const s = c.segs[i];
+          if (i === 0) ctx.moveTo(s.x, s.y);
+          else ctx.lineTo(s.x, s.y);
+        }
+        ctx.stroke();
+      }
       for (let i = c.segs.length - 1; i >= 0; i--) {
         const s = c.segs[i];
         const isHead = i === 0;
@@ -1694,8 +1996,19 @@ export class SpiralEngine {
       }
     }
 
-    // 6.5 Treasure Chests in chain gaps
+    // 6.5 Treasure Chests in chain gaps (with tractor tether when free)
     for (const ch of this.chests) {
+      if (ch.free && !ch.taken) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.45)';
+        ctx.lineWidth = 1.6;
+        if (ctx.setLineDash) ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(CENTER, CENTER);
+        ctx.lineTo(ch.x, ch.y);
+        ctx.stroke();
+        ctx.restore();
+      }
       drawVectorChest(ctx, ch.x, ch.y, this.runTime + ch.spin, ch.openT);
     }
 
@@ -1723,17 +2036,34 @@ export class SpiralEngine {
 
     // 10. Player Corporate Reactor Core
     if (this.hp > 0) {
+      const nearest = this.nearestSeg(380);
       const blink = this.iframes > 0 && Math.floor(this.runTime * 14) % 2 === 0;
+      if (this.coreFlashT > 0) {
+        const fa = Math.min(1, this.coreFlashT / 0.28);
+        ctx.strokeStyle = `rgba(253, 224, 71, ${fa * 0.75})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(this.px, this.py, 22 + (1 - fa) * 14, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       if (!blink) {
         const hpRatio = this.maxHp > 0 ? this.hp / this.maxHp : 0;
         const shieldRatio = this.maxShield > 0 ? this.shield / this.maxShield : 0;
-        const aimingAngle = Math.atan2(this.moveY, this.moveX) || (this.runTime * 1.5);
+        const aimingAngle =
+          this.aimAngle !== null
+            ? this.aimAngle
+            : nearest
+              ? Math.atan2(nearest.seg.y - this.py, nearest.seg.x - this.px)
+              : this.runTime * 1.5;
         drawVectorCore(ctx, this.px, this.py, 16, hpRatio, shieldRatio, aimingAngle);
       }
 
-      // Laser Targeting Reticle tracking nearest segment
-      const nearest = this.nearestSeg(360);
-      if (nearest) {
+      // Laser Targeting Reticle (manual aim sight or auto-lock on nearest segment)
+      if (this.aimAngle !== null) {
+        const tx = this.px + Math.cos(this.aimAngle) * 210;
+        const ty = this.py + Math.sin(this.aimAngle) * 210;
+        drawVectorReticle(ctx, this.px, this.py, tx, ty, this.runTime);
+      } else if (nearest) {
         drawVectorReticle(ctx, this.px, this.py, nearest.seg.x, nearest.seg.y, this.runTime);
       }
     } else if (this.phase === 'over') {
@@ -1755,6 +2085,53 @@ export class SpiralEngine {
 
     // 12. Floating Spring Combat Damage Numbers
     this.dmgNumbers.render(ctx);
+
+    // 12.5 Wave-Clear Hanko Stamp & Boss Warning Tape
+    if (this.clearStampT > 0) {
+      const a = Math.min(1, this.clearStampT / 0.35);
+      ctx.save();
+      ctx.globalAlpha = a * 0.92;
+      ctx.translate(CENTER, 88);
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.88)';
+      ctx.fillRect(-118, -22, 236, 44);
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-118, -22, 236, 44);
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`第${this.wave}波 決裁完了 // 報酬回収中`, 0, -4);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('ALL DROPS VACUUMED TO CORE', 0, 12);
+      ctx.restore();
+    }
+
+    if (this.bossIntroT > 0) {
+      const a = Math.min(1, this.bossIntroT / 0.35);
+      ctx.save();
+      ctx.globalAlpha = a * 0.95;
+      ctx.fillStyle = 'rgba(69, 10, 10, 0.88)';
+      ctx.fillRect(0, 56, W, 46);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 56);
+      ctx.lineTo(W, 56);
+      ctx.moveTo(0, 102);
+      ctx.lineTo(W, 102);
+      ctx.stroke();
+      ctx.fillStyle = '#fca5a5';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('WARNING // EXECUTIVE THREAT DETECTED', CENTER, 71);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText(this.bossIntroName, CENTER, 89);
+      ctx.restore();
+    }
 
     // 13. Low HP Emergency Vignette
     const frac = this.maxHp > 0 ? this.hp / this.maxHp : 0;

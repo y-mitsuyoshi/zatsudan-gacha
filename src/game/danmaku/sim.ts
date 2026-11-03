@@ -16,25 +16,49 @@ export interface Enemy {
 }
 export interface Particle { alive: boolean; x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: number; }
 export interface FloatText { alive: boolean; x: number; y: number; life: number; text: string; color: string; }
-export interface DropItem { alive: boolean; x: number; y: number; vy: number; kind: 'score' | 'power' | 'bomb' | 'weapon'; t: number; }
+/**
+ * `magnet` = auto-collect: the item homes onto the ship at high speed and is
+ * guaranteed to be picked up (stage end, boss defeat, upper collect line).
+ * `weapon` is kept in the union for save/texture compatibility but is no
+ * longer dropped (forced weapon swaps overrode the player's chosen loadout).
+ */
+export interface DropItem { alive: boolean; x: number; y: number; vy: number; kind: 'score' | 'power' | 'bomb' | 'weapon'; t: number; magnet: boolean; }
 export interface Ring { alive: boolean; x: number; y: number; r: number; vr: number; life: number; maxLife: number; color: number; }
+
+/** Boss HP ratios at which the fight moves to the next phase (non-spell → spell 1 → spell 2). */
+export const BOSS_PHASE_THRESH = [0.66, 0.33] as const;
+export const BOSS_PHASES = 3;
+/** Ship y above which every item on screen is auto-collected (classic "collect line"). */
+export const COLLECT_LINE_Y = 250;
 
 export interface BossState {
   alive: boolean; idx: number; x: number; y: number; hp: number; maxHp: number;
   t: number; atkT: number; tele: number; pending: number; angle: number;
   burst: number; burstT: number; summonT: number; flash: number; entered: boolean;
-  spellActive: boolean; spellClean: boolean; spellShown: boolean[];
+  /** 0 = opening attack, 1 = spell card 1, 2 = spell card 2 (final) */
+  phase: number;
+  /** invulnerable/no-attack window after a phase break */
+  invT: number;
+  /** current spell card still eligible for the capture bonus */
+  spellClean: boolean;
+  /** seconds spent in the current spell card */
+  spellT: number;
 }
 
 export interface RunResult {
   score: number; stage: number; maxChain: number; kills: number;
   graze: number; timeMs: number; cleared: boolean; rank: string;
   difficulty: Difficulty;
+  misses: number;
+  spells: number;
 }
 
+export type BannerKind = 'stage' | 'clear' | 'loop';
+
 export type SimEvent =
-  | { type: 'banner'; title: string; sub?: string }
+  | { type: 'banner'; title: string; sub?: string; kind?: BannerKind }
   | { type: 'spell'; name: string; sub?: string }
+  | { type: 'spellResult'; captured: boolean; bonus: number }
   | { type: 'extend' }
   | { type: 'warn'; boss: string }
   | { type: 'gameover'; result: RunResult };
@@ -91,6 +115,12 @@ export class DanmakuSim {
   maxChain = 0;
   kills = 0;
   graze = 0;
+  /** items picked up (monotonic; the engine plays pickup SFX on change) */
+  pickups = 0;
+  /** misses this run */
+  misses = 0;
+  /** spell cards captured this run */
+  spellsCaptured = 0;
   cleared6 = false;
   extendIdx = 0;
 
@@ -125,8 +155,7 @@ export class DanmakuSim {
   boss: BossState = {
     alive: false, idx: 0, x: 240, y: -80, hp: 1, maxHp: 1,
     t: 0, atkT: 2, tele: 0, pending: 0, angle: 0, burst: 0, burstT: 0,
-    summonT: 7, flash: 0, entered: false, spellActive: false, spellClean: true,
-    spellShown: [false, false],
+    summonT: 7, flash: 0, entered: false, phase: 0, invT: 0, spellClean: true, spellT: 0,
   };
 
   pbullets: PBullet[] = [];
@@ -144,7 +173,7 @@ export class DanmakuSim {
     for (let i = 0; i < MAX_EN; i++) this.enemies.push({ alive: false, kind: 'commuter', x: 0, y: 0, x0: 0, hp: 1, maxHp: 1, t: 0, fireT: 0, tele: 0, speed: 90, score: 100, r: 15 });
     for (let i = 0; i < MAX_PT; i++) this.particles.push({ alive: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, size: 2, color: 0xffffff });
     for (let i = 0; i < MAX_TX; i++) this.texts.push({ alive: false, x: 0, y: 0, life: 0, text: '', color: '#fff' });
-    for (let i = 0; i < MAX_IT; i++) this.items.push({ alive: false, x: 0, y: 0, vy: 0, kind: 'score', t: 0 });
+    for (let i = 0; i < MAX_IT; i++) this.items.push({ alive: false, x: 0, y: 0, vy: 0, kind: 'score', t: 0, magnet: false });
     for (let i = 0; i < MAX_RING; i++) this.rings.push({ alive: false, x: 0, y: 0, r: 0, vr: 0, life: 0, maxLife: 1, color: 0xffffff });
   }
 
@@ -163,6 +192,9 @@ export class DanmakuSim {
     this.maxChain = 0;
     this.kills = 0;
     this.graze = 0;
+    this.pickups = 0;
+    this.misses = 0;
+    this.spellsCaptured = 0;
     this.cleared6 = this.stage > 6;
     this.extendIdx = 0;
     while (this.extendIdx < EXTENDS.length && this.score >= (EXTENDS[this.extendIdx] ?? Infinity)) this.extendIdx++;
@@ -191,6 +223,8 @@ export class DanmakuSim {
     this.flashA = 0;
     this.scroll = 0;
     this.boss.alive = false;
+    this.boss.phase = 0;
+    this.boss.invT = 0;
     for (const a of [this.pbullets, this.ebullets, this.enemies, this.particles, this.texts, this.items, this.rings]) {
       for (const e of a as Array<{ alive: boolean }>) e.alive = false;
     }
@@ -214,12 +248,14 @@ export class DanmakuSim {
 
     if (this.deadT > 0) {
       this.deadT -= dt;
+      this.updateItems(dt);
       this.updateParticles(dt);
       this.updateTexts(dt);
       this.updateRings(dt);
       if (this.deadT <= 0) {
         if (this.lives < 0) {
           this.phase = 'over';
+          for (const it of this.items) it.alive = false;
           this.events.push({ type: 'gameover', result: this.buildResult() });
         } else {
           this.px = 240;
@@ -277,6 +313,8 @@ export class DanmakuSim {
           this.burst(e.x, e.y, 8, 0xffe14d, 170);
         }
         for (const b of this.ebullets) b.alive = false;
+        // stage end: everything still on screen flies to the ship
+        this.collectAllItems();
         this.phase = 'warn';
         this.warnT = 2.4;
         this.events.push({ type: 'warn', boss: st?.boss ?? '???' });
@@ -294,6 +332,12 @@ export class DanmakuSim {
   }
 
   private nextStage(): void {
+    // safety net: nothing may carry over into the next stage uncollected
+    for (const it of this.items) {
+      if (!it.alive) continue;
+      it.alive = false;
+      this.collectItem(it.kind, it.x, it.y);
+    }
     this.stage++;
     this.loop = Math.floor((this.stage - 1) / 6);
     this.stageIdx = (this.stage - 1) % 6;
@@ -302,9 +346,9 @@ export class DanmakuSim {
     this.phase = 'fly';
     const st = STAGES[this.stageIdx];
     if (this.stage === 7) {
-      this.events.push({ type: 'banner', title: '全制覇！無限残業ループ突入', sub: 'ここからが本当の社畜道…' });
+      this.events.push({ type: 'banner', kind: 'loop', title: '全制覇！無限残業ループ突入', sub: 'ここからが本当の社畜道…' });
     } else if (st) {
-      this.events.push({ type: 'banner', title: `Stage ${this.stage} — ${st.name}`, sub: st.sub });
+      this.events.push({ type: 'banner', kind: 'stage', title: st.name, sub: `STAGE ${this.stage} ― ${st.sub}` });
     }
   }
 
@@ -343,9 +387,10 @@ export class DanmakuSim {
     b.burst = 0;
     b.summonT = 8;
     b.flash = 0;
-    b.spellActive = false;
+    b.phase = 0;
+    b.invT = 0;
     b.spellClean = true;
-    b.spellShown = [false, false];
+    b.spellT = 0;
     b.maxHp = b.hp = Math.round((130 + this.stage * 36) * (1 + this.loop * 0.9) * this.bossHpMult);
   }
 
@@ -475,13 +520,17 @@ export class DanmakuSim {
     for (const e of this.enemies) {
       if (e.alive) this.damageEnemy(e, 120, false);
     }
-    if (this.boss.alive) this.damageBoss(250);
+    if (this.boss.alive && this.boss.entered) {
+      if (this.boss.phase >= 1) this.boss.spellClean = false;
+      // scaled to the boss, and damageBoss() never lets one hit skip a phase
+      this.damageBoss(Math.max(40, this.boss.maxHp * 0.12));
+    }
+    this.collectAllItems();
     this.flashA = 0.6;
     this.flashColor = '#ffffff';
     this.trauma = Math.min(1, this.trauma + 0.65);
     this.slowmo = Math.max(this.slowmo, 0.3);
     this.ring(this.px, this.py, 420, 0xffffff);
-    if (this.boss.spellActive) this.boss.spellClean = false;
     return true;
   }
 
@@ -740,13 +789,26 @@ export class DanmakuSim {
       if (b.y >= 150) {
         b.y = 150;
         b.entered = true;
+        // restart the movement clock so the sway starts at centre (no lateral snap)
+        b.t = 0;
       }
       return;
     }
-    const enraged = b.hp < b.maxHp * 0.3;
+    const enraged = b.phase >= 2;
     const spd = enraged ? 1.3 : 1;
-    b.x = 240 + Math.sin(b.t * 0.55 * spd) * 170;
-    b.y = 150 + Math.sin(b.t * 0.85 * spd) * 34;
+    // ease toward the sway target so phase speed-ups never teleport the boss
+    const tx = 240 + Math.sin(b.t * 0.55 * spd) * 170;
+    const ty = 150 + Math.sin(b.t * 0.85 * spd) * 34;
+    const k = Math.min(1, dt * 4);
+    b.x += (tx - b.x) * k;
+    b.y += (ty - b.y) * k;
+    if (b.phase >= 1) b.spellT += dt;
+
+    if (b.invT > 0) {
+      // phase-break breather: no attacks, no summons
+      b.invT -= dt;
+      return;
+    }
 
     b.summonT -= dt;
     if (b.summonT <= 0) {
@@ -764,7 +826,7 @@ export class DanmakuSim {
       if (b.burstT <= 0) {
         b.burstT = 0.2;
         b.burst--;
-        const [vx, vy] = this.aimAt(b.x, b.y + 44, 310);
+        const [vx, vy] = this.aimAt(b.x, b.y + 44, 310 * this.bMult);
         this.fireEB(b.x, b.y + 44, vx, vy, true);
       }
       return;
@@ -773,38 +835,89 @@ export class DanmakuSim {
     if (b.tele > 0) {
       b.tele -= dt;
       if (b.tele <= 0) {
-        this.finishSpellWindow();
-        this.bossFire(b, b.pending, enraged);
-        b.atkT = ((enraged ? 1.35 : 2.05) + Math.random() * 0.55) * this.fireIntMult;
+        // phase 0 alternates both patterns; spell cards lock to one pattern at full intensity
+        this.bossFire(b, b.pending, b.phase >= 1);
+        const base = b.phase === 0 ? 2.05 : b.phase === 1 ? 1.6 : 1.35;
+        b.atkT = (base + Math.random() * 0.55) * this.fireIntMult;
       }
       return;
     }
     b.atkT -= dt;
     if (b.atkT <= 0) {
-      b.pending = (b.pending + 1) % 2;
+      b.pending = b.phase === 0 ? (b.pending + 1) % 2 : b.phase - 1;
       b.tele = 0.6;
-      b.spellActive = true;
-      b.spellClean = true;
-      // announce each spell card only once per fight; repeats are telegraphed
-      // by the boss flash alone instead of a fullscreen banner
-      const key = b.pending % 2;
-      if (!b.spellShown[key]) {
-        b.spellShown[key] = true;
-        const st = STAGES[b.idx];
-        const spell = st?.spells[key];
-        if (spell) this.events.push({ type: 'spell', name: spell.name, sub: spell.sub });
-      }
     }
   }
 
-  private finishSpellWindow(): void {
+  /** HP floor for the current phase; damage never pushes HP below it. */
+  private bossPhaseFloor(): number {
     const b = this.boss;
-    if (b.spellActive && b.spellClean && b.entered) {
-      const bonus = Math.round(15000 * (b.idx + 1) * (1 + this.loop * 0.5));
+    const th = BOSS_PHASE_THRESH[b.phase];
+    return th === undefined ? 0 : b.maxHp * th;
+  }
+
+  private spellBonusValue(): number {
+    const b = this.boss;
+    const base = 12000 * (b.idx + 1) * (1 + this.loop * 0.5);
+    // decays to 40% over 40s so fast captures are worth more
+    const decay = Math.max(0.4, 1 - (b.spellT / 40) * 0.6);
+    return Math.round((base * decay) / 10) * 10;
+  }
+
+  /** Live spell card bonus value (0 when not in a clean spell phase). */
+  currentSpellBonus(): number {
+    const b = this.boss;
+    if (!b.alive || b.phase < 1 || !b.spellClean) return 0;
+    return this.spellBonusValue();
+  }
+
+  /** Close out the current spell card (if any): award or fail the capture bonus. */
+  private finishSpell(): void {
+    const b = this.boss;
+    if (b.phase < 1) return;
+    if (b.spellClean) {
+      const bonus = this.spellBonusValue();
       this.addScore(bonus);
-      this.addText(b.x, b.y - 70, `SPELL BONUS +${bonus.toLocaleString()}`, '#ffe14d');
+      this.spellsCaptured++;
+      this.addText(b.x, b.y - 70, `SPELL GET +${bonus.toLocaleString()}`, '#ffe14d');
+      this.events.push({ type: 'spellResult', captured: true, bonus });
+    } else {
+      this.addText(b.x, b.y - 70, 'BONUS FAILED', '#b7a992');
+      this.events.push({ type: 'spellResult', captured: false, bonus: 0 });
     }
-    b.spellActive = false;
+    b.spellClean = false;
+  }
+
+  /** Bullets on screen turn into points (used on phase breaks / boss defeat). */
+  private cancelBullets(): void {
+    let n = 0;
+    for (const eb of this.ebullets) {
+      if (!eb.alive) continue;
+      eb.alive = false;
+      if (n++ % 3 === 0) this.spawnParticle(eb.x, eb.y, 0, -60, 0.4, 4, 0xffe14d);
+    }
+    if (n > 0) this.addScore(n * 20);
+  }
+
+  private advanceBossPhase(): void {
+    const b = this.boss;
+    this.finishSpell();
+    b.phase++;
+    b.invT = 1.1;
+    b.tele = 0;
+    b.burst = 0;
+    b.atkT = 0.9;
+    b.spellClean = true;
+    b.spellT = 0;
+    b.flash = 1;
+    this.cancelBullets();
+    this.collectAllItems();
+    this.ring(b.x, b.y, 380, 0xff8a6b);
+    this.burst(b.x, b.y, 22, 0xff8a6b, 260);
+    this.trauma = Math.min(1, this.trauma + 0.35);
+    this.hitstop = Math.max(this.hitstop, 0.08);
+    const spell = STAGES[b.idx]?.spells[b.phase - 1];
+    if (spell) this.events.push({ type: 'spell', name: spell.name, sub: spell.sub });
   }
 
   private bossFire(b: BossState, variant: number, enraged: boolean): void {
@@ -892,19 +1005,44 @@ export class DanmakuSim {
     }
   }
 
+  /** Flag every item on screen for auto-collection. */
+  collectAllItems(): void {
+    for (const it of this.items) if (it.alive) it.magnet = true;
+  }
+
   private updateItems(dt: number): void {
+    const dead = this.deadT > 0;
+    // collect line: flying high vacuums up everything on screen
+    if (!dead && this.py < COLLECT_LINE_Y) this.collectAllItems();
     for (const it of this.items) {
       if (!it.alive) continue;
       it.t += dt;
-      const dd = d2(it.x, it.y, this.px, this.py);
-      if (dd < 140 * 140) {
-        const d = Math.sqrt(dd) || 1;
-        const pull = 320 * dt;
-        it.x += ((this.px - it.x) / d) * pull;
-        it.vy = 60;
-      } else {
-        it.vy = Math.min(190, it.vy + 60 * dt);
+      if (!dead && !it.magnet && d2(it.x, it.y, this.px, this.py) < 150 * 150) {
+        it.magnet = true;
       }
+      if (it.magnet && !dead) {
+        // homing at high speed; auto-picks up on arrival so it can never miss
+        const dx = this.px - it.x;
+        const dy = this.py - it.y;
+        const d = Math.hypot(dx, dy);
+        const stepDist = (780 + it.t * 440) * dt;
+        if (d <= stepDist || d <= 28) {
+          it.x = this.px;
+          it.y = this.py;
+          it.alive = false;
+          this.collectItem(it.kind, it.x, it.y);
+        } else {
+          it.x += (dx / d) * stepDist;
+          it.y += (dy / d) * stepDist;
+        }
+        it.vy = 0;
+        continue;
+      }
+      if (it.magnet) {
+        // ship is exploding: hold position until it respawns
+        continue;
+      }
+      it.vy = Math.min(185, it.vy + (it.vy < 0 ? 320 : 65) * dt);
       it.y += it.vy * dt;
       if (it.y > 830) it.alive = false;
     }
@@ -974,11 +1112,13 @@ export class DanmakuSim {
         }
       }
     }
-    for (const it of this.items) {
-      if (!it.alive) continue;
-      if (d2(it.x, it.y, this.px, this.py) > 26 * 26) continue;
-      it.alive = false;
-      this.collectItem(it.kind, it.x, it.y);
+    if (this.deadT <= 0) {
+      for (const it of this.items) {
+        if (!it.alive) continue;
+        if (d2(it.x, it.y, this.px, this.py) > 28 * 28) continue;
+        it.alive = false;
+        this.collectItem(it.kind, it.x, it.y);
+      }
     }
   }
 
@@ -1002,14 +1142,19 @@ export class DanmakuSim {
 
   private damageBoss(dmg: number): void {
     const b = this.boss;
-    if (!b.alive) return;
-    b.hp -= dmg;
+    if (!b.alive || !b.entered || b.invT > 0) return;
+    const floor = this.bossPhaseFloor();
+    b.hp = Math.max(floor, b.hp - dmg);
     b.flash = 1;
+    if (b.phase < BOSS_PHASES - 1 && b.hp <= floor) {
+      this.advanceBossPhase();
+      return;
+    }
     if (b.hp > 0) return;
     b.alive = false;
     const st = STAGES[b.idx];
     const value = Math.round(8000 * (this.stageIdx + 1) * (1 + this.loop * 0.5));
-    this.finishSpellWindow();
+    this.finishSpell();
     // remaining minions go down with the boss (score + bursts, no drops)
     for (const e of this.enemies) {
       if (e.alive) this.damageEnemy(e, 9999, false);
@@ -1022,24 +1167,28 @@ export class DanmakuSim {
     this.burst(b.x, b.y, 26, 0xff5d5d, 230);
     this.burst(b.x, b.y, 16, 0xffffff, 170);
     this.ring(b.x, b.y, 480, 0xfff7d6);
-    for (const eb of this.ebullets) eb.alive = false;
+    this.cancelBullets();
+    // boss defeat: every pending drop flies to the ship before the next stage
+    this.collectAllItems();
     this.flashA = 0.5;
     this.flashColor = '#fff7d6';
     this.trauma = Math.min(1, this.trauma + 0.7);
     this.hitstop = Math.max(this.hitstop, 0.22);
     if (this.stage >= 6) this.cleared6 = true;
     this.phase = 'interval';
-    this.intervalT = 3.2;
+    this.intervalT = 3.6;
     this.events.push({
       type: 'banner',
-      title: `${st?.boss ?? 'ボス'} 撃破！`,
-      sub: `ボーナス +${value.toLocaleString()}`,
+      kind: 'clear',
+      title: `STAGE ${this.stage} CLEAR`,
+      sub: `${st?.boss ?? 'ボス'} 撃破 ・ ボーナス +${value.toLocaleString()}`,
     });
   }
 
   private killPlayer(): void {
     if (this.invuln > 0 || this.deadT > 0 || this.phase === 'over') return;
     this.lives--;
+    this.misses++;
     this.chain = 0;
     this.chainT = 0;
     this.hitstop = Math.max(this.hitstop, 0.12);
@@ -1055,7 +1204,7 @@ export class DanmakuSim {
       b.alive = false;
       this.burst(b.x, b.y, 1, 0x7fe7ff, 100);
     }
-    if (this.boss.spellActive) this.boss.spellClean = false;
+    if (this.boss.alive && this.boss.phase >= 1) this.boss.spellClean = false;
     this.power = Math.max(1, this.power - 1);
     this.deadT = 1.5;
     if (this.lives < 0) {
@@ -1067,23 +1216,29 @@ export class DanmakuSim {
 
   private maybeDrop(x: number, y: number): void {
     if (Math.random() > 0.16) return;
-    const slot = this.items.find((i) => !i.alive);
-    if (!slot) return;
+    let slot = this.items.find((i) => !i.alive);
+    if (!slot) {
+      slot = this.items[0];
+      if (!slot) return;
+      this.collectItem(slot.kind, slot.x, slot.y);
+    }
     const r = Math.random();
     let kind: DropItem['kind'] = 'score';
-    if (r < 0.24) kind = this.power >= 5 ? 'score' : 'power';
-    else if (r < 0.48) kind = 'bomb';
-    else if (r < 0.62) kind = 'weapon';
+    if (r < 0.3) kind = this.power >= 5 ? 'score' : 'power';
+    else if (r < 0.5) kind = 'bomb';
     else kind = 'score';
     slot.alive = true;
-    slot.x = Math.min(464, Math.max(16, x));
+    slot.x = Math.min(460, Math.max(20, x));
     slot.y = y;
-    slot.vy = 120;
+    slot.vy = -90; // pop upward first, then fall: reads as a "drop"
     slot.kind = kind;
     slot.t = 0;
+    // drops during the boss's dying moments / stage transitions / collect-line flight are pre-magnetised
+    slot.magnet = (this.phase !== 'fly' && this.phase !== 'boss') || (this.deadT <= 0 && this.py < COLLECT_LINE_Y);
   }
 
   private collectItem(kind: DropItem['kind'], x: number, y: number): void {
+    this.pickups++;
     switch (kind) {
       case 'score':
         this.addScore(600 + this.stage * 120);
@@ -1103,8 +1258,9 @@ export class DanmakuSim {
         this.addText(x, y, '+1 BOMB', '#ff8ad4');
         break;
       case 'weapon':
-        this.cycleWeapon();
+        // legacy item (no longer dropped): treat as a big score chip
         this.addScore(1000);
+        this.addText(x, y, '+1000', '#ffe14d');
         break;
     }
     this.burst(x, y, 6, 0xffffff, 150);
@@ -1126,7 +1282,7 @@ export class DanmakuSim {
       score: this.score, stage: this.stage, maxChain: this.maxChain,
       kills: this.kills, graze: this.graze, timeMs: Math.round(this.timeMs),
       cleared: this.cleared6, rank: rankFor(this.score, this.cleared6),
-      difficulty: this.diff,
+      difficulty: this.diff, misses: this.misses, spells: this.spellsCaptured,
     };
   }
 

@@ -3,13 +3,30 @@
 import { useJinroGame } from '@/components/shachiku-jinro/useJinroGame';
 import Lobby from '@/components/shachiku-jinro/Lobby';
 import Dashboard from '@/components/shachiku-jinro/Dashboard';
+import { useBgm } from '@/components/game/AudioToggle';
+import type { BgmTrackId } from '@/game/common/bgmTracks';
 import { SeoContentSection } from '@/components/seo/SeoContentSection';
 import { GAME_SEO_DATA, buildGameJsonLd } from '@/lib/gameSeoData';
 
 const game = GAME_SEO_DATA.jinro;
 
+function getTrackForPhase(phase: string): BgmTrackId {
+  switch (phase) {
+    case 'LOBBY':
+    case 'GAME_OVER':
+      return 'shachiku-menu';
+    case 'NIGHT_ACTION':
+    case 'NIGHT_RESULT':
+      return 'jinro-night';
+    default:
+      return 'jinro-day';
+  }
+}
+
 export default function ShachikuJinroPage() {
   const [gameState, actions] = useJinroGame();
+  const track = getTrackForPhase(gameState.phase);
+  useBgm(track, actions.isPaused);
 
   return (
     <div className="game-night min-h-screen font-sans">
@@ -23,6 +40,13 @@ export default function ShachikuJinroPage() {
             onNightAction={actions.submitNightAction}
             onSkip={actions.skipPhase}
             onReset={actions.resetGame}
+            onClaimRole={actions.claimRole}
+            onClaimResult={actions.claimResult}
+            onSpeakStance={actions.speakStance}
+            onSpeakGeneral={actions.speakGeneral}
+            onFlushNext={actions.flushNextLine}
+            isPaused={actions.isPaused}
+            onTogglePause={actions.togglePause}
           />
         )}
       </div>

@@ -7,6 +7,7 @@ import {
 import type { DefenseSound } from './audio';
 import {
   buildSalarymanMesh,
+  buildWeaponMesh,
   buildBarricadeMesh,
   buildGateMesh,
   buildEnemyMesh,
@@ -17,6 +18,8 @@ import {
   updateBarricadeDurability,
   updateGateCurtain,
   updateCageAnimation,
+  disposeObject3D,
+  markShared,
   type GateOp,
 } from './models';
 import { TraumaScreenShake, HitStopManager } from '../common/juice';
@@ -168,8 +171,11 @@ interface Crate {
   x: number;
   z: number;
   hp: number;
+  maxHp?: number;
   weapon: WeaponId;
   dead: boolean;
+  hpBarGroup?: THREE.Group;
+  hpBarFill?: THREE.Mesh;
 }
 
 interface Cage {
@@ -177,6 +183,7 @@ interface Cage {
   x: number;
   z: number;
   hp: number;
+  maxHp?: number;
   dead: boolean;
   hpBarGroup?: THREE.Group;
   hpBarFill?: THREE.Mesh;
@@ -325,6 +332,7 @@ export class DefenseEngine {
   private cages: Cage[] = [];
   private gateObjs: Gate[] = [];
   private buildings: THREE.Group[] = [];
+  private gantries: THREE.Group[] = [];
   private dashes: THREE.Mesh[] = [];
   private goalGroup: THREE.Group | null = null;
 
@@ -335,9 +343,9 @@ export class DefenseEngine {
   private floaterPool: PooledFloater[] = [];
 
   // shared geometries/materials
-  private geoBox = new THREE.BoxGeometry(1, 1, 1);
-  private geoBolt = new THREE.SphereGeometry(0.16, 8, 6);
-  private geoParticle = new THREE.BoxGeometry(0.18, 0.18, 0.18);
+  private geoBox = markShared(new THREE.BoxGeometry(1, 1, 1));
+  private geoBolt = markShared(new THREE.SphereGeometry(0.16, 8, 6));
+  private geoParticle = markShared(new THREE.BoxGeometry(0.18, 0.18, 0.18));
   private boltMats: Record<string, THREE.MeshBasicMaterial> = {};
 
   constructor(canvas: HTMLCanvasElement, sound: DefenseSound, cb: EngineCallbacks) {
@@ -402,22 +410,7 @@ export class DefenseEngine {
     this.running = false;
     cancelAnimationFrame(this.raf);
     try {
-      this.scene?.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (mesh.isMesh) {
-          mesh.geometry?.dispose?.();
-          const m = mesh.material as THREE.Material | THREE.Material[] | undefined;
-          if (Array.isArray(m)) {
-            m.forEach((x) => {
-              (x as THREE.Material & { map?: THREE.Texture | null }).map?.dispose();
-              x.dispose();
-            });
-          } else if (m) {
-            (m as THREE.Material & { map?: THREE.Texture | null }).map?.dispose?.();
-            m.dispose();
-          }
-        }
-      });
+      disposeObject3D(this.scene);
       this.renderer?.dispose();
     } catch {
       /* ignore */
@@ -484,11 +477,15 @@ export class DefenseEngine {
     this.dist = 0;
     this.buildDirector();
 
-    // Clear active field elements
-    for (const f of this.foes) this.scene.remove(f.g);
-    for (const c of this.crates) this.scene.remove(c.g);
-    for (const c of this.cages) this.scene.remove(c.g);
-    for (const g of this.gateObjs) this.scene.remove(g.g);
+    // Clear active field elements and dispose per-entity resources
+    for (const f of this.foes) disposeObject3D(f.g);
+    for (const c of this.crates) disposeObject3D(c.g);
+    for (const c of this.cages) disposeObject3D(c.g);
+    for (const g of this.gateObjs) disposeObject3D(g.g);
+    if (this.goalGroup) {
+      disposeObject3D(this.goalGroup);
+      this.goalGroup = null;
+    }
     this.foes = [];
     this.crates = [];
     this.cages = [];
@@ -641,14 +638,51 @@ export class DefenseEngine {
       rail.scale.set(0.25, 0.7, 240);
       rail.position.set(sx + (sx > 0 ? 0.7 : -0.7), 0.35, -60);
       this.scene.add(rail);
+
+      // Yellow tactile safety paving strip (station platform edge motif)
+      const yellowLine = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.18, 240),
+        new THREE.MeshBasicMaterial({ color: 0xeab308 })
+      );
+      yellowLine.rotation.x = -Math.PI / 2;
+      yellowLine.position.set(sx + (sx > 0 ? -0.55 : 0.55), 0.012, -60);
+      this.scene.add(yellowLine);
+    }
+
+    // Overhead railway catenary gantries (架線ビーム)
+    this.gantries = [];
+    const gantryMat = markShared(new THREE.MeshLambertMaterial({ color: 0x475569 }));
+    const signMat = markShared(new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+    for (let i = 0; i < 6; i++) {
+      const gg = new THREE.Group();
+      for (const px of [-6.5, 6.5]) {
+        const mast = new THREE.Mesh(this.geoBox, gantryMat);
+        mast.scale.set(0.22, 6.8, 0.22);
+        mast.position.set(px, 3.4, 0);
+        gg.add(mast);
+      }
+      const beam = new THREE.Mesh(this.geoBox, gantryMat);
+      beam.scale.set(13.4, 0.24, 0.22);
+      beam.position.set(0, 6.6, 0);
+      gg.add(beam);
+
+      const sign = new THREE.Mesh(this.geoBox, signMat);
+      sign.scale.set(2.4, 0.36, 0.26);
+      sign.position.set(0, 6.6, 0.05);
+      gg.add(sign);
+
+      gg.position.set(0, 0, 10 - i * 24);
+      this.scene.add(gg);
+      this.gantries.push(gg);
     }
 
     // Lane dashes
     this.dashes = [];
-    const dashMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 });
+    const dashMat = markShared(new THREE.MeshBasicMaterial({ color: 0x94a3b8 }));
+    const dashGeo = markShared(new THREE.BoxGeometry(0.16, 0.02, 1.8));
     for (let i = 0; i < 28; i++) {
       for (const dx of [-2.28, 2.28]) {
-        const d = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.02, 1.8), dashMat);
+        const d = new THREE.Mesh(dashGeo, dashMat);
         d.position.set(dx, 0.02, 18 - i * 4);
         this.scene.add(d);
         this.dashes.push(d);
@@ -692,9 +726,9 @@ export class DefenseEngine {
     // 1. Bolt pool
     this.boltMats = {};
     for (const wid of Object.keys(WEAPONS)) {
-      this.boltMats[wid] = new THREE.MeshBasicMaterial({ color: new THREE.Color(WEAPONS[wid as WeaponId].color) });
+      this.boltMats[wid] = markShared(new THREE.MeshBasicMaterial({ color: new THREE.Color(WEAPONS[wid as WeaponId].color) }));
     }
-    this.boltMats['ally'] = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
+    this.boltMats['ally'] = markShared(new THREE.MeshBasicMaterial({ color: 0x4ade80 }));
 
     this.boltPool = [];
     for (let i = 0; i < MAX_BOLTS; i++) {
@@ -872,31 +906,64 @@ export class DefenseEngine {
     }
   }
 
+  private attachItemHpBar(g: THREE.Group, yPos: number, barWidth: number, colorHex: number): { hpBarGroup: THREE.Group; hpBarFill: THREE.Mesh } {
+    const hpBarGroup = new THREE.Group();
+    const bgMesh = new THREE.Mesh(this.geoBox, new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+    bgMesh.scale.set(barWidth, 0.14, 0.1);
+    hpBarGroup.add(bgMesh);
+
+    const fillMat = new THREE.MeshBasicMaterial({ color: colorHex });
+    const hpBarFill = new THREE.Mesh(this.geoBox, fillMat);
+    hpBarFill.scale.set(barWidth - 0.06, 0.1, 0.12);
+    hpBarFill.position.z = 0.02;
+    hpBarGroup.add(hpBarFill);
+
+    hpBarGroup.position.y = yPos;
+    g.add(hpBarGroup);
+    return { hpBarGroup, hpBarFill };
+  }
+
+  private updateItemHpBar(item: { hp: number; maxHp?: number; hpBarFill?: THREE.Mesh }, fullWidth: number): void {
+    if (!item.hpBarFill) return;
+    const max = item.maxHp && item.maxHp > 0 ? item.maxHp : 30;
+    const frac = clamp(item.hp / max, 0, 1);
+    item.hpBarFill.scale.x = fullWidth * frac;
+  }
+
   private spawnCrate(kind: BarrelKind): void {
     const g = buildCrateMesh(kind);
     const x = LANES[Math.floor(rand(0, LANES.length))];
+    const hp = CRATE_HP * (1 + this.endless * 0.2);
+    const { hpBarGroup, hpBarFill } = this.attachItemHpBar(g, 2.15, 1.26, 0xfacc15);
     g.position.set(x, 0, SPAWN_Z);
     this.scene.add(g);
 
     const weapons: WeaponId[] = ['smg', 'shotgun', 'rifle', 'launcher', 'freeze'];
     this.crates.push({
       g, kind, x, z: SPAWN_Z,
-      hp: CRATE_HP * (1 + this.endless * 0.2),
+      hp,
+      maxHp: hp,
       weapon: weapons[Math.floor(Math.random() * weapons.length)],
       dead: false,
+      hpBarGroup,
+      hpBarFill,
     });
   }
 
   private spawnCage(): void {
     const g = buildCageMesh();
     const x = LANES[Math.floor(rand(0, LANES.length))];
+    const { hpBarGroup, hpBarFill } = this.attachItemHpBar(g, 3.05, 1.38, 0x38bdf8);
     g.position.set(x, 0, SPAWN_Z);
     this.scene.add(g);
 
     this.cages.push({
       g, x, z: SPAWN_Z,
       hp: CAGE_HP,
+      maxHp: CAGE_HP,
       dead: false,
+      hpBarGroup,
+      hpBarFill,
     });
   }
 
@@ -968,7 +1035,7 @@ export class DefenseEngine {
       const removed = this.allies.pop();
       if (removed) {
         this.burst(removed.g.position.x, 1.2, removed.g.position.z, 12, 5, '#ef4444');
-        this.scene.remove(removed.g);
+        disposeObject3D(removed.g);
       }
     }
     this.maxAlliesEver = Math.max(this.maxAlliesEver, this.allies.length);
@@ -1009,20 +1076,54 @@ export class DefenseEngine {
 
   private spawnGoal(): void {
     const g = new THREE.Group();
-    for (const px of [-5, 5]) {
-      const post = new THREE.Mesh(this.geoBox, new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
-      post.scale.set(0.6, 6.5, 0.6);
-      post.position.set(px, 3.25, 0);
+    const pillarMat = new THREE.MeshLambertMaterial({ color: 0xf59e0b });
+    const trimMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    const signBgMat = new THREE.MeshLambertMaterial({ color: 0x064e3b });
+    const signEdgeMat = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+
+    for (const px of [-5.1, 5.1]) {
+      const post = new THREE.Mesh(this.geoBox, pillarMat);
+      post.scale.set(0.65, 6.8, 0.65);
+      post.position.set(px, 3.4, 0);
       g.add(post);
+
+      const stripe = new THREE.Mesh(this.geoBox, trimMat);
+      stripe.scale.set(0.7, 0.4, 0.7);
+      stripe.position.set(px, 5.6, 0);
+      g.add(stripe);
     }
-    const barTop = new THREE.Mesh(this.geoBox, new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
-    barTop.scale.set(11, 1.2, 0.6);
+
+    const barTop = new THREE.Mesh(this.geoBox, signBgMat);
+    barTop.scale.set(11.4, 1.35, 0.7);
     barTop.position.set(0, 6.5, 0);
     g.add(barTop);
+
+    const signFrame = new THREE.Mesh(this.geoBox, signEdgeMat);
+    signFrame.scale.set(10.8, 0.22, 0.76);
+    signFrame.position.set(0, 5.95, 0);
+    g.add(signFrame);
 
     g.position.set(0, 0, SPAWN_Z);
     this.scene.add(g);
     this.goalGroup = g;
+  }
+
+  private syncHeroWeaponMesh(): void {
+    if (!this.hero) return;
+    const ud = this.hero.userData as {
+      rightArm?: THREE.Group;
+      weaponMesh?: THREE.Object3D;
+      scale?: number;
+    };
+    if (!ud?.rightArm) return;
+    if (ud.weaponMesh) {
+      disposeObject3D(ud.weaponMesh);
+    }
+    const s = ud.scale ?? 1.0;
+    const weaponMesh = buildWeaponMesh(this.weapon, s);
+    weaponMesh.position.set(0, -0.56 * s, 0.25 * s);
+    ud.rightArm.add(weaponMesh);
+    ud.weaponMesh = weaponMesh;
   }
 
   /* ---------------- combat & entities ---------------- */
@@ -1135,15 +1236,19 @@ export class DefenseEngine {
       this.floater(f.x, 4.5, f.z, '満員電車突破！！', '#fde047');
       this.cb.onBanner('満員電車突破！！', '大量ボーナスGET！');
     }
-    this.scene.remove(f.g);
+    disposeObject3D(f.g);
   }
 
   private popCrate(c: Crate): void {
+    c.dead = true;
+    this.score += 100;
     this.burst(c.x, 0.8, c.z, 20, 5.5, '#fbbf24');
     if (c.kind === 'weapon') {
-      const w = WEAPONS[c.weapon];
-      this.weapon = c.weapon;
+      const wid: WeaponId = c.weapon && WEAPONS[c.weapon] ? c.weapon : 'smg';
+      const w = WEAPONS[wid];
+      this.weapon = wid;
       this.weaponT = w.duration;
+      this.syncHeroWeaponMesh();
       this.floater(c.x, 2.4, c.z, `${w.name} GET！`, '#fde047');
       this.sound.pickup();
     } else if (c.kind === 'bomb') {
@@ -1162,21 +1267,82 @@ export class DefenseEngine {
       this.floater(c.x, 2.4, c.z, 'ガード+55！', '#38bdf8');
       this.sound.pickup();
     }
-    this.scene.remove(c.g);
+    disposeObject3D(c.g);
+  }
+
+  private rescueCage(cg: Cage): void {
+    cg.dead = true;
+    this.burst(cg.x, 1.2, cg.z, 20, 5.5, '#38bdf8');
+    this.spawnRing(cg.x, 0.5, cg.z, 3.2, '#38bdf8');
+    disposeObject3D(cg.g);
+    if (this.allies.length < MAX_ALLIES) {
+      this.addAlly(true);
+      this.score += 200;
+    } else {
+      this.coins += 30;
+      this.score += 200;
+      this.floater(cg.x, 2.4, cg.z, '+30 残業代', '#fde047');
+      this.sound.rescue();
+    }
+  }
+
+  /**
+   * Auto-collect all remaining crates and cages on the field upon stage clear
+   * so no visible supply drop or rescue cage is ever left uncollected.
+   */
+  private collectRemainingFieldItems(): void {
+    const activeCrates = [...this.crates];
+    for (const c of activeCrates) {
+      if (!c.dead) this.popCrate(c);
+    }
+    this.crates = [];
+
+    const activeCages = [...this.cages];
+    for (const cg of activeCages) {
+      if (!cg.dead) this.rescueCage(cg);
+    }
+    this.cages = [];
   }
 
   private explode(x: number, z: number, radius: number, dmg: number): void {
     this.spawnRing(x, 0.6, z, radius * 1.4, '#fb923c');
     this.burst(x, 1, z, 24, 7, '#fb923c');
+    const rSq = radius * radius;
     for (const f of this.foes) {
       if (f.dead) continue;
       const dx = f.x - x;
       const dz = f.z - z;
-      if (dx * dx + dz * dz < radius * radius) {
+      if (dx * dx + dz * dz < rSq) {
         this.hitFoe(f, dmg, 0);
       }
     }
+    for (const c of this.crates) {
+      if (c.dead) continue;
+      const dx = c.x - x;
+      const dz = c.z - z;
+      if (dx * dx + dz * dz < rSq) {
+        c.hp -= dmg;
+        this.updateItemHpBar(c, 1.2);
+        if (c.hp <= 0 && !c.dead) {
+          this.popCrate(c);
+        }
+      }
+    }
+    for (const cg of this.cages) {
+      if (cg.dead) continue;
+      const dx = cg.x - x;
+      const dz = cg.z - z;
+      if (dx * dx + dz * dz < rSq) {
+        cg.hp -= dmg;
+        this.updateItemHpBar(cg, 1.32);
+        if (cg.hp <= 0 && !cg.dead) {
+          this.rescueCage(cg);
+        }
+      }
+    }
     this.foes = this.foes.filter((f) => !f.dead);
+    this.crates = this.crates.filter((c) => !c.dead);
+    this.cages = this.cages.filter((cg) => !cg.dead);
   }
 
   /* ---------------- pooled visual effects ---------------- */
@@ -1372,6 +1538,7 @@ export class DefenseEngine {
       if (this.weaponT <= 0) {
         this.weapon = 'pistol';
         this.weaponT = 0;
+        this.syncHeroWeaponMesh();
         this.floater(this.hero.position.x, 2.6, HERO_Z, '傘に戻った', '#94a3b8');
       }
     }
@@ -1405,6 +1572,7 @@ export class DefenseEngine {
 
     // Check course finish
     if (!this.over && this.dist >= this.length) {
+      this.collectRemainingFieldItems();
       const bonus = 500 + this.endless * 200;
       this.score += bonus;
       this.coins += 60;
@@ -1586,7 +1754,7 @@ export class DefenseEngine {
       b.m.position.set(b.x, 1.25, b.z);
       b.life -= dt;
 
-      if (b.z < -70 || b.z > 14 || Math.abs(b.x) > 9.5 || b.life <= 0) {
+      if (b.prevZ < -70 || b.prevZ > 14 || Math.abs(b.prevX) > 9.5 || b.life <= 0) {
         b.active = false;
         b.m.visible = false;
         continue;
@@ -1628,9 +1796,9 @@ export class DefenseEngine {
         }
       }
 
-      if (!b.active || b.ally) continue;
+      if (!b.active) continue;
 
-      // 2. Swept CCD vs Crates
+      // 2. Swept CCD vs Crates (hero and ally bolts both damage crates)
       for (const c of this.crates) {
         if (c.dead) continue;
         const rx = c.x - b.prevX;
@@ -1639,22 +1807,28 @@ export class DefenseEngine {
         const qx = b.prevX + t * segX;
         const qz = b.prevZ + t * segZ;
 
-        if ((c.x - qx) ** 2 + (c.z - qz) ** 2 < 1.25) {
+        if ((c.x - qx) ** 2 + (c.z - qz) ** 2 < 1.35) {
           c.hp -= b.dmg;
-          b.active = false;
-          b.m.visible = false;
+          this.updateItemHpBar(c, 1.2);
           this.burst(qx, 1, qz, 5, 3.5, '#fbbf24');
+          if (b.splash > 0) this.explode(qx, qz, b.splash, b.dmg * 0.8);
           if (c.hp <= 0 && !c.dead) {
-            c.dead = true;
             this.popCrate(c);
           }
-          break;
+          if (b.pierce > 0) {
+            b.pierce--;
+            b.dmg *= 0.8;
+          } else {
+            b.active = false;
+            b.m.visible = false;
+            break;
+          }
         }
       }
 
       if (!b.active) continue;
 
-      // 3. Swept CCD vs Cages
+      // 3. Swept CCD vs Cages (hero and ally bolts both damage cages)
       for (const cg of this.cages) {
         if (cg.dead) continue;
         const rx = cg.x - b.prevX;
@@ -1663,26 +1837,30 @@ export class DefenseEngine {
         const qx = b.prevX + t * segX;
         const qz = b.prevZ + t * segZ;
 
-        if ((cg.x - qx) ** 2 + (cg.z - qz) ** 2 < 1.45) {
+        if ((cg.x - qx) ** 2 + (cg.z - qz) ** 2 < 1.55) {
           cg.hp -= b.dmg;
-          b.active = false;
-          b.m.visible = false;
+          this.updateItemHpBar(cg, 1.32);
           this.burst(qx, 1.2, qz, 5, 3.5, '#4ade80');
           this.sound.hit();
+          if (b.splash > 0) this.explode(qx, qz, b.splash, b.dmg * 0.8);
           if (cg.hp <= 0 && !cg.dead) {
-            cg.dead = true;
-            this.scene.remove(cg.g);
-            if (this.allies.length < MAX_ALLIES) {
-              this.addAlly();
-              this.score += 200;
-            } else {
-              this.coins += 30;
-              this.score += 200;
-              this.floater(cg.x, 2.4, cg.z, '+30 残業代', '#fde047');
-            }
+            this.rescueCage(cg);
           }
-          break;
+          if (b.pierce > 0) {
+            b.pierce--;
+            b.dmg *= 0.8;
+          } else {
+            b.active = false;
+            b.m.visible = false;
+            break;
+          }
         }
+      }
+
+      // Cull bolts that have exited the playfield after CCD evaluation
+      if (b.active && (b.z < -70 || b.z > 14 || Math.abs(b.x) > 9.5)) {
+        b.active = false;
+        b.m.visible = false;
       }
     }
   }
@@ -1778,7 +1956,7 @@ export class DefenseEngine {
       // 1. Collision with Physical Barricade (BARRICADE_Z = -1.1)
       if (this.guard > 0 && prevZ < BARRICADE_Z + 0.3 && f.z >= BARRICADE_Z - 0.1) {
         f.dead = true;
-        this.scene.remove(f.g);
+        disposeObject3D(f.g);
 
         this.damageGuard(f.dmg);
         this.burst(f.x, 1.2, BARRICADE_Z, 12, 4.5, f.kind === 'kamikaze' ? '#f472b6' : '#06b6d4');
@@ -1794,7 +1972,7 @@ export class DefenseEngine {
       // 2. Collision with Hero / Squad (HERO_Z = 0)
       if (prevZ < HERO_Z + 0.5 && f.z >= HERO_Z + 0.5 && Math.abs(f.x - hx) < 1.0) {
         f.dead = true;
-        this.scene.remove(f.g);
+        disposeObject3D(f.g);
 
         const dmg = f.dmg;
         if (f.kind === 'kamikaze') {
@@ -1822,34 +2000,86 @@ export class DefenseEngine {
 
       if (f.z > 13) {
         f.dead = true;
-        this.scene.remove(f.g);
+        disposeObject3D(f.g);
       }
     }
 
     this.foes = this.foes.filter((f) => !f.dead);
   }
 
+  private isSquadTouchingItem(ix: number, iz: number, heroRange: number, allyRange: number): boolean {
+    if (iz < BARRICADE_Z - 0.85 || iz > HERO_Z + 2.2) return false;
+    const hx = this.hero.position.x;
+    if (Math.abs(ix - hx) <= heroRange) return true;
+    for (const a of this.allies) {
+      const dx = ix - a.g.position.x;
+      const dz = iz - a.g.position.z;
+      if (dx * dx + dz * dz <= allyRange * allyRange) return true;
+    }
+    return false;
+  }
+
   private updateCrates(dt: number): void {
+    const hx = this.hero.position.x;
     for (const c of this.crates) {
+      if (c.dead) continue;
       c.z += SCROLL * dt;
+
+      // Subtle magnetic pull when approaching hero's lane
+      if (c.z > -7.5 && c.z <= HERO_Z + 1.8 && Math.abs(c.x - hx) < 2.2) {
+        c.x += (hx - c.x) * Math.min(1, dt * 4.0);
+        c.g.position.x = c.x;
+      }
+
       c.g.position.z = c.z;
-      c.g.rotation.y += dt * 1.2;
-      if (c.z > 12) {
-        c.dead = true;
-        this.scene.remove(c.g);
+      c.g.rotation.y += dt * 1.4;
+
+      // Direct contact / proximity pickup by hero or squad
+      if (this.isSquadTouchingItem(c.x, c.z, 1.55, 1.35)) {
+        this.popCrate(c);
+        continue;
+      }
+
+      // Sink and dispose once passed behind the squad so it never lingers as an unreachable object
+      if (c.z > HERO_Z + 2.0) {
+        c.g.position.y -= dt * 7.5;
+        if (c.z > 4.5 || c.g.position.y < -2.4) {
+          c.dead = true;
+          disposeObject3D(c.g);
+        }
       }
     }
     this.crates = this.crates.filter((c) => !c.dead);
   }
 
   private updateCages(dt: number): void {
+    const hx = this.hero.position.x;
     for (const c of this.cages) {
+      if (c.dead) continue;
       c.z += SCROLL * dt;
+
+      // Subtle magnetic pull when approaching hero's lane
+      if (c.z > -7.5 && c.z <= HERO_Z + 1.8 && Math.abs(c.x - hx) < 2.2) {
+        c.x += (hx - c.x) * Math.min(1, dt * 3.6);
+        c.g.position.x = c.x;
+      }
+
       c.g.position.z = c.z;
       updateCageAnimation(c.g, this.time);
-      if (c.z > 12) {
-        c.dead = true;
-        this.scene.remove(c.g);
+
+      // Direct contact / proximity rescue by hero or squad
+      if (this.isSquadTouchingItem(c.x, c.z, 1.65, 1.45)) {
+        this.rescueCage(c);
+        continue;
+      }
+
+      // Sink and dispose once passed behind the squad
+      if (c.z > HERO_Z + 2.0) {
+        c.g.position.y -= dt * 7.5;
+        if (c.z > 4.5 || c.g.position.y < -3.0) {
+          c.dead = true;
+          disposeObject3D(c.g);
+        }
       }
     }
     this.cages = this.cages.filter((c) => !c.dead);
@@ -1860,7 +2090,6 @@ export class DefenseEngine {
     const hx = this.hero.position.x;
 
     for (const gt of this.gateObjs) {
-      if (gt.done) continue;
       const prev = gt.z;
       gt.z += SCROLL * dt;
       gt.g.position.z = gt.z;
@@ -1869,13 +2098,16 @@ export class DefenseEngine {
       updateGateCurtain(gt.rightMesh, this.time);
 
       // 3D OBB Volume check at gate passage plane
-      if (prev < HERO_Z && gt.z >= HERO_Z) {
+      if (!gt.done && prev < HERO_Z && gt.z >= HERO_Z) {
         gt.done = true;
 
         // Left Gate: [-4.4, -0.15], Right Gate: [0.15, 4.4]
         // Center divider splits at 0
         const isLeft = hx < 0;
         const fx = isLeft ? gt.left : gt.right;
+        const hitSide = isLeft ? gt.leftMesh : gt.rightMesh;
+        const curtain = (hitSide.userData as { curtain?: THREE.Mesh })?.curtain;
+        if (curtain) curtain.visible = false;
 
         fx.apply();
         this.lastGateText = fx.label;
@@ -1899,30 +2131,28 @@ export class DefenseEngine {
         this.emitHud();
       }
 
-      if (gt.z > 14) {
-        gt.done = true;
-        this.scene.remove(gt.g);
-      }
-    }
-
-    this.gateObjs = this.gateObjs.filter((gt) => !gt.done || gt.z <= 14);
-
-    // Fade out passed gates
-    for (const gt of this.gateObjs) {
       if (gt.done && gt.z > HERO_Z) {
-        gt.g.position.y -= dt * 3;
-        if (gt.g.position.y < -4) {
-          this.scene.remove(gt.g);
-          gt.z = 99;
-        }
+        gt.g.position.y -= dt * 5.0;
+      }
+
+      if (gt.z > 10 || gt.g.position.y < -4.2) {
+        gt.done = true;
+        gt.z = 99;
+        disposeObject3D(gt.g);
       }
     }
+
+    this.gateObjs = this.gateObjs.filter((gt) => gt.z < 90);
   }
 
   private updateAmbient(dt: number): void {
     for (const d of this.dashes) {
       d.position.z += SCROLL * dt;
       if (d.position.z > 18) d.position.z -= 112;
+    }
+    for (const gg of this.gantries) {
+      gg.position.z += SCROLL * dt;
+      if (gg.position.z > 18) gg.position.z -= 144;
     }
     for (const b of this.buildings) {
       b.position.z += SCROLL * dt;

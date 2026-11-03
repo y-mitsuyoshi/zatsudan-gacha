@@ -2,11 +2,18 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { SpiralEngine, type HudSnapshot, type BuildData, type RunResult } from '@/game/spiral/engine';
-import { SpiralSound } from '@/game/spiral/audio';
-import { VirtualJoystick } from '@/game/common/virtualJoystick';
 import {
-  loadSettings, saveSettings, loadRecords, saveRecord, loadProgress, saveProgress,
+  SpiralEngine,
+  type HudSnapshot,
+  type BuildData,
+  type RunResult,
+  type UpgradeRarity,
+} from '@/game/spiral/engine';
+import { SpiralSound } from '@/game/spiral/audio';
+import { AudioToggle, useBgm } from '@/components/game/AudioToggle';
+import type { BgmTrackId } from '@/game/common/bgmTracks';
+import {
+  loadRecords, saveRecord, loadProgress, saveProgress,
   loadStats, applyRunToStats, applyRunDeltaToStats,
   loadAch, checkAchievements, claimAchievement, ACHIEVEMENTS,
   applyRunToEncy, applyRunDeltaToEncy,
@@ -24,7 +31,7 @@ import {
   SpiralLogoIcon, CreditIcon, HpIcon, WaveIcon, BurstIcon,
   BlasterIcon, DroneIcon, EnergyDrinkIcon, LaserBeamIcon,
   BriefcaseIcon, ChipIcon, DatabaseIcon, CalendarIcon, TrophyIcon,
-  VolumeOnIcon, VolumeMuteIcon, PauseIcon, PlayIcon, RefreshIcon,
+  PauseIcon, PlayIcon, RefreshIcon,
   CheckIcon, LockIcon, TechUpgradeIcon,
 } from './SpiralIcons';
 
@@ -34,27 +41,48 @@ type TitleTab = 'play' | 'power' | 'dex' | 'daily' | 'ach';
 const DEFAULT_HUD: HudSnapshot = {
   hp: 120, maxHp: 120, wave: 1, totalWaves: FINAL_WAVE,
   phase: 'build', timeSec: 0, score: 0, coins: 0, segs: 0, chainsLeft: 0, chests: 0, drops: 0,
-  build: { dmg: 10, interval: 0.5, count: 1, pierce: 0, crit: 0.05, orbN: 0, blastLv: 0, beamLv: 0 },
+  build: { dmg: 12, interval: 0.45, count: 1, pierce: 0, crit: 0.05, orbN: 0, blastLv: 0, beamLv: 0 },
   levels: [], bossName: '', bossHp: 0, bossMax: 0, endless: false,
+  shield: 20, maxShield: 60, bossWave: false, waveSpawnTotal: 1, clearing: false,
 };
 
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-[#1d1914]">
+    <div className="h-2 w-full overflow-hidden bg-[#090d16] ring-1 ring-[#1e293b]">
       <div
-        className={`h-full rounded-full transition-all ${className}`}
+        className={`h-full transition-all duration-150 ${className}`}
         style={{ width: `${Math.max(0, Math.min(100, (value / (max || 1)) * 100))}%` }}
       />
     </div>
   );
 }
 
+const RARITY_STYLES: Record<UpgradeRarity, { border: string; badge: string; badgeText: string; glow: string }> = {
+  common: {
+    border: 'border-[#263244] hover:border-[#38bdf8]',
+    badge: 'bg-[#1e293b] text-[#94a3b8]',
+    badgeText: 'STANDARD',
+    glow: 'bg-[#0f172a]',
+  },
+  rare: {
+    border: 'border-[#0284c7] hover:border-[#38bdf8]',
+    badge: 'bg-[#0369a1] text-[#e0f2fe]',
+    badgeText: 'TACTICAL',
+    glow: 'bg-[#0c192c]',
+  },
+  epic: {
+    border: 'border-[#d97706] hover:border-[#fbbf24]',
+    badge: 'bg-[#b45309] text-[#fef3c7]',
+    badgeText: 'EXECUTIVE',
+    glow: 'bg-[#1c160d]',
+  },
+};
+
 export default function ShachikuSpiralGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<SpiralEngine | null>(null);
   const soundRef = useRef<SpiralSound | null>(null);
-  const joystickRef = useRef<VirtualJoystick | null>(null);
   const screenRef = useRef<Screen>('title');
   const keysRef = useRef<Set<string>>(new Set());
   const bannerTimer = useRef<number | null>(null);
@@ -73,8 +101,8 @@ export default function ShachikuSpiralGame() {
   const [banner, setBanner] = useState<{ title: string; sub: string; key: number } | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [stageSel, setStageSel] = useState<StageId>('hq');
-  const [muted, setMuted] = useState(false);
   const [tab, setTab] = useState<TitleTab>('play');
+  const [manualAimActive, setManualAimActive] = useState(false);
 
   const [records, setRecords] = useState<SpiralRecord[]>([]);
   const [bank, setBank] = useState(0);
@@ -84,9 +112,18 @@ export default function ShachikuSpiralGame() {
   const [daily, setDaily] = useState<DailyState>({ date: '', progress: {}, claimed: {} });
   const [runMeta, setRunMeta] = useState<{ difficulty: Difficulty; stage: StageId }>({ difficulty: 'normal', stage: 'hq' });
 
+  // Shared BGM integration
+  const bgmTrack: BgmTrackId | null =
+    screen === 'title'
+      ? 'shachiku-menu'
+      : screen === 'result'
+        ? null
+        : hud.bossWave || hud.bossMax > 0
+          ? 'spiral-boss'
+          : 'spiral-battle';
+  useBgm(bgmTrack, screen === 'paused');
+
   useEffect(() => {
-    const s = loadSettings();
-    setMuted(s.muted);
     setRecords(loadRecords());
     const p = loadProgress();
     setBank(p.coins);
@@ -99,11 +136,11 @@ export default function ShachikuSpiralGame() {
   const showBanner = useCallback((title: string, sub: string) => {
     setBanner({ title, sub, key: Date.now() });
     if (bannerTimer.current !== null) window.clearTimeout(bannerTimer.current);
-    bannerTimer.current = window.setTimeout(() => setBanner(null), 2600);
+    bannerTimer.current = window.setTimeout(() => setBanner(null), 2500);
   }, []);
 
   // Keyboard aims the fixed turret around the core
-  const aimRef = useRef(0); // radians
+  const aimRef = useRef(0);
   const pushMove = useCallback(() => {
     const eng = engineRef.current;
     if (!eng) return;
@@ -117,14 +154,11 @@ export default function ShachikuSpiralGame() {
     aimRef.current = Math.atan2(y, x);
     const R = 240;
     eng.setAim(CENTER + Math.cos(aimRef.current) * R, CENTER + Math.sin(aimRef.current) * R);
+    setManualAimActive(true);
   }, []);
 
-  // Continuous loop for keyboard/joystick input, only while playing.
   useEffect(() => {
-    if (screen !== 'playing') {
-      return;
-    }
-
+    if (screen !== 'playing') return;
     let animId = 0;
     const pollInput = () => {
       pushMove();
@@ -137,9 +171,15 @@ export default function ShachikuSpiralGame() {
   const destroyEngine = useCallback(() => {
     engineRef.current?.destroy();
     engineRef.current = null;
-    joystickRef.current?.detach();
-    joystickRef.current = null;
   }, []);
+
+  useEffect(() => {
+    return () => {
+      destroyEngine();
+      soundRef.current?.destroy();
+      soundRef.current = null;
+    };
+  }, [destroyEngine]);
 
   const finishRun = useCallback((r: RunResult, d: Difficulty) => {
     const previousSettlement = lastSettledRunRef.current;
@@ -189,7 +229,6 @@ export default function ShachikuSpiralGame() {
 
     if (!soundRef.current) soundRef.current = new SpiralSound();
     const sound = soundRef.current;
-    sound.setMuted(loadSettings().muted);
     sound.unlock();
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -202,6 +241,7 @@ export default function ShachikuSpiralGame() {
       onHud: (h) => setHud(h),
       onBuild: (b) => {
         setBuild(b);
+        setManualAimActive(false);
         changeScreen('build');
       },
       onGameOver: (r) => finishRun(r, d),
@@ -210,6 +250,7 @@ export default function ShachikuSpiralGame() {
     engineRef.current = engine;
 
     keysRef.current = new Set();
+    setManualAimActive(false);
     setRunMeta({ difficulty: d, stage: st });
     lastSettledRunRef.current = null;
     setResult(null);
@@ -225,19 +266,6 @@ export default function ShachikuSpiralGame() {
     });
   }, [destroyEngine, finishRun, showBanner, changeScreen]);
 
-  // Manage virtual joystick lifecycle strictly during gameplay
-  useEffect(() => {
-    if (screen !== 'playing') {
-      joystickRef.current?.detach();
-      joystickRef.current = null;
-      return;
-    }
-    // Center-fixed turret: no joystick needed. Keep cleanup only.
-    return;
-  }, [screen]);
-
-  useEffect(() => () => destroyEngine(), [destroyEngine]);
-
   const pauseGame = useCallback(() => {
     engineRef.current?.setPaused(true);
     soundRef.current?.suspend();
@@ -250,7 +278,15 @@ export default function ShachikuSpiralGame() {
     changeScreen('playing');
   }, [changeScreen]);
 
-  // keyboard event listeners
+  const chooseUpgrade = useCallback((key: string) => {
+    const c = build?.choices.find((x) => `${x.kind}:${x.id}` === key);
+    if (!c) return;
+    engineRef.current?.applyUpgrade(c);
+    setBuild(null);
+    changeScreen('playing');
+  }, [build, changeScreen]);
+
+  // Keyboard navigation + build shortcuts
   useEffect(() => {
     const map = (key: string): string | null => {
       if (key === 'ArrowLeft' || key === 'a' || key === 'A') return 'left';
@@ -260,6 +296,24 @@ export default function ShachikuSpiralGame() {
       return null;
     };
     const down = (e: KeyboardEvent) => {
+      if (screenRef.current === 'build' && build) {
+        if (e.key === '1' && build.choices[0]) {
+          chooseUpgrade(`${build.choices[0].kind}:${build.choices[0].id}`);
+          return;
+        }
+        if (e.key === '2' && build.choices[1]) {
+          chooseUpgrade(`${build.choices[1].kind}:${build.choices[1].id}`);
+          return;
+        }
+        if (e.key === '3' && build.choices[2]) {
+          chooseUpgrade(`${build.choices[2].kind}:${build.choices[2].id}`);
+          return;
+        }
+        if ((e.key === 'r' || e.key === 'R') && build.canReroll) {
+          engineRef.current?.rerollBuild();
+          return;
+        }
+      }
       const m = map(e.key);
       if (m && screenRef.current === 'playing') {
         e.preventDefault();
@@ -275,7 +329,12 @@ export default function ShachikuSpiralGame() {
       const m = map(e.key);
       if (m) {
         keysRef.current.delete(m);
-        pushMove();
+        if (keysRef.current.size === 0) {
+          engineRef.current?.clearAim();
+          setManualAimActive(false);
+        } else {
+          pushMove();
+        }
       }
     };
     window.addEventListener('keydown', down);
@@ -284,7 +343,7 @@ export default function ShachikuSpiralGame() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
     };
-  }, [pushMove, pauseGame, resumeGame]);
+  }, [pushMove, pauseGame, resumeGame, build, chooseUpgrade]);
 
   useEffect(() => {
     const onVis = () => {
@@ -298,6 +357,7 @@ export default function ShachikuSpiralGame() {
     destroyEngine();
     setBuild(null);
     setResult(null);
+    setManualAimActive(false);
     setStats(loadStats());
     setAch(loadAch());
     setDaily(loadDaily());
@@ -310,24 +370,6 @@ export default function ShachikuSpiralGame() {
   const goEndless = useCallback(() => {
     setResult(null);
     engineRef.current?.continueEndless();
-  }, []);
-
-  const chooseUpgrade = useCallback((key: string) => {
-    const c = build?.choices.find((x) => `${x.kind}:${x.id}` === key);
-    if (!c) return;
-    engineRef.current?.applyUpgrade(c);
-    setBuild(null);
-    changeScreen('playing');
-  }, [build, changeScreen]);
-
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      soundRef.current?.setMuted(next);
-      const s = loadSettings();
-      saveSettings({ ...s, muted: next });
-      return next;
-    });
   }, []);
 
   const buyMeta = useCallback((id: string) => {
@@ -345,6 +387,7 @@ export default function ShachikuSpiralGame() {
     setBank(p.coins);
     setMetaLv({ ...m });
     soundRef.current?.unlock();
+    soundRef.current?.upgrade();
   }, []);
 
   const claimAchReward = useCallback((id: string) => {
@@ -355,6 +398,7 @@ export default function ShachikuSpiralGame() {
       saveProgress(p);
       setBank(p.coins);
       setAch(loadAch());
+      soundRef.current?.coin();
     }
   }, []);
 
@@ -366,164 +410,223 @@ export default function ShachikuSpiralGame() {
       saveProgress(p);
       setBank(p.coins);
       setDaily(loadDaily());
+      soundRef.current?.coin();
     }
   }, []);
 
   const title = bestTitle();
   const comp = encyCompletion();
   const missions = todayMissions();
-  const nextBoss = hud.wave < 5 ? '上司' : hud.wave < 10 ? '役員' : hud.wave < 15 ? '社長' : '無限残業';
-  const waveProgress = Math.min(100, (hud.wave / hud.totalWaves) * 100);
+  const nextBoss = hud.wave <= 5 ? 'W5 課長' : hud.wave <= 10 ? 'W10 役員' : hud.wave <= 15 ? 'W15 社長' : '無限残業';
+  const waveClearRatio = hud.waveSpawnTotal > 0
+    ? Math.max(0, Math.min(100, ((hud.waveSpawnTotal - hud.chainsLeft) / hud.waveSpawnTotal) * 100))
+    : 0;
+  const hpPercent = hud.maxHp > 0 ? hud.hp / hud.maxHp : 0;
+  const hpBarColor = hpPercent > 0.45 ? 'bg-[#06b6d4]' : hpPercent > 0.22 ? 'bg-[#f59e0b]' : 'bg-[#ef4444]';
 
   return (
-    <div className="flex min-h-dvh w-full flex-col items-center bg-[#070a14] px-2 py-4 text-[#f2e9d8] selection:bg-[#dfb15b] selection:text-white">
+    <div className="flex min-h-dvh w-full flex-col items-center bg-[#070a12] px-2 py-3 text-[#e2e8f0] selection:bg-[#f59e0b] selection:text-[#070a12]">
       <div className="w-full max-w-[680px]">
-        {/* Top Navbar */}
-        <div className="mb-2 flex items-center justify-between border border-[#3b3328] bg-[#1d1914] px-3 py-2">
-          <div className="flex items-center gap-2">
-            <SpiralLogoIcon className="h-6 w-6 text-[#83b8ac]" />
-            <p className="text-base font-black tracking-wider text-[#83b8ac]">社畜スパイラル</p>
+        {/* Tactical Header Bar */}
+        <header className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-[#1e293b] bg-[#0f172a] px-3 py-2 shadow-[0_4px_0_#020617]">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center border border-[#38bdf8]/40 bg-[#090d16]">
+              <SpiralLogoIcon className="h-5 w-5 text-[#38bdf8]" />
+            </div>
+            <div>
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-[#38bdf8]">
+                CORP-DEFENSE // TERMINAL-09
+              </p>
+              <p className="text-sm font-black tracking-wider text-[#f8fafc]">社畜スパイラル</p>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-[#5a4b38] bg-[#2a231b]/40 px-2 py-1 text-xs font-bold text-[#e4c989]">
-              <CreditIcon className="h-3.5 w-3.5" />
-              <span>{bank.toLocaleString()}</span>
+            <div className="flex h-9 items-center gap-1.5 border border-[#78350f] bg-[#1c1409] px-2.5 text-xs font-bold text-[#fbbf24]">
+              <CreditIcon className="h-4 w-4 shrink-0" />
+              <span className="font-mono">{bank.toLocaleString()}</span>
             </div>
-            <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] px-2 py-1 text-xs font-semibold text-[#b7a992]">
-              <span className="text-[10px] text-[#83b8ac]">役職: </span>{title.name}
+            <div className="hidden h-9 items-center border border-[#1e293b] bg-[#090d16] px-2.5 text-xs font-semibold text-[#94a3b8] sm:flex">
+              <span className="mr-1 font-mono text-[10px] text-[#38bdf8]">RANK:</span>
+              <span className="text-[#f1f5f9]">{title.name}</span>
             </div>
-            <button
-              onClick={toggleMute}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#3b3328] bg-[#1d1914] hover:bg-[#3b3328]"
-              aria-label="ミュート切替"
-            >
-              {muted ? <VolumeMuteIcon className="h-4 w-4" /> : <VolumeOnIcon className="h-4 w-4 text-[#83b8ac]" />}
-            </button>
+            <AudioToggle variant="compact" />
             {screen === 'playing' && (
               <button
+                type="button"
                 onClick={pauseGame}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#5a4b38] bg-[#172622] text-[#83b8ac] hover:bg-[#172622]"
+                className="flex h-11 w-11 items-center justify-center border border-[#38bdf8]/50 bg-[#0c192c] text-[#38bdf8] transition hover:bg-[#152c4a]"
                 aria-label="一時停止"
+                title="一時停止 (P / Esc)"
               >
-                <PauseIcon className="h-4 w-4" />
+                <PauseIcon className="h-5 w-5" />
               </button>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* In-Game Modern Cyber HUD */}
+        {/* In-Game Tactical Telemetry HUD */}
         {(screen === 'playing' || screen === 'paused' || screen === 'build') && (
-          <div className="mb-2 border border-[#3b3328] bg-[#1d1914] p-2.5 text-xs shadow-lg">
-            <div className="mb-1.5 flex items-center justify-between font-black tracking-wide">
-              <div className="flex items-center gap-1.5 text-[#83b8ac]">
-                <WaveIcon className="h-4 w-4" />
-                <span>WAVE {hud.wave}{hud.endless ? '+' : `/${hud.totalWaves}`}</span>
+          <section className="mb-2 border border-[#1e293b] bg-[#0f172a] p-2.5 text-xs shadow-[0_4px_0_#020617]">
+            {/* Row 1: Primary Wave / Score / Credits / Kills */}
+            <div className="mb-2 grid grid-cols-4 gap-1.5 border-b border-[#1e293b] pb-2 font-mono">
+              <div className="border-l-2 border-[#38bdf8] bg-[#090d16] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">WAVE</p>
+                <p className="text-xs font-black text-[#38bdf8]">
+                  {hud.wave}{hud.endless ? ' [OT]' : ` / ${hud.totalWaves}`}
+                </p>
               </div>
-              <div className="text-[#dfb15b]">
-                SCORE <span className="font-mono">{hud.score.toLocaleString()}</span>
+              <div className="border-l-2 border-[#fbbf24] bg-[#090d16] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">SCORE</p>
+                <p className="text-xs font-black text-[#fbbf24]">{hud.score.toLocaleString()}</p>
               </div>
-              <div className="flex items-center gap-1 text-[#e4c989]">
-                <CreditIcon className="h-3.5 w-3.5" />
-                <span className="font-mono">{hud.coins}</span>
+              <div className="border-l-2 border-[#f59e0b] bg-[#090d16] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">OVERTIME PAY</p>
+                <p className="flex items-center gap-1 text-xs font-black text-[#fde047]">
+                  <CreditIcon className="h-3.5 w-3.5" />
+                  <span>{hud.coins}</span>
+                </p>
               </div>
-              <div className="flex items-center gap-1 text-[#e07054]">
-                <BurstIcon className="h-3.5 w-3.5" />
-                <span className="font-mono">{hud.segs}</span>
+              <div className="border-l-2 border-[#f472b6] bg-[#090d16] px-2 py-1">
+                <p className="text-[9px] text-[#64748b]">SLICED</p>
+                <p className="flex items-center gap-1 text-xs font-black text-[#f472b6]">
+                  <BurstIcon className="h-3.5 w-3.5" />
+                  <span>{hud.segs}</span>
+                </p>
               </div>
             </div>
 
-            <div className="mb-1.5 flex items-center gap-2">
-              <span className="font-label w-10 shrink-0 text-[8px] text-[#8a7d69]">WAVE</span>
-              <div className="h-1 flex-1 bg-[#3b3328]">
-                <div className="h-full bg-[#83b8ac] transition-all duration-500" style={{ width: `${waveProgress}%` }} />
+            {/* Row 2: Core HP & Shield Dual Gauges */}
+            <div className="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <div className="flex items-center gap-2 bg-[#090d16] px-2 py-1">
+                <div className="flex w-14 shrink-0 items-center gap-1 font-mono text-[10px] font-bold text-[#38bdf8]">
+                  <HpIcon className="h-3.5 w-3.5" />
+                  <span>CORE</span>
+                </div>
+                <Bar value={hud.hp} max={hud.maxHp} className={hpBarColor} />
+                <span className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-[#e2e8f0]">
+                  {hud.hp}/{hud.maxHp}
+                </span>
               </div>
-              <span className="font-mono text-[10px] text-[#b7a992]">{hud.wave}/{hud.totalWaves}</span>
+
+              <div className="flex items-center gap-2 bg-[#090d16] px-2 py-1">
+                <span className="w-14 shrink-0 font-mono text-[10px] font-bold text-[#7dd3fc]">
+                  SHIELD
+                </span>
+                <Bar value={hud.shield} max={hud.maxShield} className="bg-[#38bdf8]" />
+                <span className="w-14 shrink-0 text-right font-mono text-[11px] font-bold text-[#7dd3fc]">
+                  {hud.shield}/{hud.maxShield}
+                </span>
+              </div>
             </div>
 
-            <div className="mb-1.5 flex items-center gap-2">
-              <div className="flex w-16 shrink-0 items-center gap-1 font-bold text-[#83b8ac]">
-                <HpIcon className="h-3.5 w-3.5" />
-                <span>HP</span>
+            {/* Row 3: Wave Sweep Progress & Threat Badges */}
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-1 items-center gap-2">
+                <span className="font-mono text-[9px] font-bold text-[#64748b]">SWEEP</span>
+                <div className="h-1.5 flex-1 bg-[#090d16] ring-1 ring-[#1e293b]">
+                  <div
+                    className="h-full bg-[#22c55e] transition-all duration-300"
+                    style={{ width: `${hud.clearing ? 100 : waveClearRatio}%` }}
+                  />
+                </div>
+                <span className="font-mono text-[10px] text-[#94a3b8]">
+                  残敵 {hud.chainsLeft}
+                </span>
               </div>
-              <Bar value={hud.hp} max={hud.maxHp} className="bg-[#83b8ac]" />
-              <span className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-[#b7a992]">
-                {hud.hp}/{hud.maxHp}
-              </span>
-            </div>
 
-            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 text-[9px]">
-              <span className="font-label border border-[#5a4b38] bg-[#2a231b] px-1.5 py-0.5 text-[#e07054]">
-                NEXT {nextBoss}
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                <span className="font-label border border-[#3b3328] bg-[#12100d] px-1.5 py-0.5 text-[#b7a992]">
-                  ENEMY {hud.chainsLeft}
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                {hud.clearing ? (
+                  <span className="border border-[#fbbf24] bg-[#451a03] px-2 py-0.5 font-bold text-[#fde047]">
+                    回収中 // VACUUM ACTIVE
+                  </span>
+                ) : hud.bossWave ? (
+                  <span className="border border-[#ef4444] bg-[#450a0a] px-2 py-0.5 font-bold text-[#fca5a5]">
+                    DECISION MAKER // 決裁者戦
+                  </span>
+                ) : (
+                  <span className="border border-[#334155] bg-[#090d16] px-2 py-0.5 text-[#94a3b8]">
+                    NEXT: {nextBoss}
+                  </span>
+                )}
+                <span
+                  className={`border px-2 py-0.5 font-bold ${
+                    manualAimActive
+                      ? 'border-[#38bdf8] bg-[#0c192c] text-[#38bdf8]'
+                      : 'border-[#1e293b] bg-[#090d16] text-[#64748b]'
+                  }`}
+                >
+                  {manualAimActive ? 'AIM: MANUAL' : 'AIM: AUTO-HEAD'}
                 </span>
                 {hud.chests > 0 && (
-                  <span className="font-label border border-[#5a4b38] bg-[#2a231b] px-1.5 py-0.5 text-[#dfb15b]">
-                    CHEST {hud.chests}
+                  <span className="border border-[#f59e0b] bg-[#451a03] px-2 py-0.5 font-bold text-[#fde047]">
+                    宝箱×{hud.chests}
                   </span>
                 )}
                 {hud.drops > 0 && (
-                  <span className="font-label border border-[#355952] bg-[#172622] px-1.5 py-0.5 text-[#9dd4c7]">
-                    DROP {hud.drops}
+                  <span className="border border-[#10b981] bg-[#064e3b] px-2 py-0.5 font-bold text-[#6ee7b7]">
+                    吸引中×{hud.drops}
                   </span>
                 )}
               </div>
             </div>
 
-            {hud.chests > 0 && (
-              <p className="font-label mb-1.5 text-[8px] text-[#dfb15b]">宝箱を撃つと武器進化 / ドロップは自動回収</p>
-            )}
-
+            {/* Row 4: Active Armament Telemetry */}
             <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#83b8ac]">
-                <BlasterIcon className="h-3 w-3" />
+              <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#38bdf8]">
+                <BlasterIcon className="h-3.5 w-3.5" />
                 <span>ATK {hud.build.dmg}</span>
-                <span className="text-[#8a7d69]">×{hud.build.count}</span>
-                <span className="text-[#dfb15b]">貫{hud.build.pierce}</span>
+                <span className="text-[#64748b]">×{hud.build.count}</span>
+                <span className="text-[#fbbf24]">貫{hud.build.pierce}</span>
               </span>
               {hud.build.orbN > 0 && (
-                <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#83b8ac]">
-                  <DroneIcon className="h-3 w-3" />
+                <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#38bdf8]">
+                  <DroneIcon className="h-3.5 w-3.5" />
                   <span>×{hud.build.orbN}</span>
                 </span>
               )}
               {hud.build.blastLv > 0 && (
-                <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#e4c989]">
-                  <EnergyDrinkIcon className="h-3 w-3" />
-                  <span>Lv{hud.build.blastLv}</span>
+                <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#fb923c]">
+                  <EnergyDrinkIcon className="h-3.5 w-3.5" />
+                  <span>Lv.{hud.build.blastLv}</span>
                 </span>
               )}
               {hud.build.beamLv > 0 && (
-                <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#f2e9d8]">
-                  <LaserBeamIcon className="h-3 w-3" />
-                  <span>Lv{hud.build.beamLv}</span>
+                <span className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-2 py-0.5 font-mono text-[#fde047]">
+                  <LaserBeamIcon className="h-3.5 w-3.5" />
+                  <span>Lv.{hud.build.beamLv}</span>
                 </span>
               )}
-              {hud.levels.length > 0 && <span className="text-[#756957]">|</span>}
               {hud.levels.map((l) => (
-                <span key={l.id} className="flex items-center gap-0.5 rounded border border-[#3b3328] bg-[#1d1914] px-1.5 py-0.5 text-[10px]">
-                  <TechUpgradeIcon id={l.id} className="h-3 w-3 text-[#83b8ac]" />
-                  <span className="font-mono text-[#e4c989] font-bold">{l.lv}</span>
+                <span
+                  key={l.id}
+                  className="flex items-center gap-1 border border-[#1e293b] bg-[#090d16] px-1.5 py-0.5 font-mono text-[10px]"
+                >
+                  <TechUpgradeIcon id={l.id} className="h-3 w-3 text-[#38bdf8]" />
+                  <span className="font-bold text-[#fbbf24]">{l.lv}</span>
                 </span>
               ))}
             </div>
 
+            {/* Active Boss Health Gauge */}
             {hud.bossMax > 0 && (
-              <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/30 p-1.5">
-                <span className="w-28 shrink-0 truncate text-xs font-black text-[#e07054]">{hud.bossName}</span>
-                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-[#e07054]" />
-                <span className="font-mono text-[10px] font-bold text-[#f0a08b]">{hud.bossHp}</span>
+              <div className="mt-2 flex items-center gap-2 border border-[#dc2626] bg-[#2a0808] px-2.5 py-1.5">
+                <span className="w-28 shrink-0 truncate font-mono text-xs font-black text-[#fca5a5]">
+                  {hud.bossName}
+                </span>
+                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-[#ef4444]" />
+                <span className="w-20 shrink-0 text-right font-mono text-[11px] font-bold text-[#fecaca]">
+                  {hud.bossHp}/{hud.bossMax}
+                </span>
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {/* Game Canvas Container */}
         <div
           ref={stageRef}
-          className="relative mx-auto w-full max-w-[560px] overflow-hidden border border-[#5a4b38] bg-[#12100d] shadow-[6px_6px_0_#0b0907]"
+          className="relative mx-auto w-full max-w-[560px] overflow-hidden border-2 border-[#1e293b] bg-[#070b18] shadow-[0_8px_0_#020617]"
           style={{ aspectRatio: '1 / 1' }}
         >
           <canvas
@@ -533,10 +636,16 @@ export default function ShachikuSpiralGame() {
             height={640}
             onPointerDown={(e) => {
               if (screenRef.current !== 'playing') return;
+              try {
+                e.currentTarget.setPointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
               const rect = e.currentTarget.getBoundingClientRect();
               const x = ((e.clientX - rect.left) / rect.width) * 640;
               const y = ((e.clientY - rect.top) / rect.height) * 640;
               engineRef.current?.setAim(x, y);
+              setManualAimActive(true);
               soundRef.current?.unlock();
             }}
             onPointerMove={(e) => {
@@ -546,14 +655,35 @@ export default function ShachikuSpiralGame() {
               const x = ((e.clientX - rect.left) / rect.width) * 640;
               const y = ((e.clientY - rect.top) / rect.height) * 640;
               engineRef.current?.setAim(x, y);
+              setManualAimActive(true);
+            }}
+            onPointerUp={(e) => {
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+              if (keysRef.current.size === 0) {
+                engineRef.current?.clearAim();
+                setManualAimActive(false);
+              }
+            }}
+            onPointerCancel={() => {
+              if (keysRef.current.size === 0) {
+                engineRef.current?.clearAim();
+                setManualAimActive(false);
+              }
             }}
           />
 
           {/* Banner notification */}
           {banner && (screen === 'playing' || screen === 'build') && (
-            <div key={banner.key} className="pointer-events-none absolute inset-x-4 top-8 z-20 border border-[#5a4b38] bg-[#12100d]/95 p-3 text-center shadow-xl">
-              <p className="text-sm font-black tracking-wide text-[#83b8ac]">{banner.title}</p>
-              <p className="mt-0.5 text-xs text-[#b7a992]">{banner.sub}</p>
+            <div
+              key={banner.key}
+              className="pointer-events-none absolute inset-x-4 top-4 z-20 border-l-4 border-[#38bdf8] bg-[#090d16]/95 px-4 py-2.5 shadow-[0_4px_0_#020617] ring-1 ring-[#1e293b]"
+            >
+              <p className="font-mono text-xs font-black tracking-wider text-[#38bdf8]">{banner.title}</p>
+              <p className="mt-0.5 text-xs text-[#cbd5e1]">{banner.sub}</p>
             </div>
           )}
 
@@ -575,53 +705,83 @@ export default function ShachikuSpiralGame() {
 
           {/* Build Tree Modal Overlay */}
           {screen === 'build' && build && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#12100d]/85 p-3">
-              <div className="max-h-full w-full max-w-[520px] overflow-y-auto border border-[#5a4b38] bg-[#1d1914] p-4 shadow-[6px_6px_0_#0b0907]">
-                <div className="flex items-center justify-center gap-2">
-                  <WaveIcon className="h-6 w-6 text-[#83b8ac]" />
-                  <h2 className="text-xl font-black tracking-wider text-[#83b8ac]">
-                    {build.fromChest ? '宝箱 GET！ 武器進化' : `WAVE ${build.wave} 開始前 作戦強化`}
-                  </h2>
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#070a12]/88 p-3">
+              <div className="max-h-full w-full max-w-[520px] overflow-y-auto border-2 border-[#334155] bg-[#0f172a] p-4 shadow-[0_8px_0_#020617]">
+                <div className="flex items-center justify-between border-b border-[#1e293b] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <WaveIcon className="h-5 w-5 text-[#38bdf8]" />
+                    <div>
+                      <p className="font-mono text-[10px] font-bold tracking-widest text-[#38bdf8]">
+                        {build.fromChest ? 'CHEST REWARD // WEAPON EVOLUTION' : `WAVE ${build.wave} // TACTICAL UPGRADE`}
+                      </p>
+                      <h2 className="text-lg font-black tracking-wide text-[#f8fafc]">
+                        {build.fromChest ? '宝箱解析完了 — 兵装進化選択' : `第${build.wave}波 迎撃兵装の承認`}
+                      </h2>
+                    </div>
+                  </div>
+                  <span className="border border-[#1e293b] bg-[#090d16] px-2 py-1 font-mono text-[10px] text-[#94a3b8]">
+                    [1][2][3] 選択
+                  </span>
                 </div>
-                <p className="mt-1 text-center text-xs text-[#8a7d69]">
-                  {build.fromChest
-                    ? '3つの選択肢から1つ選んでコアリアクターを強化せよ'
-                    : '渦の進行に備え、コアリアクターの兵装を1つ強化してください'}
-                </p>
 
-                <div className="mx-auto mt-4 grid max-w-[480px] grid-cols-1 gap-2.5">
-                  {build.choices.map((c) => (
-                    <button
-                      key={`${c.kind}:${c.id}`}
-                      onClick={() => chooseUpgrade(`${c.kind}:${c.id}`)}
-                      className="group flex items-center gap-3 rounded-xl border border-[#3b3328] bg-[#1d1914]/95 p-3 text-left transition hover:border-[#83b8ac] hover:bg-[#1d1914]"
-                    >
-                      <div className="pointer-events-none flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#3b3328] bg-[#1d1914] group-hover:border-[#83b8ac]">
-                        <TechUpgradeIcon id={c.id} className="h-6 w-6 text-[#83b8ac]" />
-                      </div>
-                      <div className="pointer-events-none flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-black text-[#f2e9d8] group-hover:text-[#83b8ac]">{c.name}</p>
-                          {c.isNew ? (
-                            <span className="rounded bg-[#2f5d57] px-1.5 py-0.2 text-[10px] font-bold text-white">NEW</span>
-                          ) : c.toLv > 0 ? (
-                            <span className="font-mono text-xs font-bold text-[#dfb15b]">Lv.{c.toLv}</span>
-                          ) : null}
+                <div className="mt-3 grid grid-cols-1 gap-2.5">
+                  {build.choices.map((c, idx) => {
+                    const style = RARITY_STYLES[c.rarity ?? 'common'];
+                    return (
+                      <button
+                        type="button"
+                        key={`${c.kind}:${c.id}`}
+                        onClick={() => chooseUpgrade(`${c.kind}:${c.id}`)}
+                        className={`group flex min-h-[68px] items-center gap-3 border-2 ${style.border} ${style.glow} p-3 text-left transition active:translate-y-0.5`}
+                      >
+                        <div className="pointer-events-none flex h-12 w-12 shrink-0 items-center justify-center border border-[#334155] bg-[#090d16] group-hover:border-[#38bdf8]">
+                          <TechUpgradeIcon id={c.id} className="h-6 w-6 text-[#38bdf8]" />
                         </div>
-                        <p className="mt-0.5 text-xs text-[#8a7d69]">{c.desc}</p>
-                      </div>
-                    </button>
-                  ))}
+                        <div className="pointer-events-none flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-[10px] font-bold text-[#64748b]">#{idx + 1}</span>
+                            <p className="text-sm font-black text-[#f8fafc] group-hover:text-[#38bdf8]">{c.name}</p>
+                            <span className={`px-1.5 py-0.5 font-mono text-[9px] font-bold ${style.badge}`}>
+                              {style.badgeText}
+                            </span>
+                            {c.isNew ? (
+                              <span className="bg-[#059669] px-1.5 py-0.5 font-mono text-[9px] font-bold text-white">
+                                NEW
+                              </span>
+                            ) : c.toLv > 0 ? (
+                              <span className="font-mono text-xs font-bold text-[#fbbf24]">
+                                Lv.{c.toLv}{c.maxLv > 0 ? `/${c.maxLv}` : ''}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-xs text-[#94a3b8]">{c.desc}</p>
+                          {c.maxLv > 0 && (
+                            <div className="mt-1.5 flex gap-1">
+                              {Array.from({ length: c.maxLv }).map((_, pipIdx) => (
+                                <span
+                                  key={pipIdx}
+                                  className={`h-1 flex-1 ${
+                                    pipIdx < c.toLv ? 'bg-[#38bdf8]' : 'bg-[#1e293b]'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {build.canReroll && (
-                  <div className="mx-auto mt-4 w-full max-w-[480px]">
+                  <div className="mt-3">
                     <button
+                      type="button"
                       onClick={() => engineRef.current?.rerollBuild()}
-                      className="flex w-full items-center justify-center gap-2 border border-[#5a4b38] bg-[#2a231b] py-2.5 text-xs font-bold text-[#e4c989] hover:bg-[#342d22]"
+                      className="flex min-h-[44px] w-full items-center justify-center gap-2 border border-[#78350f] bg-[#1c1409] py-2.5 text-xs font-bold text-[#fbbf24] transition hover:border-[#f59e0b] hover:bg-[#291d0c]"
                     >
-                      <RefreshIcon className="h-4 w-4 text-[#dfb15b]" />
-                      <span>選択肢リロール（残1回）</span>
+                      <RefreshIcon className="h-4 w-4 text-[#fbbf24]" />
+                      <span>稟議差し戻し / 選択肢リロール（残り1回・[R]キー）</span>
                     </button>
                   </div>
                 )}
@@ -631,24 +791,35 @@ export default function ShachikuSpiralGame() {
 
           {/* Paused Overlay */}
           {screen === 'paused' && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#12100d]/85 p-4">
-              <div className="w-full max-w-xs border border-[#5a4b38] bg-[#1d1914] p-5 text-center shadow-[6px_6px_0_#0b0907]">
-                <p className="font-label text-[9px] text-[#8a7d69]">Paused</p>
-                <PauseIcon className="mx-auto mt-2 h-8 w-8 text-[#dfb15b]" />
-                <p className="mt-2 text-xl font-black tracking-wider text-[#f2e9d8]">作戦一時待機</p>
-                <p className="mt-1 text-xs text-[#8a7d69]">画面ドラッグまたは仮想スティックで照準</p>
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#070a12]/88 p-4">
+              <div className="w-full max-w-xs border-2 border-[#334155] bg-[#0f172a] p-5 text-center shadow-[0_8px_0_#020617]">
+                <p className="font-mono text-[10px] font-bold tracking-widest text-[#38bdf8]">
+                  SYSTEM PAUSED // 業務一時保留
+                </p>
+                <PauseIcon className="mx-auto mt-2 h-8 w-8 text-[#fbbf24]" />
+                <p className="mt-2 text-xl font-black tracking-wider text-[#f8fafc]">作戦一時待機</p>
+                <p className="mt-1 text-xs text-[#94a3b8]">
+                  ドラッグ中は手動照準・指を離すと最寄り頭部へ自動照準
+                </p>
+
+                <div className="mt-4 flex justify-center">
+                  <AudioToggle variant="full" />
+                </div>
+
                 <button
+                  type="button"
                   onClick={resumeGame}
-                  className="mt-4 flex w-full items-center justify-center gap-2 border border-[#f2e9d8] bg-[#b23a2a] px-6 py-3 font-black text-white shadow-[3px_3px_0_#f2e9d8] hover:bg-[#c94b38]"
+                  className="mt-4 flex min-h-[48px] w-full items-center justify-center gap-2 border border-[#38bdf8] bg-[#0284c7] px-6 py-3 font-black text-white shadow-[0_4px_0_#0369a1] transition hover:bg-[#0369a1]"
                 >
                   <PlayIcon className="h-4 w-4" />
-                  <span>業務再開</span>
+                  <span>業務再開 (P / Esc)</span>
                 </button>
                 <button
+                  type="button"
                   onClick={quitToTitle}
-                  className="mt-2 w-full border border-[#3b3328] bg-[#12100d] px-6 py-2.5 text-sm font-bold text-[#b7a992] hover:border-[#5a4b38]"
+                  className="mt-2.5 min-h-[44px] w-full border border-[#334155] bg-[#090d16] px-6 py-2.5 text-sm font-bold text-[#94a3b8] transition hover:border-[#64748b] hover:text-white"
                 >
-                  タイトルに戻る
+                  タイトルへ撤退
                 </button>
               </div>
             </div>
@@ -665,8 +836,8 @@ export default function ShachikuSpiralGame() {
           )}
         </div>
 
-        <p className="mt-2.5 text-center text-[11px] text-[#8a7d69]">
-          コアは中心固定。タップ／ドラッグで狙いを定めて撃て！列の隙間の宝箱を壊すと武器進化を3択で選択。ドロップは自動回収。
+        <p className="mt-2 text-center font-mono text-[11px] text-[#64748b]">
+          [操作] 画面タップ＆ドラッグ: 手動照準 / 指を離す: 頭部を自動追尾 / 敵ドロップ＆解放宝箱は中央コアへ自動吸引回収
         </p>
       </div>
     </div>
@@ -692,38 +863,50 @@ function TitleOverlay(props: {
   const { tab, setTab } = props;
   const tabs: { id: TitleTab; label: string; icon: React.ReactNode }[] = [
     { id: 'play', label: '出勤', icon: <BriefcaseIcon className="h-4 w-4" /> },
-    { id: 'power', label: '強化', icon: <ChipIcon className="h-4 w-4" /> },
-    { id: 'dex', label: '図鑑', icon: <DatabaseIcon className="h-4 w-4" /> },
-    { id: 'daily', label: '日課', icon: <CalendarIcon className="h-4 w-4" /> },
-    { id: 'ach', label: '実績', icon: <TrophyIcon className="h-4 w-4" /> },
+    { id: 'power', label: '設備投資', icon: <ChipIcon className="h-4 w-4" /> },
+    { id: 'dex', label: '機密図鑑', icon: <DatabaseIcon className="h-4 w-4" /> },
+    { id: 'daily', label: '日課ノルマ', icon: <CalendarIcon className="h-4 w-4" /> },
+    { id: 'ach', label: '人事考課', icon: <TrophyIcon className="h-4 w-4" /> },
   ];
   return (
-    <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#12100d] p-4">
+    <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#090d16] p-3 sm:p-4">
       <div className="my-auto">
-        <div className="relative mb-3 overflow-hidden rounded-xl border border-[#5a4b38] ">
+        <div className="relative mb-3 overflow-hidden border border-[#1e293b] bg-[#0f172a]">
           <Image
             src="/assets/spiral_cover.jpg"
             alt="Cybernetic Syndicate Spiral"
             width={800}
             height={447}
-            className="h-28 w-full object-cover grayscale-[0.2] saturate-75"
+            className="h-24 w-full object-cover opacity-65 saturate-75 sm:h-28"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#12100d] via-[#12100d]/60 to-transparent flex flex-col justify-end p-2.5">
-            <p className="text-[10px] font-black tracking-widest text-[#dfb15b] font-mono">CYBERNETIC SPIRAL DEFENSE</p>
-            <h2 className="text-lg font-black text-[#f2e9d8] drop-shadow-md">社畜スパイラル</h2>
+          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-[#090d16] via-[#090d16]/70 to-transparent p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono text-[10px] font-black tracking-[0.2em] text-[#38bdf8]">
+                  TACTICAL VECTOR INTERCEPTION
+                </p>
+                <h2 className="text-lg font-black tracking-wide text-[#f8fafc] sm:text-xl">
+                  社畜スパイラル // 渦状業務迎撃戦
+                </h2>
+              </div>
+              <span className="border border-[#fbbf24]/50 bg-[#1c1409]/90 px-2 py-0.5 font-mono text-[10px] font-bold text-[#fbbf24]">
+                全15波 + 残業
+              </span>
+            </div>
           </div>
         </div>
-        <p className="mt-1 text-center text-xs text-[#8a7d69]">
-          中央コアを守れ！渦巻く業務の多節列を迎撃する全15ウェーブ・ベクター防衛戦
-        </p>
 
-        <div className="mx-auto mt-4 flex max-w-[480px] gap-1 overflow-x-auto rounded-xl border border-[#3b3328] bg-[#16130f] p-1">
+        {/* Navigation Tabs (44px+ touch targets) */}
+        <div className="mx-auto grid max-w-[500px] grid-cols-5 gap-1 border border-[#1e293b] bg-[#0f172a] p-1">
           {tabs.map((t) => (
             <button
+              type="button"
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-bold transition ${
-                tab === t.id ? 'bg-[#dfb15b] text-[#12100d] shadow-md' : 'text-[#8a7d69] hover:text-[#e4d9c7]'
+              className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 px-1 py-1 text-[11px] font-bold transition sm:flex-row sm:gap-1.5 sm:text-xs ${
+                tab === t.id
+                  ? 'border border-[#38bdf8] bg-[#0c192c] text-[#38bdf8]'
+                  : 'text-[#94a3b8] hover:bg-[#1e293b]/50 hover:text-[#f8fafc]'
               }`}
             >
               {t.icon}
@@ -732,7 +915,7 @@ function TitleOverlay(props: {
           ))}
         </div>
 
-        <div className="mx-auto mt-3 max-w-[480px]">
+        <div className="mx-auto mt-3 max-w-[500px]">
           {tab === 'play' && <PlayTab {...props} />}
           {tab === 'power' && <PowerTab bank={props.bank} metaLv={props.metaLv} onBuyMeta={props.onBuyMeta} />}
           {tab === 'dex' && <DexTab />}
@@ -755,7 +938,23 @@ function PlayTab(props: {
 
   return (
     <div>
-      <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 配属先（ステージ）</p>
+      {/* Tactical Briefing Strip */}
+      <div className="mb-3 grid grid-cols-3 gap-1.5 border border-[#1e293b] bg-[#0f172a] p-2 text-[10px]">
+        <div className="border-l-2 border-[#38bdf8] pl-2">
+          <p className="font-mono font-bold text-[#38bdf8]">01 // 照準制御</p>
+          <p className="text-[#94a3b8]">ドラッグで狙撃・離すと頭部を自動追尾</p>
+        </div>
+        <div className="border-l-2 border-[#f59e0b] pl-2">
+          <p className="font-mono font-bold text-[#fbbf24]">02 // 頭部撃破</p>
+          <p className="text-[#94a3b8]">先頭撃破で列一掃・胴体撃破で列分断</p>
+        </div>
+        <div className="border-l-2 border-[#10b981] pl-2">
+          <p className="font-mono font-bold text-[#34d399]">03 // 自動吸引</p>
+          <p className="text-[#94a3b8]">手当・回復・解放宝箱はコアが自動回収</p>
+        </div>
+      </div>
+
+      <p className="mb-1.5 font-mono text-[11px] font-bold text-[#94a3b8]">■ 配属先（防衛セクター選択）</p>
       <div className="mb-3 grid grid-cols-2 gap-2">
         {STAGE_ORDER.map((s) => {
           const def = STAGES[s];
@@ -763,79 +962,92 @@ function PlayTab(props: {
           const isSelected = stageSel === s;
           return (
             <button
+              type="button"
               key={s}
               disabled={locked}
               onClick={() => setStageSel(s)}
-              className={`rounded-xl border p-2 text-left transition ${
-                isSelected ? 'border-[#83b8ac] bg-[#172622] text-[#83b8ac]' : 'border-[#3b3328] bg-[#1d1914] text-[#8a7d69] hover:border-[#3b3328]'
-              } ${locked ? 'opacity-40' : ''}`}
+              className={`min-h-[54px] border p-2.5 text-left transition ${
+                isSelected
+                  ? 'border-[#38bdf8] bg-[#0c192c] text-[#f8fafc]'
+                  : 'border-[#1e293b] bg-[#0f172a] text-[#94a3b8] hover:border-[#334155]'
+              } ${locked ? 'opacity-45' : ''}`}
             >
-              <p className="text-xs font-bold">{locked ? '[施錠] ' : ''}{def.name}</p>
-              <p className="mt-0.5 text-[10px] text-[#756957]">{def.desc}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black">{locked ? `[制圧${def.unlockAtWins}回で解禁] ` : ''}{def.name}</p>
+                <span className="font-mono text-[10px] font-bold text-[#fbbf24]">報酬×{def.coinMul}</span>
+              </div>
+              <p className="mt-0.5 text-[10px] text-[#64748b]">{def.desc}</p>
             </button>
           );
         })}
       </div>
 
-      <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 業務負荷難易度</p>
+      <p className="mb-1.5 font-mono text-[11px] font-bold text-[#94a3b8]">■ 労働契約（難易度選択）</p>
       <div className="grid grid-cols-3 gap-2">
         {DIFFICULTY_ORDER.map((d) => {
           const def = DIFFICULTIES[d];
           const isSelected = difficulty === d;
           return (
             <button
+              type="button"
               key={d}
               onClick={() => setDifficulty(d)}
-              className={`rounded-xl border p-2 text-center transition ${
-                isSelected ? 'border-[#83b8ac] bg-[#172622] text-[#83b8ac]' : 'border-[#3b3328] bg-[#1d1914] text-[#8a7d69] hover:border-[#3b3328]'
+              className={`min-h-[58px] border p-2 text-center transition ${
+                isSelected
+                  ? 'border-[#38bdf8] bg-[#0c192c] text-[#f8fafc]'
+                  : 'border-[#1e293b] bg-[#0f172a] text-[#94a3b8] hover:border-[#334155]'
               }`}
             >
-              <p className="text-xs font-bold">{def.name}</p>
-              <p className="mt-0.5 text-[10px] text-[#756957]">{def.desc}</p>
-              <p className="mt-1 font-mono text-[10px] font-bold text-[#dfb15b]">×{def.scoreMul}</p>
+              <p className="text-xs font-black">{def.name}</p>
+              <p className="mt-0.5 text-[10px] text-[#64748b]">{def.desc}</p>
+              <p className="mt-1 font-mono text-[10px] font-bold text-[#fbbf24]">SCORE ×{def.scoreMul}</p>
             </button>
           );
         })}
       </div>
 
       <button
+        type="button"
         onClick={onStart}
-        className="mt-3 flex w-full items-center justify-center gap-2 border border-[#f2e9d8] bg-[#b23a2a] py-3 text-base font-black text-[#fffaf0] shadow-[3px_3px_0_#f2e9d8] transition hover:bg-[#c94b38]"
+        className="mt-3 flex min-h-[50px] w-full items-center justify-center gap-2 border border-[#38bdf8] bg-[#0284c7] py-3 text-base font-black tracking-wider text-white shadow-[0_4px_0_#0369a1] transition hover:bg-[#0369a1] active:translate-y-0.5"
       >
         <PlayIcon className="h-5 w-5" />
-        <span>出勤迎撃開始（全{FINAL_WAVE}ウェーブ）</span>
+        <span>出勤迎撃開始（全{FINAL_WAVE}波）</span>
       </button>
 
-      <div className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px]">
-        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
-          <p className="text-[#8a7d69]">出勤</p>
-          <p className="font-mono text-base font-black text-[#e4d9c7]">{stats.runs}</p>
+      <div className="mt-3 grid grid-cols-4 gap-1.5 text-center font-mono text-[11px]">
+        <div className="border border-[#1e293b] bg-[#0f172a] p-2">
+          <p className="text-[10px] text-[#64748b]">出勤数</p>
+          <p className="text-sm font-black text-[#e2e8f0]">{stats.runs}</p>
         </div>
-        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
-          <p className="text-[#8a7d69]">制圧</p>
-          <p className="font-mono text-base font-black text-[#83b8ac]">{stats.wins}</p>
+        <div className="border border-[#1e293b] bg-[#0f172a] p-2">
+          <p className="text-[10px] text-[#64748b]">完全制圧</p>
+          <p className="text-sm font-black text-[#38bdf8]">{stats.wins}</p>
         </div>
-        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
-          <p className="text-[#8a7d69]">最高W</p>
-          <p className="font-mono text-base font-black text-[#83b8ac]">{stats.bestWave}</p>
+        <div className="border border-[#1e293b] bg-[#0f172a] p-2">
+          <p className="text-[10px] text-[#64748b]">最高到達</p>
+          <p className="text-sm font-black text-[#38bdf8]">W{stats.bestWave}</p>
         </div>
-        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
-          <p className="text-[#8a7d69]">切断数</p>
-          <p className="font-mono text-base font-black text-[#dfb15b]">{stats.totalSegs.toLocaleString()}</p>
+        <div className="border border-[#1e293b] bg-[#0f172a] p-2">
+          <p className="text-[10px] text-[#64748b]">総撃破節</p>
+          <p className="text-sm font-black text-[#fbbf24]">{stats.totalSegs.toLocaleString()}</p>
         </div>
       </div>
 
-      <p className="mt-2 text-center font-mono text-[11px] text-[#8a7d69]">
-        図鑑解析: 業務列 {comp.chains}/{comp.chainsTotal} ・ 兵装 {comp.upgrades}/{comp.upgradesTotal}
+      <p className="mt-2 text-center font-mono text-[11px] text-[#64748b]">
+        DATABASE: 業務列 {comp.chains}/{comp.chainsTotal} ・ 兵装 {comp.upgrades}/{comp.upgradesTotal}
       </p>
 
       {records.length > 0 && (
         <div className="mt-2">
-          <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 迎撃スコア記録</p>
+          <p className="mb-1 font-mono text-[11px] font-bold text-[#94a3b8]">■ 防衛スコア記録</p>
           {records.slice(0, 3).map((r, i) => (
-            <div key={`${r.date}-${i}`} className="mb-1 flex justify-between rounded-lg border border-[#3b3328] bg-[#1d1914] px-2 py-1 text-[11px]">
-              <span>{i + 1}位 {r.victory ? '[制圧] ' : ''}W{r.wave} ({DIFFICULTIES[r.difficulty]?.name})</span>
-              <span className="font-mono font-bold text-[#dfb15b]">{r.score.toLocaleString()} pt</span>
+            <div
+              key={`${r.date}-${i}`}
+              className="mb-1 flex justify-between border border-[#1e293b] bg-[#0f172a] px-2.5 py-1.5 font-mono text-[11px]"
+            >
+              <span>#{i + 1} {r.victory ? '[制圧] ' : ''}W{r.wave} ({DIFFICULTIES[r.difficulty]?.name})</span>
+              <span className="font-bold text-[#fbbf24]">{r.score.toLocaleString()} pt</span>
             </div>
           ))}
         </div>
@@ -847,10 +1059,10 @@ function PlayTab(props: {
 function PowerTab(props: { bank: number; metaLv: Record<string, number>; onBuyMeta: (id: string) => void }) {
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs text-[#b7a992]">所持残業代（恒久兵装強化）</p>
-        <div className="flex items-center gap-1 font-mono text-xs font-bold text-[#e4c989]">
-          <CreditIcon className="h-3.5 w-3.5" />
+      <div className="mb-2.5 flex items-center justify-between border border-[#1e293b] bg-[#0f172a] px-3 py-2">
+        <p className="text-xs font-bold text-[#94a3b8]">利用可能な残業手当（恒久コア改修）</p>
+        <div className="flex items-center gap-1 font-mono text-sm font-black text-[#fbbf24]">
+          <CreditIcon className="h-4 w-4" />
           <span>{props.bank.toLocaleString()}</span>
         </div>
       </div>
@@ -859,24 +1071,31 @@ function PowerTab(props: { bank: number; metaLv: Record<string, number>; onBuyMe
           const lv = props.metaLv[m.id] ?? 0;
           const maxed = lv >= m.maxLv;
           const cost = m.cost(lv);
+          const canAfford = !maxed && props.bank >= cost;
           return (
-            <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl border border-[#3b3328] bg-[#1d1914] p-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#3b3328] bg-[#1d1914]">
-                  <TechUpgradeIcon id={m.id} className="h-5 w-5 text-[#83b8ac]" />
+            <div
+              key={m.id}
+              className="flex items-center justify-between gap-2 border border-[#1e293b] bg-[#0f172a] p-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#334155] bg-[#090d16]">
+                  <TechUpgradeIcon id={m.id} className="h-5 w-5 text-[#38bdf8]" />
                 </div>
                 <div className="text-xs">
-                  <p className="font-bold text-[#e4d9c7]">{m.name} <span className="font-mono text-[#83b8ac]">Lv.{lv}/{m.maxLv}</span></p>
-                  <p className="text-[11px] text-[#8a7d69]">{m.desc}</p>
+                  <p className="font-black text-[#f8fafc]">
+                    {m.name} <span className="font-mono text-[#38bdf8]">Lv.{lv}/{m.maxLv}</span>
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[#94a3b8]">{m.desc}</p>
                 </div>
               </div>
               <button
-                disabled={maxed || props.bank < cost}
+                type="button"
+                disabled={!canAfford}
                 onClick={() => props.onBuyMeta(m.id)}
-                className={`shrink-0 rounded-lg px-3 py-1.5 font-mono text-xs font-bold transition ${
-                  !maxed && props.bank >= cost
-                    ? 'bg-[#2f5d57] text-white hover:bg-[#3f756d]'
-                    : 'bg-[#1d1914] text-[#756957]'
+                className={`min-h-[44px] min-w-[84px] shrink-0 border px-3 py-2 font-mono text-xs font-bold transition ${
+                  canAfford
+                    ? 'border-[#38bdf8] bg-[#0284c7] text-white hover:bg-[#0369a1]'
+                    : 'border-[#1e293b] bg-[#090d16] text-[#475569]'
                 }`}
               >
                 {maxed ? 'MAX' : `${cost}`}
@@ -891,37 +1110,38 @@ function PowerTab(props: { bank: number; metaLv: Record<string, number>; onBuyMe
 
 function AchTab(props: { ach: AchState; onClaim: (id: string) => void }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {ACHIEVEMENTS.map((a) => {
         const un = props.ach.unlocked[a.id] === true;
         const cl = props.ach.claimed[a.id] === true;
         return (
           <div
             key={a.id}
-            className={`flex items-center justify-between gap-2 rounded-xl border p-2.5 text-xs ${
-              un ? 'border-[#5a4b38] bg-[#1d1914]/95' : 'border-[#3b3328] bg-[#16130f] opacity-60'
+            className={`flex items-center justify-between gap-2 border p-2.5 text-xs ${
+              un ? 'border-[#334155] bg-[#0f172a]' : 'border-[#1e293b] bg-[#090d16] opacity-60'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <TrophyIcon className={`h-5 w-5 shrink-0 ${un ? 'text-[#dfb15b]' : 'text-[#756957]'}`} />
+            <div className="flex items-center gap-2.5">
+              <TrophyIcon className={`h-5 w-5 shrink-0 ${un ? 'text-[#fbbf24]' : 'text-[#475569]'}`} />
               <div>
-                <p className="font-bold text-[#e4d9c7]">{a.name}</p>
-                <p className="text-[11px] text-[#8a7d69]">{a.desc}</p>
+                <p className="font-bold text-[#f8fafc]">{a.name}</p>
+                <p className="text-[11px] text-[#94a3b8]">{a.desc}</p>
               </div>
             </div>
             {cl ? (
-              <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#756957]">
+              <span className="flex shrink-0 items-center gap-1 font-mono text-[11px] text-[#64748b]">
                 <CheckIcon className="h-3.5 w-3.5" /> 受取済
               </span>
             ) : un ? (
               <button
+                type="button"
                 onClick={() => props.onClaim(a.id)}
-                className="shrink-0 rounded-lg bg-[#dfb15b] px-2.5 py-1 text-xs font-bold text-[#12100d] hover:brightness-110"
+                className="min-h-[44px] shrink-0 border border-[#fbbf24] bg-[#d97706] px-3 py-1.5 font-mono text-xs font-black text-[#090d16] hover:bg-[#f59e0b]"
               >
                 +{a.reward}
               </button>
             ) : (
-              <LockIcon className="h-4 w-4 shrink-0 text-[#756957]" />
+              <LockIcon className="h-4 w-4 shrink-0 text-[#475569]" />
             )}
           </div>
         );
@@ -935,33 +1155,33 @@ function DexTab() {
   const upgrades = encyUpgrades();
   return (
     <div>
-      <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 業務列データベース</p>
+      <p className="mb-1.5 font-mono text-xs font-bold text-[#94a3b8]">■ 業務列データベース</p>
       <div className="grid grid-cols-3 gap-2">
         {chains.map((e) => (
           <div
             key={e.kind}
-            className={`rounded-xl border p-2 text-center text-[11px] ${
-              e.found ? 'border-[#3b3328] bg-[#1d1914]/95' : 'border-[#3b3328] bg-[#16130f] opacity-50'
+            className={`border p-2.5 text-center text-[11px] ${
+              e.found ? 'border-[#334155] bg-[#0f172a]' : 'border-[#1e293b] bg-[#090d16] opacity-50'
             }`}
           >
-            <p className="font-bold text-[#e4d9c7]">{e.found ? e.name : '？？？'}</p>
-            <p className="mt-0.5 text-[#8a7d69]">{e.kills} 列撃破</p>
+            <p className="font-bold text-[#f8fafc]">{e.found ? e.name : '？？？'}</p>
+            <p className="mt-0.5 font-mono text-[#38bdf8]">{e.kills} 列撃破</p>
           </div>
         ))}
       </div>
-      <p className="mb-1 mt-3 text-xs font-bold text-[#b7a992]">■ 兵装アップグレード図鑑</p>
+      <p className="mb-1.5 mt-3 font-mono text-xs font-bold text-[#94a3b8]">■ 兵装モジュール図鑑</p>
       <div className="grid grid-cols-2 gap-2">
         {upgrades.map((w) => (
           <div
             key={w.id}
-            className={`flex items-center gap-2 rounded-xl border p-2 text-[11px] ${
-              w.found ? 'border-[#3b3328] bg-[#1d1914]/95' : 'border-[#3b3328] bg-[#16130f] opacity-50'
+            className={`flex items-center gap-2.5 border p-2.5 text-[11px] ${
+              w.found ? 'border-[#334155] bg-[#0f172a]' : 'border-[#1e293b] bg-[#090d16] opacity-50'
             }`}
           >
-            <TechUpgradeIcon id={w.id} className="h-6 w-6 text-[#83b8ac]" />
+            <TechUpgradeIcon id={w.id} className="h-6 w-6 shrink-0 text-[#38bdf8]" />
             <div>
-              <p className="font-bold text-[#e4d9c7]">{w.found ? w.name : '？？？'}</p>
-              <p className="text-[#8a7d69]">{w.found ? w.desc : '未入手'}</p>
+              <p className="font-bold text-[#f8fafc]">{w.found ? w.name : '？？？'}</p>
+              <p className="text-[#94a3b8]">{w.found ? w.desc : '未承認'}</p>
             </div>
           </div>
         ))}
@@ -977,31 +1197,34 @@ function DailyTab(props: {
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-[#8a7d69]">毎日0時に更新。出勤して日課を完了してください。</p>
+      <p className="font-mono text-[11px] text-[#94a3b8]">毎日0時更新。現場ノルマを達成して特別手当を請求せよ。</p>
       {props.missions.map((m) => {
         const prog = Math.min(m.target, props.daily.progress[m.id] ?? 0);
         const done = prog >= m.target;
         const cl = props.daily.claimed[m.id] === true;
         return (
-          <div key={m.id} className="rounded-xl border border-[#3b3328] bg-[#1d1914] p-2.5 text-xs">
+          <div key={m.id} className="border border-[#1e293b] bg-[#0f172a] p-3 text-xs">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-bold text-[#e4d9c7]">{m.name}</p>
+              <div>
+                <p className="font-bold text-[#f8fafc]">{m.name}</p>
+                <p className="mt-0.5 text-[11px] text-[#94a3b8]">{m.desc}</p>
+              </div>
               {cl ? (
-                <span className="text-[11px] text-[#756957]">受取済</span>
+                <span className="font-mono text-[11px] text-[#64748b]">受取済</span>
               ) : done ? (
                 <button
+                  type="button"
                   onClick={() => props.onClaim(m.id)}
-                  className="rounded-lg bg-[#dfb15b] px-2.5 py-1 text-xs font-bold text-[#12100d] hover:brightness-110"
+                  className="min-h-[44px] shrink-0 border border-[#fbbf24] bg-[#d97706] px-3 py-1.5 font-mono text-xs font-black text-[#090d16] hover:bg-[#f59e0b]"
                 >
                   +{m.reward}
                 </button>
               ) : (
-                <span className="font-mono text-[#8a7d69]">{prog}/{m.target}</span>
+                <span className="font-mono text-[#94a3b8]">{prog}/{m.target}</span>
               )}
             </div>
-            <p className="mt-0.5 text-[#8a7d69]">{m.desc}</p>
-            <div className="mt-1.5">
-              <Bar value={prog} max={m.target} className="bg-[#dfb15b]" />
+            <div className="mt-2">
+              <Bar value={prog} max={m.target} className="bg-[#fbbf24]" />
             </div>
           </div>
         );
@@ -1018,45 +1241,49 @@ function ResultOverlay(props: {
   const fresh = ACHIEVEMENTS.filter((a) => freshAch.includes(a.id));
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#12100d]/85 p-3">
-      <div className="max-h-full w-full max-w-[440px] overflow-y-auto border border-[#5a4b38] bg-[#1d1914] p-5 text-center shadow-[6px_6px_0_#0b0907]">
-        <p className="font-label text-[9px] text-[#8a7d69]">Shift Report</p>
-        <h2 className={`mt-1 text-2xl font-black tracking-wider ${result.victory ? 'text-[#83b8ac]' : 'text-[#e07054]'}`}>
-          {result.victory ? '全業務制圧完了' : `WAVE ${result.wave} で業務崩壊`}
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#070a12]/90 p-3">
+      <div className="max-h-full w-full max-w-[440px] overflow-y-auto border-2 border-[#334155] bg-[#0f172a] p-5 text-center shadow-[0_8px_0_#020617]">
+        <p className="font-mono text-[10px] font-bold tracking-widest text-[#38bdf8]">
+          SHIFT REPORT // 業務終了報告書
+        </p>
+        <h2 className={`mt-1 text-2xl font-black tracking-wider ${result.victory ? 'text-[#38bdf8]' : 'text-[#ef4444]'}`}>
+          {result.victory ? '全業務列 制圧完了' : `第${result.wave}波 防衛ライン突破`}
         </h2>
-        <p className="mt-1 font-mono text-[11px] text-[#8a7d69]">
-          {DIFFICULTIES[result.difficulty]?.name} / {formatTime(result.timeSec)}
+        <p className="mt-1 font-mono text-xs text-[#94a3b8]">
+          契約: {DIFFICULTIES[result.difficulty]?.name} ｜ 稼働時間: {formatTime(result.timeSec)}
         </p>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 text-left">
-          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
-            <p className="font-label text-[8px] text-[#8a7d69]">SCORE</p>
-            <p className="font-mono text-lg font-black text-[#dfb15b]">{result.score.toLocaleString()}</p>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-left font-mono">
+          <div className="border-l-2 border-[#fbbf24] bg-[#090d16] p-2.5">
+            <p className="text-[9px] text-[#64748b]">TOTAL SCORE</p>
+            <p className="text-lg font-black text-[#fbbf24]">{result.score.toLocaleString()}</p>
           </div>
-          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
-            <p className="font-label text-[8px] text-[#8a7d69]">WAVE</p>
-            <p className="font-mono text-lg font-black text-[#83b8ac]">{result.wave}</p>
+          <div className="border-l-2 border-[#38bdf8] bg-[#090d16] p-2.5">
+            <p className="text-[9px] text-[#64748b]">REACHED WAVE</p>
+            <p className="text-lg font-black text-[#38bdf8]">WAVE {result.wave}</p>
           </div>
-          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
-            <p className="font-label text-[8px] text-[#8a7d69]">SEGMENTS</p>
-            <p className="font-mono text-lg font-black text-[#83b8ac]">{result.segs.toLocaleString()}</p>
+          <div className="border-l-2 border-[#22c55e] bg-[#090d16] p-2.5">
+            <p className="text-[9px] text-[#64748b]">SLICED SEGMENTS</p>
+            <p className="text-lg font-black text-[#22c55e]">{result.segs.toLocaleString()}</p>
           </div>
-          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
-            <p className="font-label text-[8px] text-[#8a7d69]">CHAINS</p>
-            <p className="font-mono text-lg font-black text-[#e07054]">{result.chains}</p>
+          <div className="border-l-2 border-[#f472b6] bg-[#090d16] p-2.5">
+            <p className="text-[9px] text-[#64748b]">CHAINS WIPED</p>
+            <p className="text-lg font-black text-[#f472b6]">{result.chains}</p>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-center gap-1.5 font-mono text-xs font-bold text-[#e4c989]">
+        <div className="mt-3 flex items-center justify-center gap-1.5 border border-[#78350f] bg-[#1c1409] py-2 font-mono text-xs font-bold text-[#fbbf24]">
           <CreditIcon className="h-4 w-4" />
-          <span>+{result.coins} 残業手当加算</span>
+          <span>支給残業手当 +{result.coins}（全ドロップ回収済）</span>
         </div>
 
         {fresh.length > 0 && (
-          <div className="mt-3 border border-[#5a4b38] bg-[#2a231b] p-2.5 text-left text-xs">
-            <p className="font-bold text-[#e4c989]">実績解除</p>
+          <div className="mt-3 border border-[#fbbf24] bg-[#1c1409] p-2.5 text-left text-xs">
+            <p className="font-mono font-bold text-[#fbbf24]">NEW ACHIEVEMENT // 考課達成</p>
             {fresh.map((a) => (
-              <p key={a.id} className="mt-0.5 text-[#b7a992]">{a.name} <span className="text-[#dfb15b]">+{a.reward}</span></p>
+              <p key={a.id} className="mt-0.5 text-[#fde68a]">
+                {a.name} <span className="font-mono font-bold text-[#fbbf24]">+{a.reward}</span>
+              </p>
             ))}
           </div>
         )}
@@ -1064,33 +1291,36 @@ function ResultOverlay(props: {
         <div className="mt-4 space-y-2">
           {onEndless && (
             <button
+              type="button"
               onClick={onEndless}
-              className="w-full border border-[#f2e9d8] bg-[#b23a2a] py-3 font-black text-white shadow-[3px_3px_0_#f2e9d8] hover:bg-[#c94b38]"
+              className="min-h-[48px] w-full border border-[#fbbf24] bg-[#d97706] py-3 font-black text-[#090d16] shadow-[0_4px_0_#92400e] transition hover:bg-[#f59e0b]"
             >
-              残業突入（エンドレス）
+              サービス残業突入（エンドレスモード）
             </button>
           )}
           <button
+            type="button"
             onClick={onRetry}
-            className="w-full border border-[#f2e9d8] bg-[#b23a2a] py-3 font-black text-white shadow-[3px_3px_0_#f2e9d8] hover:bg-[#c94b38]"
+            className="min-h-[48px] w-full border border-[#38bdf8] bg-[#0284c7] py-3 font-black text-white shadow-[0_4px_0_#0369a1] transition hover:bg-[#0369a1]"
           >
-            もう一度出勤する
+            再出勤する（リトライ）
           </button>
           <button
+            type="button"
             onClick={onTitle}
-            className="w-full border border-[#3b3328] bg-[#12100d] py-2.5 text-sm font-bold text-[#b7a992] hover:border-[#5a4b38]"
+            className="min-h-[44px] w-full border border-[#334155] bg-[#090d16] py-2.5 text-sm font-bold text-[#94a3b8] transition hover:border-[#64748b] hover:text-white"
           >
             タイトルへ戻る
           </button>
         </div>
 
         {records.length > 0 && (
-          <div className="mt-4 text-left">
-            <p className="font-label text-[8px] text-[#8a7d69]">BEST RECORDS</p>
+          <div className="mt-4 text-left font-mono">
+            <p className="text-[9px] text-[#64748b]">TOP RECORDS</p>
             {records.slice(0, 3).map((r, i) => (
-              <div key={`${r.date}-${i}`} className="mt-1 flex justify-between border-b border-[#3b3328] px-1 py-1 text-[10px]">
-                <span>{i + 1}. {r.victory ? '制圧 ' : ''}W{r.wave}</span>
-                <span className="font-mono font-bold text-[#dfb15b]">{r.score.toLocaleString()} pt</span>
+              <div key={`${r.date}-${i}`} className="mt-1 flex justify-between border-b border-[#1e293b] px-1 py-1 text-[10px]">
+                <span>#{i + 1} {r.victory ? '[制圧] ' : ''}W{r.wave}</span>
+                <span className="font-bold text-[#fbbf24]">{r.score.toLocaleString()} pt</span>
               </div>
             ))}
           </div>

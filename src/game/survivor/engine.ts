@@ -5,14 +5,14 @@
 
 import {
   VIEW_W, VIEW_H, RUN_SECONDS, MAX_ENEMIES, MAX_PROJECTILES, MAX_PARTICLES,
-  MAX_DMG_NUMBERS, MAX_GEMS, WEAPON_ORDER, PASSIVE_ORDER, ENEMIES, BOSS_SCHEDULE,
+  MAX_GEMS, WEAPON_ORDER, PASSIVE_ORDER, ENEMIES, BOSS_SCHEDULE,
   DIFFICULTIES, xpForLevel, MAX_WEAPON_SLOTS, MAX_PASSIVE_SLOTS,
   WEAPONS, PASSIVES, STAGES,
   type WeaponId, type PassiveId, type EnemyKind, type Difficulty, type StageId,
 } from './config';
 import type { SurvivorSound } from './audio';
 import { getPixelSprite } from './pixelSprites';
-import { checkEvolution } from './evolutions';
+import { checkEvolution, EVOLUTION_RECIPES } from './evolutions';
 import { TraumaScreenShake, HitStopManager, DamageNumberPool } from '@/game/common/juice';
 
 /* ---------------- public types ---------------- */
@@ -46,6 +46,10 @@ export interface LevelUpData {
   choices: LevelChoice[];
   canReroll: boolean;
   canBanish: boolean;
+  /** monotonically increasing id of this choice set (stale-click guard) */
+  seq: number;
+  /** remaining queued level-ups including this one */
+  pending: number;
 }
 
 export interface RunResult {
@@ -113,9 +117,10 @@ interface Pool {
 
 interface EnemyProj { x: number; y: number; vx: number; vy: number; dmg: number; radius: number; life: number }
 
-interface Gem { x: number; y: number; vx: number; vy: number; val: number; age: number }
-interface CoinP { x: number; y: number; vx: number; vy: number; val: number }
-interface Pickup { x: number; y: number; kind: 'heal' | 'magnet' | 'bomb' | 'chest'; bob: number }
+/** vac: vacuumed by magnet/coffee break — homes in until collected (never stalls mid-way) */
+interface Gem { x: number; y: number; vx: number; vy: number; val: number; age: number; vac?: boolean }
+interface CoinP { x: number; y: number; vx: number; vy: number; val: number; age?: number; vac?: boolean }
+interface Pickup { x: number; y: number; kind: 'heal' | 'magnet' | 'bomb' | 'chest'; bob: number; age?: number; vac?: boolean }
 interface Ring { x: number; y: number; r: number; maxR: number; dmg: number; knock: number; width: number; color: string; hit: Set<Enemy> }
 interface Boom { x: number; y: number; r: number; dmg: number; t: number; dur: number; knock: number; hit: Set<Enemy> }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
@@ -190,6 +195,21 @@ export class SurvivorEngine {
   private traumaShake = new TraumaScreenShake();
   private hitstop = new HitStopManager();
   private damageNumberPool = new DamageNumberPool(128);
+  /** rate-limit for minor (per-hit) hitstops so dense late-game combat never stalls the clock */
+  private minorHitstopCd = 0;
+  /** red full-screen flash when the player takes damage (seconds) */
+  private hurtFlash = 0;
+  /** golden flash/ring when a level is gained (seconds) */
+  private levelFlash = 0;
+  /** boss arrival warning overlay (seconds) */
+  private bossWarnT = 0;
+  /** endless mode: next reinforcement boss time */
+  private nextEndlessBossT = 0;
+  /** stale-click guard for level-up choices */
+  private choiceSeq = 0;
+  /** logical viewport size (world units visible on screen) */
+  private viewW = VIEW_W;
+  private viewH = VIEW_H;
 
   // world
   private enemies: Enemy[] = [];
@@ -237,6 +257,9 @@ export class SurvivorEngine {
     this.traumaShake.reset();
     this.hitstop.reset();
     this.damageNumberPool.clear();
+    this.minorHitstopCd = 0; this.hurtFlash = 0; this.levelFlash = 0; this.bossWarnT = 0;
+    this.nextEndlessBossT = 0;
+    this.currentChoices = [];
     this.weapons = [{ id: 'shuriken', lv: 1, cd: 0.4 }];
     this.passives = [];
     this.pendingLevels = 0; this.rerollLeft = 1; this.banishLeft = 1;
@@ -285,7 +308,32 @@ export class SurvivorEngine {
     this.running = false;
   }
 
-  setPaused(p: boolean): void { this.paused = p; }
+  setPaused(p: boolean): void {
+    this.paused = p;
+    // avoid a dt spike / stuck input direction after resuming
+    this.last = performance.now();
+    if (p) { this.moveX = 0; this.moveY = 0; }
+  }
+
+  /** Logical viewport (world units). The canvas backing store should be viewW*dpr x viewH*dpr. */
+  setViewport(w: number, h: number): void {
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w < 100 || h < 100) return;
+    this.viewW = Math.round(w);
+    this.viewH = Math.round(h);
+  }
+
+  getViewport(): { w: number; h: number } { return { w: this.viewW, h: this.viewH }; }
+
+  /** Give up the current run (pause menu "早退"). Settles as a defeat so earnings are kept. */
+  forfeit(): void {
+    if (this.over || this.destroyed) return;
+    this.levelPending = false;
+    this.pendingLevels = 0;
+    this.paused = false;
+    this.finishRun(false);
+  }
+
+  isOver(): boolean { return this.over; }
   setMove(x: number, y: number): void {
     const safeX = Number.isFinite(x) ? x : 0;
     const safeY = Number.isFinite(y) ? y : 0;
@@ -327,6 +375,9 @@ export class SurvivorEngine {
     this.iframes = 2;
     this.endlessRamp = 0;
     this.spawnT = 2;
+    this.nextEndlessBossT = this.time + 90;
+    this.paused = false;
+    this.last = performance.now();
     // pre-seed a scattered field far away (avoids a synchronized kill-ring)
     for (let i = 0; i < 36; i++) {
       const ang = Math.random() * Math.PI * 2;
@@ -357,6 +408,9 @@ export class SurvivorEngine {
     const pool: LevelChoice[] = [];
     for (const id of WEAPON_ORDER) {
       if (this.banned.has(`w:${id}`)) continue;
+      // Do not re-offer a base weapon that has already evolved into its legendary form
+      const evolvedRecipe = EVOLUTION_RECIPES.find((r) => r.baseWeaponId === id);
+      if (evolvedRecipe && this.weapons.some((w) => w.id === evolvedRecipe.evolvedId)) continue;
       const lv = this.weaponLv(id);
       const def = weaponDefOf(id);
       if (lv === 0 && this.weapons.length < MAX_WEAPON_SLOTS) {
@@ -399,20 +453,37 @@ export class SurvivorEngine {
 
   private currentChoices: LevelChoice[] = [];
 
-  private triggerLevelUp(): void {
-    this.levelPending = true;
-    this.currentChoices = this.buildChoices();
-    this.sound.levelup();
+  private emitLevelUp(): void {
+    this.emitHud();
+    this.choiceSeq += 1;
     this.ev.onLevelUp({
       level: this.level,
       choices: this.currentChoices,
       canReroll: this.rerollLeft > 0,
       canBanish: this.banishLeft > 0,
+      seq: this.choiceSeq,
+      pending: this.pendingLevels,
     });
   }
 
-  applyUpgrade(choice: LevelChoice): void {
-    if (!this.levelPending) return;
+  private triggerLevelUp(): void {
+    this.levelPending = true;
+    this.hitstop.reset();
+    this.currentChoices = this.buildChoices();
+    this.sound.levelup();
+    this.levelFlash = 0.6;
+    this.burst(this.px, this.py, '#dfb15b', 18, 240);
+    this.emitLevelUp();
+  }
+
+  /**
+   * Apply a level-up choice. `seq` (from LevelUpData) rejects stale/double clicks that
+   * would otherwise silently consume the *next* queued level-up.
+   */
+  applyUpgrade(choice: LevelChoice, seq?: number): void {
+    if (!this.levelPending || this.over) return;
+    if (seq !== undefined && seq !== this.choiceSeq) return;
+    if (this.currentChoices.length > 0 && !this.currentChoices.some((c) => c.kind === choice.kind && c.id === choice.id)) return;
     this.sound.select();
     if (choice.kind === 'weapon') {
       const w = this.weapons.find((x) => x.id === choice.id);
@@ -437,15 +508,15 @@ export class SurvivorEngine {
         this.sound.coin();
       }
     }
-    this.pendingLevels -= 1;
+    this.pendingLevels = Math.max(0, this.pendingLevels - 1);
     if (this.pendingLevels > 0) {
       this.currentChoices = this.buildChoices();
-      this.ev.onLevelUp({
-        level: this.level, choices: this.currentChoices,
-        canReroll: this.rerollLeft > 0, canBanish: this.banishLeft > 0,
-      });
+      this.emitLevelUp();
     } else {
       this.levelPending = false;
+      this.currentChoices = [];
+      this.iframes = Math.max(this.iframes, 0.45);
+      this.last = performance.now();
       this.emitHud();
       this.ev.onLevelClosed();
     }
@@ -456,10 +527,7 @@ export class SurvivorEngine {
     this.rerollLeft -= 1;
     this.currentChoices = this.buildChoices();
     this.sound.select();
-    this.ev.onLevelUp({
-      level: this.level, choices: this.currentChoices,
-      canReroll: this.rerollLeft > 0, canBanish: this.banishLeft > 0,
-    });
+    this.emitLevelUp();
   }
 
   banishChoice(index: number): void {
@@ -470,10 +538,7 @@ export class SurvivorEngine {
     this.banned.add(`${c.kind === 'weapon' ? 'w' : 'p'}:${c.id}`);
     this.currentChoices = this.buildChoices();
     this.sound.select();
-    this.ev.onLevelUp({
-      level: this.level, choices: this.currentChoices,
-      canReroll: this.rerollLeft > 0, canBanish: this.banishLeft > 0,
-    });
+    this.emitLevelUp();
   }
 
   /* ----- update ----- */
@@ -482,6 +547,10 @@ export class SurvivorEngine {
     const { frozen } = this.hitstop.update(dt);
     this.traumaShake.update(dt);
     this.damageNumberPool.update(dt);
+    if (this.minorHitstopCd > 0) this.minorHitstopCd -= dt;
+    if (this.hurtFlash > 0) this.hurtFlash -= dt;
+    if (this.levelFlash > 0) this.levelFlash -= dt;
+    if (this.bossWarnT > 0) this.bossWarnT -= dt;
 
     if (frozen) {
       return;
@@ -529,14 +598,9 @@ export class SurvivorEngine {
       const roll = Math.random();
       if (roll < 0.34) {
         // coffee break: vacuum everything + heal
-        for (const g of this.gems) {
-          g.vx = (this.px - g.x) * 4;
-          g.vy = (this.py - g.y) * 4;
-        }
-        for (const c of this.coinPs) {
-          c.vx = (this.px - c.x) * 4;
-          c.vy = (this.py - c.y) * 4;
-        }
+        for (const g of this.gems) g.vac = true;
+        for (const c of this.coinPs) c.vac = true;
+        for (const p of this.pickups) if (p.kind === 'heal' || p.kind === 'chest') p.vac = true;
         this.hp = Math.min(this.maxHp, this.hp + 20);
         this.ev.onBanner('【休憩】コーヒーブレイク！', 'やる気と残業代を一気に回収＋HP回復');
         this.sound.heal();
@@ -559,11 +623,15 @@ export class SurvivorEngine {
       this.ev.onBanner(b.title, b.sub);
       this.sound.boss();
       this.traumaShake.addTrauma(0.5);
+      this.bossWarnT = 2.2;
     }
-    // endless extra bosses
-    if (this.endless && Math.floor(t) % 90 === 0 && Math.floor(t - dt) % 90 !== 0) {
+    // endless extra bosses (time-scheduled: never double-fires, never skipped by frame timing)
+    if (this.endless && this.nextEndlessBossT > 0 && t >= this.nextEndlessBossT) {
+      this.nextEndlessBossT = t + 90;
       this.spawnBoss(Math.random() < 0.5 ? 'exec' : 'senmu');
       this.ev.onBanner('【警報】増援役員！', '残業はまだ終わらない…');
+      this.sound.boss();
+      this.bossWarnT = 2.2;
     }
 
     // director
@@ -587,13 +655,14 @@ export class SurvivorEngine {
     this.updatePickups(dt);
     this.updateFx(dt);
 
-    // level queue
-    if (this.pendingLevels > 0 && !this.levelPending) this.triggerLevelUp();
-
     if (this.hp <= 0) {
       this.hp = 0;
       this.finishRun(false);
+      return;
     }
+
+    // level queue
+    if (this.pendingLevels > 0 && !this.levelPending) this.triggerLevelUp();
   }
 
   private hpScale(): number {
@@ -607,7 +676,7 @@ export class SurvivorEngine {
 
   private spawnPos(): { x: number; y: number } {
     const ang = Math.random() * Math.PI * 2;
-    const r = Math.hypot(VIEW_W, VIEW_H) / 2 + rand(40, 140);
+    const r = Math.hypot(this.viewW, this.viewH) / 2 + rand(40, 140);
     return { x: this.px + Math.cos(ang) * r, y: this.py + Math.sin(ang) * r };
   }
 
@@ -1161,8 +1230,9 @@ export class SurvivorEngine {
         this.hp -= Math.max(1, Math.round(e.dmg));
         this.sound.hurt();
         this.burst(this.px, this.py, '#ef4444', 10, 200);
-        this.hitstop.triggerMs(20);
+        this.hitstop.triggerMs(45);
         this.traumaShake.addTrauma(0.4);
+        this.hurtFlash = 0.25;
         if (this.hp <= 0) { this.hp = 0; }
       }
     }
@@ -1232,8 +1302,9 @@ export class SurvivorEngine {
           this.hp -= Math.max(1, Math.round(p.dmg));
           this.sound.hurt();
           this.burst(this.px, this.py, '#ef4444', 8, 180);
-          this.hitstop.triggerMs(20);
+          this.hitstop.triggerMs(45);
           this.traumaShake.addTrauma(0.4);
+          this.hurtFlash = 0.25;
         }
       }
       if (dead) this.eprojs.splice(i, 1);
@@ -1249,8 +1320,11 @@ export class SurvivorEngine {
     e.kx += ((e.x - fromX) / d) * knock;
     e.ky += ((e.y - fromY) / d) * knock;
 
-    if (crit || e.boss || final >= 30) {
-      this.hitstop.triggerMs(25);
+    // Per-hit micro freeze is rate-limited: with many weapons nearly every frame lands a
+    // big hit, and unthrottled 25ms freezes made late-game time crawl at ~1/3 speed.
+    if ((crit || e.boss) && this.minorHitstopCd <= 0) {
+      this.hitstop.triggerMs(18);
+      this.minorHitstopCd = 0.35;
     }
 
     this.damageNumberPool.spawn(
@@ -1276,28 +1350,30 @@ export class SurvivorEngine {
     if (e.boss) {
       this.hitstop.triggerMs(120);
       this.traumaShake.addTrauma(0.6);
+      this.burst(e.x, e.y, '#dfb15b', 24, 380);
+      for (const g of this.gems) g.vac = true;
+      for (const c of this.coinPs) c.vac = true;
+      this.ev.onBanner(`【撃破】${ENEMIES[e.kind].name}`, '宝箱をドロップ！画面外なら矢印が場所を示す');
     }
     // drops
-    if (this.gems.length < MAX_GEMS) {
-      const big = e.xp >= 15;
-      const n = big ? Math.min(5, 1 + Math.floor(e.xp / 20)) : 1;
-      for (let i = 0; i < n; i++) {
-        this.gems.push({ x: e.x + rand(-10, 10), y: e.y + rand(-10, 10), vx: rand(-60, 60), vy: rand(-60, 60), val: Math.ceil(e.xp / n), age: 0 });
-      }
+    const big = e.xp >= 15;
+    const n = big ? Math.min(5, 1 + Math.floor(e.xp / 20)) : 1;
+    for (let i = 0; i < n; i++) {
+      this.dropGem(e.x + rand(-10, 10), e.y + rand(-10, 10), Math.ceil(e.xp / n), e.boss);
     }
-    if (Math.random() < 0.35) {
-      this.coinPs.push({ x: e.x, y: e.y, vx: rand(-80, 80), vy: rand(-80, 80), val: e.coins });
+    if (Math.random() < 0.35 || e.boss) {
+      this.coinPs.push({ x: e.x, y: e.y, vx: rand(-80, 80), vy: rand(-80, 80), val: e.coins, age: 0, vac: e.boss });
     }
     // special drops
     const roll = Math.random();
     if (e.boss || e.elite) {
-      this.pickups.push({ x: e.x, y: e.y, kind: 'chest', bob: 0 });
+      this.pickups.push({ x: e.x, y: e.y, kind: 'chest', bob: 0, age: 0, vac: e.boss });
     } else if (roll < 0.012) {
-      this.pickups.push({ x: e.x, y: e.y, kind: 'heal', bob: 0 });
+      this.pickups.push({ x: e.x, y: e.y, kind: 'heal', bob: 0, age: 0 });
     } else if (roll < 0.02) {
-      this.pickups.push({ x: e.x, y: e.y, kind: 'magnet', bob: 0 });
+      this.pickups.push({ x: e.x, y: e.y, kind: 'magnet', bob: 0, age: 0 });
     } else if (roll < 0.027) {
-      this.pickups.push({ x: e.x, y: e.y, kind: 'bomb', bob: 0 });
+      this.pickups.push({ x: e.x, y: e.y, kind: 'bomb', bob: 0, age: 0 });
     }
     // splitter
     if (e.splitter) {
@@ -1305,6 +1381,22 @@ export class SurvivorEngine {
         if (this.enemies.length >= MAX_ENEMIES) break;
         this.enemies.push(this.makeEnemy('mail', e.x + rand(-16, 16), e.y + rand(-16, 16), false, false));
       }
+    }
+  }
+
+  /**
+   * Drop an XP gem. At the gem cap the value is merged into the oldest gem instead of being
+   * discarded, so XP is never silently lost during huge swarms.
+   */
+  private dropGem(x: number, y: number, val: number, vac = false): void {
+    if (this.gems.length < MAX_GEMS) {
+      this.gems.push({ x, y, vx: rand(-60, 60), vy: rand(-60, 60), val, age: 0, vac });
+      return;
+    }
+    const g = this.gems[0];
+    if (g) {
+      g.val += val;
+      if (vac) g.vac = true;
     }
   }
 
@@ -1317,19 +1409,27 @@ export class SurvivorEngine {
       g.age += dt;
       const d2 = dist2(g.x, g.y, this.px, this.py);
       // old gems fly to the player: no XP is ever stranded (catch-up)
-      const attracted = d2 < mr2 || g.age > 25;
+      const attracted = d2 < mr2 || g.age > 25 || g.vac === true;
       if (attracted) {
         const d = Math.max(1, Math.sqrt(d2));
-        const pull = g.age > 25 ? 1400 : 700 * (1 - d / (mr + 1)) + 200;
+        const pull = g.age > 25 || g.vac ? 1400 : 700 * (1 - d / (mr + 1)) + 200;
         g.vx += ((this.px - g.x) / d) * pull * dt * 4;
         g.vy += ((this.py - g.y) / d) * pull * dt * 4;
       } else {
         g.vx *= Math.max(0, 1 - 4 * dt);
         g.vy *= Math.max(0, 1 - 4 * dt);
       }
+      if (g.vac || g.age > 25) {
+        // cap homing speed & damp lateral drift so vacuumed gems converge instead of orbiting
+        const sp = Math.hypot(g.vx, g.vy);
+        const max = 1100;
+        if (sp > max) { g.vx = (g.vx / sp) * max; g.vy = (g.vy / sp) * max; }
+        g.vx *= Math.max(0, 1 - 2 * dt);
+        g.vy *= Math.max(0, 1 - 2 * dt);
+      }
       g.x += g.vx * dt;
       g.y += g.vy * dt;
-      if (d2 < 26 * 26) {
+      if (d2 < 26 * 26 || dist2(g.x, g.y, this.px, this.py) < 26 * 26) {
         this.gems.splice(i, 1);
         this.gainXp(Math.round(g.val * this.diff.xpMul * (this.xpBoostT > 0 ? 2 : 1)));
         this.sound.pickup();
@@ -1338,18 +1438,23 @@ export class SurvivorEngine {
     // coins
     for (let i = this.coinPs.length - 1; i >= 0; i--) {
       const c = this.coinPs[i];
+      c.age = (c.age ?? 0) + dt;
       const d2 = dist2(c.x, c.y, this.px, this.py);
-      if (d2 < mr2) {
+      if (d2 < mr2 || c.vac || c.age > 30) {
         const d = Math.max(1, Math.sqrt(d2));
         c.vx += ((this.px - c.x) / d) * 2400 * dt;
         c.vy += ((this.py - c.y) / d) * 2400 * dt;
+        const sp = Math.hypot(c.vx, c.vy);
+        if (sp > 1100) { c.vx = (c.vx / sp) * 1100; c.vy = (c.vy / sp) * 1100; }
+        c.vx *= Math.max(0, 1 - 2 * dt);
+        c.vy *= Math.max(0, 1 - 2 * dt);
       } else {
         c.vx *= Math.max(0, 1 - 4 * dt);
         c.vy *= Math.max(0, 1 - 4 * dt);
       }
       c.x += c.vx * dt;
       c.y += c.vy * dt;
-      if (d2 < 26 * 26) {
+      if (d2 < 26 * 26 || dist2(c.x, c.y, this.px, this.py) < 26 * 26) {
         this.coinPs.splice(i, 1);
         const v = c.val * (this.coinBoostT > 0 ? 2 : 1);
         this.coins += v;
@@ -1361,15 +1466,20 @@ export class SurvivorEngine {
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const p = this.pickups[i];
       p.bob += dt;
+      p.age = (p.age ?? 0) + dt;
       const d2 = dist2(p.x, p.y, this.px, this.py);
-      const grabR = p.kind === 'chest' ? 30 : 26;
-      if (d2 < Math.max(mr2 * 0.25, grabR * grabR) || d2 < 30 * 30) {
-        // drift toward player when close
+      const grabR = p.kind === 'chest' ? 36 : 30;
+      // Chests and aged/vacuumed pickups smoothly home toward the player so they are never stranded
+      const autoHome = p.vac === true || (p.kind === 'chest' ? p.age > 5 : p.age > 14);
+      const pullR2 = p.kind === 'chest' ? Math.max(mr2 * 1.4, 110 * 110) : Math.max(mr2 * 0.5, 75 * 75);
+      if (autoHome || d2 < pullR2) {
         const d = Math.max(1, Math.sqrt(d2));
-        p.x += ((this.px - p.x) / d) * 260 * dt;
-        p.y += ((this.py - p.y) / d) * 260 * dt;
+        const speed = autoHome ? 540 : 340;
+        const step = Math.min(d, speed * dt);
+        p.x += ((this.px - p.x) / d) * step;
+        p.y += ((this.py - p.y) / d) * step;
       }
-      if (d2 < grabR * grabR) {
+      if (dist2(p.x, p.y, this.px, this.py) < grabR * grabR) {
         this.pickups.splice(i, 1);
         this.collectPickup(p.kind);
       }
@@ -1382,10 +1492,11 @@ export class SurvivorEngine {
       this.ev.onBanner('【支給】差し入れ！', 'HPが25回復した');
       this.sound.heal();
     } else if (kind === 'magnet') {
-      for (const g of this.gems) {
-        g.vx = (this.px - g.x) * 3;
-        g.vy = (this.py - g.y) * 3;
-      }
+      // vacuum flag keeps homing until collected (old one-shot impulse decayed and
+      // left far gems stranded mid-way on screen)
+      for (const g of this.gems) g.vac = true;
+      for (const c of this.coinPs) c.vac = true;
+      for (const p of this.pickups) if (p.kind === 'heal' || p.kind === 'chest') p.vac = true;
       this.ev.onBanner('【吸引】定期券パワー！', 'やる気を一気に引き寄せた');
       this.sound.pickup();
     } else if (kind === 'bomb') {
@@ -1483,7 +1594,30 @@ export class SurvivorEngine {
   }
 
   private finishRun(victory: boolean): void {
+    if (this.over) return;
     this.over = true;
+    this.levelPending = false;
+    this.currentChoices = [];
+    this.hitstop.reset();
+    if (victory) {
+      // clocking out: XP gems, chests/heals, and overtime pay left on the floor are collected automatically
+      for (const g of this.gems) {
+        this.gainXp(Math.round(g.val * this.diff.xpMul * (this.xpBoostT > 0 ? 2 : 1)));
+      }
+      this.gems = [];
+      for (const p of this.pickups) {
+        if (p.kind === 'chest' || p.kind === 'heal') {
+          this.collectPickup(p.kind);
+        }
+      }
+      this.pickups = [];
+      for (const c of this.coinPs) {
+        const v = c.val * (this.coinBoostT > 0 ? 2 : 1);
+        this.coins += v;
+        this.score += v * 5;
+      }
+      this.coinPs = [];
+    }
     const score = Math.round(this.score + this.time * 5 * this.diff.scoreMul + this.level * 100);
     const weaponLevels: Record<string, number> = {};
     for (const w of this.weapons) weaponLevels[w.id] = w.lv;
@@ -1506,7 +1640,7 @@ export class SurvivorEngine {
     let bossMax = 0;
     for (const e of this.enemies) {
       if (e.boss && e.hp > 0) {
-        bossName = `${e.icon} ${ENEMIES[e.kind].name}`;
+        bossName = ENEMIES[e.kind].name;
         bossHp = Math.max(0, Math.ceil(e.hp));
         bossMax = Math.ceil(e.maxHp);
         break;
@@ -1534,7 +1668,7 @@ export class SurvivorEngine {
     ctx.scale(dpr, dpr);
     // crisp pixel art: never smooth scaled sprites
     ctx.imageSmoothingEnabled = false;
-    const W = VIEW_W; const H = VIEW_H;
+    const W = this.viewW; const H = this.viewH;
 
     const traumaOffset = this.traumaShake.getOffset();
     let sx = traumaOffset.offsetX;
@@ -1548,7 +1682,7 @@ export class SurvivorEngine {
 
     // floor
     const night = Math.max(0, Math.min(1, (this.time - 420) / 180));
-    ctx.fillStyle = night > 0.5 ? '#0d1226' : this.stage.floor;
+    ctx.fillStyle = this.stage.floor;
     ctx.fillRect(0, 0, W, H);
 
     // grid
@@ -1818,7 +1952,97 @@ export class SurvivorEngine {
       ctx.fillRect(0, 0, W, H);
     }
 
+    // hurt flash
+    if (this.hurtFlash > 0) {
+      ctx.fillStyle = `rgba(178,58,42,${Math.min(0.35, this.hurtFlash * 1.4)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    // level-up shockwave around the player
+    if (this.levelFlash > 0 && this.hp > 0) {
+      const k = 1 - this.levelFlash / 0.6;
+      ctx.strokeStyle = `rgba(223,177,91,${0.9 * (1 - k)})`;
+      ctx.lineWidth = 6 * (1 - k) + 1;
+      ctx.beginPath();
+      ctx.arc(this.px - camX, this.py - camY, 24 + k * 140, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    this.renderOffscreenMarkers(camX, camY, W, H);
+
+    // boss arrival: hazard tape top & bottom
+    if (this.bossWarnT > 0) {
+      const a = Math.min(1, this.bossWarnT / 0.4) * (0.55 + 0.45 * Math.abs(Math.sin(this.bossWarnT * 9)));
+      ctx.globalAlpha = a;
+      const band = 18;
+      for (const yy of [H - band]) {
+        ctx.fillStyle = '#1a0d0a';
+        ctx.fillRect(0, yy, W, band);
+        ctx.fillStyle = '#b23a2a';
+        const off = (this.bossWarnT * 80) % 36;
+        for (let x = -36 + off; x < W + 36; x += 36) {
+          ctx.beginPath();
+          ctx.moveTo(x, yy + band);
+          ctx.lineTo(x + 18, yy);
+          ctx.lineTo(x + 30, yy);
+          ctx.lineTo(x + 12, yy + band);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
+  }
+
+  /** Edge arrows pointing at off-screen bosses, treasure chests, and heal items (so drops are never "lost"). */
+  private renderOffscreenMarkers(camX: number, camY: number, W: number, H: number): void {
+    const { ctx } = this;
+    const marks: { x: number; y: number; color: string; icon: string }[] = [];
+    for (const e of this.enemies) if (e.boss) marks.push({ x: e.x, y: e.y, color: '#e0533c', icon: e.kind });
+    for (const p of this.pickups) {
+      if (p.kind === 'chest') marks.push({ x: p.x, y: p.y, color: '#dfb15b', icon: 'chest' });
+      else if (p.kind === 'heal') marks.push({ x: p.x, y: p.y, color: '#22c55e', icon: 'heal' });
+    }
+    if (marks.length === 0) return;
+    const mTop = 96; const mSide = 26; const mBottom = 34;
+    const cx = W / 2; const cy = H / 2;
+    for (const m of marks) {
+      const sx = m.x - camX; const sy = m.y - camY;
+      if (sx >= 0 && sx <= W && sy >= 0 && sy <= H) continue;
+      const dx = sx - cx; const dy = sy - cy;
+      const minX = mSide - cx; const maxX = W - mSide - cx;
+      const minY = mTop - cy; const maxY = H - mBottom - cy;
+      let t = 1;
+      if (dx > 0) t = Math.min(t, maxX / dx); else if (dx < 0) t = Math.min(t, minX / dx);
+      if (dy > 0) t = Math.min(t, maxY / dy); else if (dy < 0) t = Math.min(t, minY / dy);
+      const ax = cx + dx * t; const ay = cy + dy * t;
+      const ang = Math.atan2(dy, dx);
+      const pulse = 0.75 + 0.25 * Math.sin(this.time * 8);
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = 'rgba(18,16,13,0.85)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = m.color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.rotate(ang);
+      ctx.fillStyle = m.color;
+      ctx.beginPath();
+      ctx.moveTo(23, 0);
+      ctx.lineTo(15, -6);
+      ctx.lineTo(15, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.rotate(-ang);
+      ctx.globalAlpha = 1;
+      const spr = getPixelSprite(m.icon, 0, false);
+      ctx.drawImage(spr, -10, -10, 20, 20);
+      ctx.restore();
+    }
   }
 }
 

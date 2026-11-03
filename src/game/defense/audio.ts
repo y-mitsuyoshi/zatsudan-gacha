@@ -1,4 +1,6 @@
-/** Minimal procedural SFX synth. No assets, lazy AudioContext. */
+/** Minimal procedural SFX synth integrated with shared shachiku audioSettings. */
+
+import { getAudioSettings, subscribeAudioSettings } from '../common/audioSettings';
 
 export class DefenseSound {
   private ctx: AudioContext | null = null;
@@ -6,13 +8,41 @@ export class DefenseSound {
   private noiseBuf: AudioBuffer | null = null;
   private muted = false;
   private last: Record<string, number> = {};
+  private unsub: (() => void) | null = null;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.unsub = subscribeAudioSettings(() => {
+        this.syncGain();
+      });
+    }
+  }
+
+  private isSeMuted(): boolean {
+    return this.muted || !getAudioSettings().se;
+  }
+
+  private syncGain(): void {
+    if (!this.master) return;
+    const s = getAudioSettings();
+    const active = !this.muted && s.se;
+    this.master.gain.value = active ? 0.22 * s.seVolume : 0;
+  }
 
   setMuted(m: boolean): void {
     this.muted = m;
+    this.syncGain();
+  }
+
+  dispose(): void {
+    this.unsub?.();
+    this.unsub = null;
   }
 
   unlock(): void {
+    if (this.isSeMuted()) return;
     this.ensure();
+    this.syncGain();
     if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
@@ -21,7 +51,8 @@ export class DefenseSound {
   }
 
   resume(): void {
-    if (this.ctx && this.ctx.state === 'suspended' && !this.muted) void this.ctx.resume();
+    this.syncGain();
+    if (this.ctx && this.ctx.state === 'suspended' && !this.isSeMuted()) void this.ctx.resume();
   }
 
   private ensure(): AudioContext | null {
@@ -34,7 +65,7 @@ export class DefenseSound {
       if (!AC) return null;
       this.ctx = new AC();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.2;
+      this.syncGain();
       this.master.connect(this.ctx.destination);
       const len = Math.floor(this.ctx.sampleRate * 0.3);
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -55,9 +86,10 @@ export class DefenseSound {
   }
 
   private tone(freq: number, dur: number, type: OscillatorType, vol: number, slide = 0): void {
-    if (this.muted) return;
+    if (this.isSeMuted()) return;
     const ctx = this.ensure();
     if (!ctx || !this.master) return;
+    this.syncGain();
     try {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
@@ -76,9 +108,10 @@ export class DefenseSound {
   }
 
   private noise(dur: number, vol: number, filterFreq: number): void {
-    if (this.muted) return;
+    if (this.isSeMuted()) return;
     const ctx = this.ensure();
     if (!ctx || !this.master || !this.noiseBuf) return;
+    this.syncGain();
     try {
       const src = ctx.createBufferSource();
       src.buffer = this.noiseBuf;

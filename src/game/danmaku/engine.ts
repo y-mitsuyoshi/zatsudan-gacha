@@ -1,8 +1,24 @@
 import { STAGES, type Difficulty, type WeaponId } from './config';
-import { DanmakuSim, type InputState, type RunResult } from './sim';
+import {
+  BOSS_PHASES,
+  COLLECT_LINE_Y,
+  DanmakuSim,
+  type InputState,
+  type Phase,
+  type RunResult,
+} from './sim';
 import { DanmakuView } from './view';
 import { shmupSound } from '../shmup/audio';
 import { saveContinue, clearContinue } from '../shmup/storage';
+
+export type EngineBannerKind =
+  | 'stage'
+  | 'warn'
+  | 'spell'
+  | 'spellResult'
+  | 'clear'
+  | 'extend'
+  | 'loop';
 
 export interface HudSnapshot {
   score: number;
@@ -10,6 +26,8 @@ export interface HudSnapshot {
   chainT: number;
   maxChain: number;
   stage: number;
+  loop: number;
+  phase: Phase;
   lives: number;
   bombs: number;
   power: number;
@@ -19,8 +37,17 @@ export interface HudSnapshot {
   bossHp: number;
   bossMax: number;
   bossName: string;
+  bossPhase: number;
+  bossPhasesLeft: number;
+  bossSpellName: string | null;
+  bossSpellSub: string | null;
+  bossSpellClean: boolean;
+  bossSpellBonus: number;
+  collectLineActive: boolean;
   kills: number;
   graze: number;
+  misses: number;
+  spellsCaptured: number;
   fps: number;
   pb: number;
   eb: number;
@@ -28,7 +55,15 @@ export interface HudSnapshot {
 
 export type EngineEvent =
   | { type: 'hud'; hud: HudSnapshot }
-  | { type: 'banner'; title: string; sub?: string; spell?: boolean }
+  | {
+      type: 'banner';
+      title: string;
+      sub?: string;
+      kind?: EngineBannerKind;
+      spell?: boolean;
+      captured?: boolean;
+      bonus?: number;
+    }
   | { type: 'gameover'; result: RunResult }
   | { type: 'error'; message: string }
   | { type: 'autopause' };
@@ -41,7 +76,7 @@ export interface EngineOptions {
   stage: number;
   score: number;
   lives: number;
-  muted: boolean;
+  muted?: boolean;
   shake: boolean;
   onEvent: (e: EngineEvent) => void;
 }
@@ -85,8 +120,9 @@ export class DanmakuEngine {
   private prevPower = 1;
   private prevKills = 0;
   private prevGraze = 0;
-  private prevStageIdx = 0;
+  private prevPickups = 0;
   private prevBossAlive = false;
+  private prevPhase: Phase = 'fly';
 
   private onKeyDown = (e: KeyboardEvent) => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -169,11 +205,14 @@ export class DanmakuEngine {
       stage: opts.stage, score: opts.score, lives: opts.lives,
       weapon: opts.weapon, power: opts.power, difficulty: opts.difficulty,
     });
-    this.sound.setMuted(opts.muted);
+    if (typeof opts.muted === 'boolean') {
+      this.sound.setMuted(opts.muted);
+    }
     this.prevLives = this.sim.lives;
     this.prevBombs = this.sim.bombs;
     this.prevPower = this.sim.power;
-    this.prevStageIdx = this.sim.stageIdx;
+    this.prevPickups = this.sim.pickups;
+    this.prevPhase = this.sim.phase;
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
@@ -203,9 +242,13 @@ export class DanmakuEngine {
       (window as unknown as { __danmaku?: DanmakuEngine }).__danmaku = this;
     } catch { /* ignore */ }
     this.sound.unlock();
-    this.sound.startBgm(110 + this.sim.stageIdx * 8);
     const st = STAGES[this.sim.stageIdx];
-    this.onEvent({ type: 'banner', title: `Stage ${this.sim.stage}`, sub: st ? `${st.name} — ${st.sub}` : '' });
+    this.onEvent({
+      type: 'banner',
+      kind: 'stage',
+      title: st ? st.name : `STAGE ${this.sim.stage}`,
+      sub: st ? `STAGE ${this.sim.stage} ― ${st.sub}` : '',
+    });
     this.pushHud();
     this.last = performance.now();
     this.acc = 0;
@@ -235,7 +278,6 @@ export class DanmakuEngine {
         if (!this.errorReported) {
           this.errorReported = true;
           this.paused = true;
-          this.sound.stopBgm();
           this.onEvent({ type: 'error', message: err instanceof Error ? err.message : String(err) });
         }
       }
@@ -258,7 +300,6 @@ export class DanmakuEngine {
     this.canvas.removeEventListener('contextmenu', this.onContextMenu);
     this.view?.dispose();
     this.view = null;
-    this.sound.stopBgm();
   }
 
   get isPaused(): boolean {
@@ -270,11 +311,9 @@ export class DanmakuEngine {
     if (this.paused === p) return;
     this.paused = p;
     if (p) {
-      this.sound.stopBgm();
       this.sound.suspend();
     } else {
       this.sound.resume();
-      this.sound.startBgm(110 + this.sim.stageIdx * 8);
       this.last = performance.now();
       this.acc = 0;
     }
@@ -282,7 +321,6 @@ export class DanmakuEngine {
 
   setMuted(m: boolean): void {
     this.sound.setMuted(m);
-    if (!m && !this.paused) this.sound.startBgm(110 + this.sim.stageIdx * 8);
   }
 
   setShake(on: boolean): void {
@@ -292,7 +330,10 @@ export class DanmakuEngine {
 
   useBomb(): void {
     if (this.paused || this.destroyed) return;
-    if (this.sim.useBomb()) this.sound.bomb();
+    if (this.sim.useBomb()) {
+      this.sound.bomb();
+      this.pushHud();
+    }
   }
 
   cycleWeapon(): void {
@@ -368,42 +409,55 @@ export class DanmakuEngine {
     if (s.kills > this.prevKills) this.sound.boom();
     if (s.graze > this.prevGraze) this.sound.graze();
     if (s.power > this.prevPower) this.sound.power();
+    else if (s.pickups > this.prevPickups) this.sound.pickup();
     if (s.lives < this.prevLives) this.sound.bigBoom();
-    if (s.stageIdx !== this.prevStageIdx) {
-      this.sound.startBgm(110 + s.stageIdx * 8);
-    }
     if (this.prevBossAlive && !s.boss.alive && s.phase === 'interval') {
       this.sound.bigBoom();
       saveContinue({ stage: s.stage + 1, score: s.score, weapon: s.weapon, weaponLevel: s.power, difficulty: s.diff });
     }
+    const phaseChanged = s.phase !== this.prevPhase || s.boss.alive !== this.prevBossAlive;
     this.prevKills = s.kills;
     this.prevGraze = s.graze;
     this.prevPower = s.power;
+    this.prevPickups = s.pickups;
     this.prevLives = s.lives;
     this.prevBombs = s.bombs;
-    this.prevStageIdx = s.stageIdx;
     this.prevBossAlive = s.boss.alive;
+    this.prevPhase = s.phase;
 
+    let forceHud = phaseChanged;
     for (const ev of s.events.splice(0, s.events.length)) {
-      if (ev.type === 'banner') this.onEvent({ type: 'banner', title: ev.title, sub: ev.sub });
-      else if (ev.type === 'spell') {
-        this.onEvent({ type: 'banner', title: ev.name, sub: ev.sub, spell: true });
-        this.sound.warn();
+      forceHud = true;
+      if (ev.type === 'banner') {
+        if (ev.kind === 'clear') this.sound.clear();
+        this.onEvent({ type: 'banner', title: ev.title, sub: ev.sub, kind: ev.kind ?? 'stage' });
+      } else if (ev.type === 'spell') {
+        this.onEvent({ type: 'banner', title: ev.name, sub: ev.sub, kind: 'spell', spell: true });
+        this.sound.phaseBreak();
+      } else if (ev.type === 'spellResult') {
+        if (ev.captured) this.sound.capture();
+        this.onEvent({
+          type: 'banner',
+          title: ev.captured ? 'SPELL CARD CAPTURED' : 'SPELL BONUS FAILED',
+          sub: ev.captured ? `BONUS +${ev.bonus.toLocaleString()} PTS` : 'NO MISS / NO BOMB REQUIRED',
+          kind: 'spellResult',
+          captured: ev.captured,
+          bonus: ev.bonus,
+        });
       } else if (ev.type === 'warn') {
-        this.onEvent({ type: 'banner', title: '⚠ WARNING ⚠', sub: `${ev.boss} 接近中！` });
+        this.onEvent({ type: 'banner', title: 'WARNING // TARGET APPROACHING', sub: `${ev.boss} 接近中`, kind: 'warn' });
         this.sound.warn();
       } else if (ev.type === 'extend') {
-        this.onEvent({ type: 'banner', title: '1UP！残機追加', sub: 'よく頑張った！' });
+        this.onEvent({ type: 'banner', title: 'EXTEND // 1UP', sub: '残機追加 ― 業務継続許可', kind: 'extend' });
         this.sound.power();
       } else if (ev.type === 'gameover') {
         clearContinue();
-        this.sound.stopBgm();
         this.onEvent({ type: 'gameover', result: ev.result });
       }
     }
 
     this.hudT += dt;
-    if (this.hudT >= 0.1) {
+    if (forceHud || this.hudT >= 0.1) {
       this.hudT = 0;
       this.pushHud();
     }
@@ -416,6 +470,8 @@ export class DanmakuEngine {
     let eb = 0;
     for (const x of s.pbullets) if (x.alive) pb++;
     for (const x of s.ebullets) if (x.alive) eb++;
+    const st = STAGES[b.idx];
+    const activeSpell = b.alive && b.phase >= 1 ? st?.spells[b.phase - 1] ?? null : null;
     this.onEvent({
       type: 'hud',
       hud: {
@@ -424,6 +480,8 @@ export class DanmakuEngine {
         chainT: s.chainT,
         maxChain: s.maxChain,
         stage: s.stage,
+        loop: s.loop,
+        phase: s.phase,
         lives: Math.max(0, s.lives),
         bombs: s.bombs,
         power: s.power,
@@ -432,9 +490,18 @@ export class DanmakuEngine {
         bossActive: b.alive && b.entered,
         bossHp: Math.max(0, Math.round(b.hp)),
         bossMax: Math.max(1, Math.round(b.maxHp)),
-        bossName: (STAGES[b.idx]?.boss ?? 'ボス') as string,
+        bossName: (st?.boss ?? 'ボス') as string,
+        bossPhase: b.phase,
+        bossPhasesLeft: Math.max(0, BOSS_PHASES - 1 - b.phase),
+        bossSpellName: activeSpell?.name ?? null,
+        bossSpellSub: activeSpell?.sub ?? null,
+        bossSpellClean: b.spellClean,
+        bossSpellBonus: s.currentSpellBonus(),
+        collectLineActive: s.deadT <= 0 && s.py < COLLECT_LINE_Y,
         kills: s.kills,
         graze: s.graze,
+        misses: s.misses,
+        spellsCaptured: s.spellsCaptured,
         fps: Math.round(this.fps),
         pb,
         eb,

@@ -192,4 +192,89 @@ describe('M4: Shachiku Spiral Modern 2D Vector & Boss Mechanics Verification', (
 
     engine.destroy();
   });
+
+  it('5. Drop & Chest Vacuum Regression: outer-ring coins, energy packs, and freed chests never linger uncollected', () => {
+    const canvas = createMockCanvas(640, 640);
+    let buildFromChestCount = 0;
+    const engine = new SpiralEngine(canvas, createMockAudio(), {
+      onHud: () => {},
+      onBuild: (b) => {
+        if (b.fromChest) buildFromChestCount += 1;
+        if (b.choices.length > 0) engine.applyUpgrade(b.choices[0]);
+      },
+      onGameOver: () => {},
+      onBanner: () => {},
+    });
+
+    engine.start({ difficulty: 'normal', dmgMul: 1, maxHpBonus: 0, rateMul: 1 });
+    const anyEngine = engine as any;
+
+    // 1. Spawn outer-ring drops (coins + energy pack) with tangential velocity
+    anyEngine.hp = 80;
+    anyEngine.shield = 10;
+    const coinsBefore = anyEngine.coins;
+    anyEngine.dropCoin(320 + 300, 320, 25);
+    anyEngine.dropBento(320 - 280, 320);
+    assert.strictEqual(anyEngine.coinPs.length, 2);
+
+    // Step 60 frames (1.0s): both drops must home straight into the core and be collected
+    for (let f = 0; f < 60; f++) {
+      anyEngine.updateCoins(1 / 60);
+    }
+    assert.strictEqual(anyEngine.coinPs.length, 0, 'All outer-ring drops must be collected within 1s');
+    assert.strictEqual(anyEngine.coins, coinsBefore + 25, 'Coin drop value credited');
+    assert.strictEqual(anyEngine.hp, 100, 'Energy pack healed +20 HP');
+    assert.strictEqual(anyEngine.shield, 30, 'Energy pack restored +20 Shield');
+
+    // 2. Detached chest (after enemy chain is defeated) auto-flies into core and opens
+    anyEngine.chains = [];
+    anyEngine.spawnChain('doc');
+    const docChain = anyEngine.chains[0];
+    anyEngine.chests = [{
+      id: 99,
+      chain: docChain,
+      segA: docChain.segs[0],
+      segB: docChain.segs[1],
+      x: docChain.segs[0].x,
+      y: docChain.segs[0].y,
+      spin: 0,
+      openT: 0,
+      taken: false,
+      free: false,
+    }];
+    // Defeat the chain -> chest becomes detached
+    anyEngine.killSeg(docChain, 0, 0);
+    assert.strictEqual(anyEngine.chains.length, 0);
+
+    // Step updateChests: detached chest must fly into the core and trigger openChest
+    for (let f = 0; f < 90; f++) {
+      anyEngine.updateChests(1 / 60);
+    }
+    assert.strictEqual(buildFromChestCount, 1, 'Detached chest must auto-open upon reaching core');
+
+    // 3. Wave-clear interlude guarantees zero leftover drops or unopened chests
+    anyEngine.dropCoin(50, 50, 15);
+    anyEngine.chests.push({
+      id: 100,
+      chain: docChain,
+      segA: docChain.segs[0],
+      segB: docChain.segs[1],
+      x: 600,
+      y: 600,
+      spin: 0,
+      openT: 0,
+      taken: false,
+      free: true,
+    });
+    const preClearCoins = anyEngine.coins;
+    anyEngine.beginClear();
+    for (let f = 0; f < 90 && anyEngine.clearT > 0; f++) {
+      anyEngine.updateClearing(1 / 60);
+    }
+    assert.strictEqual(anyEngine.coinPs.length, 0, 'Zero coin drops left after wave clear');
+    assert.strictEqual(anyEngine.chests.filter((c: any) => !c.taken).length, 0, 'Zero untaken chests left after wave clear');
+    assert.ok(anyEngine.coins > preClearCoins + 15, 'Both leftover coins and converted chest were credited');
+
+    engine.destroy();
+  });
 });

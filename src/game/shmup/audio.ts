@@ -1,23 +1,47 @@
+import { getAudioSettings, setAudioSettings, subscribeAudioSettings, type AudioSettings } from '../common/audioSettings';
+
 /**
- * Lazy WebAudio synth for the shmup. No AudioContext is created until the
- * first user gesture (unlock), fixing autoplay warnings and SSR crashes.
+ * Lazy WebAudio synth for the shmup's sound effects. No AudioContext is
+ * created until the first user gesture (unlock), fixing autoplay warnings and
+ * SSR crashes.
+ *
+ * ON/OFF and volume follow the shared 社畜ゲーム audio settings (効果音 toggle);
+ * music is handled by the shared BGM player (`src/game/common/bgm.ts`), so
+ * this class no longer runs its own BGM loop.
  */
+const BASE_GAIN = 0.22;
+
 export class ShmupSound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private noiseBuf: AudioBuffer | null = null;
-  private muted = false;
-  private bgmTimer: number | null = null;
-  private bgmStep = 0;
+  private seOn = true;
+  private seVolume = 0.8;
+  private unsub: (() => void) | null = null;
   private lastPlay: Record<string, number> = {};
 
-  setMuted(m: boolean): void {
-    this.muted = m;
-    if (m) this.stopBgm();
+  constructor() {
+    if (typeof window === 'undefined') return;
+    this.apply(getAudioSettings());
+    this.unsub = subscribeAudioSettings((s) => this.apply(s));
   }
 
+  private apply(s: AudioSettings): void {
+    this.seOn = s.se;
+    this.seVolume = s.seVolume;
+    if (this.master && this.ctx) {
+      this.master.gain.setTargetAtTime(this.seOn ? BASE_GAIN * this.seVolume : 0, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  /** true when the shared 効果音 setting is OFF */
   get isMuted(): boolean {
-    return this.muted;
+    return !this.seOn;
+  }
+
+  /** Sync with shared 効果音 setting */
+  setMuted(muted: boolean): void {
+    setAudioSettings({ se: !muted });
   }
 
   /** Call from a user gesture. Safe to call repeatedly. */
@@ -35,7 +59,7 @@ export class ShmupSound {
   }
 
   resume(): void {
-    if (this.ctx && this.ctx.state === 'suspended' && !this.muted) {
+    if (this.ctx && this.ctx.state === 'suspended') {
       void this.ctx.resume();
     }
   }
@@ -50,7 +74,7 @@ export class ShmupSound {
       if (!AC) return null;
       this.ctx = new AC();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.22;
+      this.master.gain.value = this.seOn ? BASE_GAIN * this.seVolume : 0;
       this.master.connect(this.ctx.destination);
       const len = Math.floor(this.ctx.sampleRate * 0.3);
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -78,10 +102,10 @@ export class ShmupSound {
     vol: number,
     delay = 0,
   ): void {
-    if (this.muted) return;
+    if (!this.seOn) return;
     const ctx = this.ensure();
     if (!ctx || !this.master) return;
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') return; // paused / not yet unlocked
     const t0 = ctx.currentTime + delay;
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
@@ -97,10 +121,10 @@ export class ShmupSound {
   }
 
   private noise(dur: number, vol: number, filterFreq: number): void {
-    if (this.muted) return;
+    if (!this.seOn) return;
     const ctx = this.ensure();
     if (!ctx || !this.master || !this.noiseBuf) return;
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') return;
     const t0 = ctx.currentTime;
     const src = ctx.createBufferSource();
     src.buffer = this.noiseBuf;
@@ -119,8 +143,8 @@ export class ShmupSound {
   }
 
   shoot(): void {
-    if (!this.gate('shoot', 70)) return;
-    this.tone(880, 220, 0.08, 'square', 0.12);
+    if (!this.gate('shoot', 90)) return;
+    this.tone(1200, 420, 0.05, 'square', 0.035);
   }
 
   enemyShoot(): void {
@@ -130,8 +154,8 @@ export class ShmupSound {
 
   boom(): void {
     if (!this.gate('boom', 60)) return;
-    this.noise(0.25, 0.5, 900);
-    this.tone(160, 40, 0.22, 'sawtooth', 0.25);
+    this.noise(0.25, 0.45, 900);
+    this.tone(160, 40, 0.22, 'sawtooth', 0.2);
   }
 
   bigBoom(): void {
@@ -151,8 +175,8 @@ export class ShmupSound {
   }
 
   pickup(): void {
-    if (!this.gate('pickup', 60)) return;
-    this.tone(660, 1320, 0.12, 'sine', 0.25);
+    if (!this.gate('pickup', 45)) return;
+    this.tone(990, 1480, 0.07, 'sine', 0.16);
   }
 
   power(): void {
@@ -171,66 +195,34 @@ export class ShmupSound {
     this.tone(660, 660, 0.2, 'square', 0.22, 0.36);
   }
 
+  /** boss phase break / spell card declaration */
+  phaseBreak(): void {
+    this.noise(0.35, 0.45, 1800);
+    this.tone(260, 1040, 0.3, 'sawtooth', 0.18);
+  }
+
+  /** spell card captured */
+  capture(): void {
+    this.tone(784, 784, 0.09, 'square', 0.16);
+    this.tone(988, 988, 0.09, 'square', 0.16, 0.09);
+    this.tone(1319, 1319, 0.22, 'square', 0.18, 0.18);
+  }
+
+  /** stage clear fanfare */
+  clear(): void {
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((f, i) => this.tone(f, f, 0.16, 'triangle', 0.26, i * 0.11));
+    this.tone(1047, 1047, 0.5, 'square', 0.12, 0.44);
+  }
+
   ui(): void {
     if (!this.gate('ui', 50)) return;
     this.tone(700, 990, 0.07, 'sine', 0.18);
   }
 
-  startBgm(base: number): void {
-    if (this.muted) return;
-    const ctx = this.ensure();
-    if (!ctx) return;
-    this.stopBgm();
-    this.bgmStep = 0;
-    const bass = [0, 0, 3, 0, 5, 0, 3, 2];
-    const tick = () => {
-      if (this.muted || !this.ctx || !this.master) return;
-      if (this.ctx.state === 'suspended') return;
-      const s = this.bgmStep % 16;
-      const t0 = this.ctx.currentTime;
-      const root = base;
-      if (s % 2 === 0) {
-        const semis = bass[(s / 2) | 0] ?? 0;
-        const f = root * Math.pow(2, semis / 12);
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.connect(g);
-        g.connect(this.master);
-        osc.type = 'triangle';
-        osc.frequency.value = f;
-        g.gain.setValueAtTime(0.16, t0);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
-        osc.start(t0);
-        osc.stop(t0 + 0.25);
-      }
-      if (s % 4 === 2) {
-        const arp = [12, 15, 19, 24][((s / 4) | 0) % 4] ?? 12;
-        const f = root * Math.pow(2, arp / 12);
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.connect(g);
-        g.connect(this.master);
-        osc.type = 'sine';
-        osc.frequency.value = f;
-        g.gain.setValueAtTime(0.07, t0);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
-        osc.start(t0);
-        osc.stop(t0 + 0.2);
-      }
-      this.bgmStep++;
-    };
-    this.bgmTimer = window.setInterval(tick, 165);
-  }
-
-  stopBgm(): void {
-    if (this.bgmTimer !== null) {
-      clearInterval(this.bgmTimer);
-      this.bgmTimer = null;
-    }
-  }
-
   destroy(): void {
-    this.stopBgm();
+    this.unsub?.();
+    this.unsub = null;
     if (this.ctx) {
       void this.ctx.close().catch(() => undefined);
       this.ctx = null;

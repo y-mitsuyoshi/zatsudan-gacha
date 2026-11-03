@@ -1452,6 +1452,128 @@ describe('Tier 5: Adversarial Coverage Hardening (Barricade Defense & Shared Mod
         pool.render(ctx);
       });
     });
+
+    it('T5-E09: Direct hero/ally contact collection of supply crates and rescue cages', () => {
+      const canvas = createMockCanvas();
+      const engine = new DefenseEngine(canvas, createMockAudio(), {
+        onHud: () => {},
+        onShop: () => {},
+        onGameOver: () => {},
+        onBanner: () => {},
+      });
+      engine.start(COURSES.city, DIFFICULTIES.normal);
+      const eng = engine as any;
+
+      eng.crates.length = 0;
+      eng.cages.length = 0;
+
+      // Spawn a coin crate and move it onto the hero's position
+      eng.spawnCrate('coin');
+      assert.strictEqual(eng.crates.length, 1);
+      const crate = eng.crates[0];
+      crate.x = eng.hero.position.x;
+      crate.z = eng.hero.position.z;
+      crate.g.position.set(crate.x, 0, crate.z);
+
+      const initialCoins = eng.coins;
+      eng.updateCrates(0.016);
+      assert.strictEqual(crate.dead, true, 'Crate touching hero must be immediately collected');
+      assert.ok(eng.coins > initialCoins, 'Coin crate reward must be granted on contact collection');
+
+      // Spawn a cage and move it onto the hero's position
+      const alliesBefore = eng.allies.length;
+      eng.spawnCage();
+      assert.strictEqual(eng.cages.length, 1);
+      const cage = eng.cages[0];
+      cage.x = eng.hero.position.x;
+      cage.z = eng.hero.position.z;
+      cage.g.position.set(cage.x, 0, cage.z);
+
+      eng.updateCages(0.016);
+      assert.strictEqual(cage.dead, true, 'Cage touching hero must be immediately rescued');
+      assert.strictEqual(eng.allies.length, alliesBefore + 1, 'Rescued cage must add an ally');
+
+      engine.destroy();
+    });
+
+    it('T5-E10: Stage clear auto-collects all remaining crates and cages on the field', () => {
+      const canvas = createMockCanvas();
+      let shopOpened = false;
+      const engine = new DefenseEngine(canvas, createMockAudio(), {
+        onHud: () => {},
+        onShop: () => { shopOpened = true; },
+        onGameOver: () => {},
+        onBanner: () => {},
+      });
+      engine.start(COURSES.city, DIFFICULTIES.normal);
+      const eng = engine as any;
+
+      // Place uncollected crates and cages on the field
+      eng.crateIdx = eng.cratesAt.length;
+      eng.cageIdx = eng.cagesAt.length;
+      eng.crates.length = 0;
+      eng.cages.length = 0;
+      eng.spawnCrate('coin');
+      eng.spawnCage();
+      assert.strictEqual(eng.crates.filter((c: any) => !c.dead).length, 1);
+      assert.strictEqual(eng.cages.filter((c: any) => !c.dead).length, 1);
+
+      const alliesBefore = eng.allies.length;
+      // Advance distance to trigger stage clear
+      eng.dist = eng.length - 0.01;
+      eng.update(0.05);
+
+      assert.strictEqual(shopOpened, true, 'Shop should open upon reaching stage length');
+      assert.strictEqual(
+        eng.crates.filter((c: any) => !c.dead).length,
+        0,
+        'All remaining crates must be auto-collected on stage clear',
+      );
+      assert.strictEqual(
+        eng.cages.filter((c: any) => !c.dead).length,
+        0,
+        'All remaining cages must be auto-rescued on stage clear',
+      );
+      assert.strictEqual(
+        eng.allies.length,
+        alliesBefore + 1,
+        'Auto-rescued cage on stage clear must grant an ally',
+      );
+
+      engine.destroy();
+    });
+
+    it('T5-E11: nextWave resets goalGroup and Passed Gates continue scrolling smoothly', () => {
+      const canvas = createMockCanvas();
+      const engine = new DefenseEngine(canvas, createMockAudio(), {
+        onHud: () => {},
+        onShop: () => {},
+        onGameOver: () => {},
+        onBanner: () => {},
+      });
+      engine.start(COURSES.city, DIFFICULTIES.normal);
+      const eng = engine as any;
+
+      // Trigger goal arch build near stage end
+      eng.dist = eng.length - 10;
+      eng.update(0.016);
+      assert.ok(eng.goalGroup !== null, 'goalGroup must be created near stage end');
+
+      // Transition to next wave (Endless)
+      engine.nextWave();
+      assert.strictEqual(eng.goalGroup, null, 'goalGroup must be reset to null on nextWave');
+
+      // Verify passed gate continues scrolling in +Z while sinking
+      eng.gateObjs.length = 0;
+      eng.spawnGate();
+      const gt = eng.gateObjs[0];
+      gt.done = true;
+      const zBefore = gt.z;
+      eng.updateGates(0.1);
+      assert.ok(gt.z > zBefore, 'Passed gate must continue scrolling forward in +Z');
+
+      engine.destroy();
+    });
   });
 
 });

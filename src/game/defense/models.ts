@@ -21,6 +21,82 @@ const matShadow = new THREE.MeshBasicMaterial({
   depthWrite: false,
 });
 
+/* -------------------------------------------------------------------------
+   Shared-resource registry. Anything registered here is reused across many
+   meshes and must NOT be disposed when a single entity leaves the scene.
+   ------------------------------------------------------------------------- */
+const SHARED = new WeakSet<object>();
+
+/** Register a geometry / material / texture as shared (never disposed per-entity). */
+export function markShared<T extends object>(o: T): T {
+  SHARED.add(o);
+  return o;
+}
+
+export function isSharedResource(o: object | null | undefined): boolean {
+  return !!o && SHARED.has(o);
+}
+
+markShared(geoBox);
+markShared(geoSphere);
+markShared(geoCylinder);
+markShared(geoShadow);
+markShared(matShadow);
+
+const lamCache = new Map<number, THREE.MeshLambertMaterial>();
+const basicCache = new Map<number, THREE.MeshBasicMaterial>();
+
+/** Cached, shared Lambert material (do not mutate). */
+function lam(hex: number): THREE.MeshLambertMaterial {
+  let m = lamCache.get(hex);
+  if (!m) {
+    m = markShared(new THREE.MeshLambertMaterial({ color: hex }));
+    lamCache.set(hex, m);
+  }
+  return m;
+}
+
+/** Cached, shared unlit material (do not mutate). */
+function basic(hex: number): THREE.MeshBasicMaterial {
+  let m = basicCache.get(hex);
+  if (!m) {
+    m = markShared(new THREE.MeshBasicMaterial({ color: hex }));
+    basicCache.set(hex, m);
+  }
+  return m;
+}
+
+type Disposable = { dispose: () => void };
+type MaterialWithMaps = THREE.Material & { map?: THREE.Texture | null; emissiveMap?: THREE.Texture | null };
+
+function disposeMaterial(m: THREE.Material): void {
+  if (SHARED.has(m)) return;
+  const mm = m as MaterialWithMaps;
+  if (mm.map && !SHARED.has(mm.map)) mm.map.dispose();
+  if (mm.emissiveMap && !SHARED.has(mm.emissiveMap)) mm.emissiveMap.dispose();
+  m.dispose();
+}
+
+/**
+ * Detach an object from its parent and free every GPU resource it owns,
+ * skipping resources registered via markShared(). Safe to call repeatedly.
+ */
+export function disposeObject3D(root: THREE.Object3D | null | undefined): void {
+  if (!root) return;
+  root.parent?.remove(root);
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    const isSprite = (o as THREE.Sprite).isSprite === true;
+    if (!isSprite && (mesh.isMesh || (o as THREE.LineSegments).isLine || (o as THREE.Points).isPoints)) {
+      const geo = mesh.geometry as (THREE.BufferGeometry & Disposable) | undefined;
+      if (geo && !SHARED.has(geo)) geo.dispose();
+    }
+    const mat = (mesh as { material?: THREE.Material | THREE.Material[] }).material;
+    if (Array.isArray(mat)) mat.forEach(disposeMaterial);
+    else if (mat) disposeMaterial(mat);
+  });
+}
+
 /** Procedural blob shadow under meshes */
 export function buildBlobShadow(scale = 1): THREE.Mesh {
   const s = new THREE.Mesh(geoShadow, matShadow);
@@ -55,12 +131,12 @@ export function buildSalarymanMesh(options?: SalarymanOptions): THREE.Group {
   root.name = isHero ? 'hero_salaryman' : 'ally_salaryman';
 
   // Materials
-  const suitMat = new THREE.MeshLambertMaterial({ color: suitHex });
-  const shirtMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
-  const skinMat = new THREE.MeshLambertMaterial({ color: 0xf6d3b4 });
-  const hairMat = new THREE.MeshLambertMaterial({ color: 0x1c1917 });
-  const tieMat = new THREE.MeshLambertMaterial({ color: isHero ? 0xdc2626 : 0x059669 });
-  const shoeMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+  const suitMat = lam(suitHex);
+  const shirtMat = lam(0xf8fafc);
+  const skinMat = lam(0xf6d3b4);
+  const hairMat = lam(0x1c1917);
+  const tieMat = lam(isHero ? 0xdc2626 : 0x059669);
+  const shoeMat = lam(0x0f172a);
 
   // 1. Pelvis / Hips
   const hips = new THREE.Group();
@@ -103,7 +179,7 @@ export function buildSalarymanMesh(options?: SalarymanOptions): THREE.Group {
 
   // Hero glasses
   if (isHero) {
-    const glassesMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+    const glassesMat = basic(0x0284c7);
     const glasses = new THREE.Mesh(geoBox, glassesMat);
     glasses.scale.set(0.36 * s, 0.08 * s, 0.06 * s);
     glasses.position.set(0, 0.22 * s, 0.22 * s);
@@ -126,7 +202,7 @@ export function buildSalarymanMesh(options?: SalarymanOptions): THREE.Group {
 
   // If hero, carry briefcase in left hand
   if (isHero) {
-    const caseMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+    const caseMat = lam(0x78350f);
     const bcase = new THREE.Mesh(geoBox, caseMat);
     bcase.scale.set(0.14 * s, 0.32 * s, 0.44 * s);
     bcase.position.set(0.06 * s, -0.6 * s, 0);
@@ -212,16 +288,14 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
     case 'pistol': {
       // Folded umbrella: navy/black cylinder canopy + wooden curved j-handle + brass ferrule
       const canopy = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshLambertMaterial({ color: 0x1e293b })
+        geoCylinder, lam(0x1e293b)
       );
       canopy.scale.set(0.08 * s, 0.75 * s, 0.08 * s);
       canopy.rotation.x = Math.PI / 2;
       g.add(canopy);
 
       const tip = new THREE.Mesh(
-        geoConeOrCylinder(),
-        new THREE.MeshLambertMaterial({ color: 0xfacc15 })
+        geoConeOrCylinder(), lam(0xfacc15)
       );
       tip.scale.set(0.06 * s, 0.18 * s, 0.06 * s);
       tip.rotation.x = -Math.PI / 2;
@@ -229,8 +303,7 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
       g.add(tip);
 
       const handle = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshLambertMaterial({ color: 0x78350f })
+        geoCylinder, lam(0x78350f)
       );
       handle.scale.set(0.05 * s, 0.22 * s, 0.05 * s);
       handle.position.set(0, -0.08 * s, -0.42 * s);
@@ -240,15 +313,13 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
     case 'smg': {
       // Business card rapid blaster: card dispenser box with gold/white corporate cards
       const dispenser = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0x0284c7 })
+        geoBox, lam(0x0284c7)
       );
       dispenser.scale.set(0.24 * s, 0.2 * s, 0.45 * s);
       g.add(dispenser);
 
       const card = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshBasicMaterial({ color: 0xfef08a })
+        geoBox, basic(0xfef08a)
       );
       card.scale.set(0.22 * s, 0.04 * s, 0.32 * s);
       card.position.set(0, 0.12 * s, 0.18 * s);
@@ -258,16 +329,14 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
     case 'shotgun': {
       // Briefcase shotgun: heavy leather briefcase with twin short steel barrels
       const caseBox = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0x451a03 })
+        geoBox, lam(0x451a03)
       );
       caseBox.scale.set(0.26 * s, 0.42 * s, 0.52 * s);
       g.add(caseBox);
 
       for (const ox of [-0.07 * s, 0.07 * s]) {
         const barrel = new THREE.Mesh(
-          geoCylinder,
-          new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+          geoCylinder, lam(0x94a3b8)
         );
         barrel.scale.set(0.05 * s, 0.24 * s, 0.05 * s);
         barrel.rotation.x = Math.PI / 2;
@@ -279,23 +348,20 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
     case 'rifle': {
       // IC Card rail pass laser rifle: slender receiver with glowing cyan IC card magazine
       const stock = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0x334155 })
+        geoBox, lam(0x334155)
       );
       stock.scale.set(0.12 * s, 0.16 * s, 0.72 * s);
       g.add(stock);
 
       const icCard = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        geoBox, basic(0x38bdf8)
       );
       icCard.scale.set(0.16 * s, 0.18 * s, 0.08 * s);
       icCard.position.set(0, 0.14 * s, 0);
       g.add(icCard);
 
       const barrel = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshLambertMaterial({ color: 0x64748b })
+        geoCylinder, lam(0x64748b)
       );
       barrel.scale.set(0.04 * s, 0.45 * s, 0.04 * s);
       barrel.rotation.x = Math.PI / 2;
@@ -306,24 +372,21 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
     case 'launcher': {
       // Shinkansen missile bazooka: miniature aerodynamic bullet train nose on shoulder
       const tube = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshLambertMaterial({ color: 0xf8fafc })
+        geoCylinder, lam(0xf8fafc)
       );
       tube.scale.set(0.18 * s, 0.85 * s, 0.18 * s);
       tube.rotation.x = Math.PI / 2;
       g.add(tube);
 
       const stripe = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshBasicMaterial({ color: 0x2563eb })
+        geoBox, basic(0x2563eb)
       );
       stripe.scale.set(0.19 * s, 0.86 * s, 0.04 * s);
       stripe.rotation.x = Math.PI / 2;
       g.add(stripe);
 
       const cone = new THREE.Mesh(
-        geoConeOrCylinder(),
-        new THREE.MeshLambertMaterial({ color: 0x1d4ed8 })
+        geoConeOrCylinder(), lam(0x1d4ed8)
       );
       cone.scale.set(0.18 * s, 0.28 * s, 0.18 * s);
       cone.rotation.x = -Math.PI / 2;
@@ -334,15 +397,13 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
     case 'freeze': {
       // Air conditioner chiller: white cylindrical vent with glowing frost-cyan emitter
       const cooler = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+        geoBox, lam(0xe2e8f0)
       );
       cooler.scale.set(0.28 * s, 0.24 * s, 0.48 * s);
       g.add(cooler);
 
       const frostRing = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshBasicMaterial({ color: 0xa5f3fc })
+        geoCylinder, basic(0xa5f3fc)
       );
       frostRing.scale.set(0.12 * s, 0.08 * s, 0.12 * s);
       frostRing.rotation.x = Math.PI / 2;
@@ -355,8 +416,9 @@ export function buildWeaponMesh(id: WeaponId, scale = 1): THREE.Group {
   return g;
 }
 
+const geoCone = markShared(new THREE.CylinderGeometry(0.01, 0.5, 1, 10));
 function geoConeOrCylinder(): THREE.BufferGeometry {
-  return new THREE.CylinderGeometry(0.01, 0.5, 1, 10);
+  return geoCone;
 }
 
 /** Updates salaryman running limb cycle */
@@ -393,7 +455,7 @@ export function buildBarricadeMesh(level = 1, durabilityRatio = 1.0): THREE.Grou
   const depth = 0.45;
 
   // 1. Reinforced Steel Pylons (End Posts) with Yellow/Black Hazard Stripes
-  const pylonMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+  const pylonMat = lam(0x334155);
   const pylonGeo = new THREE.BoxGeometry(0.55, height + 0.5, 0.65);
 
   const pylonL = new THREE.Mesh(pylonGeo, pylonMat);
@@ -427,8 +489,7 @@ export function buildBarricadeMesh(level = 1, durabilityRatio = 1.0): THREE.Grou
 
   // 2. Base Steel Floor Rail across track
   const baseRail = new THREE.Mesh(
-    geoBox,
-    new THREE.MeshLambertMaterial({ color: 0x1e293b })
+    geoBox, lam(0x1e293b)
   );
   baseRail.scale.set(width, 0.3, 0.5);
   baseRail.position.set(0, 0.15, 0);
@@ -436,8 +497,7 @@ export function buildBarricadeMesh(level = 1, durabilityRatio = 1.0): THREE.Grou
 
   // Top Steel Header Rail
   const topRail = new THREE.Mesh(
-    geoBox,
-    new THREE.MeshLambertMaterial({ color: 0x475569 })
+    geoBox, lam(0x475569)
   );
   topRail.scale.set(width, 0.22, 0.5);
   topRail.position.set(0, height, 0);
@@ -478,8 +538,7 @@ export function buildBarricadeMesh(level = 1, durabilityRatio = 1.0): THREE.Grou
   debrisGroup.visible = false;
   for (let i = 0; i < 8; i++) {
     const chunk = new THREE.Mesh(
-      geoBox,
-      new THREE.MeshLambertMaterial({ color: 0x475569 })
+      geoBox, lam(0x475569)
     );
     chunk.scale.set(0.6 + (i % 3) * 0.2, 0.25, 0.4);
     chunk.position.set((i - 3.5) * 1.1, 0.12, (Math.random() - 0.5) * 0.8);
@@ -605,62 +664,69 @@ export function updateBarricadeDurability(group: THREE.Group, ratio: number, tim
 
 export type GateOp = 'add' | 'mult' | 'sub' | 'div';
 
+export interface GateSign {
+  /** Large value text, e.g. "×2" */
+  main: string;
+  /** Category caption shown in the header band, e.g. "同期" / "火力" */
+  sub: string;
+}
+
+const gatePillarGeo = markShared(new THREE.BoxGeometry(0.32, 3.4, 0.32));
+const gateFloorGeo = markShared(new THREE.PlaneGeometry(4.0, 2.6));
+const gateLintelMat = {
+  good: markShared(new THREE.MeshLambertMaterial({ color: 0x15805a, emissive: 0x1fae7a, emissiveIntensity: 0.45 })),
+  bad: markShared(new THREE.MeshLambertMaterial({ color: 0x9c2a1d, emissive: 0xe0452f, emissiveIntensity: 0.45 })),
+};
+const gateFloorMat = {
+  good: markShared(new THREE.MeshBasicMaterial({ color: 0x1fae7a, transparent: true, opacity: 0.28, depthWrite: false })),
+  bad: markShared(new THREE.MeshBasicMaterial({ color: 0xe0452f, transparent: true, opacity: 0.24, depthWrite: false })),
+};
+
 /**
- * Builds a 3D archway multiplier gate with embossed typography and glowing energy curtain.
+ * Builds a ticket-gate style archway. The curtain shows a header band with the
+ * effect category (同期 / 火力 / ガード ...) and a large value, so two gates with
+ * the same number (e.g. 同期×2 vs 火力×2) are never ambiguous.
  */
-export function buildGateMesh(op: GateOp, val: number): THREE.Group {
+export function buildGateMesh(op: GateOp, val: number, sign?: GateSign, good?: boolean): THREE.Group {
   const g = new THREE.Group();
   g.name = `gate_${op}_${val}`;
 
-  const isGood = op === 'add' || op === 'mult';
-  const mainHex = isGood ? 0x10b981 : 0xef4444;
-  const beamHex = isGood ? 0x059669 : 0xb91c1c;
-
+  const isGood = good ?? (op === 'add' || op === 'mult');
   const colWidth = 4.2;
-  const colHeight = 3.2;
+  const colHeight = 3.4;
 
-  // 1. Support Pillars (Left & Right)
-  const pillarMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
-  const pillarGeo = new THREE.BoxGeometry(0.32, colHeight, 0.32);
-
-  const pilL = new THREE.Mesh(pillarGeo, pillarMat);
+  // 1. Support pillars
+  const pillarMat = lam(0x2a2f38);
+  const pilL = new THREE.Mesh(gatePillarGeo, pillarMat);
   pilL.position.set(-colWidth / 2, colHeight / 2, 0);
   g.add(pilL);
-
-  const pilR = new THREE.Mesh(pillarGeo, pillarMat);
+  const pilR = new THREE.Mesh(gatePillarGeo, pillarMat);
   pilR.position.set(colWidth / 2, colHeight / 2, 0);
   g.add(pilR);
 
-  // 2. Overhead Lintel Beam
-  const lintelMat = new THREE.MeshLambertMaterial({
-    color: beamHex,
-    emissive: mainHex,
-    emissiveIntensity: 0.3,
-  });
-  const lintel = new THREE.Mesh(geoBox, lintelMat);
-  lintel.scale.set(colWidth + 0.4, 0.45, 0.36);
+  // 2. Overhead lintel (lit band in the effect colour)
+  const lintel = new THREE.Mesh(geoBox, isGood ? gateLintelMat.good : gateLintelMat.bad);
+  lintel.scale.set(colWidth + 0.4, 0.4, 0.36);
   lintel.position.set(0, colHeight, 0);
   g.add(lintel);
 
-  // 3. Central Glowing Energy Curtain with Embossed Typography Texture
-  const signText = formatGateLabel(op, val);
-  const curtainTex = createGateCurtainTexture(signText, isGood);
-  const curtainMat = new THREE.MeshLambertMaterial({
+  // 3. Tinted floor plate so the chosen lane reads clearly from the camera
+  const floor = new THREE.Mesh(gateFloorGeo, isGood ? gateFloorMat.good : gateFloorMat.bad);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0.03, 0.4);
+  g.add(floor);
+
+  // 4. Sign curtain
+  const curtainTex = createGateCurtainTexture(sign ?? { main: formatGateLabel(op, val), sub: isGood ? '強化' : '弱体' }, isGood);
+  const curtainMat = new THREE.MeshBasicMaterial({
     map: curtainTex,
-    color: 0xffffff,
     transparent: true,
-    opacity: 0.78,
+    opacity: 0.92,
     side: THREE.DoubleSide,
-    emissive: mainHex,
-    emissiveIntensity: 0.35,
     depthWrite: false,
   });
-
-  const curtainMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(colWidth - 0.2, colHeight - 0.55),
-    curtainMat
-  );
-  curtainMesh.position.set(0, (colHeight - 0.55) / 2 + 0.2, 0);
+  const curtainMesh = new THREE.Mesh(new THREE.PlaneGeometry(colWidth - 0.24, colHeight - 0.5), curtainMat);
+  curtainMesh.position.set(0, (colHeight - 0.5) / 2 + 0.22, 0);
   g.add(curtainMesh);
 
   g.userData = {
@@ -683,67 +749,76 @@ function formatGateLabel(op: GateOp, val: number): string {
   }
 }
 
-function createGateCurtainTexture(label: string, isGood: boolean): THREE.CanvasTexture {
+function fitFont(ctx: CanvasRenderingContext2D, text: string, weight: string, size: number, maxW: number): number {
+  let s = size;
+  ctx.font = `${weight} ${s}px "Hiragino Sans", "Noto Sans JP", "Arial Black", sans-serif`;
+  while (s > 12 && ctx.measureText(text).width > maxW) {
+    s -= 2;
+    ctx.font = `${weight} ${s}px "Hiragino Sans", "Noto Sans JP", "Arial Black", sans-serif`;
+  }
+  return s;
+}
+
+function createGateCurtainTexture(sign: GateSign, isGood: boolean): THREE.CanvasTexture {
+  const W = 256;
+  const H = 212;
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 180;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext('2d')!;
+  const accent = isGood ? '#1fae7a' : '#e0452f';
+  const accentDark = isGood ? '#0d5c40' : '#7a1f14';
 
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, 180);
-  if (isGood) {
-    bgGrad.addColorStop(0, 'rgba(16, 185, 129, 0.85)');
-    bgGrad.addColorStop(0.5, 'rgba(5, 150, 105, 0.65)');
-    bgGrad.addColorStop(1, 'rgba(4, 120, 87, 0.9)');
-  } else {
-    bgGrad.addColorStop(0, 'rgba(239, 68, 68, 0.85)');
-    bgGrad.addColorStop(0.5, 'rgba(185, 28, 28, 0.65)');
-    bgGrad.addColorStop(1, 'rgba(153, 27, 27, 0.9)');
-  }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 256, 180);
+  // Panel
+  ctx.fillStyle = 'rgba(12, 15, 20, 0.86)';
+  ctx.fillRect(0, 0, W, H);
 
-  // Border frame
-  ctx.strokeStyle = isGood ? '#a7f3d0' : '#fecaca';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(6, 6, 244, 168);
-
-  // Subtle grid/hex curtain lines
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.lineWidth = 1.5;
-  for (let y = 20; y < 180; y += 20) {
-    ctx.beginPath();
-    ctx.moveTo(10, y);
-    ctx.lineTo(246, y);
-    ctx.stroke();
-  }
-
-  // Large Bold Embossed Typography (Zero Emojis)
-  ctx.font = '900 68px "Impact", "Arial Black", sans-serif';
+  // Header band with category caption
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, 0, W, 52);
+  ctx.fillStyle = accentDark;
+  ctx.fillRect(0, 52, W, 5);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
-  // Drop shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.fillText(label, 131, 94);
-
-  // Glow
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(label, 128, 90);
+  fitFont(ctx, sign.sub, '900', 32, W - 24);
+  ctx.fillText(sign.sub, W / 2, 28);
 
-  // Subtitle (e.g. SQUAD MULTIPLIER / HAZARD)
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillStyle = isGood ? '#d1fae5' : '#fee2e2';
-  ctx.fillText(isGood ? 'SQUAD BOOSTER' : 'COMMUTE HAZARD', 128, 148);
+  // Main value
+  fitFont(ctx, sign.main, '900', 92, W - 28);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = accentDark;
+  ctx.strokeText(sign.main, W / 2, 124);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(sign.main, W / 2, 124);
+
+  // Direction chevrons (drawn, not glyphs)
+  ctx.fillStyle = accent;
+  for (let i = 0; i < 3; i++) {
+    const cx = W / 2 + (i - 1) * 46;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, 176);
+    ctx.lineTo(cx + 14, 176);
+    ctx.lineTo(cx, 194);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Frame
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(3, 3, W - 6, H - 6);
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
-/** Animated wave ripple on gate energy curtain */
+/** Subtle breathing glow on the gate sign */
 export function updateGateCurtain(group: THREE.Group, time: number): void {
   const ud = group.userData;
   if (!ud || !ud.curtainMat) return;
-  ud.curtainMat.opacity = 0.74 + Math.sin(time * 4) * 0.08;
+  ud.curtainMat.opacity = 0.88 + Math.sin(time * 4) * 0.06;
 }
 
 /* =========================================================================
@@ -776,7 +851,7 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
       g.add(runner);
 
       // Flapping tie streaming backwards
-      const tieMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+      const tieMat = lam(0xef4444);
       const tieTrail = new THREE.Mesh(geoBox, tieMat);
       tieTrail.scale.set(0.08 * s, 0.06 * s, 0.42 * s);
       tieTrail.position.set(0, 0.95 * s, -0.22 * s);
@@ -795,8 +870,7 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
 
       // Overcoat collar
       const coatCollar = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0xb45309 })
+        geoBox, lam(0xb45309)
       );
       coatCollar.scale.set(0.76 * s, 0.18 * s, 0.44 * s);
       coatCollar.position.set(0, 1.25 * s, 0);
@@ -807,8 +881,8 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
     case 'brute': {
       // Muscular titan: broad chest, heavy steel suitcase club
       const bruteRoot = new THREE.Group();
-      const bruteSuit = new THREE.MeshLambertMaterial({ color: 0xea580c });
-      const skinMat = new THREE.MeshLambertMaterial({ color: 0xf6d3b4 });
+      const bruteSuit = lam(0xea580c);
+      const skinMat = lam(0xf6d3b4);
 
       // Torso (Trapezoid Chest)
       const torso = new THREE.Mesh(geoBox, bruteSuit);
@@ -832,8 +906,7 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
 
       // Heavy steel suitcase battering ram in right hand
       const steelCase = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0x475569 })
+        geoBox, lam(0x475569)
       );
       steelCase.scale.set(0.35 * s, 0.75 * s, 0.95 * s);
       steelCase.position.set(-0.82 * s, 0.75 * s, 0.25 * s);
@@ -842,8 +915,7 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
       // Thick Legs
       for (const side of [-1, 1]) {
         const leg = new THREE.Mesh(
-          geoBox,
-          new THREE.MeshLambertMaterial({ color: 0x334155 })
+          geoBox, lam(0x334155)
         );
         leg.scale.set(0.38 * s, 0.75 * s, 0.38 * s);
         leg.position.set(side * 0.32 * s, 0.38 * s, 0);
@@ -916,14 +988,13 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
       scooter.position.y = 0.2 * s;
 
       const deck = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshLambertMaterial({ color: 0x1e293b })
+        geoBox, lam(0x1e293b)
       );
       deck.scale.set(0.35 * s, 0.1 * s, 1.6 * s);
       scooter.add(deck);
 
       // Two wheels
-      const wheelMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+      const wheelMat = lam(0x0f172a);
       for (const oz of [-0.7 * s, 0.7 * s]) {
         const wheel = new THREE.Mesh(geoCylinder, wheelMat);
         wheel.scale.set(0.24 * s, 0.12 * s, 0.24 * s);
@@ -934,16 +1005,14 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
 
       // Steering column & handlebars
       const column = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshLambertMaterial({ color: 0x64748b })
+        geoCylinder, lam(0x64748b)
       );
       column.scale.set(0.05 * s, 1.1 * s, 0.05 * s);
       column.position.set(0, 0.55 * s, 0.65 * s);
       scooter.add(column);
 
       const handlebar = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshLambertMaterial({ color: 0xf43f5e })
+        geoCylinder, lam(0xf43f5e)
       );
       handlebar.scale.set(0.04 * s, 0.65 * s, 0.04 * s);
       handlebar.rotation.z = Math.PI / 2;
@@ -952,8 +1021,7 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
 
       // Headlight
       const lamp = new THREE.Mesh(
-        geoSphere,
-        new THREE.MeshBasicMaterial({ color: 0xfef08a })
+        geoSphere, basic(0xfef08a)
       );
       lamp.scale.setScalar(0.12 * s);
       lamp.position.set(0, 1.05 * s, 0.72 * s);
@@ -970,7 +1038,7 @@ export function buildEnemyMesh(kind: string, elite = false): THREE.Group {
 
   // Elite aura ornament
   if (elite && kind !== 'boss') {
-    const crownMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    const crownMat = basic(0xfacc15);
     const crown = new THREE.Mesh(geoCylinder, crownMat);
     crown.scale.set(0.4 * s, 0.08 * s, 0.4 * s);
     crown.position.y = 2.15 * s;
@@ -1002,8 +1070,8 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
   if (courseId === 'desert') stripeHex = 0xea580c; // Chuo orange
   if (courseId === 'snow') stripeHex = 0xa855f7; // Midnight Subway neon purple
 
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xe2e8f0 }); // Stainless steel
-  const darkCabMat = new THREE.MeshLambertMaterial({ color: 0x0f172a }); // Dark cab trim
+  const bodyMat = lam(0xe2e8f0); // Stainless steel
+  const darkCabMat = lam(0x0f172a); // Dark cab trim
   const stripeMat = new THREE.MeshLambertMaterial({
     color: stripeHex,
     emissive: stripeHex,
@@ -1031,8 +1099,7 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
 
   // Cockpit Windshield (Tinted glass)
   const windshield = new THREE.Mesh(
-    geoBox,
-    new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+    geoBox, basic(0x38bdf8)
   );
   windshield.scale.set(width - 0.6, 0.65, 0.1);
   windshield.position.set(0, 1.85, length / 2 + 0.95);
@@ -1040,7 +1107,7 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
   g.add(windshield);
 
   // 4. Heavy Steel Cowcatcher / Wedge Plow on Track Bumper
-  const cowcatcherMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+  const cowcatcherMat = lam(0x1e293b);
   const plowL = new THREE.Mesh(geoBox, cowcatcherMat);
   plowL.scale.set(width * 0.52, 0.45, 0.85);
   plowL.rotation.y = 0.45;
@@ -1054,7 +1121,7 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
   g.add(plowR);
 
   // 5. Dual Xenon High-Beam Headlights
-  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+  const lightMat = basic(0xfef08a);
   for (const lx of [-width * 0.32, width * 0.32]) {
     const lamp = new THREE.Mesh(geoSphere, lightMat);
     lamp.scale.set(0.38, 0.38, 0.25);
@@ -1063,7 +1130,7 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
   }
 
   // 6. Flank Passenger Windows with Illuminated Silhouettes
-  const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef3c7 });
+  const windowMat = basic(0xfef3c7);
   for (let z = -length * 0.35; z <= length * 0.35; z += 1.6) {
     for (const side of [-1, 1]) {
       const win = new THREE.Mesh(geoBox, windowMat);
@@ -1076,8 +1143,7 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
   // 7. Roof AC Units & Diamond Pantograph
   for (const z of [-1.8, 1.2]) {
     const ac = new THREE.Mesh(
-      geoBox,
-      new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+      geoBox, lam(0x94a3b8)
     );
     ac.scale.set(1.4, 0.35, 1.8);
     ac.position.set(0, height + 0.5, z);
@@ -1085,14 +1151,14 @@ export function buildTrainBossMesh(courseId = 'city'): THREE.Group {
   }
 
   // Diamond linkage pantograph on roof
-  const pantoMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+  const pantoMat = lam(0xef4444);
   const pantoFrame = new THREE.Mesh(geoBox, pantoMat);
   pantoFrame.scale.set(1.2, 0.7, 0.8);
   pantoFrame.position.set(0, height + 0.75, -2.2);
   g.add(pantoFrame);
 
   // 8. Bogies / Wheels underneath
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+  const wheelMat = lam(0x0f172a);
   for (const bz of [-2.4, 2.4]) {
     for (const side of [-1, 1]) {
       const wheel = new THREE.Mesh(geoCylinder, wheelMat);
@@ -1121,14 +1187,14 @@ export function buildCrateMesh(kind: BarrelKind): THREE.Group {
   g.name = `crate_${kind}`;
 
   // 1. Reinforced Wooden Cargo Box
-  const crateMat = new THREE.MeshLambertMaterial({ color: 0x92400e });
+  const crateMat = lam(0x92400e);
   const box = new THREE.Mesh(geoBox, crateMat);
   box.scale.set(1.1, 1.1, 1.1);
   box.position.y = 0.55;
   g.add(box);
 
   // Steel Corner Brackets
-  const steelMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+  const steelMat = lam(0x475569);
   const strap = new THREE.Mesh(geoBox, steelMat);
   strap.scale.set(1.14, 0.2, 1.14);
   strap.position.y = 0.55;
@@ -1151,8 +1217,7 @@ function buildHolographicIcon(kind: BarrelKind): THREE.Group {
     case 'weapon': {
       // Golden 3D blaster
       const icon = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshBasicMaterial({ color: 0xfde047 })
+        geoBox, basic(0xfde047)
       );
       icon.scale.set(0.18, 0.35, 0.65);
       g.add(icon);
@@ -1161,8 +1226,7 @@ function buildHolographicIcon(kind: BarrelKind): THREE.Group {
     case 'bomb': {
       // Orange 3D explosive dynamo with lightning wedges
       const icon = new THREE.Mesh(
-        geoSphere,
-        new THREE.MeshBasicMaterial({ color: 0xfb923c })
+        geoSphere, basic(0xfb923c)
       );
       icon.scale.setScalar(0.38);
       g.add(icon);
@@ -1171,8 +1235,7 @@ function buildHolographicIcon(kind: BarrelKind): THREE.Group {
     case 'coin': {
       // Gold 3D coin disc
       const icon = new THREE.Mesh(
-        geoCylinder,
-        new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+        geoCylinder, basic(0xfacc15)
       );
       icon.scale.set(0.42, 0.08, 0.42);
       icon.rotation.x = Math.PI / 2;
@@ -1182,8 +1245,7 @@ function buildHolographicIcon(kind: BarrelKind): THREE.Group {
     case 'repair': {
       // Cyan 3D armor plate / wrench cross
       const icon = new THREE.Mesh(
-        geoBox,
-        new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        geoBox, basic(0x38bdf8)
       );
       icon.scale.set(0.52, 0.52, 0.12);
       g.add(icon);
@@ -1205,7 +1267,7 @@ export function buildCageMesh(): THREE.Group {
   const height = 2.1;
 
   // Steel top and bottom plates
-  const plateMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+  const plateMat = lam(0x334155);
   const botPlate = new THREE.Mesh(geoBox, plateMat);
   botPlate.scale.set(width, 0.2, width);
   botPlate.position.y = 0.1;
@@ -1217,7 +1279,7 @@ export function buildCageMesh(): THREE.Group {
   g.add(topPlate);
 
   // 6 Glowing Laser Prison Bars
-  const laserMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+  const laserMat = basic(0x38bdf8);
   const offsets = [
     [-width / 2 + 0.1, -width / 2 + 0.1],
     [width / 2 - 0.1, -width / 2 + 0.1],
