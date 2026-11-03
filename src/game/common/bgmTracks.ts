@@ -18,7 +18,7 @@ export const BGM_TRACK_IDS = [
   'danmaku-boss', // 社畜シューティング: ボス戦
   'jinro-day', // 社畜人狼: 昼の議論/投票
   'jinro-night', // 社畜人狼: 夜
-  'mortgage-life', // 1,300万世帯分の1：住宅ローン破産サバイバル（ドキュメンタリーアンビエント）
+  'mortgage-life', // マイホーム完済記：35年・50年ローンの家計と暮らし（ドキュメンタリーアンビエント）
 ] as const;
 
 export type BgmTrackId = (typeof BGM_TRACK_IDS)[number];
@@ -1289,7 +1289,7 @@ export const BGM_TRACKS: Record<string, BgmTrack> = {
 },
   'mortgage-life': {
     id: 'mortgage-life',
-    title: '1,300万世帯分の1の年代記',
+    title: 'マイホーム完済記のテーマ',
     bpm: 84,
     master: 0.78,
     voices: [

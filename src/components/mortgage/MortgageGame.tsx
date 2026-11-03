@@ -13,11 +13,18 @@ import {
   advanceOneYear,
   analyzeOutcomeFactors,
   createMortgageGame,
+  executeMidTermRateHike,
   executePrepayment,
   executePropertySpecificAction,
   executeRefinance,
   executeSellProperty,
   generateRandomHouseholdSetup,
+  randomizeBankLoanParams,
+  randomizeHouseholdParams,
+  randomizePropertyParams,
+  resolveEffectiveBank,
+  resolveEffectiveDanshin,
+  resolveEffectiveProperty,
   resolveMortgageDecision,
   runBankUnderwriting,
   setFocusMode,
@@ -26,6 +33,8 @@ import {
   BankId,
   ContractType,
   DanshinType,
+  EmploymentType,
+  EnergyCertType,
   FamilyPlanType,
   FocusModeId,
   LoanTermYears,
@@ -33,6 +42,7 @@ import {
   MortgageGameState,
   MortgageSetupConfig,
   PropertyCategory,
+  RateType,
   RepaymentMethod,
 } from '@/types/mortgage';
 import { AudioToggle, useBgm } from '@/components/game/AudioToggle';
@@ -43,18 +53,26 @@ import {
   JapanMortgageMapIllustration,
   LifeMapGrid,
   LifeScenePanoramaSvg,
+  LoanStructureVisualSvg,
   MultiPerspectiveCharts,
   PropertyArchitecturalIllustration,
 } from './MortgageVisuals';
 
 type SpeedSetting = 0 | 0.5 | 1 | 2 | 4 | 8;
 
-const ENERGY_CERT_LABELS = {
+const ENERGY_CERT_LABELS: Record<EnergyCertType, string> = {
   'long-term-excellent': '長期優良住宅（控除最大・固定資産税5年軽減）',
   zeh: 'ZEH水準省エネ住宅（控除優遇）',
   standard: '一般省エネ基準適合',
   'non-compliant': '旧省エネ基準（新築は住宅ローン控除0円）',
-} as const;
+};
+
+const RATE_TYPE_LABELS: Record<RateType, string> = {
+  variable: '変動金利（日銀利上げに連動）',
+  'fixed-10': '当初10年固定金利（11年目から変動）',
+  'flat-35': '全期間固定金利（完済まで金利不変）',
+  mix: 'ミックス返済（変動50%＋固定50%）',
+};
 
 const CONTRACT_LABELS: Record<ContractType, string> = {
   single: '単独ローン（1馬力契約）',
@@ -88,9 +106,10 @@ export function MortgageGame() {
     macroRegime: 'gradual-hike',
   }));
 
-  // 画面フェーズ: 'intro' (1in8bトップ) -> 'rolling' (抽選中) -> 'cert' (契約証書・誕生カード) -> 'life' (本編・結末)
+  // 画面フェーズ: 'intro' (トップ) -> 'rolling' (抽選中) -> 'cert' (契約証書) -> 'life' (本編・結末)
   const [viewStage, setViewStage] = useState<'intro' | 'rolling' | 'cert' | 'life'>('intro');
   const [spawnMode, setSpawnMode] = useState<'random' | 'custom'>('random');
+  const [setupStepTab, setSetupStepTab] = useState<'step1' | 'step2' | 'step3' | 'all'>('all');
   const [speedSetting, setSpeedSetting] = useState<SpeedSetting>(1);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [autoResolveDecisions, setAutoResolveDecisions] = useState<boolean>(false);
@@ -112,7 +131,7 @@ export function MortgageGame() {
     false,
   );
 
-  // イントロ画面のリアルタイム統計カウンター（1in8bの出生/死亡カウンターと同様の演出）
+  // イントロ画面のリアルタイム統計カウンター
   useEffect(() => {
     if (viewStage !== 'intro') return;
     const t = window.setInterval(() => {
@@ -139,9 +158,9 @@ export function MortgageGame() {
   }, [viewStage, rollingStep]);
 
   const liveUnderwriting = useMemo(() => runBankUnderwriting(setupConfig), [setupConfig]);
-  const selectedProperty = PROPERTIES[setupConfig.propertyId];
-  const selectedBank = BANKS[setupConfig.bankId];
-  const selectedDanshin = DANSHIN_PLANS[setupConfig.danshin];
+  const selectedProperty = useMemo(() => resolveEffectiveProperty(setupConfig), [setupConfig]);
+  const selectedBank = useMemo(() => resolveEffectiveBank(setupConfig), [setupConfig]);
+  const selectedDanshin = useMemo(() => resolveEffectiveDanshin(setupConfig), [setupConfig]);
   const selectedArchetype =
     ARCHETYPES.find((a) => a.id === setupConfig.archetypeId) ?? ARCHETYPES[0];
 
@@ -226,6 +245,7 @@ export function MortgageGame() {
   const handleApplyArchetype = useCallback((archId: string) => {
     const arch = ARCHETYPES.find((a) => a.id === archId);
     if (!arch) return;
+    const prop = PROPERTIES[arch.recommendedProperty];
     audioManager.playSe('click');
     setSetupConfig((prev) => ({
       ...prev,
@@ -240,7 +260,27 @@ export function MortgageGame() {
       contractType: arch.recommendedContract,
       familyPlan: arch.recommendedFamily,
       propertyId: arch.recommendedProperty,
+      customPropertyPriceMan: prop.priceMan,
+      customLandRatio: prop.landRatio,
+      customBuildingType: prop.buildingType,
+      customIsNew: prop.isNew,
+      customBuiltAge: prop.builtAge,
+      customEnergyCert: prop.energyCert,
+      customMgmtAndRepairMonthlyMan: Number(
+        (prop.initialMgmtFeeMonthlyMan + prop.initialRepairFeeMonthlyMan).toFixed(1),
+      ),
+      randomRollSummary: undefined,
     }));
+  }, []);
+
+  const handleShuffleAllSetup = useCallback(() => {
+    audioManager.playSe('roll');
+    const randomCfg = generateRandomHouseholdSetup();
+    setSetupConfig((prev) => ({
+      ...randomCfg,
+      macroRegime: prev.macroRegime,
+    }));
+    setSpawnMode('custom');
   }, []);
 
   const handlePressBornButton = () => {
@@ -256,6 +296,16 @@ export function MortgageGame() {
       audioManager.playSe('stamp');
       setViewStage('cert');
     }
+  };
+
+  const handleStartRandomImmediately = () => {
+    const randomCfg = generateRandomHouseholdSetup();
+    setSetupConfig({
+      ...randomCfg,
+      macroRegime: setupConfig.macroRegime,
+    });
+    setRollingStep(0);
+    setViewStage('rolling');
   };
 
   const handleRerollCert = () => {
@@ -313,41 +363,47 @@ export function MortgageGame() {
   };
 
   // ============================================================================
-  // フェーズ 1: 1in8b.life/ja/ スタイルのイントロ画面
+  // フェーズ 1: イントロ・条件設計画面
   // ============================================================================
   if (viewStage === 'intro') {
     const newLoansCount = Math.max(1, Math.floor(introSecondTick * 1.4));
     const troubleCount = Math.floor(introSecondTick * 0.25);
 
     const oddsRows = [
-      { id: 'steady-couple-station', label: '首都圏・共働きマンション', pct: 22.4 },
-      { id: 'civil-servant-single', label: '郊外・新築戸建て安定世帯', pct: 24.8 },
-      { id: 'late-30s-family-late-loan', label: '30代後半・74歳完済世帯', pct: 19.5 },
-      { id: 'young-50yr-challenger', label: '20代・50年超長期ローン', pct: 15.3 },
-      { id: 'freelance-creator', label: 'フリーランス・中古リノベ', pct: 11.2 },
-      { id: 'power-couple-tower', label: '都心・湾岸タワマン世帯', pct: 6.8 },
+      { id: 'steady-couple-station', label: '首都圏・共働きマンション', pct: 16.5 },
+      { id: 'civil-servant-single', label: '郊外・新築戸建て安定世帯', pct: 15.2 },
+      { id: 'late-30s-family-late-loan', label: '30代後半・74歳完済世帯', pct: 12.4 },
+      { id: 'young-50yr-challenger', label: '20代・50年超長期ローン', pct: 10.8 },
+      { id: 'regional-car-society-home', label: '地方都市・車2台と広い庭の戸建て', pct: 9.6 },
+      { id: 'medical-nurse-couple-zeh', label: '医療・福祉共働き・注文住宅ZEH', pct: 8.2 },
+      { id: 'freelance-creator', label: 'フリーランス・中古リノベ', pct: 6.8 },
+      { id: 'single-professional-compact', label: '単身キャリア・都心1LDK資産形成', pct: 6.1 },
+      { id: 'child-rearing-3kids-minivan', label: '3児子育て・教育費ピーク挑戦世帯', pct: 5.2 },
+      { id: 'power-couple-tower', label: '都心・湾岸タワマンペアローン', pct: 4.1 },
+      { id: 'senior-relocation-cash-rich', label: '40代半ば・住み替えステップアップ', pct: 3.1 },
+      { id: 'countryside-telework-kominka', label: 'フルリモート移住・古民家リノベ', pct: 2.0 },
     ];
 
     return (
       <div className="text-[#13212A] dark:text-[#E1E9E6]">
-        {/* ヒーロー2カラム（1in8b.life/ja/ と同じ構成） */}
+        {/* ヒーロー2カラム */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start">
           {/* 左：タイトル・リード文・リアルタイムカウンター */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-6">
             <p className="font-mono text-xs font-semibold tracking-wide text-[#0F6E68] dark:text-[#4CC0AF]">
               無料の住宅ローン人生シミュレーション · 国土交通省・日銀・住宅金融支援機構の統計にもとづく
             </p>
-            <h1 className="font-editorial mt-3 text-6xl font-bold leading-[0.94] tracking-tight sm:text-8xl">
-              1,300万
-              <span className="whitespace-nowrap">
-                分の<em className="not-italic text-[#8C1D3C] dark:text-[#E2678A]">1</em>
+            <h1 className="font-editorial mt-3 text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
+              マイホーム<em className="not-italic text-[#8C1D3C] dark:text-[#E2678A]">完済記</em>
+              <span className="mt-2 block text-xl font-semibold text-[#4A5A61] sm:text-2xl dark:text-[#A3B2AF]">
+                35年・50年ローンの家計と暮らし
               </span>
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-[#4A5A61] sm:text-lg dark:text-[#A3B2AF]">
-              いまこの瞬間にも、日本のどこかで誰かがマイホームの鍵を受け取り、35年・50年の返済を始めています。そのひとりになって、完済の日までの一度きりの家計と暮らしを最後まで生きてみます。
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-[#4A5A61] sm:text-lg dark:text-[#A3B2AF]">
+              いまこの瞬間にも、日本のどこかで誰かがマイホームの鍵を受け取り、35年・50年の返済を始めています。全12世帯モデル・全12物件・7銀行プランからひとつの家族になって、完済の日までの家計と暮らしを体験します。
             </p>
 
-            {/* 1in8bスタイルのリアルタイムカウンター */}
+            {/* リアルタイムカウンター */}
             <div className="mt-7 flex flex-wrap gap-8 border-t border-[#C7D2CE] pt-5 dark:border-[#2A383D]">
               <div>
                 <strong className="font-editorial block text-3xl font-semibold tabular-nums text-[#13212A] dark:text-[#E1E9E6]">
@@ -368,16 +424,21 @@ export function MortgageGame() {
             </div>
           </div>
 
-          {/* 右：日本列島統計マップ ＆ 「いま鍵を受け取る世帯だったら」確率バー表 */}
-          <div className="space-y-3 lg:col-span-5">
+          {/* 右：日本列島統計マップ ＆ 「いま鍵を受け取る世帯だったら」全12パターン確率バー表 */}
+          <div className="space-y-3 lg:col-span-6">
             <JapanMortgageMapIllustration activeTick={introSecondTick} />
 
-            <div className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-5 shadow-sm dark:border-[#2A383D] dark:bg-[#141D21]">
-              <h2 className="font-editorial text-lg font-semibold">いま鍵を受け取る世帯だったら</h2>
+            <div className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-4 shadow-sm sm:p-5 dark:border-[#2A383D] dark:bg-[#141D21]">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-editorial text-lg font-semibold">いま鍵を受け取る世帯だったら（全12パターン）</h2>
+                <span className="font-mono text-[11px] text-[#0F6E68] dark:text-[#4CC0AF]">
+                  タップでその世帯を選択
+                </span>
+              </div>
               <p className="mt-0.5 text-xs text-[#5F6E72] dark:text-[#8A9A96]">
-                日本の住宅市場統計における主な世帯タイプの割合（行をクリックでその境遇を選択）
+                日本の住宅市場統計における主な世帯モデルの割合（文字切れなし・全12世帯から自由に選択可能）
               </p>
-              <div className="mt-3.5 space-y-2">
+              <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {oddsRows.map((row) => {
                   const isSelected = setupConfig.archetypeId === row.id;
                   return (
@@ -388,21 +449,23 @@ export function MortgageGame() {
                         handleApplyArchetype(row.id);
                         setSpawnMode('custom');
                       }}
-                      className={`grid w-full grid-cols-[9.5em_1fr_3em] items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition sm:grid-cols-[11em_1fr_3.4em] sm:gap-2.5 ${
+                      className={`flex flex-col gap-1 rounded border px-2.5 py-2 text-left text-xs transition ${
                         isSelected
-                          ? 'bg-[#DCEDEA] font-bold text-[#13212A] dark:bg-[#12302D] dark:text-white'
-                          : 'hover:bg-[#F0F4F2] dark:hover:bg-[#1A2428]'
+                          ? 'border-[#0F6E68] bg-[#DCEDEA] font-bold text-[#13212A] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-white'
+                          : 'border-[#DCE4E1] bg-[#F0F4F2]/60 hover:bg-[#F0F4F2] dark:border-[#1D282C] dark:bg-[#1A2428]/60 dark:hover:bg-[#1A2428]'
                       }`}
                     >
-                      <span className="truncate">{row.label}</span>
-                      <span className="h-2 overflow-hidden rounded-[1px] bg-[#DCE4E1] dark:bg-[#1D282C]">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="break-words leading-snug">{row.label}</span>
+                        <span className="shrink-0 font-mono text-[11px] text-[#4A5A61] dark:text-[#A3B2AF]">
+                          {row.pct}%
+                        </span>
+                      </div>
+                      <span className="block h-1.5 w-full overflow-hidden rounded-[1px] bg-[#DCE4E1] dark:bg-[#1D282C]">
                         <i
-                          style={{ width: `${Math.min(100, row.pct * 3.6)}%` }}
+                          style={{ width: `${Math.min(100, row.pct * 5.2)}%` }}
                           className="block h-full bg-[#0F6E68] dark:bg-[#4CC0AF]"
                         />
-                      </span>
-                      <span className="text-right font-mono text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
-                        {row.pct}%
                       </span>
                     </button>
                   );
@@ -412,15 +475,59 @@ export function MortgageGame() {
           </div>
         </div>
 
-        {/* 1in8bスタイルのセグメント設定バー (.opts) */}
-        <div className="mt-10 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-6 shadow-sm dark:border-[#2A383D] dark:bg-[#141D21]">
-          <div className="flex flex-wrap items-start gap-8">
-            {/* 1. 境遇の決め方 */}
+        {/* セグメント設定バー (.opts) ＆ 常時カスタマイズ可能な詳細設計シート */}
+        <div className="mt-10 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-4 shadow-sm sm:p-6 dark:border-[#2A383D] dark:bg-[#141D21]">
+          {/* クイックアクション＆スタートボタン帯（スマホでも一番上で即開始・即シャッフル可能） */}
+          <div className="flex flex-col gap-3 rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED]/80 p-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-4 dark:border-[#2A383D] dark:bg-[#0D1316]/80">
+            <div>
+              <div className="text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                ランダムでも、自分の年齢・物件・金利・期間を細かく選んでもすぐ始められます
+              </div>
+              <p className="mt-0.5 text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
+                テンプレを選ぶだけでも、数値スライダーを動かすだけでも、完全ランダム生成でもOKです。
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleStartRandomImmediately}
+                className="rounded-[4px] border border-[#0F6E68] bg-[#DCEDEA] px-3.5 py-2.5 text-xs font-bold text-[#0F6E68] shadow-xs transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+              >
+                完全ランダム抽選で今すぐ始める →
+              </button>
+              <button
+                type="button"
+                onClick={handleShuffleAllSetup}
+                className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-3.5 py-2.5 text-xs font-bold text-[#13212A] transition hover:bg-[#F0F4F2] dark:border-[#2A383D] dark:bg-[#141D21] dark:text-[#E1E9E6]"
+              >
+                全条件をランダムシャッフル
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  audioManager.playSe('stamp');
+                  setViewStage('cert');
+                }}
+                className="rounded-[4px] bg-[#8C1D3C] px-4 py-2.5 text-xs font-bold text-white shadow transition hover:brightness-110 dark:bg-[#E2678A] dark:text-[#1B0910]"
+              >
+                現在の条件で本審査証書を発行 →
+              </button>
+            </div>
+          </div>
+
+          {setupConfig.randomRollSummary && (
+            <div className="mt-3 rounded-[4px] border border-[#0F6E68]/50 bg-[#DCEDEA]/60 px-3.5 py-2 font-mono text-xs font-semibold text-[#0F6E68] dark:border-[#4CC0AF]/40 dark:bg-[#12302D]/60 dark:text-[#4CC0AF]">
+              ランダム生成プロファイル：{setupConfig.randomRollSummary}
+            </div>
+          )}
+
+          <div className="mt-5 flex flex-wrap items-start gap-6">
+            {/* 1. スタート時のモード */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold tracking-wider text-[#5F6E72] dark:text-[#8A9A96]">
-                境遇と物件の決め方
+                「鍵を受け取る」ボタンを押したときの動作
               </span>
-              <div className="inline-flex overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] dark:border-[#2A383D] dark:bg-[#0D1316]">
+              <div className="inline-flex flex-wrap overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] dark:border-[#2A383D] dark:bg-[#0D1316]">
                 <button
                   type="button"
                   onClick={() => setSpawnMode('random')}
@@ -431,7 +538,7 @@ export function MortgageGame() {
                       : 'text-[#4A5A61] dark:text-[#A3B2AF]'
                   }`}
                 >
-                  統計どおりランダムに決める
+                  統計＋ランダム数値で抽選して始める
                 </button>
                 <button
                   type="button"
@@ -443,27 +550,24 @@ export function MortgageGame() {
                       : 'text-[#4A5A61] dark:text-[#A3B2AF]'
                   }`}
                 >
-                  自分で物件・銀行・ペアローン等を設計する
+                  下の設計シートの条件で始める
                 </button>
               </div>
-              <span className="max-w-xs text-xs text-[#5F6E72] dark:text-[#8A9A96]">
-                ランダムなら統計確率に応じて世帯・物件・ローン条件が抽選されます。「自分で設計」ならタワマンや50年ローン等を自由に選べます。
-              </span>
             </div>
 
-            {/* 2. これからの世界（金利・経済情勢） */}
+            {/* 2. これからの世界（金利・経済情勢・途中利上げ） */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold tracking-wider text-[#5F6E72] dark:text-[#8A9A96]">
-                これからの世界（日銀・金利情勢）
+                これからの世界（日銀・金利情勢・途中利上げシナリオ）
               </span>
               <div className="inline-flex flex-wrap overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] dark:border-[#2A383D] dark:bg-[#0D1316]">
                 {(
                   [
-                    { id: 'gradual-hike', label: 'いまの日本（段階利上げ）' },
-                    { id: 'stagflation-shock', label: '円安スタグフレーション' },
-                    { id: 'asset-bubble', label: '好景気・資産バブル' },
-                    { id: 'deflation-return', label: 'デフレ回帰' },
-                    { id: 'dynamic-random', label: 'どの世界でも（ランダム）' },
+                    { id: 'gradual-hike', label: '段階利上げ（途中利上げあり）' },
+                    { id: 'stagflation-shock', label: '円安スタグフレーション（急激利上げ）' },
+                    { id: 'asset-bubble', label: '好景気・資産バブル（賃金も金利も上昇）' },
+                    { id: 'deflation-return', label: 'デフレ回帰（一時利上げ後に低下）' },
+                    { id: 'dynamic-random', label: 'おまかせ（波乱ランダム）' },
                   ] as { id: MacroRegimeId; label: string }[]
                 ).map((m, idx) => (
                   <button
@@ -481,7 +585,7 @@ export function MortgageGame() {
                   </button>
                 ))}
               </div>
-              <span className="max-w-md text-xs text-[#5F6E72] dark:text-[#8A9A96]">
+              <span className="max-w-xl text-xs text-[#5F6E72] dark:text-[#8A9A96]">
                 {MACRO_REGIMES[setupConfig.macroRegime].description}
               </span>
             </div>
@@ -491,7 +595,7 @@ export function MortgageGame() {
               <span className="text-xs font-semibold tracking-wider text-[#5F6E72] dark:text-[#8A9A96]">
                 時間の進むペース（プレイ中も変更可能）
               </span>
-              <div className="inline-flex overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] dark:border-[#2A383D] dark:bg-[#0D1316]">
+              <div className="inline-flex flex-wrap overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] dark:border-[#2A383D] dark:bg-[#0D1316]">
                 {(
                   [
                     { spd: 0.5, label: 'じっくり (0.5×)' },
@@ -516,99 +620,255 @@ export function MortgageGame() {
                   </button>
                 ))}
               </div>
-              <span className="max-w-sm text-xs text-[#5F6E72] dark:text-[#8A9A96]">
-                返済が始まったあとも、画面上部のバーでいつでも一時停止・倍速変更・1年送り・早送りができます。
-              </span>
             </div>
           </div>
 
-          {/* カスタム設計モード展開時のイラスト付き詳細設計＆銀行本審査シート */}
-          {spawnMode === 'custom' && (
-            <div className="mt-8 border-t border-[#C7D2CE] pt-7 dark:border-[#2A383D]">
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-                {/* 左7列：物件・銀行・ペアローン・団信の選択 */}
-                <div className="space-y-6 lg:col-span-7">
-                  {/* A. 世帯プリセット＆年収スライダー */}
+          {/* 常時表示：イラスト＆図解付き「住宅ローン・世帯・物件・金利」カスタマイズ設計シート */}
+          <div className="mt-7 border-t border-[#C7D2CE] pt-6 dark:border-[#2A383D]">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-editorial text-lg font-bold">
+                  世帯・マイホーム・銀行ローンの自由設計＆ランダム生成シート
+                </h3>
+                <p className="text-xs text-[#5F6E72] dark:text-[#8A9A96]">
+                  自分の年齢（20〜55歳）・年収・物件価格・新築/中古・省エネ性能・金利・返済期間（10〜50年）・団信を自由に選べます。
+                </p>
+              </div>
+
+              {/* スマホ・タブレットでも見やすいステップ切替タブ */}
+              <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] p-1 text-xs font-bold sm:inline-flex dark:border-[#2A383D] dark:bg-[#0D1316]">
+                {(
+                  [
+                    { id: 'all', label: 'すべて表示' },
+                    { id: 'step1', label: '① 世帯・年齢・年収' },
+                    { id: 'step2', label: '② 物件・価格・性能' },
+                    { id: 'step3', label: '③ 銀行・金利・期間' },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSetupStepTab(tab.id)}
+                    className={`rounded px-2.5 py-1.5 text-center transition ${
+                      setupStepTab === tab.id
+                        ? 'bg-[#13212A] text-white dark:bg-[#E1E9E6] dark:text-[#0D1316]'
+                        : 'text-[#4A5A61] hover:text-[#13212A] dark:text-[#A3B2AF]'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+              {/* 左7列：世帯・物件・銀行・金利・団信の詳細カスタマイズ */}
+              <div className="space-y-6 lg:col-span-7">
+                {/* ============================================================ */}
+                {/* STEP 1. 世帯モデル・自分の年齢・年収・自己資金・契約方式 */}
+                {/* ============================================================ */}
+                {(setupStepTab === 'all' || setupStepTab === 'step1') && (
                   <div className="rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED]/60 p-4 dark:border-[#2A383D] dark:bg-[#0D1316]/60">
-                    <h3 className="text-sm font-bold">1. 世帯モデル・年齢・年収・契約方式</h3>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-sm font-bold">
+                        1. 世帯モデル・自分の年齢（20〜55歳）・年収・契約方式
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.playSe('roll');
+                          setSetupConfig((prev) => randomizeHouseholdParams(prev));
+                          setSpawnMode('custom');
+                        }}
+                        className="rounded border border-[#0F6E68] bg-[#DCEDEA] px-2.5 py-1 text-xs font-bold text-[#0F6E68] transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+                      >
+                        世帯・年齢・年収をランダム生成
+                      </button>
+                    </div>
+
+                    <p className="mt-1 text-xs text-[#5F6E72] dark:text-[#8A9A96]">
+                      テンプレートをベースに選ぶか、下の年齢・年収スライダーで自分の条件に合わせられます。
+                    </p>
+
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {ARCHETYPES.map((arch) => (
                         <button
                           key={arch.id}
                           type="button"
-                          onClick={() => handleApplyArchetype(arch.id)}
+                          onClick={() => {
+                            handleApplyArchetype(arch.id);
+                            setSpawnMode('custom');
+                          }}
                           className={`rounded-[4px] border p-2.5 text-left text-xs transition ${
                             setupConfig.archetypeId === arch.id
                               ? 'border-[#8C1D3C] bg-[#F3E3E8]/70 font-bold dark:border-[#E2678A] dark:bg-[#3A1C26]/50'
                               : 'border-[#C7D2CE] bg-[#F7FAF8] dark:border-[#2A383D] dark:bg-[#141D21]'
                           }`}
                         >
-                          <div>{arch.title}</div>
-                          <div className="mt-0.5 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                          <div className="break-words">{arch.title}</div>
+                          <div className="mt-0.5 break-words text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
                             {arch.subtitle}
                           </div>
                         </button>
                       ))}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <label className="block text-xs">
-                        <div className="flex justify-between font-semibold">
-                          <span>契約時年齢</span>
-                          <span className="font-mono">{setupConfig.age}歳</span>
+                    {/* 自分の年齢のクイック選択＆1歳刻み調整 */}
+                    <div className="mt-4 rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-bold">
+                          自分の年齢（住宅ローン契約開始年齢）
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSetupConfig((p) => {
+                                setSpawnMode('custom');
+                                return { ...p, age: Math.max(20, p.age - 1) };
+                              })
+                            }
+                            className="rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2 py-0.5 font-mono text-xs font-bold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            -1歳
+                          </button>
+                          <span className="min-w-[64px] text-center font-mono text-base font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                            {setupConfig.age}歳
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSetupConfig((p) => {
+                                setSpawnMode('custom');
+                                return { ...p, age: Math.min(55, p.age + 1) };
+                              })
+                            }
+                            className="rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2 py-0.5 font-mono text-xs font-bold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            +1歳
+                          </button>
                         </div>
-                        <input
-                          type="range"
-                          min={24}
-                          max={46}
-                          value={setupConfig.age}
-                          onChange={(e) =>
-                            setSetupConfig((p) => ({ ...p, age: Number(e.target.value) }))
-                          }
-                          className="mt-1 w-full accent-[#8C1D3C]"
-                        />
-                      </label>
-                      <label className="block text-xs">
+                      </div>
+                      <input
+                        type="range"
+                        min={20}
+                        max={55}
+                        step={1}
+                        value={setupConfig.age}
+                        onChange={(e) => {
+                          setSpawnMode('custom');
+                          setSetupConfig((p) => ({ ...p, age: Number(e.target.value) }));
+                        }}
+                        className="mt-2 w-full accent-[#8C1D3C]"
+                      />
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {[22, 25, 28, 30, 32, 35, 38, 40, 45, 50].map((quickAge) => (
+                          <button
+                            key={quickAge}
+                            type="button"
+                            onClick={() => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({ ...p, age: quickAge }));
+                            }}
+                            className={`rounded border px-2 py-1 font-mono text-[11px] font-semibold ${
+                              setupConfig.age === quickAge
+                                ? 'border-[#8C1D3C] bg-[#8C1D3C] text-white dark:border-[#E2678A] dark:bg-[#E2678A] dark:text-[#1B0910]'
+                                : 'border-[#C7D2CE] bg-[#EBF0ED] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                            }`}
+                          >
+                            {quickAge}歳
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1.5 font-mono text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                        現在の設定での完済予定年齢：{setupConfig.age + setupConfig.termYears}歳（銀行の完済上限目安：80歳）
+                      </p>
+                    </div>
+
+                    {/* 年収・自己資金・頭金スライダー */}
+                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <label className="block rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3 text-xs dark:border-[#2A383D] dark:bg-[#141D21]">
                         <div className="flex justify-between font-semibold">
                           <span>本人額面年収</span>
-                          <span className="font-mono">{setupConfig.mainIncomeMan}万円</span>
+                          <span className="font-mono text-sm font-bold">
+                            {setupConfig.mainIncomeMan}万円
+                          </span>
                         </div>
                         <input
                           type="range"
-                          min={300}
-                          max={1400}
-                          step={20}
+                          min={250}
+                          max={2000}
+                          step={10}
                           value={setupConfig.mainIncomeMan}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            setSpawnMode('custom');
                             setSetupConfig((p) => ({
                               ...p,
                               mainIncomeMan: Number(e.target.value),
-                            }))
-                          }
-                          className="mt-1 w-full accent-[#8C1D3C]"
+                            }));
+                          }}
+                          className="mt-2 w-full accent-[#8C1D3C]"
                         />
                       </label>
-                      <label className="block text-xs">
+
+                      <label className="block rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3 text-xs dark:border-[#2A383D] dark:bg-[#141D21]">
                         <div className="flex justify-between font-semibold">
-                          <span>配偶者額面年収</span>
-                          <span className="font-mono">{setupConfig.subIncomeMan}万円</span>
+                          <span>配偶者額面年収（0万＝単身/片働き）</span>
+                          <span className="font-mono text-sm font-bold">
+                            {setupConfig.subIncomeMan}万円
+                          </span>
                         </div>
                         <input
                           type="range"
                           min={0}
-                          max={1000}
-                          step={20}
+                          max={1500}
+                          step={10}
                           value={setupConfig.subIncomeMan}
-                          onChange={(e) =>
-                            setSetupConfig((p) => ({ ...p, subIncomeMan: Number(e.target.value) }))
-                          }
-                          className="mt-1 w-full accent-[#8C1D3C]"
+                          onChange={(e) => {
+                            setSpawnMode('custom');
+                            const val = Number(e.target.value);
+                            setSetupConfig((p) => ({
+                              ...p,
+                              subIncomeMan: val,
+                              contractType: val === 0 ? 'single' : p.contractType,
+                            }));
+                          }}
+                          className="mt-2 w-full accent-[#8C1D3C]"
                         />
                       </label>
-                      <label className="block text-xs">
+
+                      <label className="block rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3 text-xs dark:border-[#2A383D] dark:bg-[#141D21]">
                         <div className="flex justify-between font-semibold">
-                          <span>頭金投入額（自己資金{setupConfig.initialSavingsMan}万中）</span>
-                          <span className="font-mono">{setupConfig.downPaymentMan}万円</span>
+                          <span>現在の自己資金（貯蓄総額）</span>
+                          <span className="font-mono text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                            {setupConfig.initialSavingsMan}万円
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={150}
+                          max={5000}
+                          step={50}
+                          value={setupConfig.initialSavingsMan}
+                          onChange={(e) => {
+                            setSpawnMode('custom');
+                            const nextSav = Number(e.target.value);
+                            setSetupConfig((p) => ({
+                              ...p,
+                              initialSavingsMan: nextSav,
+                              downPaymentMan: Math.min(p.downPaymentMan, Math.max(0, nextSav - 100)),
+                            }));
+                          }}
+                          className="mt-2 w-full accent-[#0F6E68]"
+                        />
+                      </label>
+
+                      <label className="block rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3 text-xs dark:border-[#2A383D] dark:bg-[#141D21]">
+                        <div className="flex justify-between font-semibold">
+                          <span>頭金投入額（残りは手元予備資金）</span>
+                          <span className="font-mono text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                            {setupConfig.downPaymentMan}万円
+                          </span>
                         </div>
                         <input
                           type="range"
@@ -616,28 +876,52 @@ export function MortgageGame() {
                           max={Math.max(100, setupConfig.initialSavingsMan - 100)}
                           step={50}
                           value={setupConfig.downPaymentMan}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            setSpawnMode('custom');
                             setSetupConfig((p) => ({
                               ...p,
                               downPaymentMan: Number(e.target.value),
-                            }))
-                          }
-                          className="mt-1 w-full accent-[#0F6E68]"
+                            }));
+                          }}
+                          className="mt-2 w-full accent-[#0F6E68]"
                         />
                       </label>
                     </div>
 
+                    {/* 雇用形態・契約方式・家族計画・信用情報 */}
                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <span className="block text-xs font-semibold">契約方式（単独 / ペアローン）</span>
+                        <span className="block text-xs font-semibold">本人の職業・雇用形態</span>
+                        <select
+                          value={setupConfig.employment}
+                          onChange={(e) => {
+                            setSpawnMode('custom');
+                            setSetupConfig((p) => ({
+                              ...p,
+                              employment: e.target.value as EmploymentType,
+                            }));
+                          }}
+                          className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
+                        >
+                          {(Object.keys(EMPLOYMENT_LABELS) as EmploymentType[]).map((emp) => (
+                            <option key={emp} value={emp}>
+                              {EMPLOYMENT_LABELS[emp]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="block text-xs font-semibold">契約方式（単独 / ペアローン / 収入合算）</span>
                         <select
                           value={setupConfig.contractType}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            setSpawnMode('custom');
                             setSetupConfig((p) => ({
                               ...p,
                               contractType: e.target.value as ContractType,
-                            }))
-                          }
+                            }));
+                          }}
                           className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
                         >
                           {(['single', 'pair', 'income-merge'] as ContractType[]).map((ct) => (
@@ -647,16 +931,18 @@ export function MortgageGame() {
                           ))}
                         </select>
                       </div>
+
                       <div>
                         <span className="block text-xs font-semibold">家族・子ども・進学プラン</span>
                         <select
                           value={setupConfig.familyPlan}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            setSpawnMode('custom');
                             setSetupConfig((p) => ({
                               ...p,
                               familyPlan: e.target.value as FamilyPlanType,
-                            }))
-                          }
+                            }));
+                          }}
                           className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
                         >
                           {Object.values(FAMILY_PLANS).map((fp) => (
@@ -666,14 +952,59 @@ export function MortgageGame() {
                           ))}
                         </select>
                       </div>
+
+                      <div>
+                        <span className="block text-xs font-semibold">信用情報（CIC・クレカ延滞歴）</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpawnMode('custom');
+                            setSetupConfig((p) => ({
+                              ...p,
+                              hasCreditBlemish: !p.hasCreditBlemish,
+                            }));
+                          }}
+                          className={`mt-1 w-full rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                            setupConfig.hasCreditBlemish
+                              ? 'border-[#B0362B] bg-[#F3E3E8] text-[#B0362B] dark:border-[#F07B6B] dark:bg-[#3A1C26] dark:text-[#F07B6B]'
+                              : 'border-[#C7D2CE] bg-[#F7FAF8] text-[#2B7A4E] dark:border-[#2A383D] dark:bg-[#141D21] dark:text-[#5CC38B]'
+                          }`}
+                        >
+                          {setupConfig.hasCreditBlemish
+                            ? '過去の携帯分割・カード延滞あり（審査減点）'
+                            : 'クリーン（延滞歴なし・優良）'}
+                        </button>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* B. 購入物件（建築イラスト付きカード） */}
+                {/* ============================================================ */}
+                {/* STEP 2. 購入するマイホーム（物件種別・価格・新築/中古・長期優良） */}
+                {/* ============================================================ */}
+                {(setupStepTab === 'all' || setupStepTab === 'step2') && (
                   <div className="rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED]/60 p-4 dark:border-[#2A383D] dark:bg-[#0D1316]/60">
-                    <h3 className="text-sm font-bold">
-                      2. 購入するマイホーム（タワマン / マンション / 一戸建て / 新築・中古・長期優良）
-                    </h3>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-sm font-bold">
+                        2. 購入するマイホーム（タワマン / マンション / 一戸建て / 新築・中古・価格）
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.playSe('roll');
+                          setSetupConfig((prev) => randomizePropertyParams(prev));
+                          setSpawnMode('custom');
+                        }}
+                        className="rounded border border-[#0F6E68] bg-[#DCEDEA] px-2.5 py-1 text-xs font-bold text-[#0F6E68] transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+                      >
+                        物件・価格・スペックをランダム生成
+                      </button>
+                    </div>
+
+                    <p className="mt-1 text-xs text-[#5F6E72] dark:text-[#8A9A96]">
+                      全12物件テンプレートから選ぶだけでなく、物件価格・土地比率・建物種別・新築/中古・省エネ認定も自由にカスタマイズできます。
+                    </p>
+
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {Object.values(PROPERTIES).map((prop) => {
                         const active = setupConfig.propertyId === prop.id;
@@ -681,9 +1012,22 @@ export function MortgageGame() {
                           <button
                             key={prop.id}
                             type="button"
-                            onClick={() =>
-                              setSetupConfig((p) => ({ ...p, propertyId: prop.id }))
-                            }
+                            onClick={() => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                propertyId: prop.id,
+                                customPropertyPriceMan: prop.priceMan,
+                                customLandRatio: prop.landRatio,
+                                customBuildingType: prop.buildingType,
+                                customIsNew: prop.isNew,
+                                customBuiltAge: prop.builtAge,
+                                customEnergyCert: prop.energyCert,
+                                customMgmtAndRepairMonthlyMan: Number(
+                                  (prop.initialMgmtFeeMonthlyMan + prop.initialRepairFeeMonthlyMan).toFixed(1),
+                                ),
+                              }));
+                            }}
                             className={`rounded-[4px] border p-2.5 text-left transition ${
                               active
                                 ? 'border-[#0F6E68] bg-[#DCEDEA]/70 ring-1 ring-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D]/60'
@@ -692,28 +1036,315 @@ export function MortgageGame() {
                           >
                             <PropertyArchitecturalIllustration
                               propertyId={prop.id}
+                              overrideSpec={active ? selectedProperty : prop}
                               className="h-24 w-full"
                             />
-                            <div className="mt-2 flex items-baseline justify-between">
-                              <span className="text-xs font-bold">{prop.shortName}</span>
+                            <div className="mt-2 flex flex-wrap items-baseline justify-between gap-1">
+                              <span className="break-words text-xs font-bold">{prop.shortName}</span>
                               <span className="font-mono text-xs font-bold text-[#8C1D3C] dark:text-[#E2678A]">
-                                {prop.priceMan.toLocaleString()}万円
+                                {(active ? selectedProperty.priceMan : prop.priceMan).toLocaleString()}万円
                               </span>
                             </div>
-                            <p className="mt-0.5 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                              {ENERGY_CERT_LABELS[prop.energyCert]}
+                            <p className="mt-0.5 break-words text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                              {ENERGY_CERT_LABELS[active ? selectedProperty.energyCert : prop.energyCert]}
                             </p>
                           </button>
                         );
                       })}
                     </div>
-                  </div>
 
-                  {/* C. 銀行・金利・35年/50年・元利/元金・団信 */}
+                    {/* 物件条件・数値の自由カスタマイズパネル */}
+                    <div className="mt-4 space-y-4 rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3.5 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE4E1] pb-2 dark:border-[#1D282C]">
+                        <span className="text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                          物件スペック・価格・新築/中古・省エネ認定の自由調整
+                        </span>
+                        <span className="font-mono text-[11px] text-[#5F6E72]">
+                          土地 {Math.round(selectedProperty.priceMan * selectedProperty.landRatio).toLocaleString()}万 / 建物{' '}
+                          {Math.round(selectedProperty.priceMan * (1 - selectedProperty.landRatio)).toLocaleString()}万
+                        </span>
+                      </div>
+
+                      {/* 建物種別・新築/中古・省エネ認定ボタン群 */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div>
+                          <span className="block text-xs font-semibold">建物種別</span>
+                          <div className="mt-1 grid grid-cols-3 overflow-hidden rounded border border-[#C7D2CE] text-xs font-bold dark:border-[#2A383D]">
+                            {(
+                              [
+                                { id: 'tower', label: 'タワマン' },
+                                { id: 'mansion', label: 'マンション' },
+                                { id: 'detached', label: '一戸建て' },
+                              ] as const
+                            ).map((bt, idx) => (
+                              <button
+                                key={bt.id}
+                                type="button"
+                                onClick={() => {
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({ ...p, customBuildingType: bt.id }));
+                                }}
+                                className={`${idx > 0 ? 'border-l border-[#C7D2CE] dark:border-[#2A383D]' : ''} py-1.5 ${
+                                  selectedProperty.buildingType === bt.id
+                                    ? 'bg-[#13212A] text-white dark:bg-[#E1E9E6] dark:text-[#0D1316]'
+                                    : 'bg-[#EBF0ED] text-[#4A5A61] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                                }`}
+                              >
+                                {bt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="block text-xs font-semibold">新築 / 中古</span>
+                          <div className="mt-1 grid grid-cols-2 overflow-hidden rounded border border-[#C7D2CE] text-xs font-bold dark:border-[#2A383D]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  customIsNew: true,
+                                  customBuiltAge: 0,
+                                }));
+                              }}
+                              className={`py-1.5 ${
+                                selectedProperty.isNew
+                                  ? 'bg-[#0F6E68] text-white dark:bg-[#4CC0AF] dark:text-[#0D1316]'
+                                  : 'bg-[#EBF0ED] text-[#4A5A61] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                              }`}
+                            >
+                              新築物件
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  customIsNew: false,
+                                  customBuiltAge: p.customBuiltAge && p.customBuiltAge > 0 ? p.customBuiltAge : 12,
+                                }));
+                              }}
+                              className={`border-l border-[#C7D2CE] py-1.5 dark:border-[#2A383D] ${
+                                !selectedProperty.isNew
+                                  ? 'bg-[#9C7020] text-white dark:bg-[#D9AF59] dark:text-[#0D1316]'
+                                  : 'bg-[#EBF0ED] text-[#4A5A61] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                              }`}
+                            >
+                              中古（築{selectedProperty.isNew ? 12 : selectedProperty.builtAge}年）
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="block text-xs font-semibold">省エネ・住宅性能認定</span>
+                          <select
+                            value={selectedProperty.energyCert}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customEnergyCert: e.target.value as EnergyCertType,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2 py-1.5 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            <option value="long-term-excellent">長期優良住宅（控除最大）</option>
+                            <option value="zeh">ZEH水準省エネ住宅</option>
+                            <option value="standard">一般省エネ基準適合</option>
+                            <option value="non-compliant">旧省エネ基準（新築は控除0円）</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {!selectedProperty.isNew && (
+                        <label className="block text-xs">
+                          <div className="flex justify-between font-semibold">
+                            <span>中古物件の築年数（住宅ローン控除＆修繕時期に影響）</span>
+                            <span className="font-mono font-bold">築{selectedProperty.builtAge}年</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={2}
+                            max={35}
+                            step={1}
+                            value={selectedProperty.builtAge}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customIsNew: false,
+                                customBuiltAge: Number(e.target.value),
+                              }));
+                            }}
+                            className="mt-1 w-full accent-[#9C7020]"
+                          />
+                        </label>
+                      )}
+
+                      {/* 物件価格スライダー＆クイック価格ボタン */}
+                      <div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <span className="font-bold">物件購入価格</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  customPropertyPriceMan: Math.max(1500, selectedProperty.priceMan - 100),
+                                }));
+                              }}
+                              className="rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2 py-0.5 font-mono text-xs font-bold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                            >
+                              -100万
+                            </button>
+                            <span className="font-mono text-base font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                              {selectedProperty.priceMan.toLocaleString()}万円
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  customPropertyPriceMan: Math.min(16000, selectedProperty.priceMan + 100),
+                                }));
+                              }}
+                              className="rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2 py-0.5 font-mono text-xs font-bold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                            >
+                              +100万
+                            </button>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={1500}
+                          max={16000}
+                          step={100}
+                          value={selectedProperty.priceMan}
+                          onChange={(e) => {
+                            setSpawnMode('custom');
+                            setSetupConfig((p) => ({
+                              ...p,
+                              customPropertyPriceMan: Number(e.target.value),
+                            }));
+                          }}
+                          className="mt-1.5 w-full accent-[#8C1D3C]"
+                        />
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {[2800, 3800, 4800, 5800, 6800, 8200, 9800, 12500].map((priceVal) => (
+                            <button
+                              key={priceVal}
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  customPropertyPriceMan: priceVal,
+                                }));
+                              }}
+                              className={`rounded border px-2 py-0.5 font-mono text-[11px] font-semibold ${
+                                selectedProperty.priceMan === priceVal
+                                  ? 'border-[#8C1D3C] bg-[#8C1D3C] text-white dark:border-[#E2678A] dark:bg-[#E2678A] dark:text-[#1B0910]'
+                                  : 'border-[#C7D2CE] bg-[#EBF0ED] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                              }`}
+                            >
+                              {priceVal.toLocaleString()}万
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 土地価格比率 ＆ 管理費・修繕積立金 */}
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <label className="block text-xs">
+                          <div className="flex justify-between font-semibold">
+                            <span>土地価格比率（資産価値の下支え）</span>
+                            <span className="font-mono font-bold">
+                              {Math.round(selectedProperty.landRatio * 100)}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={15}
+                            max={80}
+                            step={5}
+                            value={Math.round(selectedProperty.landRatio * 100)}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customLandRatio: Number(e.target.value) / 100,
+                              }));
+                            }}
+                            className="mt-1 w-full accent-[#0F6E68]"
+                          />
+                        </label>
+
+                        <label className="block text-xs">
+                          <div className="flex justify-between font-semibold">
+                            <span>初期の管理費・修繕積立金（月額）</span>
+                            <span className="font-mono font-bold">
+                              月{' '}
+                              {(
+                                selectedProperty.initialMgmtFeeMonthlyMan +
+                                selectedProperty.initialRepairFeeMonthlyMan
+                              ).toFixed(1)}
+                              万円
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0.5}
+                            max={8.0}
+                            step={0.2}
+                            value={Number(
+                              (
+                                selectedProperty.initialMgmtFeeMonthlyMan +
+                                selectedProperty.initialRepairFeeMonthlyMan
+                              ).toFixed(1),
+                            )}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customMgmtAndRepairMonthlyMan: Number(e.target.value),
+                              }));
+                            }}
+                            className="mt-1 w-full accent-[#0F6E68]"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ============================================================ */}
+                {/* STEP 3. 借入銀行・変動/固定・金利・返済期間（10〜50年）・団信 */}
+                {/* ============================================================ */}
+                {(setupStepTab === 'all' || setupStepTab === 'step3') && (
                   <div className="rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED]/60 p-4 dark:border-[#2A383D] dark:bg-[#0D1316]/60">
-                    <h3 className="text-sm font-bold">
-                      3. 借入銀行・変動/固定・返済期間（25/35/50年）・元利/元金均等・団信
-                    </h3>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-sm font-bold">
+                        3. 借入銀行・金利方式・適用金利・返済期間（10〜50年）・元利/元金・団信
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.playSe('roll');
+                          setSetupConfig((prev) => randomizeBankLoanParams(prev));
+                          setSpawnMode('custom');
+                        }}
+                        className="rounded border border-[#0F6E68] bg-[#DCEDEA] px-2.5 py-1 text-xs font-bold text-[#0F6E68] transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+                      >
+                        銀行・金利・期間・団信をランダム生成
+                      </button>
+                    </div>
+
                     <div className="mt-3 grid grid-cols-1 gap-2">
                       {Object.values(BANKS).map((bank) => {
                         const active = setupConfig.bankId === bank.id;
@@ -721,29 +1352,31 @@ export function MortgageGame() {
                           <button
                             key={bank.id}
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              setSpawnMode('custom');
                               setSetupConfig((p) => ({
                                 ...p,
                                 bankId: bank.id as BankId,
-                                termYears:
-                                  p.termYears === 50 && !bank.supports50Years ? 35 : p.termYears,
-                              }))
-                            }
+                                customRateType: bank.rateType,
+                                customBaseRate: bank.baseRate,
+                                customHas5Year125Rule: bank.has5Year125Rule,
+                              }));
+                            }}
                             className={`flex items-center justify-between rounded-[4px] border p-3 text-left text-xs transition ${
                               active
                                 ? 'border-[#8C1D3C] bg-[#F3E3E8]/70 font-bold dark:border-[#E2678A] dark:bg-[#3A1C26]/50'
                                 : 'border-[#C7D2CE] bg-[#F7FAF8] dark:border-[#2A383D] dark:bg-[#141D21]'
                             }`}
                           >
-                            <div>
-                              <div className="font-bold">{bank.name}</div>
-                              <div className="mt-0.5 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            <div className="pr-2">
+                              <div className="break-words font-bold">{bank.name}</div>
+                              <div className="mt-0.5 break-words text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
                                 {bank.categoryLabel}
                               </div>
                             </div>
-                            <div className="text-right font-mono">
+                            <div className="shrink-0 text-right font-mono">
                               <span className="text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
-                                年 {bank.baseRate.toFixed(2)}%
+                                年 {(active ? selectedBank.baseRate : bank.baseRate).toFixed(2)}%
                               </span>
                               <span className="block text-[10px] text-[#5F6E72]">
                                 審査金利 {bank.screeningRate}%
@@ -754,163 +1387,381 @@ export function MortgageGame() {
                       })}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <div>
-                        <span className="block text-xs font-semibold">返済期間</span>
-                        <div className="mt-1 flex overflow-hidden rounded-[4px] border border-[#C7D2CE] dark:border-[#2A383D]">
-                          {([25, 35, 50] as LoanTermYears[]).map((yr) => {
-                            const disabled = yr === 50 && !selectedBank.supports50Years;
-                            return (
+                    {/* 金利方式・初期ベース金利・返済期間・団信の自由調整パネル */}
+                    <div className="mt-4 space-y-4 rounded border border-[#C7D2CE] bg-[#F7FAF8] p-3.5 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <span className="block text-xs font-semibold">
+                            金利タイプ（変動・固定・ミックス）
+                          </span>
+                          <select
+                            value={selectedBank.rateType}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              const rt = e.target.value as RateType;
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customRateType: rt,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2.5 py-2 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            {(Object.keys(RATE_TYPE_LABELS) as RateType[]).map((rt) => (
+                              <option key={rt} value={rt}>
+                                {RATE_TYPE_LABELS[rt]}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedBank.rateType !== 'flat-35' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  customHas5Year125Rule: !selectedBank.has5Year125Rule,
+                                }));
+                              }}
+                              className="mt-1.5 w-full rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2 py-1 text-left font-mono text-[11px] font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                            >
+                              5年・125%ルール：
+                              {selectedBank.has5Year125Rule
+                                ? 'あり（5年間返済額据置・未払利息リスクあり）'
+                                : 'なし（利上げ時に即座に毎月返済額が増額）'}
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span>初期ベース金利（銀行基準金利）</span>
+                            <div className="flex items-center gap-1">
                               <button
-                                key={yr}
                                 type="button"
-                                disabled={disabled}
-                                onClick={() => setSetupConfig((p) => ({ ...p, termYears: yr }))}
-                                className={`flex-1 py-2 font-mono text-xs font-bold ${
-                                  setupConfig.termYears === yr
-                                    ? 'bg-[#13212A] text-white dark:bg-[#E1E9E6] dark:text-[#0D1316]'
-                                    : disabled
-                                      ? 'opacity-35'
-                                      : 'bg-[#F7FAF8] dark:bg-[#141D21]'
+                                onClick={() => {
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({
+                                    ...p,
+                                    customBaseRate: Math.max(
+                                      0.15,
+                                      Number((selectedBank.baseRate - 0.05).toFixed(2)),
+                                    ),
+                                  }));
+                                }}
+                                className="rounded border border-[#C7D2CE] bg-[#EBF0ED] px-1.5 py-0.5 font-mono text-[11px] dark:border-[#2A383D] dark:bg-[#1A2428]"
+                              >
+                                -0.05%
+                              </button>
+                              <span className="font-mono text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                                {selectedBank.baseRate.toFixed(2)}%
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({
+                                    ...p,
+                                    customBaseRate: Math.min(
+                                      3.5,
+                                      Number((selectedBank.baseRate + 0.05).toFixed(2)),
+                                    ),
+                                  }));
+                                }}
+                                className="rounded border border-[#C7D2CE] bg-[#EBF0ED] px-1.5 py-0.5 font-mono text-[11px] dark:border-[#2A383D] dark:bg-[#1A2428]"
+                              >
+                                +0.05%
+                              </button>
+                            </div>
+                          </div>
+                          <input
+                            type="range"
+                            min={0.2}
+                            max={3.5}
+                            step={0.05}
+                            value={selectedBank.baseRate}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customBaseRate: Number(e.target.value),
+                              }));
+                            }}
+                            className="mt-1.5 w-full accent-[#0F6E68]"
+                          />
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {[0.35, 0.48, 0.68, 0.95, 1.25, 1.65, 1.95, 2.4].map((rVal) => (
+                              <button
+                                key={rVal}
+                                type="button"
+                                onClick={() => {
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({ ...p, customBaseRate: rVal }));
+                                }}
+                                className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${
+                                  Math.abs(selectedBank.baseRate - rVal) < 0.01
+                                    ? 'border-[#0F6E68] bg-[#0F6E68] text-white'
+                                    : 'border-[#C7D2CE] bg-[#EBF0ED] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
                                 }`}
                               >
-                                {yr}年
+                                {rVal.toFixed(2)}%
                               </button>
-                            );
-                          })}
+                            ))}
+                          </div>
                         </div>
                       </div>
 
+                      {/* 返済期間（20/25/30/35/40/45/50年ボタン＋10〜50年スライダー） */}
                       <div>
-                        <span className="block text-xs font-semibold">返済方式</span>
-                        <select
-                          value={setupConfig.repaymentMethod}
-                          onChange={(e) =>
-                            setSetupConfig((p) => ({
-                              ...p,
-                              repaymentMethod: e.target.value as RepaymentMethod,
-                            }))
-                          }
-                          className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
-                        >
-                          <option value="equal-payment">元利均等返済</option>
-                          <option value="equal-principal">元金均等返済</option>
-                        </select>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <span className="font-bold">
+                            返済期間（20年〜50年・1年刻みで選択可能）
+                          </span>
+                          <span className="font-mono text-sm font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                            {setupConfig.termYears}年ローン（{setupConfig.age + setupConfig.termYears}歳完済）
+                          </span>
+                        </div>
+                        <div className="mt-1.5 grid grid-cols-4 gap-1 sm:grid-cols-7">
+                          {([20, 25, 30, 35, 40, 45, 50] as LoanTermYears[]).map((yr) => (
+                            <button
+                              key={yr}
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({ ...p, termYears: yr }));
+                              }}
+                              className={`rounded border py-1.5 font-mono text-xs font-bold ${
+                                setupConfig.termYears === yr
+                                  ? 'border-[#13212A] bg-[#13212A] text-white dark:border-[#E1E9E6] dark:bg-[#E1E9E6] dark:text-[#0D1316]'
+                                  : 'border-[#C7D2CE] bg-[#EBF0ED] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                              }`}
+                            >
+                              {yr}年
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={50}
+                          step={1}
+                          value={setupConfig.termYears}
+                          onChange={(e) => {
+                            setSpawnMode('custom');
+                            setSetupConfig((p) => ({ ...p, termYears: Number(e.target.value) }));
+                          }}
+                          className="mt-2 w-full accent-[#13212A]"
+                        />
                       </div>
 
-                      <div>
-                        <span className="block text-xs font-semibold">団体信用生命保険（団信）</span>
-                        <select
-                          value={setupConfig.danshin}
-                          onChange={(e) =>
-                            setSetupConfig((p) => ({
-                              ...p,
-                              danshin: e.target.value as DanshinType,
-                            }))
-                          }
-                          className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
-                        >
-                          {Object.values(DANSHIN_PLANS).map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.shortName}
+                      {/* 返済方式（元利均等/元金均等）・ボーナス返済・団信プラン＆上乗せ金利 */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <span className="block text-xs font-semibold">返済方式（元利均等 / 元金均等）</span>
+                          <select
+                            value={setupConfig.repaymentMethod}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                repaymentMethod: e.target.value as RepaymentMethod,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] px-2.5 py-2 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            <option value="equal-payment">
+                              元利均等返済（毎月の返済額が一定）
                             </option>
-                          ))}
-                        </select>
+                            <option value="equal-principal">
+                              元金均等返済（元金を定額返済・総利息が少ない）
+                            </option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <span className="block text-xs font-semibold">
+                            ボーナス併用返済の割合（0%＝毎月払いのみ推奨）
+                          </span>
+                          <div className="mt-1 grid grid-cols-4 gap-1">
+                            {([0, 10, 20, 30] as const).map((br) => (
+                              <button
+                                key={br}
+                                type="button"
+                                onClick={() => {
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({ ...p, bonusRepaymentRatio: br }));
+                                }}
+                                className={`rounded border py-1.5 font-mono text-xs font-bold ${
+                                  setupConfig.bonusRepaymentRatio === br
+                                    ? 'border-[#8C1D3C] bg-[#8C1D3C] text-white dark:border-[#E2678A] dark:bg-[#E2678A] dark:text-[#1B0910]'
+                                    : 'border-[#C7D2CE] bg-[#EBF0ED] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                                }`}
+                              >
+                                {br}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="block text-xs font-semibold">団体信用生命保険（団信プラン）</span>
+                          <select
+                            value={setupConfig.danshin}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              const dId = e.target.value as DanshinType;
+                              setSetupConfig((p) => ({
+                                ...p,
+                                danshin: dId,
+                                customDanshinSpread: DANSHIN_PLANS[dId].spreadRate,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#EBF0ED] px-2.5 py-2 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            {Object.values(DANSHIN_PLANS).map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <label className="block text-xs">
+                          <div className="flex justify-between font-semibold">
+                            <span>団信の上乗せ金利（キャンペーン等で変更可）</span>
+                            <span className="font-mono font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                              +{selectedDanshin.spreadRate.toFixed(2)}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={0.5}
+                            step={0.05}
+                            value={selectedDanshin.spreadRate}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                customDanshinSpread: Number(e.target.value),
+                              }));
+                            }}
+                            className="mt-2 w-full accent-[#0F6E68]"
+                          />
+                        </label>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* 右5列：リアルタイム銀行本審査プレビュー票 */}
-                <div className="lg:col-span-5">
-                  <div className="sticky top-6 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-5 shadow-md dark:border-[#2A383D] dark:bg-[#141D21]">
-                    <div className="flex items-center justify-between border-b border-[#C7D2CE] pb-3 dark:border-[#2A383D]">
-                      <div>
-                        <span className="font-mono text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                          銀行融資審査部 · 事前審査票
-                        </span>
-                        <h4 className="font-editorial text-lg font-bold">住宅ローン本審査プレビュー</h4>
-                      </div>
-                      <div className="rounded border-2 border-[#8C1D3C] px-3 py-1 text-center font-mono text-sm font-bold text-[#8C1D3C] dark:border-[#E2678A] dark:text-[#E2678A]">
-                        判定 {liveUnderwriting.grade}
-                      </div>
+              {/* 右5列：リアルタイム銀行本審査プレビュー票 ＆ 契約構造ビジュアル図解 */}
+              <div className="lg:col-span-5">
+                <div className="sticky top-6 space-y-4 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-4 shadow-md sm:p-5 dark:border-[#2A383D] dark:bg-[#141D21]">
+                  <div className="flex items-center justify-between border-b border-[#C7D2CE] pb-3 dark:border-[#2A383D]">
+                    <div>
+                      <span className="font-mono text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                        銀行融資審査部 · リアルタイム事前審査票
+                      </span>
+                      <h4 className="font-editorial text-lg font-bold">住宅ローン本審査プレビュー</h4>
                     </div>
-
-                    <div className="mt-4">
-                      <PropertyArchitecturalIllustration propertyId={setupConfig.propertyId} />
+                    <div className="rounded border-2 border-[#8C1D3C] px-3 py-1 text-center font-mono text-sm font-bold text-[#8C1D3C] dark:border-[#E2678A] dark:text-[#E2678A]">
+                      判定 {liveUnderwriting.grade}
                     </div>
-
-                    <dl className="mt-4 space-y-2 text-xs">
-                      <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
-                        <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">借入元本（諸費用込）</dt>
-                        <dd className="font-mono text-sm font-bold">
-                          {liveUnderwriting.loanPrincipalMan.toLocaleString()}万円
-                        </dd>
-                      </div>
-                      <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
-                        <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">
-                          適用金利（団信+{selectedDanshin.spreadRate}%込）
-                        </dt>
-                        <dd className="font-mono text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
-                          年 {liveUnderwriting.effectiveInitialRate.toFixed(2)}%
-                        </dd>
-                      </div>
-                      <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
-                        <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">
-                          初年度 毎月返済額＋維持費・税金
-                        </dt>
-                        <dd className="font-mono text-sm font-bold text-[#8C1D3C] dark:text-[#E2678A]">
-                          月 {liveUnderwriting.initialTotalMonthlyOutflowMan}万円
-                        </dd>
-                      </div>
-                      <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
-                        <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">
-                          審査金利での返済負担率（DTI）
-                        </dt>
-                        <dd className="font-mono font-bold">{liveUnderwriting.stressDtiPercent}%</dd>
-                      </div>
-                      <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
-                        <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">住宅ローン控除（初年度目安）</dt>
-                        <dd className="font-mono font-bold text-[#2B7A4E] dark:text-[#5CC38B]">
-                          年 +{liveUnderwriting.maxTaxDeductionAnnualMan}万円 ×{' '}
-                          {liveUnderwriting.taxDeductionYears}年
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">完済予定年齢</dt>
-                        <dd className="font-mono font-bold">{liveUnderwriting.maturityAge}歳</dd>
-                      </div>
-                    </dl>
-
-                    {liveUnderwriting.warnings.length > 0 && (
-                      <div className="mt-3 rounded bg-[#F3E2B3]/40 p-2.5 text-[11px] text-[#4A5A61] dark:bg-[#2A2212] dark:text-[#E2B04C]">
-                        <div className="font-bold">審査部からの留意事項：</div>
-                        <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                          {liveUnderwriting.warnings.slice(0, 3).map((w, i) => (
-                            <li key={i}>{w}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
+
+                  {/* 物件建築イラスト（選択中の価格・新築/中古・長期優良バッジ付） */}
+                  <PropertyArchitecturalIllustration
+                    propertyId={setupConfig.propertyId}
+                    overrideSpec={selectedProperty}
+                  />
+
+                  {/* ローン契約構造・金利・団信の図解イラスト */}
+                  <LoanStructureVisualSvg
+                    config={setupConfig}
+                    underwriting={liveUnderwriting}
+                  />
+
+                  <dl className="space-y-2 text-xs">
+                    <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
+                      <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">契約年齢 → 完済予定年齢</dt>
+                      <dd className="font-mono text-sm font-bold">
+                        {setupConfig.age}歳 → {liveUnderwriting.maturityAge}歳（{setupConfig.termYears}年）
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
+                      <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">物件価格 / 借入元本（諸費用込）</dt>
+                      <dd className="font-mono text-sm font-bold">
+                        {selectedProperty.priceMan.toLocaleString()}万 / 借入
+                        {liveUnderwriting.loanPrincipalMan.toLocaleString()}万円
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
+                      <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">
+                        適用金利（基準{selectedBank.baseRate.toFixed(2)}%＋団信{selectedDanshin.spreadRate.toFixed(2)}%）
+                      </dt>
+                      <dd className="font-mono text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                        年 {liveUnderwriting.effectiveInitialRate.toFixed(2)}%
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
+                      <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">
+                        初年度 毎月返済額＋維持費・税金
+                      </dt>
+                      <dd className="font-mono text-sm font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                        月 {liveUnderwriting.initialTotalMonthlyOutflowMan}万円
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-[#DCE4E1] pb-1.5 dark:border-[#1D282C]">
+                      <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">
+                        審査金利での返済負担率（DTI）
+                      </dt>
+                      <dd className="font-mono font-bold">{liveUnderwriting.stressDtiPercent}%</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-[#4A5A61] dark:text-[#A3B2AF]">住宅ローン控除（初年度目安）</dt>
+                      <dd className="font-mono font-bold text-[#2B7A4E] dark:text-[#5CC38B]">
+                        年 +{liveUnderwriting.maxTaxDeductionAnnualMan}万円 ×{' '}
+                        {liveUnderwriting.taxDeductionYears}年
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {liveUnderwriting.warnings.length > 0 && (
+                    <div className="rounded bg-[#F3E2B3]/40 p-2.5 text-[11px] text-[#4A5A61] dark:bg-[#2A2212] dark:text-[#E2B04C]">
+                      <div className="font-bold">審査部からの留意事項（全{liveUnderwriting.warnings.length}件）：</div>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {liveUnderwriting.warnings.map((w, i) => (
+                          <li key={i} className="break-words">{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* 1in8bスタイルのメインCTA行 (.ctarow) */}
+          {/* メインCTA行 (.ctarow) */}
           <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-[#C7D2CE] pt-6 dark:border-[#2A383D]">
             <button
               type="button"
               onClick={handlePressBornButton}
               className="inline-flex items-center gap-3 rounded-[4px] bg-[#8C1D3C] px-8 py-4 text-lg font-semibold text-white shadow transition hover:brightness-110 dark:bg-[#E2678A] dark:text-[#1B0910]"
             >
-              <span>鍵を受け取る（人生を始める）</span>
+              <span>
+                {spawnMode === 'random'
+                  ? 'ランダムに鍵を受け取る（抽選して始める）'
+                  : 'この条件で鍵を受け取る（人生を始める）'}
+              </span>
               <span aria-hidden="true">→</span>
             </button>
-            <span className="text-xs text-[#5F6E72] dark:text-[#8A9A96]">
-              設定はそのままで、すぐに鍵を受け取って始めてもかまいません。
-            </span>
+            <button
+              type="button"
+              onClick={handleShuffleAllSetup}
+              className="rounded-[4px] border border-[#0F6E68] bg-[#DCEDEA] px-5 py-4 text-sm font-bold text-[#0F6E68] transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+            >
+              条件をランダム再生成して確認する
+            </button>
             <div className="ml-auto">
               <AudioToggle variant="full" />
             </div>
@@ -930,7 +1781,7 @@ export function MortgageGame() {
       <div className="mx-auto max-w-xl py-16 text-center">
         <div className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-8 shadow-md dark:border-[#2A383D] dark:bg-[#141D21]">
           <div className="font-mono text-xs font-semibold tracking-widest text-[#0F6E68] dark:text-[#4CC0AF]">
-            1,300万世帯の統計からあなたの境遇とマイホームを抽選しています...
+            全国12世帯モデル×12物件タイプ×ランダム条件からあなたの境遇とマイホームを抽選しています
           </div>
           <div className="font-editorial mt-4 text-2xl font-bold text-[#13212A] dark:text-[#E1E9E6]">
             {sampleArch.title}
@@ -944,14 +1795,14 @@ export function MortgageGame() {
   }
 
   // ============================================================================
-  // フェーズ 2B: 1in8bスタイルの「住宅ローン契約証書（出生届スタイル）」画面 (#cert)
+  // フェーズ 2B: 「住宅ローン契約証書・本審査承認票」画面 (#cert)
   // ============================================================================
   if (viewStage === 'cert') {
     return (
       <div className="mx-auto max-w-3xl py-4">
         <div className="overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] shadow-lg dark:border-[#2A383D] dark:bg-[#141D21]">
           {/* 証書ヘッダー帯 */}
-          <div className="flex items-center justify-between bg-[#13212A] px-6 py-3 text-white dark:bg-[#1A2428]">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#13212A] px-6 py-3 text-white dark:bg-[#1A2428]">
             <b className="font-editorial text-sm tracking-widest">
               金銭消費貸借契約証書 · 住宅ローン本審査通知書
             </b>
@@ -972,6 +1823,12 @@ export function MortgageGame() {
           </svg>
 
           <div className="p-6 sm:p-8">
+            {setupConfig.randomRollSummary && (
+              <div className="mb-4 rounded border border-[#0F6E68]/50 bg-[#DCEDEA]/60 px-3 py-2 font-mono text-xs font-semibold text-[#0F6E68] dark:border-[#4CC0AF]/40 dark:bg-[#12302D]/60 dark:text-[#4CC0AF]">
+                抽選プロファイル：{setupConfig.randomRollSummary}
+              </div>
+            )}
+
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-4">
                 <FamilyPortraitSvg
@@ -989,7 +1846,8 @@ export function MortgageGame() {
                     {selectedArchetype.title}（{setupConfig.age}歳）
                   </h2>
                   <p className="mt-1 text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
-                    {EMPLOYMENT_LABELS[setupConfig.employment]} ·{' '}
+                    {EMPLOYMENT_LABELS[setupConfig.employment]} · 本人年収{setupConfig.mainIncomeMan}万
+                    {setupConfig.subIncomeMan > 0 ? `＋配偶者${setupConfig.subIncomeMan}万` : ''} ·{' '}
                     {CONTRACT_LABELS[setupConfig.contractType]} ·{' '}
                     {FAMILY_PLANS[setupConfig.familyPlan].name}
                   </p>
@@ -1010,6 +1868,7 @@ export function MortgageGame() {
               <div className="sm:col-span-5">
                 <PropertyArchitecturalIllustration
                   propertyId={setupConfig.propertyId}
+                  overrideSpec={selectedProperty}
                   className="h-36 w-full"
                 />
               </div>
@@ -1026,8 +1885,15 @@ export function MortgageGame() {
               </div>
             </div>
 
+            <div className="mt-5">
+              <LoanStructureVisualSvg
+                config={setupConfig}
+                underwriting={liveUnderwriting}
+              />
+            </div>
+
             {/* 契約主要数値フィールド */}
-            <div className="mt-6 grid grid-cols-2 gap-3 border-t border-b border-[#C7D2CE] py-4 sm:grid-cols-4 dark:border-[#2A383D]">
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-b border-[#C7D2CE] py-4 sm:grid-cols-4 dark:border-[#2A383D]">
               <div>
                 <span className="block text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
                   物件価格 / 借入元本
@@ -1064,7 +1930,7 @@ export function MortgageGame() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
-              <span>団信保障：{selectedDanshin.name}</span>
+              <span>団信保障：{selectedDanshin.name}（+{selectedDanshin.spreadRate.toFixed(2)}%）</span>
               <span>
                 住宅ローン控除：最大 年{liveUnderwriting.maxTaxDeductionAnnualMan}万円 ×{' '}
                 {liveUnderwriting.taxDeductionYears}年間
@@ -1080,7 +1946,7 @@ export function MortgageGame() {
                 onClick={handleRerollCert}
                 className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-4 py-2.5 text-xs font-semibold transition hover:border-[#5F6E72] dark:border-[#2A383D] dark:bg-[#141D21]"
               >
-                別の世帯を抽選する
+                別のランダム条件を抽選する
               </button>
               <button
                 type="button"
@@ -1090,7 +1956,7 @@ export function MortgageGame() {
                 }}
                 className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-4 py-2.5 text-xs font-semibold transition hover:border-[#5F6E72] dark:border-[#2A383D] dark:bg-[#141D21]"
               >
-                条件を細かく設計し直す
+                年齢・物件・金利・期間を細かく設計し直す
               </button>
             </div>
             <button
@@ -1133,15 +1999,16 @@ export function MortgageGame() {
   const mentalScore = gameState.mentalScore;
 
   // ============================================================================
-  // フェーズ 3 & 4: 1in8b.life/ja/ スタイルの本編3カラム ＆ 結末回顧録ビュー
+  // フェーズ 3 & 4: 本編3カラム ＆ 結末回顧録ビュー
   // ============================================================================
-  const currentProperty = PROPERTIES[gameState.config.propertyId];
+  const currentProperty = resolveEffectiveProperty(gameState.config);
+  const currentBank = resolveEffectiveBank(gameState.config);
   const isMansionOrTower =
     currentProperty.buildingType === 'mansion' || currentProperty.buildingType === 'tower';
 
   return (
     <div className="space-y-5 pb-20 text-[#13212A] lg:pb-4 dark:text-[#E1E9E6]">
-      {/* 1in8bスタイルのスティッキートップバー (.topbar) */}
+      {/* スティッキートップバー (.topbar) */}
       <div className="sticky top-2 z-30 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8]/95 px-3.5 py-2.5 shadow-md backdrop-blur sm:px-4 sm:py-3 dark:border-[#2A383D] dark:bg-[#141D21]/95">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* 年齢＆プログレスバー */}
@@ -1508,7 +2375,7 @@ export function MortgageGame() {
       )}
 
       {/* ========================================================================== */}
-      {/* 重大決断モーダル（発生時は画面中央に1in8bスタイルの決断カードを提示） */}
+      {/* 重大決断モーダル（発生時は画面中央に決断カードを提示） */}
       {/* ========================================================================== */}
       {gameState.pendingDecision && (
         <section className="rounded-[4px] border-2 border-[#8C1D3C] bg-[#F7FAF8] p-4 shadow-2xl sm:p-6 dark:border-[#E2678A] dark:bg-[#141D21]">
@@ -1561,7 +2428,7 @@ export function MortgageGame() {
       )}
 
       {/* ========================================================================== */}
-      {/* 1in8b.life/ja/ スタイルのメイン3カラムレイアウト (.wrap.life) */}
+      {/* メイン3カラムレイアウト (.wrap.life) */}
       {/* ========================================================================== */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
         {/* ---------------------------------------------------------------------- */}
@@ -1576,7 +2443,7 @@ export function MortgageGame() {
           <div className="overflow-hidden rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] shadow-sm dark:border-[#2A383D] dark:bg-[#141D21]">
             <div className="flex items-center justify-between bg-[#F0F4F2] px-3.5 py-2 font-mono text-[11px] font-semibold text-[#4A5A61] dark:bg-[#1A2428] dark:text-[#A3B2AF]">
               <span>HOUSEHOLD ID · 登記識別票</span>
-              <span>{BANKS[gameState.config.bankId].shortName}</span>
+              <span>{currentBank.shortName}</span>
             </div>
             <div className="p-3.5">
               <div className="flex items-center gap-3">
@@ -1591,9 +2458,11 @@ export function MortgageGame() {
                   danshinTriggered={gameState.danshinTriggered}
                 />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-bold">{selectedArchetype.title}</div>
-                  <div className="mt-0.5 text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
-                    {PROPERTIES[gameState.config.propertyId].shortName}
+                  <div className="break-words text-sm font-bold leading-snug">
+                    {selectedArchetype.title}
+                  </div>
+                  <div className="mt-0.5 break-words text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
+                    {currentProperty.shortName}（{currentProperty.priceMan.toLocaleString()}万円）
                   </div>
                   <div className="mt-1 inline-block rounded bg-[#DCEDEA] px-2 py-0.5 font-mono text-[10px] font-bold text-[#0F6E68] dark:bg-[#12302D] dark:text-[#4CC0AF]">
                     {CONTRACT_LABELS[gameState.config.contractType]}
@@ -1786,7 +2655,10 @@ export function MortgageGame() {
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      disabled={gameState.currentMgmtAndRepairMonthlyMan <= 2.2}
+                      disabled={
+                        gameState.currentMgmtAndRepairMonthlyMan <= 2.2 ||
+                        gameState.triggeredEventIds.includes('prop-act-mansion-board-reform')
+                      }
                       onClick={() => {
                         audioManager.playSe('stamp');
                         triggerVisualBadge('理事会改革：管理委託費見直し -0.6万/月');
@@ -1796,14 +2668,22 @@ export function MortgageGame() {
                       }}
                       className="rounded-[4px] border border-[#0F6E68]/60 bg-[#F0F4F2] px-2.5 py-2 text-left text-xs font-semibold transition hover:border-[#0F6E68] disabled:opacity-40 dark:border-[#4CC0AF]/50 dark:bg-[#1A2428]"
                     >
-                      <div>管理組合の理事会改革・管理委託見直し</div>
+                      <div>
+                        管理組合の理事会改革・管理委託見直し
+                        {gameState.triggeredEventIds.includes('prop-act-mansion-board-reform')
+                          ? '（実行済）'
+                          : ''}
+                      </div>
                       <small className="block text-[10px] text-[#5F6E72] dark:text-[#8A9A96]">
                         相見積もりで管理費等 -0.6万/月・資産価値+80万
                       </small>
                     </button>
                     <button
                       type="button"
-                      disabled={gameState.currentMgmtAndRepairMonthlyMan <= 2.0}
+                      disabled={
+                        gameState.currentMgmtAndRepairMonthlyMan <= 2.0 ||
+                        gameState.triggeredEventIds.includes('prop-act-mansion-release-parking')
+                      }
                       onClick={() => {
                         audioManager.playSe('coin');
                         triggerVisualBadge('機械式駐車場解約＋マイカー売却 +120万円');
@@ -1815,7 +2695,12 @@ export function MortgageGame() {
                       }}
                       className="rounded-[4px] border border-[#0F6E68]/60 bg-[#F0F4F2] px-2.5 py-2 text-left text-xs font-semibold transition hover:border-[#0F6E68] disabled:opacity-40 dark:border-[#4CC0AF]/50 dark:bg-[#1A2428]"
                     >
-                      <div>マイカー手放し・機械式駐車場解約</div>
+                      <div>
+                        マイカー手放し・機械式駐車場解約
+                        {gameState.triggeredEventIds.includes('prop-act-mansion-release-parking')
+                          ? '（実行済）'
+                          : ''}
+                      </div>
                       <small className="block text-[10px] text-[#5F6E72] dark:text-[#8A9A96]">
                         売却益+120万・駐車場＆維持費 -0.8万/月
                       </small>
@@ -1827,7 +2712,8 @@ export function MortgageGame() {
                       type="button"
                       disabled={
                         gameState.liquidSavingsMan < 180 ||
-                        gameState.currentMgmtAndRepairMonthlyMan <= 0.6
+                        gameState.currentMgmtAndRepairMonthlyMan <= 0.6 ||
+                        gameState.triggeredEventIds.includes('prop-act-detached-solar-battery')
                       }
                       onClick={() => {
                         audioManager.playSe('stamp');
@@ -1840,14 +2726,22 @@ export function MortgageGame() {
                       }}
                       className="rounded-[4px] border border-[#0F6E68]/60 bg-[#F0F4F2] px-2.5 py-2 text-left text-xs font-semibold transition hover:border-[#0F6E68] disabled:opacity-40 dark:border-[#4CC0AF]/50 dark:bg-[#1A2428]"
                     >
-                      <div>屋根太陽光＋蓄電池の後付け設置（-140万）</div>
+                      <div>
+                        屋根太陽光＋蓄電池の後付け設置（-140万）
+                        {gameState.triggeredEventIds.includes('prop-act-detached-solar-battery')
+                          ? '（実行済）'
+                          : ''}
+                      </div>
                       <small className="block text-[10px] text-[#5F6E72] dark:text-[#8A9A96]">
                         戸建て特権で光熱・修繕積立負担 -0.9万/月・価値+110万
                       </small>
                     </button>
                     <button
                       type="button"
-                      disabled={gameState.liquidSavingsMan < 60}
+                      disabled={
+                        gameState.liquidSavingsMan < 60 ||
+                        gameState.triggeredEventIds.includes('prop-act-detached-diy-maint')
+                      }
                       onClick={() => {
                         audioManager.playSe('stamp');
                         triggerVisualBadge('自主防蟻・外壁コーキング補修 -35万円');
@@ -1857,7 +2751,12 @@ export function MortgageGame() {
                       }}
                       className="rounded-[4px] border border-[#0F6E68]/60 bg-[#F0F4F2] px-2.5 py-2 text-left text-xs font-semibold transition hover:border-[#0F6E68] disabled:opacity-40 dark:border-[#4CC0AF]/50 dark:bg-[#1A2428]"
                     >
-                      <div>自主防蟻・外壁コーキング予防メンテ（-35万）</div>
+                      <div>
+                        自主防蟻・外壁コーキング予防メンテ（-35万）
+                        {gameState.triggeredEventIds.includes('prop-act-detached-diy-maint')
+                          ? '（実行済）'
+                          : ''}
+                      </div>
                       <small className="block text-[10px] text-[#5F6E72] dark:text-[#8A9A96]">
                         躯体劣化を防ぎ建物評価額+75万・維持費抑制
                       </small>
@@ -1927,6 +2826,23 @@ export function MortgageGame() {
                   >
                     <div>自宅を時価（{gameState.propertyValueMan}万）で売却精算</div>
                     <small className="block text-[10px] opacity-80">ローンを一括精算し賃貸へ移る</small>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={gameState.remainingBalanceMan <= 0}
+                    onClick={() => {
+                      audioManager.playSe('card');
+                      triggerVisualBadge('日銀の途中利上げ（政策金利 +0.50%）発生');
+                      setGameState((prev) =>
+                        prev ? executeMidTermRateHike(prev, 0.5) : prev,
+                      );
+                    }}
+                    className="rounded-[4px] border border-[#B0362B]/60 bg-[#F3E3E8]/40 px-2.5 py-2 text-left text-xs font-semibold text-[#B0362B] transition hover:bg-[#F3E3E8] disabled:opacity-40 sm:col-span-2 dark:border-[#F07B6B]/60 dark:bg-[#3A1C26]/40 dark:text-[#F07B6B]"
+                  >
+                    <div>日銀の途中利上げ（政策金利 +0.50%）を今すぐ発生させて耐久テスト</div>
+                    <small className="block text-[10px] opacity-80">
+                      返済途中の急な利上げで変動金利・5年125%ルール・家計収支がどう変化するか即座に検証できます（自動でも途中利上げが入ります）
+                    </small>
                   </button>
                 </div>
               </div>

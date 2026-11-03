@@ -1,6 +1,6 @@
 export type ContractType = 'single' | 'pair' | 'income-merge';
 export type RepaymentMethod = 'equal-payment' | 'equal-principal';
-export type LoanTermYears = 25 | 35 | 50;
+export type LoanTermYears = number; // 10〜50年（20/25/30/35/40/50年＋1年刻み自由設定）
 export type RateType = 'variable' | 'fixed-10' | 'flat-35' | 'mix';
 export type DanshinType = 'basic' | 'cancer-50' | 'three-major-100' | 'all-disease-pair';
 export type PropertyCategory =
@@ -11,12 +11,23 @@ export type PropertyCategory =
   | 'detached-powerbuilder-new'
   | 'detached-used'
   | 'regional-mansion-new'
-  | 'luxury-penthouse-new';
+  | 'luxury-penthouse-new'
+  | 'compact-mansion-new'
+  | 'detached-semi-order-zeh'
+  | 'detached-regional-spacious'
+  | 'detached-kominka-reno';
 
 export type EnergyCertType = 'long-term-excellent' | 'zeh' | 'standard' | 'non-compliant';
 export type FamilyPlanType = 'dinks' | 'child-1-public' | 'child-1-private' | 'child-2-public' | 'child-2-private' | 'child-3';
 export type MacroRegimeId = 'gradual-hike' | 'stagflation-shock' | 'asset-bubble' | 'deflation-return' | 'dynamic-random';
-export type BankId = 'net-bank' | 'mega-bank' | 'regional-bank' | 'flat35-agency' | 'neo-mix-bank';
+export type BankId =
+  | 'net-bank'
+  | 'mega-bank'
+  | 'regional-bank'
+  | 'flat35-agency'
+  | 'neo-mix-bank'
+  | 'fixed10-step-bank'
+  | 'coop-welfare-bank';
 export type EmploymentType = 'listed-corp' | 'civil-servant' | 'mega-venture' | 'sme' | 'freelance';
 
 export interface HouseholdArchetype {
@@ -98,12 +109,26 @@ export interface MortgageSetupConfig {
   contractType: ContractType;
   familyPlan: FamilyPlanType;
   propertyId: PropertyCategory;
+  // マイホーム条件の自由カスタマイズ・ランダム数値オーバーライド
+  customPropertyPriceMan?: number;
+  customLandRatio?: number;
+  customBuildingType?: 'mansion' | 'tower' | 'detached';
+  customIsNew?: boolean;
+  customBuiltAge?: number;
+  customEnergyCert?: EnergyCertType;
+  customMgmtAndRepairMonthlyMan?: number;
+  // 銀行・金利・期間・団信の自由カスタマイズ・ランダム数値オーバーライド
   bankId: BankId;
+  customRateType?: RateType;
+  customBaseRate?: number;
+  customHas5Year125Rule?: boolean;
   termYears: LoanTermYears;
   repaymentMethod: RepaymentMethod;
-  bonusRepaymentRatio: number; // 0 (ボーナス払いなし) | 0.2 (20%ボーナス併用)
+  bonusRepaymentRatio: number; // 0 (ボーナス払いなし) 〜 0.4 (40%ボーナス併用)
   danshin: DanshinType;
+  customDanshinSpread?: number;
   macroRegime: MacroRegimeId;
+  randomRollSummary?: string;
 }
 
 export interface UnderwritingResult {
@@ -191,7 +216,16 @@ export interface MortgageDecisionEvent {
   id: string;
   yearIndex: number;
   age: number;
-  category: 'boj-shock' | 'repair-crisis' | 'education' | 'career' | 'health-danshin' | 'pair-crisis' | 'retirement' | 'bankruptcy-brink';
+  category:
+    | 'boj-shock'
+    | 'repair-crisis'
+    | 'education'
+    | 'career'
+    | 'health-danshin'
+    | 'pair-crisis'
+    | 'retirement'
+    | 'bankruptcy-brink'
+    | 'life';
   title: string;
   description: string;
   statisticalContext: string;

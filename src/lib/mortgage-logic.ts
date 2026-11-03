@@ -60,9 +60,9 @@ function createInitialCompanions(): CompanionHousehold[] {
   return [
     {
       id: 'comp-tower',
-      familyName: '佐藤家（32歳・共働き）',
+      familyName: 'モデル世帯A（32歳・都心共働き）',
       label: '都心タワマン 8,480万',
-      propertyShort: '湾岸タワマン38階',
+      propertyShort: '湾岸タワマン高層階',
       loanSetupLabel: 'ネット銀変動0.38%・ペア35年',
       age: 32,
       remainingBalanceMan: 7600,
@@ -73,7 +73,7 @@ function createInitialCompanions(): CompanionHousehold[] {
     },
     {
       id: 'comp-detached',
-      familyName: '鈴木家（34歳・会社員）',
+      familyName: 'モデル世帯B（34歳・近郊会社員）',
       label: '注文戸建て 5,680万',
       propertyShort: '都市近郊・太陽光ZEH戸建',
       loanSetupLabel: 'フラット35S固定・単独35年',
@@ -86,7 +86,7 @@ function createInitialCompanions(): CompanionHousehold[] {
     },
     {
       id: 'comp-50yr',
-      familyName: '高橋家（28歳・若手世帯）',
+      familyName: 'モデル世帯C（28歳・若手共働き）',
       label: '新築建売 4,180万',
       propertyShort: '郊外ニュータウン4LDK',
       loanSetupLabel: '地銀50年ローン変動・合算',
@@ -99,7 +99,7 @@ function createInitialCompanions(): CompanionHousehold[] {
     },
     {
       id: 'comp-used',
-      familyName: '田中家（37歳・堅実派）',
+      familyName: 'モデル世帯D（37歳・堅実派）',
       label: '築20年中古マンション 3,880万',
       propertyShort: '準都心リノベ済3LDK',
       loanSetupLabel: 'メガバンク変動・単独35年',
@@ -115,27 +115,10 @@ function createInitialCompanions(): CompanionHousehold[] {
 
 export const ARCHETYPES: HouseholdArchetype[] = [
   {
-    id: 'power-couple-tower',
-    title: '都心IT×商社 パワーカップル世帯',
-    subtitle: '32歳・上場企業共働き（世帯年収 1,380万円）',
-    percentileLabel: '日本の住宅購入世帯の上位 6.8%（首都圏タワマン層）',
-    age: 32,
-    employment: 'listed-corp',
-    mainIncomeMan: 820,
-    subIncomeMan: 560,
-    initialSavingsMan: 1450,
-    hasCreditBlemish: false,
-    recommendedContract: 'pair',
-    recommendedFamily: 'child-1-private',
-    recommendedProperty: 'tower-mansion-new',
-    description:
-      '夫婦ともに高収入でペアローンフル活用＆W住宅ローン控除を狙う現代の象徴的パワーカップル。ただし片方の休職・離婚・中学受験課金・タワマン修繕費高騰が重なると一気に綱渡りに。',
-  },
-  {
     id: 'steady-couple-station',
-    title: '首都圏・堅実共働きメーカー世帯',
+    title: '首都圏・共働き駅近マンション世帯',
     subtitle: '34歳・正社員×正社員（世帯年収 920万円）',
-    percentileLabel: '日本の分譲マンション購入世帯の中央値上位（上位 22.4%）',
+    percentileLabel: '分譲マンション購入世帯の標準モデル（構成比 16.4%）',
     age: 34,
     employment: 'listed-corp',
     mainIncomeMan: 580,
@@ -149,10 +132,27 @@ export const ARCHETYPES: HouseholdArchetype[] = [
       '長期優良認定の駅近マンションをペアローンで購入する王道モデル。子ども2人の教育費ピーク（48〜54歳）と変動金利上昇をどう乗り切るかが勝負。',
   },
   {
+    id: 'civil-servant-single',
+    title: '地方公務員・単独ローン堅実戸建て世帯',
+    subtitle: '31歳・公務員単独（世帯年収 580万円）',
+    percentileLabel: '新築戸建て購入世帯の代表的ボリュームゾーン（構成比 15.2%）',
+    age: 31,
+    employment: 'civil-servant',
+    mainIncomeMan: 580,
+    subIncomeMan: 0,
+    initialSavingsMan: 780,
+    hasCreditBlemish: false,
+    recommendedContract: 'single',
+    recommendedFamily: 'child-2-public',
+    recommendedProperty: 'detached-powerbuilder-new',
+    description:
+      '銀行審査の信用力は抜群で失業リスクも極めて低い。ただし1馬力のためインフレ局面での実質賃金目減りや郊外地価の下落（オーバーローン化）に注意が必要。',
+  },
+  {
     id: 'young-50yr-challenger',
-    title: '28歳・50年超長期ローン背伸びマイホーム世帯',
+    title: '28歳・50年超長期ローン注文住宅世帯',
     subtitle: '28歳・若手会社員＋パート（世帯年収 610万円）',
-    percentileLabel: '20代住宅購入層の急増トレンド（50年ローン選択率 約24%）',
+    percentileLabel: '20代購入層で急増中の50年ローン選択世帯（構成比 11.8%）',
     age: 28,
     employment: 'sme',
     mainIncomeMan: 480,
@@ -166,27 +166,10 @@ export const ARCHETYPES: HouseholdArchetype[] = [
       '「月々の支払いが家賃並みになるから」と50年ローン（78歳完済）で新築注文住宅を購入。最初の15年間は元金がほとんど減らず、定年時に2,000万円超の残債が残る構造に挑む。',
   },
   {
-    id: 'civil-servant-single',
-    title: '地方公務員・単独ローン安定世帯',
-    subtitle: '31歳・公務員単独（世帯年収 580万円）',
-    percentileLabel: '日本の戸建て購入世帯の代表的ボリュームゾーン（上位 46.0%）',
-    age: 31,
-    employment: 'civil-servant',
-    mainIncomeMan: 580,
-    subIncomeMan: 0,
-    initialSavingsMan: 780,
-    hasCreditBlemish: false,
-    recommendedContract: 'single',
-    recommendedFamily: 'child-2-public',
-    recommendedProperty: 'detached-powerbuilder-new',
-    description:
-      '銀行審査の信用力は抜群でリストラリスクもほぼゼロ。ただし1馬力のためインフレ局面での実質賃金目減りや郊外地価の下落（オーバーローン化）に注意が必要。',
-  },
-  {
     id: 'late-30s-family-late-loan',
-    title: '39歳・晩婚子育てスタート＆74歳完済世帯',
+    title: '39歳・晩婚子育て＆74歳完済スタート世帯',
     subtitle: '39歳・中堅管理職×時短勤務（世帯年収 840万円）',
-    percentileLabel: '第1子誕生を機に30代後半で購入する層（約 29.5%）',
+    percentileLabel: '第1子誕生を機に30代後半で購入する層（構成比 12.5%）',
     age: 39,
     employment: 'listed-corp',
     mainIncomeMan: 660,
@@ -200,10 +183,61 @@ export const ARCHETYPES: HouseholdArchetype[] = [
       '35年ローンを組むと完済予定は74歳。55歳の役職定年・60歳の定年再雇用と子どもの大学進学費用が完全に重なるため、計画的な繰上返済が命綱となる。',
   },
   {
+    id: 'parent-gift-custom-house',
+    title: '30歳・親からの住宅資金贈与＋注文住宅世帯',
+    subtitle: '30歳・上場企業×正社員（世帯年収 860万円・頭金充実）',
+    percentileLabel: '直系尊属からの住宅取得資金贈与活用層（構成比 9.4%）',
+    age: 30,
+    employment: 'listed-corp',
+    mainIncomeMan: 540,
+    subIncomeMan: 320,
+    initialSavingsMan: 1650,
+    hasCreditBlemish: false,
+    recommendedContract: 'pair',
+    recommendedFamily: 'child-2-public',
+    recommendedProperty: 'detached-custom-new',
+    description:
+      '親からの非課税贈与と自己資金を合わせ、頭金を1,000万円近く入れて太陽光ZEH注文住宅を購入。初期LTVが低くアンダーローンを維持しやすい好スタート世帯。',
+  },
+  {
+    id: 'regional-dual-car-detached',
+    title: '29歳・地方都市の敷地60坪＆太陽光戸建て世帯',
+    subtitle: '29歳・地方優良企業共働き（世帯年収 680万円）',
+    percentileLabel: '地方圏の持ち家・注文住宅ボリューム層（構成比 10.6%）',
+    age: 29,
+    employment: 'sme',
+    mainIncomeMan: 440,
+    subIncomeMan: 240,
+    initialSavingsMan: 620,
+    hasCreditBlemish: false,
+    recommendedContract: 'income-merge',
+    recommendedFamily: 'child-2-public',
+    recommendedProperty: 'detached-regional-spacious',
+    description:
+      '土地価格が手頃な地方中核都市で3,480万円の長期優良戸建てを購入。管理費・駐車場代0円と太陽光発電で住居費負担は軽いが、将来の車買い替えと外壁修繕の積立が鍵。',
+  },
+  {
+    id: 'single-solo-compact',
+    title: '33歳・おひとりさま都心コンパクトマンション世帯',
+    subtitle: '33歳・単身キャリア正社員（本人年収 670万円）',
+    percentileLabel: '近年増加する単身・DINKsの資産形成兼実需購入（構成比 7.2%）',
+    age: 33,
+    employment: 'mega-venture',
+    mainIncomeMan: 670,
+    subIncomeMan: 0,
+    initialSavingsMan: 850,
+    hasCreditBlemish: false,
+    recommendedContract: 'single',
+    recommendedFamily: 'dinks',
+    recommendedProperty: 'compact-mansion-new',
+    description:
+      '「家賃を払い続けるなら資産になる駅近2LDKを」と単身で購入。教育費がかからないため新NISAや繰上返済に資金を回しやすいが、1馬力ゆえ病気や休職時の団信選びが重要。',
+  },
+  {
     id: 'freelance-creator',
-    title: '36歳・フリーランス＆個人事業主世帯',
-    subtitle: '36歳・ITフリーランス×会社員（世帯年収 960万円）',
-    percentileLabel: '確定申告3期分で審査に挑む自営業層（全体の約 11.2%）',
+    title: '36歳・独立フリーランス＆中古リノベ世帯',
+    subtitle: '36歳・IT個人事業主×会社員（世帯年収 960万円）',
+    percentileLabel: '確定申告3期分で審査に挑む自営業・自由業層（構成比 5.4%）',
     age: 36,
     employment: 'freelance',
     mainIncomeMan: 680,
@@ -215,6 +249,74 @@ export const ARCHETYPES: HouseholdArchetype[] = [
     recommendedProperty: 'suburban-mansion-used',
     description:
       '表面年収は高いが、節税対策と過去の奨学金うっかり延滞歴によりネット銀行の審査が通りにくい。景気後退時の案件単価下落に備えたキャッシュ確保が鍵。',
+  },
+  {
+    id: 'child3-suburban-4ldk',
+    title: '33歳・子ども3人大家族の都市近郊戸建て世帯',
+    subtitle: '33歳・メーカー正社員×パート（世帯年収 760万円）',
+    percentileLabel: '多子世帯の4LDK戸建て購入モデル（構成比 4.1%）',
+    age: 33,
+    employment: 'listed-corp',
+    mainIncomeMan: 620,
+    subIncomeMan: 140,
+    initialSavingsMan: 720,
+    hasCreditBlemish: false,
+    recommendedContract: 'single',
+    recommendedFamily: 'child-3',
+    recommendedProperty: 'detached-semi-order-zeh',
+    description:
+      '3人の子どもが伸び伸び育つZEH戸建てを購入。住宅ローン控除の子育て優遇は最大級だが、10年後から始まる「大学進学3連発」の教育費ピークをどう乗り切るかが最大の山場。',
+  },
+  {
+    id: 'power-couple-tower',
+    title: '32歳・都心湾岸タワマン共働きパワーカップル世帯',
+    subtitle: '32歳・外資/IT×総合職（世帯年収 1,380万円）',
+    percentileLabel: '首都圏タワマン購入層（構成比 3.2%）',
+    age: 32,
+    employment: 'mega-venture',
+    mainIncomeMan: 820,
+    subIncomeMan: 560,
+    initialSavingsMan: 1450,
+    hasCreditBlemish: false,
+    recommendedContract: 'pair',
+    recommendedFamily: 'child-1-private',
+    recommendedProperty: 'tower-mansion-new',
+    description:
+      '夫婦ともに高収入でペアローンフル活用＆W住宅ローン控除を狙う都心タワマン世帯。ただし片方の休職・離婚・中学受験課金・タワマン修繕費高騰が重なると一気に綱渡りに。',
+  },
+  {
+    id: 'forty-something-cash-used',
+    title: '43歳・賃貸卒業の25年短縮ローン＆中古リノベ世帯',
+    subtitle: '43歳・中堅企業課長×正社員（世帯年収 890万円）',
+    percentileLabel: '40代で頭金を貯めて中古住宅を購入する堅実層（構成比 2.6%）',
+    age: 43,
+    employment: 'sme',
+    mainIncomeMan: 610,
+    subIncomeMan: 280,
+    initialSavingsMan: 1500,
+    hasCreditBlemish: false,
+    recommendedContract: 'pair',
+    recommendedFamily: 'child-1-public',
+    recommendedProperty: 'detached-kominka-reno',
+    description:
+      '40代で賃貸を卒業し、フル断熱リノベ済みの中古戸建てを25年ローン（68歳完済）で購入。借入額を抑えて定年前後の完済を狙う大人の堅実プラン。',
+  },
+  {
+    id: 'specialist-high-income-private',
+    title: '37歳・専門職カップル＆私立中学受験2人世帯',
+    subtitle: '37歳・専門職×専門職（世帯年収 1,680万円）',
+    percentileLabel: '都心プレミアム住戸・高年収専門職層（構成比 1.6%）',
+    age: 37,
+    employment: 'listed-corp',
+    mainIncomeMan: 1050,
+    subIncomeMan: 630,
+    initialSavingsMan: 2100,
+    hasCreditBlemish: false,
+    recommendedContract: 'pair',
+    recommendedFamily: 'child-2-private',
+    recommendedProperty: 'luxury-penthouse-new',
+    description:
+      '1億円超の都心プレミアムマンションをペアローンで購入し、子ども2人を私立中高一貫校へ通わせるハイエンド世帯。収入は圧倒的だが、金利上昇と年間300万円超の教育費が同時直撃する。',
   },
 ];
 
@@ -380,7 +482,7 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     buildingType: 'tower',
     isNew: true,
     builtAge: 0,
-    locationLabel: '港区・都心3区エリア 駅徒歩2分',
+    locationLabel: '都心3区エリア・駅徒歩2分',
     priceMan: 11500,
     landRatio: 0.26,
     energyCert: 'long-term-excellent',
@@ -391,9 +493,97 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     landAnnualTrendRate: 0.018,
     utilityMonthlyDiffMan: -0.2,
     description:
-      '都心一等地の1億円超えプレミアム物件。インフレ局面では海外マネー流入で値上がり益（キャピタルゲイン）も狙える最高峰物件。',
+      '都心一等地の1億円超えプレミアム物件。インフレ局面では国内外の需要で値上がり益（キャピタルゲイン）も狙える最高峰物件。',
     riskNote:
       'ペアローンで限度額ギリギリまで借りると、金利が1.5%上がっただけで年間返済額が120万円以上急増するハイリスク・ハイリターン領域。',
+  },
+  'compact-mansion-new': {
+    id: 'compact-mansion-new',
+    name: '都心近接・駅徒歩3分 新築コンパクト2LDKマンション（ZEH）',
+    shortName: '都心コンパクト2LDK',
+    buildingType: 'mansion',
+    isNew: true,
+    builtAge: 0,
+    locationLabel: '都心乗換駅 徒歩3分（54㎡・2LDK）',
+    priceMan: 4980,
+    landRatio: 0.34,
+    energyCert: 'zeh',
+    initialMgmtFeeMonthlyMan: 1.5,
+    initialRepairFeeMonthlyMan: 1.1,
+    parkingMonthlyMan: 0.3,
+    annualPropertyTaxMan: 16,
+    landAnnualTrendRate: 0.008,
+    utilityMonthlyDiffMan: -0.4,
+    description:
+      '単身キャリアやDINKsに人気の駅近コンパクトレジデンス。車を持たずに暮らせるため駐車場負担がなく、賃貸に出すにも売却するにも流動性が高い。',
+    riskNote:
+      '家族が増えて手狭になった場合は住み替えが必要になるほか、単身購入の場合は病気・休職リスクに備えた就業不能・がん団信の選択が重要。',
+  },
+  'detached-semi-order-zeh': {
+    id: 'detached-semi-order-zeh',
+    name: '都市近郊・駅徒歩10分 ZEHセミオーダー3階建て戸建て',
+    shortName: '都市型ZEH3階建戸建',
+    buildingType: 'detached',
+    isNew: true,
+    builtAge: 0,
+    locationLabel: '都市近郊・急行駅徒歩10分（ビルトイン車庫付）',
+    priceMan: 5280,
+    landRatio: 0.56,
+    energyCert: 'zeh',
+    initialMgmtFeeMonthlyMan: 0,
+    initialRepairFeeMonthlyMan: 0,
+    parkingMonthlyMan: 0,
+    annualPropertyTaxMan: 17,
+    landAnnualTrendRate: 0.003,
+    utilityMonthlyDiffMan: -0.6,
+    description:
+      '駅徒歩圏の利便性と「管理費・駐車場代0円の4LDK」を両立した都市型3階建て住宅。土地比率が高く資産価値が崩れにくい。',
+    riskNote:
+      '3階建ては外壁塗装・屋根修繕時の足場費用が2階建てより割高になりやすく、老後の階段昇降やホームエレベーター改修も論点になる。',
+  },
+  'detached-regional-spacious': {
+    id: 'detached-regional-spacious',
+    name: '地方中核都市・敷地60坪 太陽光＋駐車場3台付 長期優良戸建て',
+    shortName: '地方60坪太陽光戸建',
+    buildingType: 'detached',
+    isNew: true,
+    builtAge: 0,
+    locationLabel: '地方中核都市・郊外開発分譲地（敷地60坪）',
+    priceMan: 3480,
+    landRatio: 0.38,
+    energyCert: 'long-term-excellent',
+    initialMgmtFeeMonthlyMan: 0,
+    initialRepairFeeMonthlyMan: 0,
+    parkingMonthlyMan: 0,
+    annualPropertyTaxMan: 12,
+    landAnnualTrendRate: -0.005,
+    utilityMonthlyDiffMan: -1.2,
+    description:
+      '広い庭と駐車場3台、大容量太陽光パネルを備えたゆとりの長期優良住宅。借入額を3,000万円台に抑えつつ光熱費も大幅に黒字化できる。',
+    riskNote:
+      '夫婦それぞれマイカー2台を維持する地域のため、7〜9年ごとの車両買い替え費用と将来の外壁・防蟻メンテナンス費を計画的に積み立てる必要がある。',
+  },
+  'detached-kominka-reno': {
+    id: 'detached-kominka-reno',
+    name: '海街・文教エリア 築22年フル断熱リノベ木造一戸建て（ZEH改修）',
+    shortName: '築22年断熱リノベ戸建',
+    buildingType: 'detached',
+    isNew: false,
+    builtAge: 22,
+    locationLabel: '湘南・文教住宅街エリア 駅徒歩11分',
+    priceMan: 3680,
+    landRatio: 0.68,
+    energyCert: 'zeh',
+    initialMgmtFeeMonthlyMan: 0,
+    initialRepairFeeMonthlyMan: 0,
+    parkingMonthlyMan: 0,
+    annualPropertyTaxMan: 11,
+    landAnnualTrendRate: 0.002,
+    utilityMonthlyDiffMan: -0.3,
+    description:
+      '人気の文教・海街エリアの中古戸建てを耐震・高断熱フルリノベーションした物件。価格の約7割が底堅い土地資産で構成され、建物減価リスクが極めて小さい。',
+    riskNote:
+      '中古住宅のため住宅ローン控除期間は10年間。築35年（返済13年目頃）で屋根葺き替えや給排水管の更新工事が到来する。',
   },
 };
 
@@ -483,6 +673,40 @@ export const BANKS: Record<BankId, BankSpec> = {
       '借入額の半分を変動金利、残り半分を固定金利で組むリスク分散プラン。日銀利上げ時のダメージを半分に抑えつつ、全期間固定よりも初期返済額を軽減できる。',
     badgeText: '変動＋固定 50:50分散',
   },
+  'fixed10-step-bank': {
+    id: 'fixed10-step-bank',
+    name: 'あさひ信託銀行【当初10年固定・段階特約プラン】',
+    shortName: '当初10年固定(0.98%)',
+    categoryLabel: '住宅ローン控除期間（当初10年）の金利を完全固定',
+    rateType: 'fixed-10',
+    baseRate: 0.98,
+    screeningRate: 2.8,
+    maxDtiPercent: 36,
+    supports50Years: true,
+    has5Year125Rule: true,
+    upfrontFeeRate: 0.022,
+    rescheduleFlexibility: 2,
+    description:
+      '残債が最も多い最初の10年間を年0.98%で固定し、教育費や住宅ローン控除期間中の家計を安定させるプラン。ただし11年目の特約満了時に優遇幅が縮小し金利が跳ね上がる点に注意。',
+    badgeText: '10年間固定 / 11年目改定',
+  },
+  'coop-welfare-bank': {
+    id: 'coop-welfare-bank',
+    name: '中央勤労者福祉バンク（ろうきん・共済連係）',
+    shortName: '勤労福祉バンク(0.58%)',
+    categoryLabel: '事務手数料低廉・繰上返済＆条件変更サポート充実',
+    rateType: 'variable',
+    baseRate: 0.58,
+    screeningRate: 2.9,
+    maxDtiPercent: 36,
+    supports50Years: false,
+    has5Year125Rule: true,
+    upfrontFeeRate: 0.008,
+    rescheduleFlexibility: 3,
+    description:
+      '融資事務手数料が一般的な銀行（2.2%）の半分以下（0.8%）で済み、初期諸費用を100万円近く節約できる勤労者向け金融機関。5年・125%ルール付きで安定感が高い。',
+    badgeText: '諸費用最安級 / 5年ルール有',
+  },
 };
 
 export const DANSHIN_PLANS: Record<DanshinType, DanshinSpec> = {
@@ -570,10 +794,10 @@ export const MACRO_REGIMES: Record<
   },
   'dynamic-random': {
     id: 'dynamic-random',
-    name: '1in8b カオス世界情勢（毎年ランダムに世界情勢・日銀総裁方針が変動）',
+    name: '激動シナリオ：毎年ランダムに世界情勢・金融政策が変動',
     subtitle: '何が起きるか予測不能なドキュメンタリー・リアルモード',
     description:
-      '好景気、パンデミック、資源ショック、金融緩和、緊急利上げが歴史のサイコロによって動的に発生する1in8b.lifeスタイルの完全予測不能モード。',
+      '好景気、資源ショック、金融緩和、緊急利上げが歴史の巡り合わせによって動的に発生する予測不能モード。',
   },
 };
 
@@ -742,12 +966,153 @@ export function calcAnnualTaxDeductionMan(
 }
 
 /**
+ * カスタム設定またはランダム生成された数値を反映した実効物件スペックを返す
+ */
+export function resolveEffectiveProperty(config: MortgageSetupConfig): PropertySpec {
+  const base = PROPERTIES[config.propertyId] ?? PROPERTIES['station-mansion-new'];
+  const priceMan = config.customPropertyPriceMan ?? base.priceMan;
+  const landRatio = config.customLandRatio ?? base.landRatio;
+  const buildingType = config.customBuildingType ?? base.buildingType;
+  const isNew = config.customIsNew ?? base.isNew;
+  const builtAge = config.customBuiltAge ?? (isNew ? 0 : Math.max(5, base.builtAge || 12));
+  const energyCert = config.customEnergyCert ?? base.energyCert;
+
+  const baseMonthlyMaint =
+    base.initialMgmtFeeMonthlyMan + base.initialRepairFeeMonthlyMan + base.parkingMonthlyMan;
+  const targetMonthlyMaint = config.customMgmtAndRepairMonthlyMan ?? baseMonthlyMaint;
+  const maintScale = baseMonthlyMaint > 0 ? targetMonthlyMaint / baseMonthlyMaint : 1;
+
+  const initialMgmtFeeMonthlyMan =
+    config.customMgmtAndRepairMonthlyMan !== undefined
+      ? Math.round(targetMonthlyMaint * 0.45 * 10) / 10
+      : base.initialMgmtFeeMonthlyMan;
+  const initialRepairFeeMonthlyMan =
+    config.customMgmtAndRepairMonthlyMan !== undefined
+      ? Math.round((targetMonthlyMaint - initialMgmtFeeMonthlyMan) * 10) / 10
+      : base.initialRepairFeeMonthlyMan;
+  const parkingMonthlyMan =
+    config.customMgmtAndRepairMonthlyMan !== undefined ? 0 : base.parkingMonthlyMan;
+
+  const priceScale = base.priceMan > 0 ? priceMan / base.priceMan : 1;
+  const annualPropertyTaxMan = Math.max(
+    8,
+    Math.round(base.annualPropertyTaxMan * (0.35 + priceScale * 0.65) * 10) / 10,
+  );
+
+  const utilityMonthlyDiffMan =
+    energyCert === 'long-term-excellent'
+      ? -0.5
+      : energyCert === 'zeh'
+        ? -0.4
+        : energyCert === 'standard'
+          ? 0
+          : 0.5;
+
+  const hasCustomOverride =
+    config.customPropertyPriceMan !== undefined ||
+    config.customBuildingType !== undefined ||
+    config.customIsNew !== undefined ||
+    config.customEnergyCert !== undefined ||
+    Math.abs(maintScale - 1) > 0.05;
+
+  const buildingLabel =
+    buildingType === 'tower'
+      ? 'タワーマンション'
+      : buildingType === 'mansion'
+        ? '分譲マンション'
+        : '一戸建て';
+  const conditionLabel = isNew ? '新築' : `中古・築${builtAge}年`;
+  const certShort =
+    energyCert === 'long-term-excellent'
+      ? '長期優良'
+      : energyCert === 'zeh'
+        ? 'ZEH省エネ'
+        : energyCert === 'standard'
+          ? '一般省エネ'
+          : '旧省エネ基準';
+
+  return {
+    ...base,
+    buildingType,
+    isNew,
+    builtAge,
+    priceMan,
+    landRatio,
+    energyCert,
+    initialMgmtFeeMonthlyMan,
+    initialRepairFeeMonthlyMan,
+    parkingMonthlyMan,
+    annualPropertyTaxMan,
+    utilityMonthlyDiffMan,
+    name: hasCustomOverride
+      ? `${base.shortName}（${conditionLabel}・${buildingLabel}・${certShort}）`
+      : base.name,
+    shortName: hasCustomOverride ? `${conditionLabel}${buildingLabel}（${certShort}）` : base.shortName,
+  };
+}
+
+/**
+ * カスタム設定またはランダム生成された数値を反映した実効銀行スペックを返す
+ */
+export function resolveEffectiveBank(config: MortgageSetupConfig): BankSpec {
+  const base = BANKS[config.bankId] ?? BANKS['mega-bank'];
+  const rateType = config.customRateType ?? base.rateType;
+  const baseRate = config.customBaseRate ?? base.baseRate;
+  const has5Year125Rule =
+    config.customHas5Year125Rule !== undefined
+      ? config.customHas5Year125Rule
+      : rateType === 'variable'
+        ? base.has5Year125Rule
+        : false;
+
+  const rateLabel =
+    rateType === 'variable'
+      ? has5Year125Rule
+        ? '変動金利（5年・125%ルール有）'
+        : '変動金利（5年ルール無）'
+      : rateType === 'fixed-10'
+        ? '当初10年固定金利'
+        : rateType === 'flat-35'
+          ? '全期間固定金利'
+          : '50:50ミックス金利';
+
+  const hasCustom =
+    config.customRateType !== undefined ||
+    config.customBaseRate !== undefined ||
+    config.customHas5Year125Rule !== undefined;
+
+  return {
+    ...base,
+    rateType,
+    baseRate,
+    has5Year125Rule,
+    categoryLabel: hasCustom ? `${rateLabel}・基準${baseRate.toFixed(2)}%` : base.categoryLabel,
+  };
+}
+
+/**
+ * カスタム設定またはランダム生成された数値を反映した実効団信スペックを返す
+ */
+export function resolveEffectiveDanshin(config: MortgageSetupConfig): DanshinSpec {
+  const base = DANSHIN_PLANS[config.danshin] ?? DANSHIN_PLANS['basic'];
+  const spreadRate = config.customDanshinSpread ?? base.spreadRate;
+  return {
+    ...base,
+    spreadRate,
+    shortName:
+      config.customDanshinSpread !== undefined
+        ? `${base.name}（+${spreadRate.toFixed(2)}%）`
+        : base.shortName,
+  };
+}
+
+/**
  * 銀行本審査シミュレーション
  */
 export function runBankUnderwriting(config: MortgageSetupConfig): UnderwritingResult {
-  const property = PROPERTIES[config.propertyId];
-  const bank = BANKS[config.bankId];
-  const danshin = DANSHIN_PLANS[config.danshin];
+  const property = resolveEffectiveProperty(config);
+  const bank = resolveEffectiveBank(config);
+  const danshin = resolveEffectiveDanshin(config);
   const family = FAMILY_PLANS[config.familyPlan];
   const isChildHousehold = family.childrenCount > 0;
 
@@ -788,9 +1153,8 @@ export function runBankUnderwriting(config: MortgageSetupConfig): UnderwritingRe
   }
   const effectiveInitialRate = Math.round(baseRate * 1000) / 1000;
 
-  // 完済予定年齢
-  const effectiveTermYears: LoanTermYears =
-    config.termYears === 50 && !bank.supports50Years ? 35 : config.termYears;
+  // 完済予定年齢（10年〜50年まで任意の返済期間に対応）
+  const effectiveTermYears: LoanTermYears = Math.max(10, Math.min(50, Math.round(config.termYears)));
   const maturityAge = config.age + effectiveTermYears;
 
   // 審査金利での年間返済額と返済負担率(DTI)
@@ -846,9 +1210,9 @@ export function runBankUnderwriting(config: MortgageSetupConfig): UnderwritingRe
   let approved = true;
   let conditionalReductionMan = 0;
 
-  if (config.termYears === 50 && !bank.supports50Years) {
+  if (config.termYears >= 40 && !bank.supports50Years) {
     warnings.push(
-      `${bank.name}は50年超長期ローン非対応のため、35年ローン（完済${config.age + 35}歳）として審査されました。`,
+      `${bank.name}で${effectiveTermYears}年の超長期プランを利用するため、35年超長期特約（金利上乗せ・完済${maturityAge}歳）として審査されました。`,
     );
   }
   if (maturityAge > 80) {
@@ -935,44 +1299,220 @@ export function runBankUnderwriting(config: MortgageSetupConfig): UnderwritingRe
 }
 
 /**
- * 1in8bスタイル：「1,300万世帯分の1」統計確率にもとづくランダム世帯ガチャ生成
+ * 世帯属性（年齢・雇用・年収・頭金・家族構成・契約方式）のみを多彩にランダム生成する
+ */
+export function randomizeHouseholdParams(
+  prev: MortgageSetupConfig,
+  rng: () => number = Math.random,
+): MortgageSetupConfig {
+  const arch = ARCHETYPES[Math.floor(rng() * ARCHETYPES.length)] ?? ARCHETYPES[0];
+  const age = Math.min(52, Math.max(22, 23 + Math.floor(rng() * 26)));
+  const employments: EmploymentType[] = [
+    'listed-corp',
+    'civil-servant',
+    'mega-venture',
+    'sme',
+    'freelance',
+  ];
+  const employment =
+    rng() < 0.45 ? arch.employment : (employments[Math.floor(rng() * employments.length)] ?? 'listed-corp');
+
+  const mainIncomeMan =
+    Math.round(
+      Math.max(300, Math.min(1400, arch.mainIncomeMan * (0.72 + rng() * 0.56))) / 10,
+    ) * 10;
+
+  const contractChoices: ContractType[] = ['single', 'pair', 'income-merge'];
+  const contractType =
+    rng() < 0.5
+      ? arch.recommendedContract
+      : (contractChoices[Math.floor(rng() * contractChoices.length)] ?? 'single');
+
+  const subIncomeMan =
+    contractType === 'single'
+      ? rng() < 0.45
+        ? 0
+        : Math.round((80 + rng() * 180) / 10) * 10
+      : Math.round((200 + rng() * 640) / 10) * 10;
+
+  const initialSavingsMan =
+    Math.round(Math.max(200, Math.min(2800, 250 + rng() * 2100)) / 50) * 50;
+
+  const maxSafeDown = Math.max(0, initialSavingsMan - 250);
+  const downPaymentMan =
+    rng() < 0.32
+      ? 0
+      : Math.min(maxSafeDown, Math.round((rng() * maxSafeDown * 0.85) / 50) * 50);
+
+  const familyKeys = Object.keys(FAMILY_PLANS) as FamilyPlanType[];
+  const familyPlan =
+    rng() < 0.45
+      ? arch.recommendedFamily
+      : (familyKeys[Math.floor(rng() * familyKeys.length)] ?? 'child-1-public');
+
+  return {
+    ...prev,
+    archetypeId: arch.id,
+    age,
+    employment,
+    mainIncomeMan,
+    subIncomeMan,
+    initialSavingsMan,
+    downPaymentMan,
+    hasCreditBlemish: rng() < 0.12,
+    contractType,
+    familyPlan,
+  };
+}
+
+/**
+ * マイホーム物件（種別・新築/中古・省エネ性能・物件価格・土地比率・維持費）を多彩にランダム生成する
+ */
+export function randomizePropertyParams(
+  prev: MortgageSetupConfig,
+  rng: () => number = Math.random,
+): MortgageSetupConfig {
+  const propKeys = Object.keys(PROPERTIES) as PropertyCategory[];
+  const propertyId = propKeys[Math.floor(rng() * propKeys.length)] ?? 'station-mansion-new';
+  const baseProp = PROPERTIES[propertyId];
+
+  const buildingTypes: ('tower' | 'mansion' | 'detached')[] = ['tower', 'mansion', 'detached'];
+  const customBuildingType =
+    rng() < 0.65
+      ? baseProp.buildingType
+      : (buildingTypes[Math.floor(rng() * buildingTypes.length)] ?? baseProp.buildingType);
+
+  const customIsNew = rng() < 0.64;
+  const customBuiltAge = customIsNew ? 0 : 4 + Math.floor(rng() * 24);
+
+  const certs: ('long-term-excellent' | 'zeh' | 'standard' | 'non-compliant')[] = customIsNew
+    ? ['long-term-excellent', 'zeh', 'standard']
+    : ['long-term-excellent', 'zeh', 'standard', 'non-compliant'];
+  const customEnergyCert = certs[Math.floor(rng() * certs.length)] ?? baseProp.energyCert;
+
+  // 価格を物件タイプと新築/中古に応じてリアルかつ多彩に生成（10万円刻み）
+  const usedDiscount = customIsNew ? 1.0 : Math.max(0.58, 0.92 - customBuiltAge * 0.012);
+  const randomFactor = 0.78 + rng() * 0.48;
+  const customPropertyPriceMan = Math.max(
+    1600,
+    Math.min(15800, Math.round((baseProp.priceMan * usedDiscount * randomFactor) / 20) * 20),
+  );
+
+  const customLandRatio =
+    Math.round(
+      Math.max(0.15, Math.min(0.75, baseProp.landRatio + (rng() - 0.5) * 0.22)) * 100,
+    ) / 100;
+
+  const baseMaint =
+    baseProp.initialMgmtFeeMonthlyMan +
+    baseProp.initialRepairFeeMonthlyMan +
+    baseProp.parkingMonthlyMan;
+  const customMgmtAndRepairMonthlyMan =
+    customBuildingType === 'detached'
+      ? Math.round((0.8 + rng() * 1.8) * 10) / 10
+      : customBuildingType === 'tower'
+        ? Math.round((3.6 + rng() * 3.8) * 10) / 10
+        : Math.round(Math.max(1.8, baseMaint * (0.8 + rng() * 0.45)) * 10) / 10;
+
+  return {
+    ...prev,
+    propertyId,
+    customBuildingType,
+    customIsNew,
+    customBuiltAge,
+    customEnergyCert,
+    customPropertyPriceMan,
+    customLandRatio,
+    customMgmtAndRepairMonthlyMan,
+  };
+}
+
+/**
+ * 借入銀行・金利タイプ・初期金利・返済期間・元利/元金・団信を多彩にランダム生成する
+ */
+export function randomizeBankLoanParams(
+  prev: MortgageSetupConfig,
+  rng: () => number = Math.random,
+): MortgageSetupConfig {
+  const bankKeys = Object.keys(BANKS) as BankId[];
+  const bankId = bankKeys[Math.floor(rng() * bankKeys.length)] ?? 'mega-bank';
+  const baseBank = BANKS[bankId];
+
+  const customRateType = baseBank.rateType;
+  const rateJitter = (rng() - 0.35) * 0.32;
+  const customBaseRate =
+    Math.round(Math.max(0.25, Math.min(3.2, baseBank.baseRate + rateJitter)) * 100) / 100;
+  const customHas5Year125Rule =
+    customRateType === 'variable' ? (rng() < 0.7 ? baseBank.has5Year125Rule : !baseBank.has5Year125Rule) : false;
+
+  const termCandidates = [20, 25, 30, 35, 35, 35, 40, 45, 50];
+  const rawTerm = termCandidates[Math.floor(rng() * termCandidates.length)] ?? 35;
+  const termYears: LoanTermYears = prev.age + rawTerm > 85 ? Math.max(20, 80 - prev.age) : rawTerm;
+
+  const repaymentMethod: RepaymentMethod = rng() < 0.78 ? 'equal-payment' : 'equal-principal';
+  const bonusCandidates = [0, 0, 0, 0.1, 0.2, 0.3];
+  const bonusRepaymentRatio =
+    bonusCandidates[Math.floor(rng() * bonusCandidates.length)] ?? 0;
+
+  const danshinKeys = Object.keys(DANSHIN_PLANS) as DanshinType[];
+  const danshin = danshinKeys[Math.floor(rng() * danshinKeys.length)] ?? 'cancer-50';
+  const baseSpread = DANSHIN_PLANS[danshin].spreadRate;
+  const customDanshinSpread =
+    danshin === 'basic'
+      ? 0
+      : Math.round(Math.max(0.05, Math.min(0.45, baseSpread + (rng() - 0.4) * 0.12)) * 100) / 100;
+
+  return {
+    ...prev,
+    bankId,
+    customRateType,
+    customBaseRate,
+    customHas5Year125Rule,
+    termYears,
+    repaymentMethod,
+    bonusRepaymentRatio,
+    danshin,
+    customDanshinSpread,
+  };
+}
+
+/**
+ * 統計分布とランダム変動を組み合わせた多彩な世帯・物件・ローン条件の自動生成
  */
 export function generateRandomHouseholdSetup(rng: () => number = Math.random): MortgageSetupConfig {
-  const arch = ARCHETYPES[Math.floor(rng() * ARCHETYPES.length)] ?? ARCHETYPES[0];
-  const banks: BankId[] = ['net-bank', 'mega-bank', 'regional-bank', 'flat35-agency', 'neo-mix-bank'];
-  // 日本の実態統計：変動金利が約74%、固定・ミックスが約26%
-  const rollBank = rng();
-  const bankId: BankId =
-    rollBank < 0.36
-      ? 'net-bank'
-      : rollBank < 0.68
-        ? 'mega-bank'
-        : rollBank < 0.8
-          ? 'regional-bank'
-          : rollBank < 0.92
-            ? 'flat35-agency'
-            : 'neo-mix-bank';
+  const baseDefault: MortgageSetupConfig = {
+    archetypeId: ARCHETYPES[0].id,
+    age: 32,
+    employment: 'listed-corp',
+    mainIncomeMan: 650,
+    subIncomeMan: 400,
+    initialSavingsMan: 900,
+    downPaymentMan: 400,
+    hasCreditBlemish: false,
+    contractType: 'pair',
+    familyPlan: 'child-1-public',
+    propertyId: 'station-mansion-new',
+    bankId: 'mega-bank',
+    termYears: 35,
+    repaymentMethod: 'equal-payment',
+    bonusRepaymentRatio: 0,
+    danshin: 'cancer-50',
+    macroRegime: 'gradual-hike',
+  };
 
-  const termRoll = rng();
-  const termYears: LoanTermYears =
-    arch.id === 'young-50yr-challenger' || (termRoll < 0.25 && BANKS[bankId].supports50Years)
-      ? 50
-      : termRoll > 0.9
-        ? 25
-        : 35;
+  const withHouse = randomizeHouseholdParams(baseDefault, rng);
+  const withProp = randomizePropertyParams(withHouse, rng);
+  const withLoan = randomizeBankLoanParams(withProp, rng);
 
-  const repaymentMethod: RepaymentMethod = rng() < 0.88 ? 'equal-payment' : 'equal-principal';
-  const bonusRepaymentRatio = rng() < 0.3 ? 0.2 : 0;
-
-  const danshinRoll = rng();
-  const danshin: DanshinType =
-    danshinRoll < 0.35
-      ? 'basic'
-      : danshinRoll < 0.65
-        ? 'cancer-50'
-        : danshinRoll < 0.88
-          ? 'three-major-100'
-          : 'all-disease-pair';
+  // 世帯収入と物件価格が極端に乖離しすぎないようリアルな範囲に自動調整（かつフルローンや背伸び購入のスリルも残す）
+  const householdGross =
+    withLoan.mainIncomeMan + (withLoan.contractType === 'single' ? 0 : withLoan.subIncomeMan);
+  const minRealisticPrice = Math.max(1680, Math.round((householdGross * 3.4) / 20) * 20);
+  const maxRealisticPrice = Math.min(15800, Math.round((householdGross * 9.2) / 20) * 20);
+  const adjustedPrice = Math.max(
+    minRealisticPrice,
+    Math.min(maxRealisticPrice, withLoan.customPropertyPriceMan ?? PROPERTIES[withLoan.propertyId].priceMan),
+  );
 
   const regimes: MacroRegimeId[] = [
     'gradual-hike',
@@ -981,33 +1521,22 @@ export function generateRandomHouseholdSetup(rng: () => number = Math.random): M
     'deflation-return',
     'dynamic-random',
   ];
-  const macroRegime = regimes[Math.floor(rng() * regimes.length)] ?? 'dynamic-random';
+  const macroRegime = regimes[Math.floor(rng() * regimes.length)] ?? 'gradual-hike';
 
-  const prop = PROPERTIES[arch.recommendedProperty];
-  const maxSafeDown = Math.max(0, arch.initialSavingsMan - 350);
-  const downPaymentMan =
-    rng() < 0.4
-      ? 0 // 40%は頭金ゼロのフルローン
-      : Math.min(maxSafeDown, Math.round((prop.priceMan * 0.1) / 50) * 50);
+  const bTypeLabel =
+    withLoan.customBuildingType === 'tower'
+      ? 'タワマン'
+      : withLoan.customBuildingType === 'mansion'
+        ? 'マンション'
+        : '一戸建て';
+  const newUsedLabel = withLoan.customIsNew ? '新築' : `中古築${withLoan.customBuiltAge ?? 10}年`;
+  const totalRate = ((withLoan.customBaseRate ?? 0.5) + (withLoan.customDanshinSpread ?? 0)).toFixed(2);
 
   return {
-    archetypeId: arch.id,
-    age: arch.age,
-    employment: arch.employment,
-    mainIncomeMan: arch.mainIncomeMan,
-    subIncomeMan: arch.subIncomeMan,
-    initialSavingsMan: arch.initialSavingsMan,
-    downPaymentMan,
-    hasCreditBlemish: arch.hasCreditBlemish,
-    contractType: arch.recommendedContract,
-    familyPlan: arch.recommendedFamily,
-    propertyId: arch.recommendedProperty,
-    bankId,
-    termYears,
-    repaymentMethod,
-    bonusRepaymentRatio,
-    danshin,
+    ...withLoan,
+    customPropertyPriceMan: adjustedPrice,
     macroRegime,
+    randomRollSummary: `${withLoan.age}歳・世帯年収${householdGross}万 / ${newUsedLabel}${bTypeLabel} ${adjustedPrice.toLocaleString()}万円 / ${withLoan.termYears}年ローン（金利${totalRate}%）`,
   };
 }
 
@@ -1015,11 +1544,10 @@ export function generateRandomHouseholdSetup(rng: () => number = Math.random): M
  * ゲーム初期状態の生成（融資実行・鍵引き渡し時点）
  */
 export function createMortgageGame(config: MortgageSetupConfig): MortgageGameState {
-  const bank = BANKS[config.bankId];
-  const property = PROPERTIES[config.propertyId];
+  const bank = resolveEffectiveBank(config);
+  const property = resolveEffectiveProperty(config);
   const family = FAMILY_PLANS[config.familyPlan];
-  const effectiveTermYears: LoanTermYears =
-    config.termYears === 50 && !bank.supports50Years ? 35 : config.termYears;
+  const effectiveTermYears: LoanTermYears = Math.max(10, Math.min(50, Math.round(config.termYears)));
   const normalizedConfig: MortgageSetupConfig = {
     ...config,
     termYears: effectiveTermYears,
@@ -1223,9 +1751,9 @@ export function evaluateEnding(
         title: '【伝説の住宅ローン勝者】完全完済＆純資産7,500万円超の黄金老後！',
         subtitle: `${state.age}歳で完済達成・最終純資産 ${netEquity.toLocaleString()}万円（金融資産 ${state.liquidSavingsMan.toLocaleString()}万円）`,
         epilogue:
-          '金利変動、修繕費高騰、教育費ピークのすべてを完璧な資金計画と住宅ローン控除・資産価値維持で乗り切った！無借金のマイホームと潤沢な老後資金を両手に、1,300万世帯の頂点に立つハッピーエンド。',
+          '金利変動、修繕費高騰、教育費ピークのすべてを完璧な資金計画と住宅ローン控除・資産価値維持で乗り切った！無借金のマイホームと潤沢な老後資金を両手に、ゆとりあるセカンドライフを迎えるハッピーエンド。',
         statisticComparison:
-          '日本の住宅ローン完済世帯のうち、完済時点で金融資産3,000万円以上＋無借金マイホームを両立できるのは上位約8.5%のエリート家計。',
+          '日本の住宅ローン完済世帯のうち、完済時点で金融資産3,000万円以上＋無借金マイホームを両立できるのは上位約8.5%の健全家計。',
       },
       score: 3800 + Math.round(netEquity * 0.3) + state.mentalScore * 12,
     };
@@ -1279,7 +1807,7 @@ export function evaluateEnding(
 }
 
 /**
- * 1年進行エンジン（1in8bスタイルの年代記・マクロ経済・償却・ライフイベント処理）
+ * 1年進行エンジン（年代記・マクロ経済・償却・ライフイベント処理）
  */
 export function advanceOneYear(
   currentState: MortgageGameState,
@@ -1301,9 +1829,9 @@ export function advanceOneYear(
     triggeredEventIds: [...currentState.triggeredEventIds],
   };
 
-  const property = PROPERTIES[state.config.propertyId];
-  const bank = BANKS[state.config.bankId];
-  const danshin = DANSHIN_PLANS[state.config.danshin];
+  const property = resolveEffectiveProperty(state.config);
+  const bank = resolveEffectiveBank(state.config);
+  const danshin = resolveEffectiveDanshin(state.config);
   const family = FAMILY_PLANS[state.config.familyPlan];
   const y = state.yearIndex;
   const age = state.age;
@@ -1331,7 +1859,7 @@ export function advanceOneYear(
     });
   };
 
-  // === 1. マクロ経済・日銀政策金利・インフレ率の動的更新 ===
+  // === 1. マクロ経済・日銀政策金利・途中利上げ・インフレ率の動的更新 ===
   let inflationRate = 0.015;
   let wageGrowthRate = 0.012;
   let bojDelta = 0;
@@ -1339,19 +1867,23 @@ export function advanceOneYear(
   if (state.config.macroRegime === 'gradual-hike') {
     inflationRate = 0.018;
     wageGrowthRate = 0.016;
-    if (y === 2 || y === 5 || y === 9 || y === 14) {
+    if (y === 2 || y === 5 || y === 8 || y === 12 || y === 17 || y === 23) {
       bojDelta = 0.35;
+    } else if (y === 15) {
+      bojDelta = -0.15;
+    } else if (y === 28) {
+      bojDelta = 0.25;
     }
   } else if (state.config.macroRegime === 'stagflation-shock') {
     inflationRate = 0.032;
     wageGrowthRate = 0.006;
-    if (y === 2 || y === 4 || y === 7 || y === 11 || y === 15) {
+    if (y === 2 || y === 4 || y === 7 || y === 11 || y === 15 || y === 20) {
       bojDelta = 0.55;
     }
   } else if (state.config.macroRegime === 'asset-bubble') {
     inflationRate = 0.025;
     wageGrowthRate = 0.028;
-    if (y === 3 || y === 6 || y === 10 || y === 15) {
+    if (y === 3 || y === 6 || y === 10 || y === 15 || y === 21) {
       bojDelta = 0.4;
     }
   } else if (state.config.macroRegime === 'deflation-return') {
@@ -1359,15 +1891,20 @@ export function advanceOneYear(
     wageGrowthRate = -0.004;
     if (y === 3) {
       bojDelta = -0.15;
+    } else if (y === 8 || y === 14 || y === 21) {
+      // 低金利局面からの途中インフレ・利上げ転換波
+      bojDelta = 0.3;
+      inflationRate = 0.016;
+      wageGrowthRate = 0.01;
     }
   } else {
-    // dynamic-random (1in8b カオス世界情勢)
+    // dynamic-random (変動世界情勢)
     const macroRoll = rng();
-    if (macroRoll < 0.22) {
+    if (macroRoll < 0.26 || y === 3 || y === 8) {
       bojDelta = 0.4;
       inflationRate = 0.028;
       wageGrowthRate = 0.012;
-    } else if (macroRoll < 0.35) {
+    } else if (macroRoll < 0.38) {
       bojDelta = -0.2;
       inflationRate = 0.004;
       wageGrowthRate = 0.005;
@@ -1400,9 +1937,10 @@ export function advanceOneYear(
     pushEntry(
       'rate-revision',
       'bad',
-      `【10年固定特約期間終了】11年目より適用金利が ${prevAppliedRate}% → ${post10Rate}% へ改定`,
+      `【10年固定特約期間終了】11年目より適用金利が ${prevAppliedRate.toFixed(2)}% → ${post10Rate.toFixed(2)}% へ改定`,
       '当初10年間の固定金利優遇期間が満了し、基準金利からの引下げ幅が縮小。今月から新金利での返済が始まる。',
       '当初10年固定プラン利用者が11年目に直面する「段階金利ステップアップ」現象。',
+      `金利 ${post10Rate.toFixed(2)}%`,
     );
   } else if (state.currentRateType === 'flat-35' && y === 6) {
     // フラット35Sの当初5年▲0.45%優遇終了
@@ -1412,21 +1950,24 @@ export function advanceOneYear(
       pushEntry(
         'rate-revision',
         'neutral',
-        `【フラット35S 当初優遇期間満了】6年目より本則固定金利 ${normalFlatRate}% へ移行`,
+        `【フラット35S 当初優遇期間満了】6年目より本則固定金利 ${normalFlatRate.toFixed(2)}% へ移行`,
         '長期優良・子育てプラスによる当初5年間の金利引き下げ期間が終了。今後は完済まで完全に一定の固定金利となる。',
+        undefined,
+        `固定 ${normalFlatRate.toFixed(2)}%`,
       );
     }
   }
 
-  if (bojDelta >= 0.35 && state.currentRateType !== 'flat-35') {
+  if (bojDelta >= 0.25 && state.currentRateType !== 'flat-35') {
     pushEntry(
       'macro',
       'bad',
-      `【日銀利上げ決定】政策金利 ${state.bojPolicyRate}% へ上昇（適用金利 ${prevAppliedRate}% → ${state.appliedInterestRate}%）`,
+      `【日銀の途中利上げ決定】政策金利 ${state.bojPolicyRate.toFixed(2)}% へ上昇（適用金利 ${prevAppliedRate.toFixed(2)}% → ${state.appliedInterestRate.toFixed(2)}%）`,
       state.has5Year125Rule
         ? '短期プライムレートが引き上げられた。5年ルールにより毎月の引き落とし額はすぐには変わらないが、返済額に占める「利息の割合」が急増し、元金の減りが鈍化する！'
-        : '5年ルールがないネット銀行契約のため、翌月から毎月の返済引き落とし額が即座に増額改定された！',
-      '変動金利を選択した日本の約74%の世帯が最も注視する金融政策決定会合の瞬間。',
+        : '5年ルールがない変動契約または元金均等返済のため、翌月から毎月の返済引き落とし額が即座に増額改定された！',
+      '変動金利を選択した世帯が返済途中に直面する金融政策決定会合の利上げ局面。',
+      `適用金利 ${state.appliedInterestRate.toFixed(2)}%`,
     );
   }
 
@@ -1829,6 +2370,114 @@ export function advanceOneYear(
   };
   state.history.push(snapshot);
 
+  // 年次ランダム生活・物件イベント（マンション／戸建て別の日常エピソード）
+  const microRoll = rng();
+  if (microRoll < 0.22) {
+    if (property.buildingType !== 'detached' && y % 2 === 1) {
+      const mansionMicros = [
+        {
+          tone: 'good' as const,
+          title: `【マンション共用部改善】宅配ロッカー増設と防災備蓄倉庫の整備が完了`,
+          body: '管理組合の積立金から共用ロッカーが増設され、共働き世帯の荷物受け取り利便性とマンションの評価が向上した。',
+          delta: 0,
+          valBonus: 25,
+        },
+        {
+          tone: 'neutral' as const,
+          title: `【マンション輪番理事】今年の管理組合・輪番理事当番を担当`,
+          body: '月1回の理事会に出席し、清掃品質や長期修繕計画の進捗を確認。マンション管理の裏側を知る良い機会となった。',
+          delta: 0,
+          valBonus: 10,
+        },
+        {
+          tone: 'bad' as const,
+          title: `【専有部設備トラブル】ディスポーザー・浴室乾燥機の修理交換（-14万円）`,
+          body: 'マンション専有部の設備は自己負担。経年劣化による交換費用として14万円を支出した。',
+          delta: -14,
+          valBonus: 0,
+        },
+      ];
+      const pick = mansionMicros[(y + age) % mansionMicros.length];
+      state.liquidSavingsMan = Math.round((state.liquidSavingsMan + pick.delta) * 10) / 10;
+      state.buildingValueMan += pick.valBonus;
+      state.propertyValueMan = state.landValueMan + state.buildingValueMan;
+      pushEntry(
+        'property',
+        pick.tone,
+        pick.title,
+        pick.body,
+        undefined,
+        pick.delta !== 0 ? `${pick.delta}万` : `資産価値+${pick.valBonus}万`,
+      );
+    } else if (property.buildingType === 'detached' && y % 2 === 1) {
+      const detachedMicros = [
+        {
+          tone: 'good' as const,
+          title: `【一戸建ての暮らし】庭のウッドデッキ手入れと家庭菜園・週末BBQで家族団らん`,
+          body: '階下への足音を気にせず子どもたちが走り回れる一戸建ての良さを実感。休日の充実で家族の幸福度が上がった。',
+          delta: 0,
+          mental: 4,
+        },
+        {
+          tone: 'neutral' as const,
+          title: `【台風後の外装点検】火災保険の風災補償で雨樋・フェンス補修をカバー`,
+          body: '秋の大型台風で雨樋の一部が歪んだが、契約していた火災保険の風災補償が適用され自己負担ゼロで修理完了。',
+          delta: 0,
+          mental: 1,
+        },
+        {
+          tone: 'bad' as const,
+          title: `【戸建て設備メンテ】給湯配管洗浄と庭木の剪定・防草シート施工（-16万円）`,
+          body: '一戸建ては敷地内の維持管理もすべて自分次第。専門業者を入れて庭木の手入れと配管メンテナンスを実施した。',
+          delta: -16,
+          mental: 0,
+        },
+      ];
+      const pick = detachedMicros[(y + age) % detachedMicros.length];
+      state.liquidSavingsMan = Math.round((state.liquidSavingsMan + pick.delta) * 10) / 10;
+      state.mentalScore = Math.min(100, state.mentalScore + pick.mental);
+      pushEntry(
+        'property',
+        pick.tone,
+        pick.title,
+        pick.body,
+        undefined,
+        pick.delta !== 0 ? `${pick.delta}万` : '幸福度アップ',
+      );
+    } else {
+      const lifeMicros = [
+        {
+          tone: 'good' as const,
+          title: `【家計プラス】ふるさと納税・医療費控除と省エネ家電買替補助金の活用（+12万円）`,
+          body: '制度を賢く活用して税負担と光熱費を軽減。浮いた資金をそのまま貯蓄口座へ積み増した。',
+          delta: 12,
+        },
+        {
+          tone: 'bad' as const,
+          title: `【臨時支出】リビング大型エアコンとドラム式洗濯機の同時寿命買替（-38万円）`,
+          body: '10年近く使った家電が相次いで故障。最新省エネモデルへの買い替えで38万円の臨時出費が発生した。',
+          delta: -38,
+        },
+        {
+          tone: 'good' as const,
+          title: `【キャリア評価】業務表彰・プロジェクト達成による特別賞与（+28万円）`,
+          body: '本業での成果が評価され決算賞与が上乗せ支給された！住宅ローン返済世帯にとって心強い臨時収入。',
+          delta: 28,
+        },
+      ];
+      const pick = lifeMicros[(y + age) % lifeMicros.length];
+      state.liquidSavingsMan = Math.round((state.liquidSavingsMan + pick.delta) * 10) / 10;
+      pushEntry(
+        'life',
+        pick.tone,
+        pick.title,
+        pick.body,
+        undefined,
+        `${pick.delta >= 0 ? '+' : ''}${pick.delta}万`,
+      );
+    }
+  }
+
   // 年次サマリーログ（重大イベントがない年も年代記として記録）
   if (y % 3 === 0 || annualCashFlowMan < -80) {
     pushEntry(
@@ -1868,6 +2517,57 @@ export function advanceOneYear(
   }
 
   // === 8. 人生とローンの重大決断イベント発火判定（タイムライン自動一時停止） ===
+  // (C) ペアローン世帯の試練（4年目：配偶者の働き方・キャリアと夫婦関係）
+  if (
+    state.config.contractType === 'pair' &&
+    y === 4 &&
+    !state.triggeredEventIds.includes('pair-loan-crossroad-4')
+  ) {
+    state.triggeredEventIds.push('pair-loan-crossroad-4');
+    state.pendingDecision = {
+      id: 'pair-loan-crossroad-4',
+      yearIndex: y,
+      age,
+      category: 'pair-crisis',
+      title: '【ペアローンの正念場】共働きフルタイム限界＆夫婦の働き方見直し',
+      description:
+        'ペアローンで2人とも住宅ローンを抱えるプレッシャーの中、仕事と家事・育児の両立で配偶者が心身ともに疲弊。「働き方をセーブしたい」と切り出されたが、収入が減ればペアローンの返済負担率が一気に跳ね上がる！',
+      statisticalContext:
+        '住宅金融支援機構調査：20代・30代のペアローン利用率は3割超に達する一方、出産・転職・離婚時の返済計画変更が最大のリスク要因となる。',
+      choices: [
+        {
+          id: 'support-short-time',
+          label: '家事代行や時短家電に投資（80万円）し、夫婦で分担して共働きを継続する',
+          subLabel: '手元資金 -80万円 / 配偶者収入維持・夫婦の幸福度 +12',
+          outcomeSummary:
+            '80万円を投じて徹底的に家事外注・時短化！夫婦の会話と余裕が戻り、ペアローンの2馬力収入とW住宅ローン控除を堅持できた！',
+          cashDeltaMan: -80,
+          mentalDelta: 12,
+        },
+        {
+          id: 'spouse-downshift',
+          label: '配偶者が時短・マイルド勤務へ転換するのを容認する',
+          subLabel: '配偶者年収 -35% / 幸福度 +5（配偶者名義のローン返済はそのまま残る）',
+          outcomeSummary:
+            '配偶者が働き方をセーブし家庭は落ち着いたが、配偶者名義のローン返済は減らないため世帯の貯蓄ペースが低下した。',
+          subIncomeMultiplierDelta: -0.35,
+          mentalDelta: 5,
+        },
+        {
+          id: 'divorce-conflict',
+          label: '「ペアローンがあるから絶対フルで働け」と強く突き放す',
+          subLabel: '夫婦関係悪化・別居危機！慰謝料・別居費用 -320万円＆1馬力化リスク',
+          outcomeSummary:
+            '激しい口論の末に夫婦関係が破綻…。ペアローン共有名義のため簡単に売却も名義変更もできず、別居・調停費用で320万円が流出し実質1馬力となった。',
+          cashDeltaMan: -320,
+          subIncomeMultiplierDelta: -1.0,
+          mentalDelta: -28,
+        },
+      ],
+    };
+    return state;
+  }
+
   // (A0-1) マンション・タワマン7年目：管理組合総会（機械式駐車場＆管理会社見直し）
   if (
     property.buildingType !== 'detached' &&
@@ -1975,6 +2675,112 @@ export function advanceOneYear(
     return state;
   }
 
+  // (A0-3) 8年目：日銀の途中利上げ局面・変動金利上昇への緊急対応決断
+  if (
+    state.currentRateType !== 'flat-35' &&
+    y === 8 &&
+    state.remainingBalanceMan > 1200 &&
+    !state.triggeredEventIds.includes('mid-term-rate-hike-8')
+  ) {
+    state.triggeredEventIds.push('mid-term-rate-hike-8');
+    const fixedSwitchRate = Math.round((1.75 + state.bojPolicyRate * 0.3) * 100) / 100;
+    state.pendingDecision = {
+      id: 'mid-term-rate-hike-8',
+      yearIndex: y,
+      age,
+      category: 'boj-shock',
+      title: `【日銀の追加利上げ局面】適用金利が ${state.appliedInterestRate.toFixed(2)}% へ上昇！今後の金利対策は？`,
+      description: `返済8年目、物価上昇と円安への対応として日本銀行が段階的な追加利上げを実施！契約時（${state.underwriting.effectiveInitialRate.toFixed(2)}%）より金利が上昇し、毎月の利息負担が膨らみ始めている。まだ残債が ${Math.round(state.remainingBalanceMan).toLocaleString()}万円あるなか、どう動くか？`,
+      statisticalContext:
+        '返済初期（残債が多い時期）の利上げほど利息増加ダメージが大きい。「繰上返済による元金圧縮」か「固定金利への借り換え」かが最大の分岐点となる。',
+      choices: [
+        {
+          id: 'prepay-cut-principal',
+          label: '変動金利のまま継続しつつ、手元資金から150万円を繰上返済して元金を直接削る',
+          subLabel: '手元資金 -150万円 → ローン残債 -150万円（利上げの元本ベースを圧縮）',
+          outcomeSummary:
+            '150万円を元金へ直接充当！金利がかかる対象元本そのものを減らすことで、利上げ局面でも利息の膨張を抑え込んだ。',
+          cashDeltaMan: -150,
+          principalDeltaMan: -150,
+          mentalDelta: 3,
+        },
+        {
+          id: 'switch-to-fixed-rate',
+          label: `今後のさらなる利上げを遮断するため、諸費用65万円を払って全期間固定（${fixedSwitchRate}%）へ借り換える`,
+          subLabel: `手元資金 -65万円 / 以降完済まで金利 ${fixedSwitchRate}% 完全固定で安心確保`,
+          outcomeSummary:
+            '諸費用65万円を支払って全期間固定金利へ借り換え完了！今後どれだけ日銀が利上げしても返済額が変わらない安心を手に入れた。',
+          cashDeltaMan: -65,
+          newRateType: 'flat-35',
+          newBaseRate: fixedSwitchRate,
+          mentalDelta: 7,
+        },
+        {
+          id: 'keep-variable-cut-living',
+          label: '手元キャッシュは温存し、通信費・保険・サブスクの見直しで利上げ分を吸収する',
+          subLabel: '初期出費 0円・家計改善 +35万円 / 今後の追加利上げリスクは継続',
+          outcomeSummary:
+            '手元資金を動かさず、家計の固定費削減でキャッシュフローを補強した。今後の日銀の動向を引き続き注視する。',
+          cashDeltaMan: 35,
+          mentalDelta: -1,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (A1) 子育て世帯10年目：子どもの進学ルート・教育資金と住宅ローン返済のバランス決断
+  if (
+    state.childrenAges.length > 0 &&
+    y === 10 &&
+    !state.triggeredEventIds.includes('education-crossroad-10')
+  ) {
+    state.triggeredEventIds.push('education-crossroad-10');
+    state.pendingDecision = {
+      id: 'education-crossroad-10',
+      yearIndex: y,
+      age,
+      category: 'education',
+      title: '【教育費とローンの岐路】子どもの進学塾・習い事拡大と大学資金の準備方針',
+      description:
+        '子どもが高学年・進学準備期を迎え、周囲で進学塾や習い事の話題が急増している。一方、数年後には住宅ローン控除の終了や修繕イベントも控えている。教育投資と家計防衛のバランスをどう取るか？',
+      statisticalContext:
+        '文部科学省「子供の学習費調査」：小学校高学年から大学卒業までの教育資金は、進路選択によって1人あたり800万〜2,200万円の差が生じる。',
+      choices: [
+        {
+          id: 'full-prep-school',
+          label: '希望通りの進学塾・夏期講習・英語教育にしっかり投資する（一時費用 95万円）',
+          subLabel: '手元資金 -95万円 / 家族の満足度・進学充実度 +10',
+          outcomeSummary:
+            '子どもの意欲を尊重して教育環境へ投資！出費は重なったが、家族の絆とモチベーションが大きく高まった。',
+          cashDeltaMan: -95,
+          mentalDelta: 10,
+        },
+        {
+          id: 'balanced-public-scholarship',
+          label: '通信教育と地域の公立トップ校ルートを軸にし、浮いた資金でローン元金を120万円繰上返済する',
+          subLabel: '手元資金 -120万円 → ローン残債 -120万円削減・将来利息カット',
+          outcomeSummary:
+            '見栄に流されず堅実な学習スタイルを選択し、温存した資金120万円で住宅ローン元金を直接削減！大学進学前の固定費圧縮に成功した。',
+          cashDeltaMan: -120,
+          principalDeltaMan: -120,
+          mentalDelta: 3,
+        },
+        {
+          id: 'parent-upskill-income',
+          label: '親自身が資格取得・キャリア転職に挑戦し、世帯年収そのものを引き上げる',
+          subLabel: '自己投資 -35万円 / 本人年収 +8%アップ・幸福度 +4',
+          outcomeSummary:
+            '教育費ピークに備えて親自身のキャリアアップを決断！年収が8%上昇し、教育費と住宅ローンの両立基盤が強化された。',
+          cashDeltaMan: -35,
+          incomeMultiplierDelta: 0.08,
+          mentalDelta: 4,
+        },
+      ],
+    };
+    return state;
+  }
+
   // (A) 戸建て13年目：外壁塗装・屋根防水・給湯器交換の大規模修繕イベント
   if (
     property.buildingType === 'detached' &&
@@ -2065,58 +2871,7 @@ export function advanceOneYear(
     return state;
   }
 
-  // (C) ペアローン世帯の試練（7年目：配偶者の働き方・キャリアと夫婦関係）
-  if (
-    state.config.contractType === 'pair' &&
-    y === 7 &&
-    !state.triggeredEventIds.includes('pair-loan-crossroad-7')
-  ) {
-    state.triggeredEventIds.push('pair-loan-crossroad-7');
-    state.pendingDecision = {
-      id: 'pair-loan-crossroad-7',
-      yearIndex: y,
-      age,
-      category: 'pair-crisis',
-      title: '【ペアローンの正念場】共働きフルタイム限界＆夫婦のすれ違い危機',
-      description:
-        'ペアローンで2人とも住宅ローンを抱えるプレッシャーの中、仕事と家事・育児の両立で配偶者が心身ともに疲弊。「働き方をセーブしたい」と切り出されたが、収入が減ればペアローンの返済負担率が一気に跳ね上がる！',
-      statisticalContext:
-        '住宅金融支援機構調査：20代・30代のペアローン利用率は3割超に達する一方、出産・転職・離婚時の返済計画変更が最大のリスク要因となる。',
-      choices: [
-        {
-          id: 'support-short-time',
-          label: '家事代行や時短家電に投資（年50万円）し、夫婦で支え合って共働きを継続',
-          subLabel: '手元資金 -80万円 / 配偶者収入維持・夫婦メンタル+12',
-          outcomeSummary:
-            '80万円を投じて徹底的に家事外注・時短化！夫婦の会話と余裕が戻り、ペアローンの2馬力収入とW住宅ローン控除を堅持できた！',
-          cashDeltaMan: -80,
-          mentalDelta: 12,
-        },
-        {
-          id: 'spouse-downshift',
-          label: '配偶者がパート・時短勤務へ転換するのを容認する',
-          subLabel: '配偶者年収 -45% / メンタル+5（自分のローン枠はそのまま残る）',
-          outcomeSummary:
-            '配偶者が働き方をセーブし家庭は落ち着いたが、配偶者名義のローン返済は減らないため世帯の貯蓄ペースが大きく低下した。',
-          subIncomeMultiplierDelta: -0.45,
-          mentalDelta: 5,
-        },
-        {
-          id: 'divorce-conflict',
-          label: '「ペアローンがあるから絶対フルで働け」と強く突き放す',
-          subLabel: '離婚危機発生！共有名義トラブルでメンタル-30・資産半減リスク',
-          outcomeSummary:
-            '激しい口論の末に夫婦関係が決定的に破綻…。ペアローン共有名義のため簡単に売却も名義変更もできず、慰謝料・別居費用で350万円が流出し1馬力となった。',
-          cashDeltaMan: -350,
-          subIncomeMultiplierDelta: -1.0,
-          mentalDelta: -30,
-        },
-      ],
-    };
-    return state;
-  }
-
-  // (D) 40代後半（返済16年目または47歳時点）：健康診断・大病と「団信（団体信用生命保険）」運命の審判！
+  // (D) 40代後半（返済16年目または48歳時点）：健康診断・大病と「団信（団体信用生命保険）」運命の審判！
   if (
     (y === 16 || age === 48) &&
     !state.triggeredEventIds.includes('danshin-health-judgment')
@@ -2165,6 +2920,156 @@ export function advanceOneYear(
               mentalDelta: -15,
             },
           ],
+    };
+    return state;
+  }
+
+  // (D2) 返済20年目：マンションエレベーター・配管更新 vs 一戸建て水回り・屋根ガルバ改修
+  if (y === 20 && !state.triggeredEventIds.includes('property-year20-major')) {
+    state.triggeredEventIds.push('property-year20-major');
+    if (property.buildingType !== 'detached') {
+      state.pendingDecision = {
+        id: 'property-year20-major',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: '【マンション20年目】エレベーター制御盤・給排水管更新と専有部水回りリノベ',
+        description:
+          '入居から20年が経過し、共用部のエレベーター・給水ポンプ更新に加え、自室のユニットバス・キッチン・給湯器の老朽化が限界に。ここでの判断が後半の住み心地と売却時価を左右する。',
+        statisticalContext:
+          '築20年超のマンションでは、専有部水回りを一新した住戸と未改修住戸で中古成約価格に300万円以上の差がつくことが多い。',
+        choices: [
+          {
+            id: 'full-unit-reno-20',
+            label: '専有部の浴室・キッチン・内窓をフルリノベーションする（160万円）',
+            subLabel: '手元資金 -160万円 / 住戸評価額 +190万円・幸福度 +8',
+            outcomeSummary:
+              '水回りと断熱窓を一新！新築同様の快適さが蘇り、マンション住戸としての資産価値も190万円向上した。',
+            cashDeltaMan: -160,
+            buildingValueBonusMan: 190,
+            mentalDelta: 8,
+          },
+          {
+            id: 'minimum-water-heater-20',
+            label: '壊れかけの給湯器と水栓交換（35万円）のみにとどめ、現金を温存する',
+            subLabel: '手元資金 -35万円 / 最小限の出費で乗り切る',
+            outcomeSummary: '35万円で給湯器のみ交換し、老後資金に向けて手元キャッシュを守った。',
+            cashDeltaMan: -35,
+          },
+        ],
+      };
+    } else {
+      state.pendingDecision = {
+        id: 'property-year20-major',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: '【一戸建て20年目】屋根ガルバリウムカバー工法＆浴室断熱リフォームの選択',
+        description:
+          '築20年を超え、スレート屋根の防水寿命と在来浴室の寒さ・老朽化が目立ってきた。ここで軽量高耐久なガルバリウム鋼板屋根への改修を行うか、部分補修で凌ぐかの分岐点。',
+        statisticalContext:
+          '築20年の一戸建てでは、屋根の軽量カバー工法により耐震性と防水寿命を25年以上延ばす改修が主流となっている。',
+        choices: [
+          {
+            id: 'galvalume-roof-bath-20',
+            label: '屋根ガルバリウム改修＋高断熱ユニットバス交換を実施（195万円）',
+            subLabel: '手元資金 -195万円 / 建物評価額 +180万円・光熱費月-0.4万・幸福度+8',
+            outcomeSummary:
+              '屋根と浴室を徹底改修！今後の雨漏りリスクが消滅し、ヒートショック対策も万全な安心の我が家になった。',
+            cashDeltaMan: -195,
+            buildingValueBonusMan: 180,
+            repairCostMonthlyDeltaMan: -0.4,
+            mentalDelta: 8,
+          },
+          {
+            id: 'roof-partial-20',
+            label: '屋根の棟板金・部分補修（55万円）のみで済ませる',
+            subLabel: '手元資金 -55万円 / 現金を温存',
+            outcomeSummary: '55万円の部分補修で急場をしのぎ、手元資金を温存した。',
+            cashDeltaMan: -55,
+          },
+        ],
+      };
+    }
+    return state;
+  }
+
+  // (D3) 53歳時点：親の介護と地方実家の相続・空き家処分問題
+  if (age === 53 && !state.triggeredEventIds.includes('parent-inheritance-53')) {
+    state.triggeredEventIds.push('parent-inheritance-53');
+    state.pendingDecision = {
+      id: 'parent-inheritance-53',
+      yearIndex: y,
+      age,
+      category: 'life',
+      title: '【53歳・実家の相続と親の介護】空き家になった実家の整理と相続資金の活用',
+      description:
+        '親の施設入居・相続に伴い、地方にある実家（空き家）の扱いが議題となった。放置すれば毎年の固定資産税と管理費がかかるが、解体・売却して整理すればまとまった相続資金が手に入る。',
+      statisticalContext:
+        '日本の空き家数は約900万戸に達し、50代で自宅の住宅ローンを返済しながら実家の管理・処分に直面する世帯が急増している。',
+      choices: [
+        {
+          id: 'sell-family-home-prepay',
+          label: '実家を整理・売却し、受け取った遺産（+420万円）で自宅ローンを300万円繰上返済する',
+          subLabel: '手元資金 +120万円・ローン残債 -300万円削減！',
+          outcomeSummary:
+            '空き家特例を活用して実家をスムーズに売却！得た420万円のうち300万円を自宅ローンの繰上返済に充て、定年前の残債を一気に圧縮した！',
+          cashDeltaMan: 120,
+          principalDeltaMan: -300,
+          mentalDelta: 5,
+        },
+        {
+          id: 'sell-family-home-keep-cash',
+          label: '実家を売却し、受け取った420万円をすべて手元の老後防衛資金・新NISAへ入れる',
+          subLabel: '手元金融資産 +420万円',
+          outcomeSummary:
+            '実家を売却して得た420万円をそのまま手元資金に組み入れ、55歳役職定年後のキャッシュフロー防衛力を高めた。',
+          cashDeltaMan: 420,
+          mentalDelta: 4,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D4) 60歳定年退職時（残債600万円以上ある場合）：退職金で一括・大幅繰上返済するか温存するか
+  if (
+    age === 60 &&
+    state.remainingBalanceMan >= 600 &&
+    state.liquidSavingsMan >= 900 &&
+    !state.triggeredEventIds.includes('retirement-lump-sum-60')
+  ) {
+    state.triggeredEventIds.push('retirement-lump-sum-60');
+    const payoffTarget = Math.min(Math.round(state.remainingBalanceMan), 1200);
+    state.pendingDecision = {
+      id: 'retirement-lump-sum-60',
+      yearIndex: y,
+      age,
+      category: 'retirement',
+      title: `【60歳定年・退職金の決断】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円に退職金を投入するか？`,
+      description:
+        '60歳定年を迎え退職金を受け取ったが、まだ住宅ローン残債が残っている。退職金を使って残債を大きく減らすか、それとも老後の生活防衛資金として手元に現金を残すか、60代最大の決断！',
+      statisticalContext:
+        '60歳定年時に退職金で住宅ローンを一括返済した結果、手元の老後資金が枯渇してしまう「退職金一括返済の罠」と「老後毎月返済の重圧」のどちらを取るかが問われる。',
+      choices: [
+        {
+          id: 'retire-major-prepay',
+          label: `退職金から ${payoffTarget.toLocaleString()}万円を投入し、住宅ローン残債を一気に削る`,
+          subLabel: `手元資金 -${payoffTarget}万円 / ローン残債 -${payoffTarget}万円（老後の毎月返済を大幅軽減）`,
+          outcomeSummary: `退職金から${payoffTarget.toLocaleString()}万円を繰上返済に充当！年金生活に入る前に残債を大幅に圧縮し、老後の固定費を引き下げた。`,
+          cashDeltaMan: -payoffTarget,
+          principalDeltaMan: -payoffTarget,
+          mentalDelta: 8,
+        },
+        {
+          id: 'retire-keep-cash-nisa',
+          label: '退職金は手元資金・配当運用として温存し、毎月返済をこのまま継続する',
+          subLabel: '手元キャッシュ温存（流動性確保） / 60代以降も毎月返済は継続',
+          outcomeSummary:
+            '「現金が手元にあればいつでも返せる」と判断し、退職金を老後キャッシュとして温存。運用益を得ながら計画的に返済を続ける道を選んだ。',
+          mentalDelta: 3,
+        },
+      ],
     };
     return state;
   }
@@ -2279,6 +3184,20 @@ export function resolveMortgageDecision(
   if (typeof choice.termDeltaYears === 'number' && choice.termDeltaYears > 0) {
     state.termRemainingYears += choice.termDeltaYears;
     state.rescheduleYearsLeft = choice.termDeltaYears;
+  }
+  if (choice.newRateType) {
+    state.currentRateType = choice.newRateType;
+    if (choice.newRateType === 'flat-35') {
+      state.has5Year125Rule = false;
+    }
+  }
+  if (typeof choice.newBaseRate === 'number') {
+    state.appliedInterestRate = choice.newBaseRate;
+    state.last5YearRulePaymentMan = calcEqualPaymentMonthlyMan(
+      state.remainingBalanceMan,
+      state.appliedInterestRate,
+      Math.max(1, state.termRemainingYears),
+    );
   }
 
   const nextId = (state.chronicle[0]?.id ?? 1) + 1;
@@ -2494,8 +3413,8 @@ export function setFocusMode(
  */
 export function analyzeOutcomeFactors(state: MortgageGameState): OutcomeFactor[] {
   const factors: OutcomeFactor[] = [];
-  const property = PROPERTIES[state.config.propertyId];
-  const bank = BANKS[state.config.bankId];
+  const property = resolveEffectiveProperty(state.config);
+  const bank = resolveEffectiveBank(state.config);
 
   // 1. 金利・利息負担の分析
   const interestRatio =
@@ -2689,6 +3608,75 @@ export function executePropertySpecificAction(
         title: '【一戸建て予防メンテナンス】防蟻処理・外壁シーリング補修を実施（35万円・建物価値+75万円維持）',
         body: '雨漏りやシロアリ被害が出る前に35万円で予防メンテナンスを実施！将来の高額修繕リスクを抑え、建物の資産価値を守り抜いた。',
         financialDeltaLabel: '建物価値 +75万',
+      },
+      ...currentState.chronicle,
+    ],
+  };
+}
+
+/**
+ * 返済途中に「日銀の緊急利上げ（途中利上げストレステスト）」を発生させる
+ */
+export function executeMidTermRateHike(
+  currentState: MortgageGameState,
+  hikeDelta = 0.5,
+): MortgageGameState {
+  if (currentState.status !== 'playing') return currentState;
+  const bank = resolveEffectiveBank(currentState.config);
+  const danshin = resolveEffectiveDanshin(currentState.config);
+
+  const nextBoj = Math.min(4.5, Math.round((currentState.bojPolicyRate + hikeDelta) * 100) / 100);
+  const prevApplied = currentState.appliedInterestRate;
+  let nextApplied = prevApplied;
+
+  if (currentState.currentRateType === 'variable') {
+    nextApplied = Math.max(
+      0.35,
+      Math.round((bank.baseRate + danshin.spreadRate + (nextBoj - 0.25) * 0.95) * 100) / 100,
+    );
+  } else if (currentState.currentRateType === 'mix') {
+    nextApplied = Math.max(
+      0.85,
+      Math.round((bank.baseRate + danshin.spreadRate + (nextBoj - 0.25) * 0.48) * 100) / 100,
+    );
+  } else if (currentState.currentRateType === 'fixed-10' && currentState.yearIndex >= 10) {
+    nextApplied = Math.round((prevApplied + hikeDelta * 0.75) * 100) / 100;
+  }
+
+  const nextMonthly =
+    currentState.currentRateType === 'flat-35' || currentState.has5Year125Rule
+      ? currentState.last5YearRulePaymentMan
+      : calcEqualPaymentMonthlyMan(
+          currentState.remainingBalanceMan,
+          nextApplied,
+          Math.max(1, currentState.termRemainingYears),
+        );
+
+  const nextId = (currentState.chronicle[0]?.id ?? 1) + 1;
+  return {
+    ...currentState,
+    bojPolicyRate: nextBoj,
+    appliedInterestRate: nextApplied,
+    last5YearRulePaymentMan: nextMonthly,
+    chronicle: [
+      {
+        id: nextId,
+        yearIndex: currentState.yearIndex,
+        calendarYear: currentState.calendarYear,
+        age: currentState.age,
+        category: 'rate-revision',
+        tone: currentState.currentRateType === 'flat-35' ? 'good' : 'bad',
+        title:
+          currentState.currentRateType === 'flat-35'
+            ? `【途中利上げ発生（政策金利 +${hikeDelta.toFixed(2)}% → ${nextBoj.toFixed(2)}%）】全期間固定のため適用金利 ${nextApplied.toFixed(2)}% で影響ゼロ！`
+            : `【途中利上げ発生！】日銀政策金利が ${nextBoj.toFixed(2)}% へ上昇（適用金利 ${prevApplied.toFixed(2)}% → ${nextApplied.toFixed(2)}%）`,
+        body:
+          currentState.currentRateType === 'flat-35'
+            ? '市場金利は上昇したが、全期間固定金利契約のため毎月の返済額・利息は一切変わらない。固定金利の防波堤効果が発揮された！'
+            : currentState.has5Year125Rule
+              ? `途中利上げにより適用金利が ${nextApplied.toFixed(2)}% に上昇！5年ルール期間中は毎月引落額こそ据え置かれるが、内訳の利息が急増し、5年目の改定時または未払利息として跳ね返ってくる！`
+              : `途中利上げにより適用金利が ${nextApplied.toFixed(2)}% に上昇し、毎月返済額が即座に ${nextMonthly.toFixed(1)}万円/月 へ引き上げられた！`,
+        financialDeltaLabel: `適用金利 ${nextApplied.toFixed(2)}%`,
       },
       ...currentState.chronicle,
     ],

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   keywords: [
     '住宅ローン シミュレーション ゲーム',
     '住宅ローン破産',
-    '1in8b',
+    'マイホーム完済記',
     '人生シミュレーション 無料',
     'ペアローン',
     '変動金利 固定金利 50年ローン',
@@ -46,7 +46,7 @@ export default function MortgageLifePage() {
   return (
     <div className="min-h-screen bg-[#EBF0ED] text-[#13212A] transition-colors dark:bg-[#0D1316] dark:text-[#E1E9E6]">
       <div className="mx-auto max-w-[1320px] px-4 py-4 sm:px-6">
-        {/* 1in8b.life/ja/ スタイルのミニマルな上部ユーティリティバー */}
+        {/* ミニマルな上部ユーティリティバー */}
         <nav
           aria-label="ページ上部ナビゲーション"
           className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#C7D2CE] pb-3 text-xs text-[#4A5A61] dark:border-[#2A383D] dark:text-[#A3B2AF]"
@@ -60,7 +60,7 @@ export default function MortgageLifePage() {
             </Link>
             <span aria-hidden="true">·</span>
             <span className="font-editorial font-semibold text-[#13212A] dark:text-[#E1E9E6]">
-              1,300万分の1（住宅ローン完済シミュレーション）
+              マイホーム完済記（35年・50年ローンの家計と暮らし）
             </span>
           </div>
 

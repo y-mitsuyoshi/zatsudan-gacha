@@ -4,30 +4,38 @@ import React, { useState } from 'react';
 import {
   EmploymentType,
   MortgageGameState,
+  MortgageSetupConfig,
   PropertyCategory,
+  PropertySpec,
+  UnderwritingResult,
   YearlySnapshot,
 } from '@/types/mortgage';
-import { PROPERTIES } from '@/lib/mortgage-logic';
+import {
+  PROPERTIES,
+  resolveEffectiveBank,
+  resolveEffectiveDanshin,
+  resolveEffectiveProperty,
+} from '@/lib/mortgage-logic';
 
 /**
- * 1. イントロ画面用：日本の住宅ローン1,300万世帯の統計ドットマップSVG
+ * 1. イントロ画面用：日本の住宅市場・地域分布統計マップSVG
  */
 export function JapanMortgageMapIllustration({ activeTick }: { activeTick: number }) {
   const hotspots = [
-    { id: 'tokyo', label: '首都圏・湾岸', x: 245, y: 178, r: 9, share: '38.4%' },
-    { id: 'kansai', label: '関西・阪神間', x: 175, y: 196, r: 7, share: '18.2%' },
-    { id: 'chukyo', label: '名古屋・東海', x: 205, y: 188, r: 6, share: '11.5%' },
-    { id: 'fukuoka', label: '福岡・九州都市圏', x: 112, y: 222, r: 5.5, share: '8.7%' },
-    { id: 'sendai', label: '仙台・東北', x: 264, y: 126, r: 4.5, share: '5.4%' },
-    { id: 'sapporo', label: '札幌・北海道', x: 286, y: 58, r: 5, share: '5.8%' },
-    { id: 'hiroshima', label: '広島・中国', x: 142, y: 202, r: 4.5, share: '4.9%' },
+    { id: 'tokyo', label: '首都圏・湾岸', x: 238, y: 178, r: 9, share: '38.4%', alignLeft: false },
+    { id: 'kansai', label: '関西・阪神間', x: 175, y: 196, r: 7, share: '18.2%', alignLeft: true },
+    { id: 'chukyo', label: '名古屋・東海', x: 205, y: 188, r: 6, share: '11.5%', alignLeft: false },
+    { id: 'fukuoka', label: '福岡・九州', x: 112, y: 222, r: 5.5, share: '8.7%', alignLeft: false },
+    { id: 'sendai', label: '仙台・東北', x: 256, y: 126, r: 4.5, share: '5.4%', alignLeft: false },
+    { id: 'sapporo', label: '札幌・北海道', x: 268, y: 58, r: 5, share: '5.8%', alignLeft: false },
+    { id: 'hiroshima', label: '広島・中国', x: 142, y: 202, r: 4.5, share: '4.9%', alignLeft: true },
   ];
   const activeIdx = activeTick % hotspots.length;
 
   return (
     <div className="relative overflow-hidden rounded border border-[#C7D2CE] bg-[#DFE7E3] p-3 dark:border-[#2A383D] dark:bg-[#10181C]">
-      <div className="flex items-center justify-between text-[11px] text-[#4A5A61] dark:text-[#A3B2AF]">
-        <span className="font-mono font-semibold">JAPAN MORTGAGE ATLAS · 1,300万世帯の分布</span>
+      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#4A5A61] dark:text-[#A3B2AF]">
+        <span className="font-mono font-semibold">住宅ローン地域分布マップ（都市圏・地方圏）</span>
         <span className="inline-flex items-center gap-1.5 font-mono text-[#0F6E68] dark:text-[#4CC0AF]">
           <span className="inline-block h-2 w-2 rounded-full bg-[#8C1D3C] dark:bg-[#E2678A]" />
           新規融資実行スポット
@@ -87,9 +95,10 @@ export function JapanMortgageMapIllustration({ activeTick }: { activeTick: numbe
                 strokeWidth="1.5"
               />
               <text
-                x={spot.x + spot.r + 4}
+                x={spot.alignLeft ? spot.x - spot.r - 4 : spot.x + spot.r + 4}
                 y={spot.y + 3}
-                className="fill-[#13212A] font-mono text-[9px] font-bold dark:fill-[#E1E9E6]"
+                textAnchor={spot.alignLeft ? 'end' : 'start'}
+                className="fill-[#13212A] font-mono text-[8.5px] font-bold dark:fill-[#E1E9E6]"
               >
                 {spot.label} ({spot.share})
               </text>
@@ -102,20 +111,26 @@ export function JapanMortgageMapIllustration({ activeTick }: { activeTick: numbe
 }
 
 /**
- * 2. 物件タイプ別の建築イラストSVG（全8物件で外観・背景・ディテールが変化）
+ * 2. 物件タイプ別の建築イラストSVG（全12物件＋カスタム/ランダム条件で外観・背景・ディテールが変化）
  */
 export function PropertyArchitecturalIllustration({
   propertyId,
+  overrideSpec,
   className = 'h-28 w-full',
 }: {
   propertyId: PropertyCategory;
+  overrideSpec?: Partial<PropertySpec>;
   className?: string;
 }) {
-  const prop = PROPERTIES[propertyId];
+  const baseProp = PROPERTIES[propertyId];
+  const prop: PropertySpec = overrideSpec ? { ...baseProp, ...overrideSpec } : baseProp;
   const isTower = prop.buildingType === 'tower';
   const isDetached = prop.buildingType === 'detached';
-  const isLuxury = propertyId === 'luxury-penthouse-new';
-  const isRegional = propertyId === 'regional-mansion-new';
+  const isLuxury = propertyId === 'luxury-penthouse-new' || prop.priceMan >= 10000;
+  const isRegional =
+    propertyId === 'regional-mansion-new' ||
+    propertyId === 'detached-regional-spacious' ||
+    propertyId === 'detached-kominka-reno';
   const isUsed = !prop.isNew;
 
   return (
@@ -194,25 +209,53 @@ export function PropertyArchitecturalIllustration({
           )}
           <line x1="0" y1="78" x2="280" y2="78" stroke="#8FA19A" strokeWidth="1.5" />
           <rect
-            x="66"
-            y="22"
-            width="148"
-            height="70"
+            x={propertyId === 'compact-mansion-new' ? '88' : '66'}
+            y={propertyId === 'compact-mansion-new' ? '14' : '22'}
+            width={propertyId === 'compact-mansion-new' ? '104' : '148'}
+            height={propertyId === 'compact-mansion-new' ? '78' : '70'}
             rx="2"
             className={
               isUsed
                 ? 'fill-[#E2DAD0] stroke-[#5F6E72] dark:fill-[#2B2D2F] dark:stroke-[#8A9A96]'
-                : 'fill-[#F7FAF8] stroke-[#13212A] dark:fill-[#243238] dark:stroke-[#A3B2AF]'
+                : propertyId === 'compact-mansion-new'
+                  ? 'fill-[#22343C] stroke-[#0F6E68] dark:fill-[#1C2C33] dark:stroke-[#4CC0AF]'
+                  : 'fill-[#F7FAF8] stroke-[#13212A] dark:fill-[#243238] dark:stroke-[#A3B2AF]'
             }
             strokeWidth="1.5"
           />
           {[36, 50, 64, 78].map((yPos) => (
             <g key={yPos}>
-              <line x1="70" y1={yPos} x2="210" y2={yPos} stroke="#0F6E68" strokeWidth="2" />
-              <rect x="82" y={yPos - 8} width="18" height="6" className="fill-[#D9AF59]/75" />
-              <rect x="112" y={yPos - 8} width="18" height="6" className="fill-[#0F6E68]/45" />
-              <rect x="142" y={yPos - 8} width="18" height="6" className="fill-[#D9AF59]/75" />
-              <rect x="172" y={yPos - 8} width="18" height="6" className="fill-[#0F6E68]/45" />
+              <line
+                x1={propertyId === 'compact-mansion-new' ? '92' : '70'}
+                y1={yPos}
+                x2={propertyId === 'compact-mansion-new' ? '188' : '210'}
+                y2={yPos}
+                stroke="#0F6E68"
+                strokeWidth="2"
+              />
+              <rect
+                x={propertyId === 'compact-mansion-new' ? '102' : '82'}
+                y={yPos - 8}
+                width="18"
+                height="6"
+                className="fill-[#D9AF59]/85"
+              />
+              <rect
+                x={propertyId === 'compact-mansion-new' ? '132' : '112'}
+                y={yPos - 8}
+                width="18"
+                height="6"
+                className="fill-[#0F6E68]/55"
+              />
+              {propertyId !== 'compact-mansion-new' && (
+                <>
+                  <rect x="142" y={yPos - 8} width="18" height="6" className="fill-[#D9AF59]/75" />
+                  <rect x="172" y={yPos - 8} width="18" height="6" className="fill-[#0F6E68]/45" />
+                </>
+              )}
+              {propertyId === 'compact-mansion-new' && (
+                <rect x="160" y={yPos - 8} width="18" height="6" className="fill-[#D9AF59]/85" />
+              )}
             </g>
           ))}
           <circle cx="48" cy="84" r="9" className="fill-[#2B7A4E]" />
@@ -224,26 +267,42 @@ export function PropertyArchitecturalIllustration({
         <g>
           <circle cx="50" cy="78" r="14" className="fill-[#2B7A4E]" />
           <rect x="48" y="86" width="4" height="10" className="fill-[#5E4630]" />
+          {propertyId === 'detached-regional-spacious' && (
+            <>
+              <circle cx="234" cy="76" r="15" className="fill-[#2B7A4E]" />
+              <rect x="232" y="85" width="4" height="10" className="fill-[#5E4630]" />
+              <rect x="200" y="80" width="24" height="11" rx="2" className="fill-[#0F6E68]" />
+              <rect x="22" y="80" width="24" height="11" rx="2" className="fill-[#8C1D3C]" />
+            </>
+          )}
           <rect
-            x="86"
-            y="44"
-            width="108"
-            height="50"
+            x={propertyId === 'detached-semi-order-zeh' ? '100' : '86'}
+            y={propertyId === 'detached-semi-order-zeh' ? '26' : '44'}
+            width={propertyId === 'detached-semi-order-zeh' ? '80' : '108'}
+            height={propertyId === 'detached-semi-order-zeh' ? '68' : '50'}
             className={
-              isUsed
-                ? 'fill-[#DED6C8] stroke-[#5E4630] dark:fill-[#2D2A26] dark:stroke-[#A3B2AF]'
-                : 'fill-[#F7FAF8] stroke-[#13212A] dark:fill-[#223036] dark:stroke-[#E1E9E6]'
+              propertyId === 'detached-kominka-reno'
+                ? 'fill-[#EAE2D3] stroke-[#5E4630] dark:fill-[#332C24] dark:stroke-[#D9AF59]'
+                : isUsed
+                  ? 'fill-[#DED6C8] stroke-[#5E4630] dark:fill-[#2D2A26] dark:stroke-[#A3B2AF]'
+                  : 'fill-[#F7FAF8] stroke-[#13212A] dark:fill-[#223036] dark:stroke-[#E1E9E6]'
             }
             strokeWidth="1.5"
           />
           <polygon
-            points="76,46 140,14 204,46"
+            points={
+              propertyId === 'detached-semi-order-zeh'
+                ? '92,28 140,8 188,28'
+                : '76,46 140,14 204,46'
+            }
             className={
               prop.energyCert === 'long-term-excellent'
                 ? 'fill-[#13212A] stroke-[#0F6E68]'
-                : isUsed
-                  ? 'fill-[#5E4630] stroke-[#13212A]'
-                  : 'fill-[#8C1D3C] stroke-[#13212A]'
+                : propertyId === 'detached-kominka-reno'
+                  ? 'fill-[#2B5B4E] stroke-[#13212A]'
+                  : isUsed
+                    ? 'fill-[#5E4630] stroke-[#13212A]'
+                    : 'fill-[#8C1D3C] stroke-[#13212A]'
             }
             strokeWidth="1.5"
           />
@@ -284,10 +343,185 @@ export function PropertyArchitecturalIllustration({
         </g>
       )}
 
+      {/* 左上バッジ：新築/中古 ＆ 省エネ住宅性能 */}
+      <g transform="translate(8, 8)">
+        <rect
+          width="112"
+          height="17"
+          rx="2"
+          className="fill-[#13212A]/85 dark:fill-[#0D1316]/90"
+        />
+        <text x="6" y="12" className="fill-[#D9AF59] font-mono text-[8.5px] font-bold">
+          {prop.isNew ? '新築' : `中古(築${prop.builtAge}年)`} ·{' '}
+          {prop.energyCert === 'long-term-excellent'
+            ? '長期優良'
+            : prop.energyCert === 'zeh'
+              ? 'ZEH省エネ'
+              : prop.energyCert === 'standard'
+                ? '一般省エネ'
+                : '旧基準'}
+        </text>
+      </g>
+
       <rect y="96" width="280" height="24" className="fill-[#13212A]/85 dark:fill-[#0D1316]/90" />
-      <text x="10" y="112" className="fill-white font-mono text-[10px] font-bold">
-        {prop.shortName} · {prop.priceMan.toLocaleString()}万円（土地{Math.round(prop.landRatio * 100)}%）
+      <text x="8" y="112" className="fill-white font-mono text-[9.5px] font-bold">
+        {prop.priceMan.toLocaleString()}万円（土地{Math.round(prop.landRatio * 100)}%・建物{Math.round((1 - prop.landRatio) * 100)}%）
       </text>
+    </svg>
+  );
+}
+
+/**
+ * 2B. ローン契約構造・金利タイプ・返済方式・団信の図解イラストSVG
+ */
+export function LoanStructureVisualSvg({
+  config,
+  underwriting,
+}: {
+  config: MortgageSetupConfig;
+  underwriting: UnderwritingResult;
+}) {
+  const bank = resolveEffectiveBank(config);
+  const danshin = resolveEffectiveDanshin(config);
+  const isPair = config.contractType === 'pair';
+  const isMerge = config.contractType === 'income-merge';
+  const isEqualPrincipal = config.repaymentMethod === 'equal-principal';
+  const isFixed = bank.rateType === 'flat-35' || bank.rateType === 'fixed-10';
+
+  return (
+    <svg
+      viewBox="0 0 360 112"
+      className="h-28 w-full select-none overflow-hidden rounded border border-[#C7D2CE] bg-[#E8EFEA] dark:border-[#2A383D] dark:bg-[#11191D]"
+      role="img"
+      aria-label="住宅ローン契約構造と金利・返済方式の図解"
+    >
+      {/* 左ブロック：契約方式（単独 vs ペアローン vs 収入合算） */}
+      <g transform="translate(8, 8)">
+        <rect
+          width="108"
+          height="96"
+          rx="3"
+          className="fill-[#F7FAF8] stroke-[#C7D2CE] dark:fill-[#162126] dark:stroke-[#2A383D]"
+        />
+        <text x="8" y="15" className="fill-[#5F6E72] font-mono text-[8.5px] font-bold dark:text-[#8A9A96]">
+          ① 契約・審査構造
+        </text>
+        {isPair ? (
+          <g transform="translate(14, 24)">
+            <rect x="4" y="14" width="32" height="34" rx="2" className="fill-[#0F6E68]" />
+            <rect x="44" y="14" width="32" height="34" rx="2" className="fill-[#8C1D3C]" />
+            <path d="M20,8 L60,8" stroke="#D9AF59" strokeWidth="2.5" />
+            <text x="20" y="34" textAnchor="middle" className="fill-white font-mono text-[8px] font-bold">
+              本人
+            </text>
+            <text x="60" y="34" textAnchor="middle" className="fill-white font-mono text-[8px] font-bold">
+              配偶者
+            </text>
+          </g>
+        ) : isMerge ? (
+          <g transform="translate(14, 24)">
+            <rect x="8" y="10" width="42" height="38" rx="2" className="fill-[#0F6E68]" />
+            <rect x="52" y="20" width="22" height="28" rx="2" className="fill-[#2B7A4E]" />
+            <text x="29" y="32" textAnchor="middle" className="fill-white font-mono text-[8px] font-bold">
+              主債務
+            </text>
+          </g>
+        ) : (
+          <g transform="translate(26, 22)">
+            <rect x="10" y="10" width="36" height="38" rx="2" className="fill-[#0F6E68]" />
+            <text x="28" y="33" textAnchor="middle" className="fill-white font-mono text-[8px] font-bold">
+              単独1本
+            </text>
+          </g>
+        )}
+        <text x="54" y="88" textAnchor="middle" className="fill-[#13212A] font-mono text-[9px] font-bold dark:fill-[#E1E9E6]">
+          {isPair ? 'ペアローン(W控除)' : isMerge ? '収入合算(連帯保証)' : '単独ローン契約'}
+        </text>
+      </g>
+
+      {/* 中央ブロック：金利タイプ＆返済方式 */}
+      <g transform="translate(124, 8)">
+        <rect
+          width="112"
+          height="96"
+          rx="3"
+          className="fill-[#F7FAF8] stroke-[#C7D2CE] dark:fill-[#162126] dark:stroke-[#2A383D]"
+        />
+        <text x="8" y="15" className="fill-[#5F6E72] font-mono text-[8.5px] font-bold dark:text-[#8A9A96]">
+          ② 金利・{config.termYears}年返済
+        </text>
+        {/* 償却イメージ棒グラフ */}
+        <g transform="translate(12, 24)">
+          {isEqualPrincipal ? (
+            <>
+              <rect x="4" y="4" width="12" height="40" className="fill-[#2B7A4E]" />
+              <rect x="22" y="11" width="12" height="33" className="fill-[#2B7A4E]" />
+              <rect x="40" y="18" width="12" height="26" className="fill-[#2B7A4E]" />
+              <rect x="58" y="25" width="12" height="19" className="fill-[#2B7A4E]" />
+              <rect x="76" y="32" width="12" height="12" className="fill-[#2B7A4E]" />
+            </>
+          ) : (
+            <>
+              <rect x="4" y="10" width="12" height="34" className="fill-[#0F6E68]" />
+              <rect x="22" y="10" width="12" height="34" className="fill-[#0F6E68]" />
+              <rect x="40" y="10" width="12" height="34" className="fill-[#0F6E68]" />
+              <rect x="58" y="10" width="12" height="34" className="fill-[#0F6E68]" />
+              <rect x="76" y="10" width="12" height="34" className="fill-[#0F6E68]" />
+            </>
+          )}
+          {!isFixed && (
+            <path
+              d="M2,36 Q24,18 46,28 T90,8"
+              fill="none"
+              stroke="#8C1D3C"
+              strokeWidth="2"
+            />
+          )}
+        </g>
+        <text x="56" y="77" textAnchor="middle" className="fill-[#8C1D3C] font-mono text-[9.5px] font-bold dark:fill-[#E2678A]">
+          年 {underwriting.effectiveInitialRate.toFixed(2)}% ({isEqualPrincipal ? '元金均等' : '元利均等'})
+        </text>
+        <text x="56" y="89" textAnchor="middle" className="fill-[#4A5A61] font-mono text-[8.5px] dark:fill-[#A3B2AF]">
+          {config.age}歳 → {underwriting.maturityAge}歳完済予定
+        </text>
+      </g>
+
+      {/* 右ブロック：団信シールド */}
+      <g transform="translate(244, 8)">
+        <rect
+          width="108"
+          height="96"
+          rx="3"
+          className="fill-[#F7FAF8] stroke-[#C7D2CE] dark:fill-[#162126] dark:stroke-[#2A383D]"
+        />
+        <text x="8" y="15" className="fill-[#5F6E72] font-mono text-[8.5px] font-bold dark:text-[#8A9A96]">
+          ③ 団信保障 (+{danshin.spreadRate.toFixed(2)}%)
+        </text>
+        <g transform="translate(34, 22)">
+          <path
+            d="M 20 0 L 40 7 L 40 24 C 40 37 20 46 20 46 C 20 46 0 37 0 24 L 0 7 Z"
+            className={
+              config.danshin === 'basic'
+                ? 'fill-[#5F6E72]'
+                : config.danshin === 'cancer-50'
+                  ? 'fill-[#0F6E68]'
+                  : 'fill-[#8C1D3C]'
+            }
+          />
+          <rect x="17" y="11" width="6" height="20" fill="#FFFFFF" />
+          <rect x="10" y="18" width="20" height="6" fill="#FFFFFF" />
+        </g>
+        <text x="54" y="82" textAnchor="middle" className="fill-[#13212A] font-mono text-[8.5px] font-bold dark:fill-[#E1E9E6]">
+          {danshin.name}
+        </text>
+        <text x="54" y="92" textAnchor="middle" className="fill-[#0F6E68] font-mono text-[8px] dark:fill-[#4CC0AF]">
+          {config.danshin === 'basic'
+            ? '死亡・高度障害100%'
+            : config.danshin === 'cancer-50'
+              ? 'がん診断で残債50%免除'
+              : 'がん・3大疾病100%免除'}
+        </text>
+      </g>
     </svg>
   );
 }
@@ -484,7 +718,7 @@ export interface LifeSceneSpec {
 }
 
 export function getUnlockedLifeScenes(state: MortgageGameState): LifeSceneSpec[] {
-  const prop = PROPERTIES[state.config.propertyId];
+  const prop = resolveEffectiveProperty(state.config);
   const isDetached = prop.buildingType === 'detached';
   const y = state.yearIndex;
   const age = state.age;
@@ -505,12 +739,36 @@ export function getUnlockedLifeScenes(state: MortgageGameState): LifeSceneSpec[]
       caption: '朝の光の中、ベビーカーを押して駅へと急ぐ共働き・子育ての日々。',
     });
   }
+  if (y >= 3 && state.bojPolicyRate > 0.3) {
+    scenes.push({
+      id: 'mid-term-rate-hike',
+      code: 'SCENE 02B',
+      title: '日銀の途中利上げ速報と変動金利の見直し通知',
+      caption: 'テレビに映る利上げ速報と銀行からの金利改定ハガキ。返済表の利息割合が変化する。',
+    });
+  }
+  if (y >= 4 && state.config.contractType !== 'single' && state.subIncomeMan > 0) {
+    scenes.push({
+      id: 'pair-work-balance',
+      code: 'SCENE 03B',
+      title: 'ペアローン共働き・朝のキッチンと二人の出勤',
+      caption: '連帯債務・ペアローンのW返済を支えるため、家事分担とキャリアの両立に挑む日々。',
+    });
+  }
   if (y >= 4 && state.childrenAges.some((a) => a >= 6 && a <= 12)) {
     scenes.push({
       id: 'elementary-sakura',
       code: 'SCENE 03',
       title: '小学校入学・黄色い帽子とランドセル',
       caption: '真新しいランドセルを背負ってマイホームの玄関から出発する春。',
+    });
+  }
+  if (state.totalPrepaymentMan >= 100) {
+    scenes.push({
+      id: 'prepayment-milestone',
+      code: 'SCENE 04B',
+      title: '一部繰上返済の実行・元金圧縮と期間短縮',
+      caption: 'コツコツ貯めた資金で元金を直接カット！完済年齢が近づく達成感の瞬間。',
     });
   }
   if (y >= 7) {
@@ -534,8 +792,8 @@ export function getUnlockedLifeScenes(state: MortgageGameState): LifeSceneSpec[]
     scenes.push({
       id: 'boj-rate-storm',
       code: 'SCENE 05',
-      title: '日銀金融政策決定会合・利上げの雷雲',
-      caption: '金利引き上げのニュースが駆け巡り、変動金利の返済表に緊張が走る。',
+      title: '日銀金融政策決定会合・追加利上げの雷雲',
+      caption: '相次ぐ金利引き上げのニュースが駆け巡り、変動金利の返済表に緊張が走る。',
     });
   }
   if (y >= 9 && state.childrenAges.some((a) => a >= 10 && a <= 16)) {
@@ -552,6 +810,14 @@ export function getUnlockedLifeScenes(state: MortgageGameState): LifeSceneSpec[]
       code: 'SCENE 07',
       title: '住宅ローン減税（控除期間）満了の秋',
       caption: '毎年末に家計を助けてくれた住宅ローン控除が満了を迎え、真の実力が試される。',
+    });
+  }
+  if (y >= 12 && state.liquidSavingsMan >= 1200) {
+    scenes.push({
+      id: 'nisa-dividend-harvest',
+      code: 'SCENE 07B',
+      title: '新NISA積立運用の果実と金融資産の成長',
+      caption: '長期のインデックス積立と配当が育ち、住宅ローン残債に対抗できる心強い資産の柱に。',
     });
   }
   if (y >= 13) {
@@ -585,6 +851,31 @@ export function getUnlockedLifeScenes(state: MortgageGameState): LifeSceneSpec[]
       code: 'SCENE 10',
       title: '40代後半の人間ドックと団体信用生命保険の盾',
       caption: '健康の転機が訪れる年代。契約時に選んだ団信の保障内容が家族の運命を守る。',
+    });
+  }
+  if (y >= 20) {
+    scenes.push(
+      isDetached
+        ? {
+            id: 'year20-renewal',
+            code: 'SCENE 10B',
+            title: '築20年・屋根カバー工法と水回り全面リノベ',
+            caption: '20年選手の我が家。屋根材と給湯器・浴室を一新し、後半戦の暮らしを整える。',
+          }
+        : {
+            id: 'year20-renewal',
+            code: 'SCENE 10B',
+            title: '築20年・マンション給排水管＆エレベーター更新',
+            caption: '外からは見えない配管と昇降機の更新工事。マンションの寿命を延ばす重要局面。',
+          },
+    );
+  }
+  if (age >= 53) {
+    scenes.push({
+      id: 'parent-inheritance-home',
+      code: 'SCENE 10C',
+      title: '50代・実家の整理と親世代からのバトン',
+      caption: '地方の実家の空き家整理や介護の節目。受け継いだ資産をどう活かすか家族で話し合う。',
     });
   }
   if (age >= 55) {
@@ -644,7 +935,7 @@ export function LifeScenePanoramaSvg({
   state: MortgageGameState;
   recentBadge: string | null;
 }) {
-  const prop = PROPERTIES[state.config.propertyId];
+  const prop = resolveEffectiveProperty(state.config);
   const latest = state.history[state.history.length - 1];
   const isOverLoan = latest ? latest.isOverLoan : false;
   const unlockedScenes = getUnlockedLifeScenes(state);
@@ -874,6 +1165,54 @@ export function LifeScenePanoramaSvg({
             </g>
           )}
 
+          {/* Scene: 途中利上げ速報・金利上昇ボード */}
+          {(activeScene.id === 'mid-term-rate-hike' || activeScene.id === 'boj-rate-storm') && (
+            <g transform="translate(364, 96)">
+              <rect
+                x="0"
+                y="0"
+                width="76"
+                height="44"
+                rx="3"
+                className="fill-[#13212A] stroke-[#8C1D3C]"
+                strokeWidth="1.8"
+              />
+              <polyline
+                fill="none"
+                stroke="#E2678A"
+                strokeWidth="2.5"
+                points="8,34 26,28 42,20 66,8"
+              />
+              <text x="38" y="40" textAnchor="middle" className="fill-[#F3E2B3] font-mono text-[8px] font-bold">
+                利上げ速報
+              </text>
+            </g>
+          )}
+
+          {/* Scene: 繰上返済・新NISA資産成長バッジ */}
+          {(activeScene.id === 'prepayment-milestone' ||
+            activeScene.id === 'nisa-dividend-harvest') && (
+            <g transform="translate(366, 98)">
+              <rect
+                x="0"
+                y="0"
+                width="74"
+                height="40"
+                rx="3"
+                className="fill-[#0F6E68] stroke-[#D9AF59]"
+                strokeWidth="1.8"
+              />
+              <text x="37" y="18" textAnchor="middle" className="fill-white font-mono text-[8.5px] font-bold">
+                {activeScene.id === 'prepayment-milestone' ? '元金直接圧縮' : 'NISA複利成長'}
+              </text>
+              <text x="37" y="32" textAnchor="middle" className="fill-[#F3E2B3] font-mono text-[9px] font-bold">
+                {activeScene.id === 'prepayment-milestone'
+                  ? `累計-${Math.round(state.totalPrepaymentMan)}万`
+                  : `貯蓄${Math.round(state.liquidSavingsMan)}万`}
+              </text>
+            </g>
+          )}
+
           {/* Scene: 季節の木（桜・新緑・紅葉） */}
           <g>
             <rect x="132" y="118" width="6" height="27" className="fill-[#5E4630]" />
@@ -984,7 +1323,7 @@ export function LifeScenePanoramaSvg({
         </div>
         <p className="mt-0.5 text-xs text-[#4A5A61] dark:text-[#A3B2AF]">{activeScene.caption}</p>
         {unlockedScenes.length > 1 && (
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {unlockedScenes.map((sc, i) => {
               const isSelected = activeScene.id === sc.id;
               return (
@@ -996,13 +1335,13 @@ export function LifeScenePanoramaSvg({
                       i === unlockedScenes.length - 1 ? null : sc.id,
                     )
                   }
-                  className={`rounded px-2 py-0.5 font-mono text-[10px] font-semibold transition ${
+                  className={`rounded px-2.5 py-1 text-left font-mono text-[10.5px] font-semibold transition ${
                     isSelected
                       ? 'bg-[#0F6E68] text-white dark:bg-[#4CC0AF] dark:text-[#0D1316]'
                       : 'bg-[#F7FAF8] text-[#4A5A61] hover:text-[#13212A] dark:bg-[#141D21] dark:text-[#A3B2AF]'
                   }`}
                 >
-                  {i + 1}. {sc.title.slice(0, 8)}
+                  {i + 1}. {sc.title}
                 </button>
               );
             })}
@@ -1014,7 +1353,7 @@ export function LifeScenePanoramaSvg({
 }
 
 /**
- * 5. 1in8bスタイルの「人生地図（1マス＝1年）」カラーグリッド
+ * 5. 年齢別「人生地図（1マス＝1年）」カラーグリッド
  */
 export function LifeMapGrid({
   history,

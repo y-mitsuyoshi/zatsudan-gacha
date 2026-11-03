@@ -24,12 +24,12 @@ import {
 } from '../src/lib/mortgage-logic';
 import { MortgageSetupConfig } from '../src/types/mortgage';
 
-console.log('=== Verifying 1in8b-style Mortgage Survival Simulation (/mortgage-life) ===');
+console.log('=== Verifying Mortgage Survival Simulation: マイホーム完済記 (/mortgage-life) ===');
 
-// 1. Verify Data Catalogs
-assert.ok(ARCHETYPES.length >= 6, 'Should have at least 6 household archetypes');
-assert.ok(Object.keys(PROPERTIES).length >= 8, 'Should have at least 8 property presets');
-assert.ok(Object.keys(BANKS).length >= 5, 'Should have at least 5 bank plans');
+// 1. Verify Data Catalogs (Expanded Patterns)
+assert.equal(ARCHETYPES.length, 12, 'Should have 12 household archetypes');
+assert.equal(Object.keys(PROPERTIES).length, 12, 'Should have 12 property presets');
+assert.equal(Object.keys(BANKS).length, 7, 'Should have 7 bank plans');
 assert.ok(Object.keys(DANSHIN_PLANS).length >= 4, 'Should have at least 4 Danshin plans');
 assert.ok(Object.keys(MACRO_REGIMES).length >= 5, 'Should have at least 5 Macro regimes');
 assert.ok(Object.keys(FAMILY_PLANS).length >= 6, 'Should have at least 6 Family plans');
@@ -222,7 +222,7 @@ for (let i = 0; i < 50; i++) {
 
 console.log(`Completed ${completedSimulations} full-lifecycle simulations. Ending rank distribution:`, endingCounts);
 
-// 8. Verify Zero Emojis in all new Mortgage files (S-15 rule)
+// 8. Verify Zero Emojis, Zero Personal Surnames, Zero Copycat Title, and Zero Truncation in Mortgage files
 const filesToCheck = [
   'src/types/mortgage.ts',
   'src/lib/mortgage-logic.ts',
@@ -231,9 +231,31 @@ const filesToCheck = [
   'src/app/mortgage-life/page.tsx',
 ];
 const emojiRegex = /\p{Extended_Pictographic}/u;
+const personalSurnameRegex = /佐藤家|鈴木家|高橋家|田中家|伊藤家|渡辺家|山本家|中村家/;
+const copycatTitleRegex = /1,300万|1300万|1in8b/i;
+
 for (const file of filesToCheck) {
   const content = fs.readFileSync(file, 'utf-8');
   assert.equal(emojiRegex.test(content), false, `File ${file} must not contain any emojis`);
+  assert.equal(
+    personalSurnameRegex.test(content),
+    false,
+    `File ${file} must not contain personal surnames`
+  );
+  assert.equal(
+    copycatTitleRegex.test(content),
+    false,
+    `File ${file} must not contain copycat title strings (1,300万 / 1in8b)`
+  );
 }
+
+const uiContent =
+  fs.readFileSync('src/components/mortgage/MortgageGame.tsx', 'utf-8') +
+  fs.readFileSync('src/components/mortgage/MortgageVisuals.tsx', 'utf-8');
+assert.equal(
+  /\btruncate\b/.test(uiContent),
+  false,
+  'Mortgage UI components must not use CSS truncate class that clips Japanese text'
+);
 
 console.log('ALL MORTGAGE SIMULATION VERIFICATION TESTS PASSED!');
