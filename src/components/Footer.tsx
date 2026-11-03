@@ -16,6 +16,7 @@ const services = [
   { title: '定時退社カタパルト', href: '/shachiku-catapult', note: 'ぶっとばし飛距離ゲーム' },
   { title: '社畜ワイヤー疾走', href: '/shachiku-wire', note: '終電スイングアクション' },
   { title: '社畜グラグラ決済タワー', href: '/shachiku-stack', note: '限界ビル建設ゲーム' },
+  { title: '住宅ローン破産サバイバル', href: '/shachiku-mortgage', note: '1,300万世帯分の1年代記' },
   { title: '究極の言い訳ジェネレーター', href: '/excuse-generator', note: '言い逃れ文を作成' },
   { title: '駅名標メーカー', href: '/station-sign-maker', note: 'オリジナル駅名標' },
 ];

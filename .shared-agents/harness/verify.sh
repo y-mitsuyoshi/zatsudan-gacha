@@ -56,7 +56,7 @@ const sitemap = fs.readFileSync('out/sitemap.xml', 'utf8');
 if (!['/privacy','/themes/hobby','/games','/tools','/about','/guides','/guides/one-on-one'].every((path) => sitemap.includes(path))) process.exit(1);
 const notFound = fs.readFileSync('out/404.html', 'utf8');
 if (!notFound.includes('noindex')) process.exit(1);
-const gamePages = ['out/barricade-defense.html','out/shachiku-shooting.html','out/shachiku-spiral.html','out/shachiku-survivor.html','out/shachiku-jinro.html','out/shachiku-sugoroku.html','out/shachiku-catapult.html','out/shachiku-wire.html','out/shachiku-stack.html'];
+const gamePages = ['out/barricade-defense.html','out/shachiku-shooting.html','out/shachiku-spiral.html','out/shachiku-survivor.html','out/shachiku-jinro.html','out/shachiku-sugoroku.html','out/shachiku-catapult.html','out/shachiku-wire.html','out/shachiku-stack.html','out/shachiku-mortgage.html'];
 if (gamePages.some((file) => !fs.readFileSync(file, 'utf8').includes('VideoGame'))) process.exit(1);
 const toolPages = ['out/profile-maker.html','out/isekai-status.html','out/excuse-generator.html','out/station-sign-maker.html'];
 if (toolPages.some((file) => !fs.readFileSync(file, 'utf8').includes('WebApplication'))) process.exit(1);
@@ -98,6 +98,9 @@ if [ -f tests/e2e/run_all.ts ]; then
   npx tsx tests/e2e/run_all.ts
 else
   echo "SKIP: tests/e2e/run_all.ts is not present in this checkout"
+fi
+if [ -f tests/mortgage_simulation_verification.test.ts ]; then
+  npx tsx tests/mortgage_simulation_verification.test.ts
 fi
 
 echo "==> All verification checks passed"

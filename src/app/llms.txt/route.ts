@@ -86,6 +86,7 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [社畜ぶっとばし！定時退社カタパルト](${BASE_URL}/shachiku-catapult)
 - [社畜ワイヤー疾走：終電スイングアクション](${BASE_URL}/shachiku-wire)
 - [社畜グラグラ決済タワー：限界ビル建設](${BASE_URL}/shachiku-stack)
+- [1,300万世帯分の1：住宅ローン破産サバイバル](${BASE_URL}/shachiku-mortgage)
 `;
 
   return new Response(body, {
