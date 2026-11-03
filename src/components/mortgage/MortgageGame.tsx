@@ -4,14 +4,24 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ARCHETYPES,
   BANKS,
+  CRAM_SCHOOL_SPECS,
   DANSHIN_PLANS,
   EMPLOYMENT_LABELS,
   FAMILY_PLANS,
   FOCUS_MODES,
+  HIGHER_ED_SPECS,
+  INSURANCE_PLAN_SPECS,
+  JUNIOR_HIGH_SPECS,
+  LEISURE_STYLE_SPECS,
   MACRO_REGIMES,
+  POST_RETIREMENT_SPECS,
   PROPERTIES,
+  SALARY_CURVE_SPECS,
+  SCHOLARSHIP_SPECS,
+  SPOUSE_WORK_SPECS,
   advanceOneYear,
   analyzeOutcomeFactors,
+  calcAnnualHealthRiskProbabilities,
   createMortgageGame,
   executeMidTermRateHike,
   executePrepayment,
@@ -21,11 +31,14 @@ import {
   formatConsistentHouseholdTitle,
   formatSetupProfileSummary,
   generateRandomHouseholdSetup,
+  getChildIndependenceAge,
+  getDefaultRetirementAllowanceMan,
   randomizeBankLoanParams,
   randomizeHouseholdParams,
   randomizePropertyParams,
   resolveEffectiveBank,
   resolveEffectiveDanshin,
+  resolveEffectiveHouseholdCareerAndEdu,
   resolveEffectiveProperty,
   resolveMortgageDecision,
   runBankUnderwriting,
@@ -34,18 +47,27 @@ import {
 import {
   BankId,
   ContractType,
+  CramSchoolPolicyType,
   DanshinType,
   EmploymentType,
   EnergyCertType,
   FamilyPlanType,
+  FireEarthquakeInsuranceType,
   FocusModeId,
+  HigherEdPathType,
+  JuniorHighPathType,
+  LeisureStyleType,
   LoanTermYears,
   MacroRegimeId,
   MortgageGameState,
   MortgageSetupConfig,
+  PostRetirementWorkType,
   PropertyCategory,
   RateType,
   RepaymentMethod,
+  SalaryCurveType,
+  ScholarshipType,
+  SpouseWorkPatternType,
 } from '@/types/mortgage';
 import { AudioToggle, useBgm } from '@/components/game/AudioToggle';
 import { audioManager } from '@/utils/audio';
@@ -163,6 +185,10 @@ export function MortgageGame() {
   const selectedProperty = useMemo(() => resolveEffectiveProperty(setupConfig), [setupConfig]);
   const selectedBank = useMemo(() => resolveEffectiveBank(setupConfig), [setupConfig]);
   const selectedDanshin = useMemo(() => resolveEffectiveDanshin(setupConfig), [setupConfig]);
+  const effectiveCareerAndEdu = useMemo(
+    () => resolveEffectiveHouseholdCareerAndEdu(setupConfig),
+    [setupConfig],
+  );
   const selectedArchetype =
     ARCHETYPES.find((a) => a.id === setupConfig.archetypeId) ?? ARCHETYPES[0];
 
@@ -279,6 +305,14 @@ export function MortgageGame() {
         prop.buildingType === 'detached'
           ? 0
           : Number((prop.initialMgmtFeeMonthlyMan + prop.initialRepairFeeMonthlyMan).toFixed(1)),
+      salaryCurve: undefined,
+      retirementAllowanceMan: undefined,
+      postRetirementWork: undefined,
+      spouseWorkPattern: undefined,
+      juniorHighPath: undefined,
+      higherEdPath: undefined,
+      hasGakushiHoken: undefined,
+      scholarshipType: undefined,
       randomRollSummary: undefined,
     }));
   }, []);
@@ -953,9 +987,11 @@ export function MortgageGame() {
                           value={setupConfig.employment}
                           onChange={(e) => {
                             setSpawnMode('custom');
+                            const nextEmp = e.target.value as EmploymentType;
                             setSetupConfig((p) => ({
                               ...p,
-                              employment: e.target.value as EmploymentType,
+                              employment: nextEmp,
+                              retirementAllowanceMan: getDefaultRetirementAllowanceMan(nextEmp),
                             }));
                           }}
                           className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
@@ -995,9 +1031,11 @@ export function MortgageGame() {
                           value={setupConfig.familyPlan}
                           onChange={(e) => {
                             setSpawnMode('custom');
+                            const nextFp = e.target.value as FamilyPlanType;
                             setSetupConfig((p) => ({
                               ...p,
-                              familyPlan: e.target.value as FamilyPlanType,
+                              familyPlan: nextFp,
+                              higherEdPath: undefined,
                             }));
                           }}
                           className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
@@ -1032,6 +1070,349 @@ export function MortgageGame() {
                             : 'クリーン（延滞歴なし・優良）'}
                         </button>
                       </div>
+                    </div>
+
+                    {/* 昇給カーブ・退職金・定年後の働き方・配偶者の働き方（バイト等） */}
+                    <div className="mt-4 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-3.5 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE4E1] pb-2 dark:border-[#1D282C]">
+                        <span className="text-xs font-bold text-[#13212A] dark:text-[#E1E9E6]">
+                          キャリア・昇給カーブ・退職金・定年後＆配偶者の働き方
+                        </span>
+                        <span className="font-mono text-[11px] text-[#0F6E68] dark:text-[#4CC0AF]">
+                          {setupConfig.age}歳時点の年間がん罹患確率：約
+                          {(calcAnnualHealthRiskProbabilities(setupConfig.age).cancerProb * 100).toFixed(2)}%/年（年齢とともに上昇）
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {/* 給与カーブ */}
+                        <div>
+                          <span className="block text-xs font-semibold">
+                            今後の昇給・給与カーブ（上がる人 / 横ばい / 下がる人）
+                          </span>
+                          <select
+                            value={effectiveCareerAndEdu.salaryCurve}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                salaryCurve: e.target.value as SalaryCurveType,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            {Object.values(SALARY_CURVE_SPECS).map((sc) => (
+                              <option key={sc.id} value={sc.id}>
+                                {sc.label}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            {SALARY_CURVE_SPECS[effectiveCareerAndEdu.salaryCurve].description}
+                          </p>
+                        </div>
+
+                        {/* 定年退職金 */}
+                        <div>
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span>60歳定年時の退職金見込額（制度有無）</span>
+                            <span className="font-mono text-sm font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                              {effectiveCareerAndEdu.retirementAllowanceMan === 0
+                                ? '0万円（退職金制度なし）'
+                                : `${effectiveCareerAndEdu.retirementAllowanceMan.toLocaleString()}万円`}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={2800}
+                            step={50}
+                            value={effectiveCareerAndEdu.retirementAllowanceMan}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                retirementAllowanceMan: Number(e.target.value),
+                              }));
+                            }}
+                            className="mt-1.5 w-full accent-[#0F6E68]"
+                          />
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {[
+                              { label: '制度なし(0万)', val: 0 },
+                              { label: '中小標準(500万)', val: 500 },
+                              { label: '中堅(1,000万)', val: 1000 },
+                              { label: '大企業(1,750万)', val: 1750 },
+                              { label: '公務員等(2,100万)', val: 2100 },
+                            ].map((preset) => (
+                              <button
+                                key={preset.val}
+                                type="button"
+                                onClick={() => {
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({
+                                    ...p,
+                                    retirementAllowanceMan: preset.val,
+                                  }));
+                                }}
+                                className={`rounded border px-1.5 py-0.5 font-mono text-[10px] transition ${
+                                  effectiveCareerAndEdu.retirementAllowanceMan === preset.val
+                                    ? 'border-[#0F6E68] bg-[#0F6E68] text-white'
+                                    : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                                }`}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 定年後の働き方・職種 */}
+                        <div>
+                          <span className="block text-xs font-semibold">
+                            60歳定年後の働き方・職種（再雇用 / 別職種 / バイト / 引退）
+                          </span>
+                          <select
+                            value={effectiveCareerAndEdu.postRetirementWork}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                postRetirementWork: e.target.value as PostRetirementWorkType,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            {Object.values(POST_RETIREMENT_SPECS).map((pr) => (
+                              <option key={pr.id} value={pr.id}>
+                                {pr.label}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            {POST_RETIREMENT_SPECS[effectiveCareerAndEdu.postRetirementWork].description}
+                          </p>
+                        </div>
+
+                        {/* 配偶者（奥さん・パートナー）の働き方・バイト */}
+                        <div>
+                          <span className="block text-xs font-semibold">
+                            配偶者（奥さん・パートナー）の働き方・パート/バイト転換
+                          </span>
+                          <select
+                            value={effectiveCareerAndEdu.spouseWorkPattern}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              const nextSw = e.target.value as SpouseWorkPatternType;
+                              setSetupConfig((p) => {
+                                let nextSub = p.subIncomeMan;
+                                if (nextSw === 'no-spouse' || nextSw === 'homemaker' || nextSw === 'homemaker-to-part') {
+                                  nextSub = 0;
+                                } else if (nextSw === 'part-time' && nextSub > 180) {
+                                  nextSub = 115;
+                                } else if ((nextSw === 'fulltime-keep' || nextSw === 'shift-to-part') && nextSub < 200) {
+                                  nextSub = 360;
+                                }
+                                return {
+                                  ...p,
+                                  spouseWorkPattern: nextSw,
+                                  subIncomeMan: nextSub,
+                                  contractType: nextSub === 0 ? 'single' : p.contractType,
+                                };
+                              });
+                            }}
+                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            {Object.values(SPOUSE_WORK_SPECS).map((sw) => (
+                              <option key={sw.id} value={sw.id}>
+                                {sw.label}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            {SPOUSE_WORK_SPECS[effectiveCareerAndEdu.spouseWorkPattern].description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 子どもの教育費・進路詳細（子どもがいるプランのときのみ表示） */}
+                    {FAMILY_PLANS[setupConfig.familyPlan].childrenCount > 0 && (
+                      <div className="mt-4 rounded-[4px] border border-[#0F6E68]/50 bg-[#DCEDEA]/35 p-3.5 dark:border-[#4CC0AF]/40 dark:bg-[#12302D]/35">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#0F6E68]/25 pb-2">
+                          <span className="text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                            子どもの教育費・進路設計（中学受験 / 国公立・私立大・専門・高卒 / 学資保険 / 奨学金）
+                          </span>
+                          <span className="font-mono text-[11px] text-[#4A5A61] dark:text-[#A3B2AF]">
+                            子ども {FAMILY_PLANS[setupConfig.familyPlan].childrenCount}人 · 独立年齢{' '}
+                            {getChildIndependenceAge(effectiveCareerAndEdu.higherEdPath)}歳
+                          </span>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {/* 中学受験 */}
+                          <div>
+                            <span className="block text-xs font-semibold">
+                              中学進路（公立中学 vs 中学受験・私立中高一貫）
+                            </span>
+                            <select
+                              value={effectiveCareerAndEdu.juniorHighPath}
+                              onChange={(e) => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  juniorHighPath: e.target.value as JuniorHighPathType,
+                                }));
+                              }}
+                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
+                            >
+                              {Object.values(JUNIOR_HIGH_SPECS).map((jh) => (
+                                <option key={jh.id} value={jh.id}>
+                                  {jh.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                              {JUNIOR_HIGH_SPECS[effectiveCareerAndEdu.juniorHighPath].description}
+                            </p>
+                          </div>
+
+                          {/* 高校卒業後の進路 */}
+                          <div>
+                            <span className="block text-xs font-semibold">
+                              高校卒業後の進路（国公立大 / 私立文系 / 私立理系 / 専門学校 / 高卒就職）
+                            </span>
+                            <select
+                              value={effectiveCareerAndEdu.higherEdPath}
+                              onChange={(e) => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  higherEdPath: e.target.value as HigherEdPathType,
+                                }));
+                              }}
+                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
+                            >
+                              {Object.values(HIGHER_ED_SPECS).map((he) => (
+                                <option key={he.id} value={he.id}>
+                                  {he.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                              {HIGHER_ED_SPECS[effectiveCareerAndEdu.higherEdPath].description}
+                            </p>
+                          </div>
+
+                          {/* 学資保険 */}
+                          <div>
+                            <span className="block text-xs font-semibold">
+                              学資保険の加入有無（18歳満期・1人あたり200万円受取）
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  hasGakushiHoken: !effectiveCareerAndEdu.hasGakushiHoken,
+                                }));
+                              }}
+                              className={`mt-1 w-full rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                                effectiveCareerAndEdu.hasGakushiHoken
+                                  ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                                  : 'border-[#C7D2CE] bg-[#F7FAF8] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#141D21] dark:text-[#A3B2AF]'
+                              }`}
+                            >
+                              {effectiveCareerAndEdu.hasGakushiHoken
+                                ? '学資保険 あり（0〜17歳まで年11万積立 → 18歳時に満期200万円受取）'
+                                : '学資保険 なし（手元貯蓄・毎年の家計から教育費を捻出）'}
+                            </button>
+                          </div>
+
+                          {/* 奨学金 */}
+                          <div>
+                            <span className="block text-xs font-semibold">
+                              大学・専門進学時の奨学金・アルバイト方針
+                            </span>
+                            <select
+                              value={effectiveCareerAndEdu.scholarshipType}
+                              disabled={effectiveCareerAndEdu.higherEdPath === 'high-school-job'}
+                              onChange={(e) => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  scholarshipType: e.target.value as ScholarshipType,
+                                }));
+                              }}
+                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs disabled:opacity-50 dark:border-[#2A383D] dark:bg-[#141D21]"
+                            >
+                              {Object.values(SCHOLARSHIP_SPECS).map((sc) => (
+                                <option key={sc.id} value={sc.id}>
+                                  {sc.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                              {SCHOLARSHIP_SPECS[effectiveCareerAndEdu.scholarshipType].description}
+                            </p>
+                          </div>
+
+                          {/* 入塾・夏期講習・大学受験予備校方針 */}
+                          <div className="sm:col-span-2">
+                            <span className="block text-xs font-semibold">
+                              子どもの入塾・夏期講習・大学受験予備校方針
+                            </span>
+                            <select
+                              value={effectiveCareerAndEdu.cramSchoolPolicy}
+                              onChange={(e) => {
+                                setSpawnMode('custom');
+                                setSetupConfig((p) => ({
+                                  ...p,
+                                  cramSchoolPolicy: e.target.value as CramSchoolPolicyType,
+                                }));
+                              }}
+                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
+                            >
+                              {Object.values(CRAM_SCHOOL_SPECS).map((cr) => (
+                                <option key={cr.id} value={cr.id}>
+                                  {cr.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                              {CRAM_SCHOOL_SPECS[effectiveCareerAndEdu.cramSchoolPolicy].description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 家族旅行・レジャー・外食・娯楽費スタイル */}
+                    <div className="mt-4 rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-3.5 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <span className="block text-xs font-bold text-[#13212A] dark:text-[#E1E9E6]">
+                        家族旅行・レジャー・外食・娯楽費スタイル（物価上昇・幸福度に連動）
+                      </span>
+                      <select
+                        value={effectiveCareerAndEdu.leisureStyle}
+                        onChange={(e) => {
+                          setSpawnMode('custom');
+                          setSetupConfig((p) => ({
+                            ...p,
+                            leisureStyle: e.target.value as LeisureStyleType,
+                          }));
+                        }}
+                        className="mt-1.5 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-2.5 py-2 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                      >
+                        {Object.values(LEISURE_STYLE_SPECS).map((ls) => (
+                          <option key={ls.id} value={ls.id}>
+                            {ls.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                        {LEISURE_STYLE_SPECS[effectiveCareerAndEdu.leisureStyle].description}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1412,6 +1793,57 @@ export function MortgageGame() {
                             />
                           </label>
                         )}
+                      </div>
+
+                      {/* 固定資産税・都市計画税（年額見込） ＆ 火災保険・地震保険プラン選択 */}
+                      <div className="grid grid-cols-1 gap-4 border-t border-[#C7D2CE] pt-3 sm:grid-cols-2 dark:border-[#2A383D]">
+                        <div className="rounded border border-[#C7D2CE] bg-[#EBF0ED]/70 p-2.5 text-xs dark:border-[#2A383D] dark:bg-[#1A2428]">
+                          <div className="flex justify-between font-semibold">
+                            <span>固定資産税・都市計画税（年額目安）</span>
+                            <span className="font-mono font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                              年 {selectedProperty.annualPropertyTaxMan}万円
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            {selectedProperty.isNew
+                              ? `新築軽減により当初${selectedProperty.energyCert === 'long-term-excellent' ? (selectedProperty.buildingType === 'detached' ? 5 : 7) : selectedProperty.buildingType === 'detached' ? 3 : 5}年間は家屋分が半額軽減されますが、期間満了の翌年から本来の税額へ上がります。`
+                              : '3年ごとの固定資産評価替えと建物の経年減価補正が毎年のキャッシュフローに反映されます。'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold">
+                            火災保険・地震保険・水災特約プラン（5年更新）
+                          </label>
+                          <select
+                            value={effectiveCareerAndEdu.insurancePlan}
+                            onChange={(e) => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                insurancePlan: e.target.value as FireEarthquakeInsuranceType,
+                              }));
+                            }}
+                            className="mt-1 w-full rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2.5 py-2 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
+                          >
+                            {Object.values(INSURANCE_PLAN_SPECS).map((ins) => {
+                              const fiveYrCost =
+                                selectedProperty.buildingType === 'detached'
+                                  ? ins.fiveYearCostDetachedMan
+                                  : selectedProperty.buildingType === 'tower'
+                                    ? ins.fiveYearCostTowerMan
+                                    : ins.fiveYearCostMansionMan;
+                              return (
+                                <option key={ins.id} value={ins.id}>
+                                  {ins.label}（5年一括 約{fiveYrCost}万円）
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            {INSURANCE_PLAN_SPECS[effectiveCareerAndEdu.insurancePlan].description}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2079,10 +2511,44 @@ export function MortgageGame() {
                   ローン月{liveUnderwriting.initialMonthlyPaymentMan}万（実質 月{liveUnderwriting.initialTotalMonthlyOutflowMan}万円）
                 </strong>
               </div>
+              <div>
+                <span className="block text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                  昇給カーブ / 退職金見込 / 60歳定年後
+                </span>
+                <strong className="font-mono text-xs font-bold">
+                  {SALARY_CURVE_SPECS[effectiveCareerAndEdu.salaryCurve].shortLabel} /{' '}
+                  {effectiveCareerAndEdu.retirementAllowanceMan === 0
+                    ? '退職金なし(0万)'
+                    : `退職金${effectiveCareerAndEdu.retirementAllowanceMan}万`}{' '}
+                  / {POST_RETIREMENT_SPECS[effectiveCareerAndEdu.postRetirementWork].shortLabel}
+                </strong>
+              </div>
+              <div>
+                <span className="block text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                  配偶者の働き方・バイト転換
+                </span>
+                <strong className="font-mono text-xs font-bold">
+                  {SPOUSE_WORK_SPECS[effectiveCareerAndEdu.spouseWorkPattern].shortLabel}（初期年収
+                  {setupConfig.subIncomeMan}万）
+                </strong>
+              </div>
+              <div>
+                <span className="block text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                  子どもの教育進路・学資保険・奨学金
+                </span>
+                <strong className="font-mono text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                  {FAMILY_PLANS[setupConfig.familyPlan].childrenCount === 0
+                    ? '子どもなし（DINKS・単身）'
+                    : `${JUNIOR_HIGH_SPECS[effectiveCareerAndEdu.juniorHighPath].shortLabel}→${HIGHER_ED_SPECS[effectiveCareerAndEdu.higherEdPath].shortLabel} / 学資保険${effectiveCareerAndEdu.hasGakushiHoken ? 'あり' : 'なし'} / ${SCHOLARSHIP_SPECS[effectiveCareerAndEdu.scholarshipType].shortLabel}`}
+                </strong>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
               <span>団信保障：{selectedDanshin.name}（+{selectedDanshin.spreadRate.toFixed(2)}%）</span>
+              <span>
+                火災・地震保険：{INSURANCE_PLAN_SPECS[effectiveCareerAndEdu.insurancePlan].shortLabel} / 固定資産税：基準年{selectedProperty.annualPropertyTaxMan}万円
+              </span>
               <span>
                 住宅ローン控除：最大 年{liveUnderwriting.maxTaxDeductionAnnualMan}万円 ×{' '}
                 {liveUnderwriting.taxDeductionYears}年間
@@ -2688,6 +3154,13 @@ export function MortgageGame() {
                   {gameState.propertyValueMan.toLocaleString()}万円
                 </b>
               </div>
+              <div className="flex justify-between">
+                <span className="text-[#4A5A61] dark:text-[#A3B2AF]">固定資産税（年額）/ 保険</span>
+                <b className="text-[11px]">
+                  年{gameState.annualPropertyTaxCurrentMan ?? currentProperty.annualPropertyTaxMan}万 /{' '}
+                  {INSURANCE_PLAN_SPECS[resolveEffectiveHouseholdCareerAndEdu(gameState.config).insurancePlan].shortLabel}
+                </b>
+              </div>
             </div>
           </div>
 
@@ -2703,40 +3176,123 @@ export function MortgageGame() {
           {/* 4. 家族と暮らし (.p-fam) */}
           <div className="rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-4 shadow-sm dark:border-[#2A383D] dark:bg-[#141D21]">
             <h3 className="border-b border-[#DCE4E1] pb-2 text-sm font-bold dark:border-[#1D282C]">
-              家族と暮らし
+              家族と暮らし・キャリア＆教育進路
             </h3>
-            <ul className="mt-2.5 space-y-2 text-xs">
-              <li className="flex justify-between">
-                <span>本人（{gameState.age}歳）</span>
-                <span className="font-mono font-semibold">年収 {gameState.mainIncomeMan}万円</span>
-              </li>
-              {gameState.subIncomeMan > 0 && !gameState.isDivorced && (
-                <li className="flex justify-between">
-                  <span>配偶者（{Math.max(24, gameState.age - 1)}歳）</span>
-                  <span className="font-mono font-semibold">年収 {gameState.subIncomeMan}万円</span>
-                </li>
-              )}
-              {gameState.childrenAges.map((cAge, idx) => {
-                const stage =
-                  cAge < 6
-                    ? '未就学・保育'
-                    : cAge < 12
-                      ? '小学生（ランドセル期）'
-                      : cAge < 15
-                        ? '中学生（部活・通塾）'
-                        : cAge < 18
-                          ? '高校生（受験期）'
-                          : cAge < 22
-                            ? '大学生（教育費ピーク）'
-                            : '独立・社会人';
-                return (
-                  <li key={idx} className="flex justify-between text-[#4A5A61] dark:text-[#A3B2AF]">
-                    <span>第{idx + 1}子（{cAge}歳）</span>
-                    <span className="font-mono">{stage}</span>
-                  </li>
-                );
-              })}
-            </ul>
+            {(() => {
+              const careerEdu = resolveEffectiveHouseholdCareerAndEdu(gameState.config);
+              const indepAge = getChildIndependenceAge(careerEdu.higherEdPath);
+              const healthProbs = calcAnnualHealthRiskProbabilities(gameState.age);
+              return (
+                <>
+                  <ul className="mt-2.5 space-y-2 text-xs">
+                    <li className="rounded bg-[#F0F4F2] p-2 dark:bg-[#1A2428]">
+                      <div className="flex justify-between">
+                        <span className="font-bold">本人（{gameState.age}歳）</span>
+                        <span className="font-mono font-semibold text-[#0F6E68] dark:text-[#4CC0AF]">
+                          年収 {gameState.mainIncomeMan}万円
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                        {gameState.currentJobLabel ?? EMPLOYMENT_LABELS[gameState.config.employment]}
+                      </div>
+                      <div className="mt-0.5 font-mono text-[10px] text-[#4A5A61] dark:text-[#A3B2AF]">
+                        {SALARY_CURVE_SPECS[careerEdu.salaryCurve].shortLabel} ·{' '}
+                        {careerEdu.retirementAllowanceMan === 0
+                          ? '退職金制度なし(0万)'
+                          : `60歳退職金見込 ${careerEdu.retirementAllowanceMan}万`}
+                      </div>
+                    </li>
+
+                    {careerEdu.spouseWorkPattern !== 'no-spouse' && !gameState.isDivorced && (
+                      <li className="rounded bg-[#F0F4F2] p-2 dark:bg-[#1A2428]">
+                        <div className="flex justify-between">
+                          <span className="font-bold">
+                            配偶者（{Math.max(24, gameState.age - 1)}歳）
+                          </span>
+                          <span className="font-mono font-semibold">
+                            年収 {gameState.subIncomeMan}万円
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                          {gameState.currentSpouseJobLabel ??
+                            SPOUSE_WORK_SPECS[careerEdu.spouseWorkPattern].shortLabel}
+                        </div>
+                      </li>
+                    )}
+
+                    {gameState.childrenAges.map((cAge, idx) => {
+                      const stage =
+                        cAge < 6
+                          ? '未就学・保育'
+                          : cAge < 10
+                            ? '小学生（低〜中学年）'
+                            : cAge < 12
+                              ? careerEdu.juniorHighPath === 'private-exam-jhs'
+                                ? '小4〜小6（中学受験・進学塾）'
+                                : '小学生（高学年）'
+                              : cAge < 15
+                                ? careerEdu.juniorHighPath === 'private-exam-jhs'
+                                  ? '私立中高一貫（中学課程）'
+                                  : '公立中学生（部活・高校受験塾）'
+                                : cAge < 18
+                                  ? careerEdu.juniorHighPath === 'private-exam-jhs'
+                                    ? '私立中高一貫（高校課程）'
+                                    : '高校生（受験準備期）'
+                                  : cAge < indepAge
+                                    ? `${HIGHER_ED_SPECS[careerEdu.higherEdPath].shortLabel}在学中`
+                                    : '独立・社会人';
+                      return (
+                        <li
+                          key={idx}
+                          className="flex items-center justify-between rounded bg-[#F0F4F2]/70 px-2 py-1.5 text-[#4A5A61] dark:bg-[#1A2428]/70 dark:text-[#A3B2AF]"
+                        >
+                          <span>
+                            第{idx + 1}子（{cAge}歳）
+                          </span>
+                          <span className="font-mono text-[11px] font-semibold">{stage}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {gameState.childrenAges.length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap gap-1 border-t border-[#DCE4E1] pt-2 font-mono text-[10px] text-[#4A5A61] dark:border-[#1D282C] dark:text-[#A3B2AF]">
+                      <span className="rounded bg-[#DCEDEA] px-1.5 py-0.5 text-[#0F6E68] dark:bg-[#12302D] dark:text-[#4CC0AF]">
+                        進路：{HIGHER_ED_SPECS[careerEdu.higherEdPath].shortLabel}
+                      </span>
+                      <span className="rounded bg-[#F0F4F2] px-1.5 py-0.5 dark:bg-[#1A2428]">
+                        塾・予備校：{CRAM_SCHOOL_SPECS[careerEdu.cramSchoolPolicy].shortLabel}
+                      </span>
+                      <span className="rounded bg-[#F0F4F2] px-1.5 py-0.5 dark:bg-[#1A2428]">
+                        学資保険：{careerEdu.hasGakushiHoken ? '加入(18歳+200万)' : '未加入'}
+                      </span>
+                      {careerEdu.higherEdPath !== 'high-school-job' && (
+                        <span className="rounded bg-[#F0F4F2] px-1.5 py-0.5 dark:bg-[#1A2428]">
+                          {SCHOLARSHIP_SPECS[careerEdu.scholarshipType].shortLabel}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 flex flex-wrap gap-1 border-t border-[#DCE4E1] pt-2 font-mono text-[10px] text-[#4A5A61] dark:border-[#1D282C] dark:text-[#A3B2AF]">
+                    <span className="rounded bg-[#F0F4F2] px-1.5 py-0.5 dark:bg-[#1A2428]">
+                      旅行・娯楽：{LEISURE_STYLE_SPECS[careerEdu.leisureStyle].shortLabel}
+                    </span>
+                    <span className="rounded bg-[#F3E3E8]/60 px-1.5 py-0.5 text-[#8C1D3C] dark:bg-[#3A1C26]/50 dark:text-[#E2678A]">
+                      物価指数 {(gameState.cumulativePriceIndex ?? 100).toFixed(1)}（購入時=100）
+                    </span>
+                    <span className="rounded bg-[#F0F4F2] px-1.5 py-0.5 dark:bg-[#1A2428]">
+                      修繕単価倍率 ×{(gameState.repairCostInflationMult ?? 1.0).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="mt-2.5 border-t border-[#DCE4E1] pt-2 font-mono text-[10px] text-[#5F6E72] dark:border-[#1D282C] dark:text-[#8A9A96]">
+                    {gameState.age}歳時点の健康統計：がん罹患率 {(healthProbs.cancerProb * 100).toFixed(2)}%/年 ·
+                    三大疾病 {(healthProbs.threeMajorProb * 100).toFixed(2)}%/年
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 

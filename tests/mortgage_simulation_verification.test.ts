@@ -22,7 +22,15 @@ import {
   setFocusMode,
   analyzeOutcomeFactors,
   calcAnnualHealthRiskProbabilities,
+  calcDetailedChildAnnualEduCostMan,
+  calcEffectiveAnnualPropertyTaxMan,
   formatConsistentHouseholdTitle,
+  getChildIndependenceAge,
+  getDefaultRetirementAllowanceMan,
+  CRAM_SCHOOL_SPECS,
+  INSURANCE_PLAN_SPECS,
+  LEISURE_STYLE_SPECS,
+  resolveEffectiveHouseholdCareerAndEdu,
   resolveEffectiveProperty,
 } from '../src/lib/mortgage-logic';
 import { MortgageSetupConfig } from '../src/types/mortgage';
@@ -50,17 +58,124 @@ assert.ok(
   `Flat 35 fixed rate (${BANKS['flat35-agency'].baseRate}%) must reflect current long-term rate levels (>= 2.10%)`,
 );
 
-// Verify realistic age-stratified cancer & illness probabilities
+// Verify realistic age-stratified cancer & illness probabilities (5-year brackets strictly increasing with age)
+const riskAge26 = calcAnnualHealthRiskProbabilities(26, 'balanced', 85);
 const riskAge32 = calcAnnualHealthRiskProbabilities(32, 'balanced', 85);
+const riskAge42 = calcAnnualHealthRiskProbabilities(42, 'balanced', 85);
+const riskAge52 = calcAnnualHealthRiskProbabilities(52, 'balanced', 85);
 const riskAge58 = calcAnnualHealthRiskProbabilities(58, 'balanced', 85);
+const riskAge67 = calcAnnualHealthRiskProbabilities(67, 'balanced', 85);
+const riskAge76 = calcAnnualHealthRiskProbabilities(76, 'balanced', 85);
+assert.ok(
+  riskAge26.cancerProb < riskAge32.cancerProb &&
+    riskAge32.cancerProb < riskAge42.cancerProb &&
+    riskAge42.cancerProb < riskAge52.cancerProb &&
+    riskAge52.cancerProb < riskAge58.cancerProb &&
+    riskAge58.cancerProb < riskAge67.cancerProb &&
+    riskAge67.cancerProb < riskAge76.cancerProb,
+  'Annual cancer incidence probability must strictly increase across age brackets from 20s to 75+',
+);
 assert.ok(
   riskAge32.cancerProb > 0.0005 && riskAge32.cancerProb < 0.003,
-  `32yo annual cancer probability (${riskAge32.cancerProb}) must be ~0.12%`,
+  `32yo annual cancer probability (${riskAge32.cancerProb}) must be ~0.09%`,
 );
 assert.ok(
   riskAge58.cancerProb > riskAge32.cancerProb * 5 && riskAge58.cancerProb < 0.025,
-  `58yo annual cancer probability (${riskAge58.cancerProb}) must be higher than 32yo (~1.35%)`,
+  `58yo annual cancer probability (${riskAge58.cancerProb}) must be higher than 32yo (~1.15%)`,
 );
+
+// Verify Employment-Based Retirement Allowance Defaults & Salary / Post-Retirement / Education / Gakushi Hoken / Scholarship Math
+assert.equal(getDefaultRetirementAllowanceMan('civil-servant'), 2100, 'Civil servant default retirement allowance must be 2100万');
+assert.equal(getDefaultRetirementAllowanceMan('listed-corp'), 1750, 'Listed corp default retirement allowance must be 1750万');
+assert.equal(getDefaultRetirementAllowanceMan('sme'), 550, 'SME default retirement allowance must be 550万');
+assert.equal(getDefaultRetirementAllowanceMan('mega-venture'), 0, 'Mega venture default retirement allowance must be 0万');
+assert.equal(getDefaultRetirementAllowanceMan('freelance'), 0, 'Freelance default retirement allowance must be 0万');
+
+// Detailed child education cost verification
+const eduCfgBase: MortgageSetupConfig = {
+  archetypeId: 'steady-couple-station',
+  age: 34,
+  employment: 'listed-corp',
+  mainIncomeMan: 600,
+  subIncomeMan: 300,
+  initialSavingsMan: 900,
+  downPaymentMan: 400,
+  hasCreditBlemish: false,
+  contractType: 'pair',
+  familyPlan: 'child-1-public',
+  propertyId: 'station-mansion-new',
+  bankId: 'mega-bank',
+  termYears: 35,
+  repaymentMethod: 'equal-payment',
+  bonusRepaymentRatio: 0,
+  danshin: 'cancer-50',
+  macroRegime: 'gradual-hike',
+  hasGakushiHoken: false,
+  scholarshipType: 'none',
+};
+
+const jhsPublicCost = calcDetailedChildAnnualEduCostMan(13, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'national-univ',
+});
+const jhsPrivateExamCost = calcDetailedChildAnnualEduCostMan(13, {
+  ...eduCfgBase,
+  juniorHighPath: 'private-exam-jhs',
+  higherEdPath: 'national-univ',
+});
+assert.ok(jhsPrivateExamCost > jhsPublicCost * 2.5, 'Private exam JHS cost at age 13 must exceed public JHS cost');
+
+const univNatCost = calcDetailedChildAnnualEduCostMan(19, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'national-univ',
+});
+const univPrivArtsCost = calcDetailedChildAnnualEduCostMan(19, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'private-arts-univ',
+});
+const univPrivSciCost = calcDetailedChildAnnualEduCostMan(19, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'private-science-univ',
+});
+const univWithJasso = calcDetailedChildAnnualEduCostMan(19, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'private-science-univ',
+  scholarshipType: 'jasso-loan',
+});
+const univWithGrant = calcDetailedChildAnnualEduCostMan(19, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'private-science-univ',
+  scholarshipType: 'grant-workstudy',
+});
+const hsJobAt19 = calcDetailedChildAnnualEduCostMan(19, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'high-school-job',
+});
+const vocAt20 = calcDetailedChildAnnualEduCostMan(20, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  higherEdPath: 'vocational-2yr',
+});
+assert.ok(
+  univNatCost < univPrivArtsCost && univPrivArtsCost < univPrivSciCost,
+  'University costs must scale: national < private arts < private science',
+);
+assert.ok(
+  univWithGrant < univWithJasso && univWithJasso < univPrivSciCost,
+  'Scholarships must reduce annual parent burden during university years',
+);
+assert.equal(hsJobAt19, 0, 'High school job child is independent at 18 -> 0 edu cost at 19');
+assert.equal(vocAt20, 0, 'Vocational 2yr child is independent at 20 -> 0 edu cost at 20');
+assert.equal(getChildIndependenceAge('high-school-job'), 18);
+assert.equal(getChildIndependenceAge('vocational-2yr'), 20);
+assert.equal(getChildIndependenceAge('private-science-univ'), 22);
 
 // 2. Verify Equal Payment (元利均等) vs Equal Principal (元金均等) Math
 const principalMan = 5000; // 5,000万円
@@ -103,10 +218,10 @@ const baseSetup: MortgageSetupConfig = {
   archetypeId: 'power-couple-tower',
   age: 34,
   employment: 'listed-corp',
-  mainIncomeMan: 780,
-  subIncomeMan: 520,
-  initialSavingsMan: 1600,
-  downPaymentMan: 900,
+  mainIncomeMan: 880,
+  subIncomeMan: 600,
+  initialSavingsMan: 1800,
+  downPaymentMan: 1200,
   hasCreditBlemish: false,
   contractType: 'pair',
   familyPlan: 'child-2-public',
@@ -256,6 +371,265 @@ assert.equal(
 const uwWithBonus = runBankUnderwriting({ ...baseSetup, bonusRepaymentRatio: 0.2 });
 assert.ok(uwWithBonus.initialMonthlyPaymentMan > 0, 'Bonus repayment ratio 0.2 must yield positive monthly payment');
 
+// 7b. Verify Salary Curves (steady-up rises vs downward-pressure declines), Post-Retirement Work, Spouse Part-Time & Gakushi Hoken Payout
+let steadyUpGame = createMortgageGame({
+  ...baseSetup,
+  age: 32,
+  mainIncomeMan: 600,
+  salaryCurve: 'steady-up',
+});
+let downwardGame = createMortgageGame({
+  ...baseSetup,
+  age: 32,
+  mainIncomeMan: 600,
+  salaryCurve: 'downward-pressure',
+});
+for (let y = 0; y < 8; y++) {
+  steadyUpGame = advanceOneYear(steadyUpGame, () => 0.99);
+  if (steadyUpGame.pendingDecision) {
+    steadyUpGame = resolveMortgageDecision(steadyUpGame, steadyUpGame.pendingDecision.choices[0].id);
+  }
+  downwardGame = advanceOneYear(downwardGame, () => 0.99);
+  if (downwardGame.pendingDecision) {
+    downwardGame = resolveMortgageDecision(downwardGame, downwardGame.pendingDecision.choices[0].id);
+  }
+}
+assert.ok(
+  steadyUpGame.mainIncomeMan > 630,
+  `Steady-up salary curve should increase mainIncomeMan above 630万 after 8 years (got ${steadyUpGame.mainIncomeMan}万)`,
+);
+assert.ok(
+  downwardGame.mainIncomeMan < 570,
+  `Downward-pressure salary curve should decrease mainIncomeMan below 570万 after 8 years (got ${downwardGame.mainIncomeMan}万)`,
+);
+
+// Verify Post-Retirement Work at age 60 & Retirement Allowance Gating
+let retireZeroArubaito = createMortgageGame({
+  ...baseSetup,
+  age: 58,
+  termYears: 25,
+  retirementAllowanceMan: 0,
+  postRetirementWork: 'part-time-arubaito',
+});
+while (retireZeroArubaito.age < 60) {
+  retireZeroArubaito = advanceOneYear(retireZeroArubaito, () => 0.99);
+  if (retireZeroArubaito.pendingDecision && retireZeroArubaito.age < 60) {
+    retireZeroArubaito = resolveMortgageDecision(
+      retireZeroArubaito,
+      retireZeroArubaito.pendingDecision.choices[0].id,
+    );
+  }
+}
+assert.equal(
+  retireZeroArubaito.mainIncomeMan,
+  140,
+  'part-time-arubaito post-retirement work should set mainIncomeMan to 140万 at age 60',
+);
+assert.equal(
+  retireZeroArubaito.pendingDecision?.id,
+  'no-retirement-60-survival',
+  '0万 retirement allowance at age 60 must trigger no-retirement-60-survival (never retirement-lump-sum-60)',
+);
+
+let retireFullAllowance = createMortgageGame({
+  ...baseSetup,
+  age: 58,
+  termYears: 25,
+  retirementAllowanceMan: 1800,
+  postRetirementWork: 'full-retire-60',
+});
+while (retireFullAllowance.age < 60) {
+  retireFullAllowance = advanceOneYear(retireFullAllowance, () => 0.99);
+  if (retireFullAllowance.pendingDecision && retireFullAllowance.age < 60) {
+    retireFullAllowance = resolveMortgageDecision(
+      retireFullAllowance,
+      retireFullAllowance.pendingDecision.choices[0].id,
+    );
+  }
+}
+assert.equal(
+  retireFullAllowance.mainIncomeMan,
+  0,
+  'full-retire-60 should set mainIncomeMan to 0万 at age 60',
+);
+assert.equal(
+  retireFullAllowance.pendingDecision?.id,
+  'retirement-lump-sum-60',
+  '1800万 retirement allowance at age 60 must trigger retirement-lump-sum-60',
+);
+
+// Verify Spouse homemaker-to-part transition & Gakushi Hoken +200万 maturity at child age 18
+let gakushiSpouseGame = createMortgageGame({
+  ...baseSetup,
+  age: 32,
+  subIncomeMan: 0,
+  contractType: 'single',
+  familyPlan: 'child-1-public', // child starts at age 2
+  spouseWorkPattern: 'homemaker-to-part',
+  hasGakushiHoken: true,
+});
+while (gakushiSpouseGame.childrenAges[0] < 6 && gakushiSpouseGame.status === 'playing') {
+  gakushiSpouseGame = advanceOneYear(gakushiSpouseGame, () => 0.99);
+  if (gakushiSpouseGame.pendingDecision) {
+    gakushiSpouseGame = resolveMortgageDecision(
+      gakushiSpouseGame,
+      gakushiSpouseGame.pendingDecision.choices[0].id,
+    );
+  }
+}
+assert.equal(
+  gakushiSpouseGame.subIncomeMan,
+  108,
+  `homemaker-to-part spouse should start part-time work (108万) once child enters elementary school at age 6 (got ${gakushiSpouseGame.subIncomeMan}万)`,
+);
+
+while (gakushiSpouseGame.childrenAges[0] < 18 && gakushiSpouseGame.status === 'playing') {
+  gakushiSpouseGame = advanceOneYear(gakushiSpouseGame, () => 0.99);
+  if (gakushiSpouseGame.pendingDecision) {
+    gakushiSpouseGame = resolveMortgageDecision(
+      gakushiSpouseGame,
+      gakushiSpouseGame.pendingDecision.choices[0].id,
+    );
+  }
+}
+assert.ok(
+  gakushiSpouseGame.chronicle.some((c) => c.title.includes('学資保険・満期保険金受領')),
+  'hasGakushiHoken=true must record +200万 Gakushi Hoken maturity payout in chronicle when child reaches age 18',
+);
+
+// Verify Property Tax New-Build Reduction Cliff & Revaluation Math
+const stdDetachedProp = PROPERTIES['detached-powerbuilder-new']; // standard energyCert, detached -> 3yr reduction
+const taxY3 = calcEffectiveAnnualPropertyTaxMan(stdDetachedProp, 3, 2100, 2100);
+const taxY4 = calcEffectiveAnnualPropertyTaxMan(stdDetachedProp, 4, 2100, 2100);
+assert.equal(taxY3.reductionEndYear, 3, 'New standard detached house should have 3-year property tax reduction');
+assert.equal(taxY4.isReductionJustExpired, true, 'New standard detached house reduction must expire at year 4');
+assert.ok(
+  taxY4.annualTaxMan > taxY3.annualTaxMan,
+  `Property tax in year 4 (${taxY4.annualTaxMan}万) must jump higher than year 3 (${taxY3.annualTaxMan}万) when building reduction expires`,
+);
+
+// Verify DINKs Unexpected Childbirth at Year 3 adds a newborn (age 0) when chosen
+let dinksBirthGame = createMortgageGame({
+  ...baseSetup,
+  age: 31,
+  familyPlan: 'dinks',
+  contractType: 'pair',
+  spouseWorkPattern: 'fulltime-keep',
+});
+assert.equal(dinksBirthGame.childrenAges.length, 0, 'DINKs should start with 0 children');
+for (let y = 0; y < 3; y++) {
+  dinksBirthGame = advanceOneYear(dinksBirthGame, () => 0.99);
+}
+assert.equal(
+  dinksBirthGame.pendingDecision?.id,
+  'dinks-unexpected-childbirth',
+  'Married DINKs couple <= 41yo should encounter dinks-unexpected-childbirth at year 3',
+);
+dinksBirthGame = resolveMortgageDecision(dinksBirthGame, 'welcome-first-child-gakushi');
+assert.equal(
+  dinksBirthGame.childrenAges.length,
+  1,
+  'Choosing welcome-first-child-gakushi must add 1 newborn child to childrenAges',
+);
+assert.equal(dinksBirthGame.childrenAges[0], 0, 'Newborn child must start at age 0');
+assert.equal(dinksBirthGame.config.hasGakushiHoken, true, 'welcome-first-child-gakushi must enable Gakushi Hoken');
+
+// Verify Periodic Renovations (Year 16 & Year 28) and 5-Year Fire/Earthquake Insurance Renewal
+let detachedRenoGame = createMortgageGame({
+  ...baseSetup,
+  age: 30,
+  propertyId: 'detached-custom-new',
+  customBuildingType: 'detached',
+  insurancePlan: 'full-fire-earthquake-water',
+});
+let sawYear16DetachedReno = false;
+let sawYear28DetachedReno = false;
+let saw5YrInsuranceRenewal = false;
+while (detachedRenoGame.yearIndex < 29 && detachedRenoGame.status === 'playing') {
+  detachedRenoGame = advanceOneYear(detachedRenoGame, () => 0.99);
+  if (detachedRenoGame.yearIndex === 5) {
+    saw5YrInsuranceRenewal = detachedRenoGame.chronicle.some((c) =>
+      c.title.includes('火災保険・地震保険の5年更新'),
+    );
+  }
+  if (detachedRenoGame.pendingDecision) {
+    if (detachedRenoGame.pendingDecision.id === 'periodic-renovation-year16') {
+      sawYear16DetachedReno = true;
+      assert.ok(
+        detachedRenoGame.pendingDecision.title.includes('一戸建て16年目'),
+        'Detached house Year 16 renovation must be detached-specific',
+      );
+    }
+    if (detachedRenoGame.pendingDecision.id === 'periodic-renovation-year28') {
+      sawYear28DetachedReno = true;
+      assert.ok(
+        detachedRenoGame.pendingDecision.title.includes('一戸建て28年目'),
+        'Detached house Year 28 renovation must be detached-specific',
+      );
+    }
+    detachedRenoGame = resolveMortgageDecision(
+      detachedRenoGame,
+      detachedRenoGame.pendingDecision.choices[0].id,
+    );
+  }
+}
+assert.ok(saw5YrInsuranceRenewal, 'Must record 5-year Fire & Earthquake Insurance renewal in chronicle');
+assert.ok(sawYear16DetachedReno, 'Must trigger periodic-renovation-year16 at Year 16');
+assert.ok(sawYear28DetachedReno, 'Must trigger periodic-renovation-year28 at Year 28');
+assert.equal(Object.keys(INSURANCE_PLAN_SPECS).length, 3, 'Should have 3 Fire/Earthquake insurance plans');
+assert.equal(Object.keys(CRAM_SCHOOL_SPECS).length, 3, 'Should have 3 Cram School / Yobiko policy plans');
+assert.equal(Object.keys(LEISURE_STYLE_SPECS).length, 3, 'Should have 3 Family Travel / Leisure style plans');
+
+// Verify Cram School policy and Cumulative Price Index affect child education costs
+const cramMinimalCost14 = calcDetailedChildAnnualEduCostMan(14, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  cramSchoolPolicy: 'minimal-self-study',
+});
+const cramStandardCost14 = calcDetailedChildAnnualEduCostMan(14, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  cramSchoolPolicy: 'standard-cram',
+});
+const cramIntensiveCost14 = calcDetailedChildAnnualEduCostMan(14, {
+  ...eduCfgBase,
+  juniorHighPath: 'public-jhs',
+  cramSchoolPolicy: 'intensive-cram',
+});
+assert.ok(
+  cramMinimalCost14 < cramStandardCost14 && cramStandardCost14 < cramIntensiveCost14,
+  `Cram school policy must strictly order age-14 education costs: minimal (${cramMinimalCost14}万) < standard (${cramStandardCost14}万) < intensive (${cramIntensiveCost14}万)`,
+);
+const cramInflatedCost14 = calcDetailedChildAnnualEduCostMan(
+  14,
+  {
+    ...eduCfgBase,
+    juniorHighPath: 'public-jhs',
+    cramSchoolPolicy: 'standard-cram',
+  },
+  130,
+);
+assert.ok(
+  cramInflatedCost14 > cramStandardCost14,
+  `Cumulative inflation (CPI=130) must increase education/cram costs (${cramInflatedCost14}万 > ${cramStandardCost14}万)`,
+);
+
+// Verify cumulativePriceIndex and repairCostInflationMult increase under inflation
+assert.ok(
+  (detachedRenoGame.cumulativePriceIndex ?? 100) > 125,
+  `Cumulative price index after 30 years of gradual-hike (${detachedRenoGame.cumulativePriceIndex}) must exceed 125`,
+);
+assert.ok(
+  (detachedRenoGame.repairCostInflationMult ?? 1.0) > 1.35,
+  `Repair cost inflation multiplier after 30 years (${detachedRenoGame.repairCostInflationMult}) must exceed 1.35x`,
+);
+
+// Verify refreshed /games thumbnail asset exists and is wired
+assert.ok(
+  fs.existsSync('public/assets/mortgage_cover_v2.svg'),
+  'public/assets/mortgage_cover_v2.svg must exist for /games thumbnail',
+);
+
 const MANSION_ONLY_EVENT_IDS = [
   'mansion-mgmt-parking-7',
   'mansion-special-levy-14',
@@ -271,6 +645,22 @@ const DETACHED_ONLY_EVENT_IDS = [
   'detached-storm-gutter',
   'detached-ecocute-fail',
   'detached-neighbor-boundary',
+];
+const SPOUSE_ONLY_EVENT_IDS = [
+  'pair-maternity-1',
+  'pair-divorce-crisis-11',
+  'spouse-career-change',
+  'spouse-work-turning-point',
+  'dinks-unexpected-childbirth',
+  'second-child-birth-choice',
+];
+const CHILD_ONLY_EVENT_IDS = [
+  'education-crossroad-10',
+  'university-scholarship-choice',
+  'child-orthodontics-expense',
+  'adult-child-marriage-grandchild',
+  'child-cram-school-entry',
+  'child-highschool-yobiko-entry',
 ];
 
 // 8. Run 100 Full-Lifecycle Simulations across Random Gacha Setups & Macro Regimes
@@ -356,6 +746,50 @@ for (let i = 0; i < 100; i++) {
         `Mansion/Tower chronicle must NEVER contain detached house titles: ${entry.title}`,
       );
     }
+  }
+
+  const effCareerEdu = resolveEffectiveHouseholdCareerAndEdu(randomSetup);
+  // Single household must never get spouse/pair events
+  if (effCareerEdu.spouseWorkPattern === 'no-spouse') {
+    for (const spId of SPOUSE_ONLY_EVENT_IDS) {
+      assert.equal(
+        state.triggeredEventIds.includes(spId),
+        false,
+        `Single household simulation #${i} must NEVER trigger spouse event ${spId}`,
+      );
+    }
+  }
+  // Childless household (that remained childless throughout life) must never get child/education events
+  if (state.childrenAges.length === 0) {
+    for (const chId of CHILD_ONLY_EVENT_IDS) {
+      assert.equal(
+        state.triggeredEventIds.includes(chId),
+        false,
+        `Childless household simulation #${i} must NEVER trigger child event ${chId}`,
+      );
+    }
+  }
+  // High school job route must never trigger university scholarship event
+  if (effCareerEdu.higherEdPath === 'high-school-job') {
+    assert.equal(
+      state.triggeredEventIds.includes('university-scholarship-choice'),
+      false,
+      `high-school-job simulation #${i} must NEVER trigger university-scholarship-choice`,
+    );
+  }
+  // Retirement allowance < 400 must never trigger retirement-lump-sum-60
+  if (effCareerEdu.retirementAllowanceMan < 400) {
+    assert.equal(
+      state.triggeredEventIds.includes('retirement-lump-sum-60'),
+      false,
+      `No/low retirement allowance simulation #${i} must NEVER trigger retirement-lump-sum-60`,
+    );
+  } else {
+    assert.equal(
+      state.triggeredEventIds.includes('no-retirement-60-survival'),
+      false,
+      `Retirement allowance >= 400 simulation #${i} must NEVER trigger no-retirement-60-survival`,
+    );
   }
 
   if (state.triggeredEventIds.includes('danshin-health-judgment')) {

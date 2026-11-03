@@ -30,6 +30,58 @@ export type BankId =
   | 'coop-welfare-bank';
 export type EmploymentType = 'listed-corp' | 'civil-servant' | 'mega-venture' | 'sme' | 'freelance';
 
+export type SalaryCurveType =
+  | 'steady-up' // 順調昇給・昇進型（毎年昇給＋昇進あり）
+  | 'standard-plateau' // 標準・40代後半頭打ち型
+  | 'flat-stagnant' // 横ばい・昇給なし型（物価が上がっても給料据え置き）
+  | 'performance-volatile' // 成果主義・業績変動型（上がる年も下がる年もある）
+  | 'downward-pressure'; // 業績低迷・減収リスク型（手当削減や業界縮小で下がる）
+
+export type PostRetirementWorkType =
+  | 'reemploy-same' // 60歳定年後も嘱託再雇用・現職継続（現役時の約6割収入）
+  | 'reemploy-light-job' // 60歳定年後は別職種へ転身（管理員・事務・軽作業等・年収260万）
+  | 'part-time-arubaito' // 60歳定年後はアルバイト・パート勤務（週3〜4日・年収130万）
+  | 'full-retire-60'; // 60歳で完全リタイア・定年後は働かない（65歳年金まで勤労収入0円）
+
+export type SpouseWorkPatternType =
+  | 'fulltime-keep' // 正社員フルタイム継続（定年後も再雇用/パート継続）
+  | 'shift-to-part' // 途中で正社員→パート・アルバイトへ転換（年収120万円前後）
+  | 'part-time' // パート・アルバイト勤務（年収100〜140万円）
+  | 'homemaker-to-part' // 専業主婦（夫）→ 子育て一段落後にパート・バイト開始
+  | 'homemaker' // 専業主婦（夫）・収入0円
+  | 'no-spouse'; // 独身・単身世帯（配偶者なし）
+
+export type JuniorHighPathType =
+  | 'public-jhs' // 公立中学校（中学受験なし）
+  | 'private-exam-jhs'; // 中学受験あり・私立中高一貫校（小4〜小6の進学塾＋私立中高）
+
+export type HigherEdPathType =
+  | 'national-univ' // 国公立大学（4年制）
+  | 'private-arts-univ' // 私立大学・文系（4年制）
+  | 'private-science-univ' // 私立大学・理系/医療/情報（4年制）
+  | 'vocational-2yr' // 専門学校・短期大学（2年制・20歳で独立就職）
+  | 'high-school-job'; // 高校卒業後に就職（大学・専門進学なし・18歳で独立）
+
+export type ScholarshipType =
+  | 'none' // 奨学金は借りない（親が全額負担）
+  | 'jasso-loan' // 貸与型奨学金を利用（親の学費負担を年60万円軽減）
+  | 'grant-workstudy'; // 給付型奨学金＋学生アルバイト併用（親の学費負担を年90万円軽減）
+
+export type FireEarthquakeInsuranceType =
+  | 'full-fire-earthquake-water' // フル補償（火災・風災・水災・破損汚損＋地震保険＋家財・個人賠償特約）
+  | 'standard-fire-earthquake' // 標準プラン（火災・風災＋地震保険付帯・水災なし）
+  | 'minimal-fire-only'; // 最安プラン（火災・風災のみ / 地震保険なし・水災なし）
+
+export type CramSchoolPolicyType =
+  | 'intensive-cram' // 積極通塾（小学生習い事・中高進学塾・季節講習・大学受験予備校フル活用）
+  | 'standard-cram' // 標準通塾（高校・大学受験学年を中心に進学塾・講習を受講）
+  | 'minimal-self-study'; // 通信教育・自習中心（塾代を最小限に抑え通信教材で学習）
+
+export type LeisureStyleType =
+  | 'active-travel' // 旅行・レジャー積極派（毎年の家族旅行・温泉・テーマパーク・趣味を満喫）
+  | 'moderate-leisure' // 標準バランス派（年1回の国内旅行・週末の外食・レジャー）
+  | 'frugal-staycation'; // 節約・近場派（旅行や外食を控え、近場レジャー・おうち娯楽で貯蓄優先）
+
 export interface HouseholdArchetype {
   id: string;
   title: string;
@@ -129,6 +181,20 @@ export interface MortgageSetupConfig {
   customDanshinSpread?: number;
   macroRegime: MacroRegimeId;
   randomRollSummary?: string;
+  // キャリア・給与カーブ・退職金・定年後・配偶者の働き方パラメータ
+  salaryCurve?: SalaryCurveType;
+  retirementAllowanceMan?: number; // 60歳定年時の退職金見込額(万円): 0(退職金制度なし) 〜 2800万円
+  postRetirementWork?: PostRetirementWorkType;
+  spouseWorkPattern?: SpouseWorkPatternType;
+  // 子どもの教育詳細パラメータ（子どもがいる世帯のみ有効）
+  juniorHighPath?: JuniorHighPathType;
+  higherEdPath?: HigherEdPathType;
+  cramSchoolPolicy?: CramSchoolPolicyType; // 入塾・習い事・予備校方針
+  hasGakushiHoken?: boolean; // 学資保険の有無（0〜17歳に年11万積立→18歳時に満期200万円受取）
+  scholarshipType?: ScholarshipType;
+  // 火災保険・地震保険プラン ＆ 旅行・娯楽費スタイル
+  insurancePlan?: FireEarthquakeInsuranceType;
+  leisureStyle?: LeisureStyleType;
 }
 
 export interface UnderwritingResult {
@@ -210,6 +276,18 @@ export interface DecisionChoice {
   buildingValueBonusMan?: number;
   sellProperty?: boolean;
   triggerDivorce?: boolean;
+  newMainIncomeAbsoluteMan?: number;
+  newSubIncomeAbsoluteMan?: number;
+  newJobLabel?: string;
+  newSpouseJobLabel?: string;
+  newJuniorHighPath?: JuniorHighPathType;
+  newHigherEdPath?: HigherEdPathType;
+  newScholarshipType?: ScholarshipType;
+  newInsurancePlan?: FireEarthquakeInsuranceType;
+  newCramSchoolPolicy?: CramSchoolPolicyType;
+  newLeisureStyle?: LeisureStyleType;
+  addNewbornChild?: boolean;
+  newHasGakushiHoken?: boolean;
 }
 
 export interface MortgageDecisionEvent {
@@ -293,7 +371,12 @@ export interface MortgageGameState {
   has5Year125Rule: boolean;
   mainIncomeMan: number;
   subIncomeMan: number;
+  currentJobLabel?: string;
+  currentSpouseJobLabel?: string;
   currentMgmtAndRepairMonthlyMan: number;
+  annualPropertyTaxCurrentMan?: number;
+  cumulativePriceIndex?: number; // 契約時=100.0 とした累積物価指数（生活コスト上昇反映）
+  repairCostInflationMult?: number; // 契約時=1.00 とした建築資材・修繕費高騰倍率
   mentalScore: number;
   healthScore?: number; // 心身の健康度 (0..100)
   focusMode?: FocusModeId; // 今年の重点方針

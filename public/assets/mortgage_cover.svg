@@ -1,30 +1,220 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="50%" stop-color="#1e293b" />
-      <stop offset="100%" stop-color="#0f172a" />
+    <linearGradient id="paperBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F7FAF8" />
+      <stop offset="55%" stop-color="#EBF0ED" />
+      <stop offset="100%" stop-color="#DCE6E2" />
     </linearGradient>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#f59e0b" />
-      <stop offset="50%" stop-color="#fde047" />
-      <stop offset="100%" stop-color="#f59e0b" />
+    <linearGradient id="skyWarm" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#13212A" />
+      <stop offset="60%" stop-color="#1E3642" />
+      <stop offset="100%" stop-color="#2B4C59" />
     </linearGradient>
   </defs>
-  <rect width="1200" height="630" fill="url(#bg)" />
-  <g stroke="#334155" stroke-width="1" opacity="0.4">
-    <line x1="100" y1="120" x2="1100" y2="120" />
-    <line x1="100" y1="240" x2="1100" y2="240" />
-    <line x1="100" y1="360" x2="1100" y2="360" />
-    <line x1="100" y1="480" x2="1100" y2="480" />
+
+  <rect width="1200" height="630" fill="url(#paperBg)" />
+
+  <g stroke="#C7D2CE" stroke-width="1" opacity="0.55">
+    <line x1="0" y1="90" x2="1200" y2="90" />
+    <line x1="0" y1="180" x2="1200" y2="180" />
+    <line x1="0" y1="270" x2="1200" y2="270" />
+    <line x1="0" y1="360" x2="1200" y2="360" />
+    <line x1="0" y1="450" x2="1200" y2="450" />
+    <line x1="0" y1="540" x2="1200" y2="540" />
+    <line x1="150" y1="0" x2="150" y2="630" />
+    <line x1="300" y1="0" x2="300" y2="630" />
+    <line x1="450" y1="0" x2="450" y2="630" />
+    <line x1="600" y1="0" x2="600" y2="630" />
+    <line x1="750" y1="0" x2="750" y2="630" />
+    <line x1="900" y1="0" x2="900" y2="630" />
+    <line x1="1050" y1="0" x2="1050" y2="630" />
   </g>
-  <!-- Property Value vs Remaining Debt Documentary Chart -->
-  <polyline fill="none" stroke="#ef4444" stroke-width="6" points="140,180 320,215 500,260 680,320 860,400 1040,490" />
-  <polyline fill="none" stroke="#10b981" stroke-width="6" points="140,220 320,240 500,250 680,245 860,235 1040,225" />
-  <polyline fill="none" stroke="#38bdf8" stroke-width="5" stroke-dasharray="10,8" points="140,460 320,430 500,390 680,310 860,210 1040,150" />
-  <rect x="90" y="70" width="420" height="44" rx="22" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-width="2" />
-  <text x="300" y="99" text-anchor="middle" fill="#fde047" font-family="monospace" font-size="19" font-weight="900">MORTGAGE &amp; FAMILY CHRONICLE</text>
-  <text x="90" y="195" fill="#ffffff" font-family="sans-serif" font-size="56" font-weight="900">マイホーム完済記</text>
-  <text x="90" y="275" fill="url(#gold)" font-family="sans-serif" font-size="52" font-weight="900">35年・50年ローンの家計と暮らし</text>
-  <text x="90" y="340" fill="#cbd5e1" font-family="sans-serif" font-size="26" font-weight="700">銀行審査・タワマンvs戸建て・ペアローン・35年/50年・団信・住宅ローン控除・日銀利上げ</text>
+
+  <rect x="24" y="24" width="1152" height="582" rx="6" fill="none" stroke="#13212A" stroke-width="3" />
+  <rect x="32" y="32" width="1136" height="566" rx="4" fill="none" stroke="#8C1D3C" stroke-width="1" stroke-dasharray="6,4" />
+
+  <g transform="translate(54, 56)">
+    <rect x="0" y="0" width="510" height="518" rx="6" fill="url(#skyWarm)" stroke="#13212A" stroke-width="2" />
+    <rect x="18" y="18" width="250" height="28" rx="3" fill="#0F6E68" />
+    <text x="143" y="37" text-anchor="middle" fill="#F7FAF8" font-family="monospace" font-size="13" font-weight="700">
+      SUUMO相場・最新金利対応
+    </text>
+    <text x="490" y="37" text-anchor="end" fill="#D9AF59" font-family="monospace" font-size="13" font-weight="700">
+      2026 — 2076 SIMULATOR
+    </text>
+
+    <circle cx="430" cy="95" r="28" fill="#F3E2B3" opacity="0.9" />
+    <rect x="32" y="160" width="46" height="175" fill="#182C36" />
+    <rect x="210" y="185" width="42" height="150" fill="#182C36" />
+
+    <g transform="translate(82, 82)">
+      <rect x="0" y="0" width="116" height="253" rx="2" fill="#274452" stroke="#8AB4C4" stroke-width="2" />
+      <rect x="10" y="-12" width="96" height="12" fill="#3B6070" />
+      <rect x="44" y="-26" width="28" height="14" fill="#D9AF59" />
+      <g fill="#F6E3BA" opacity="0.88">
+        <rect x="14" y="16" width="18" height="10" />
+        <rect x="40" y="16" width="18" height="10" />
+        <rect x="66" y="16" width="18" height="10" />
+        <rect x="90" y="16" width="14" height="10" fill="#4CC0AF" />
+        <rect x="14" y="36" width="18" height="10" />
+        <rect x="40" y="36" width="18" height="10" fill="#4CC0AF" />
+        <rect x="66" y="36" width="18" height="10" />
+        <rect x="90" y="36" width="14" height="10" />
+        <rect x="14" y="56" width="18" height="10" />
+        <rect x="40" y="56" width="18" height="10" />
+        <rect x="66" y="56" width="18" height="10" />
+        <rect x="90" y="56" width="14" height="10" />
+        <rect x="14" y="76" width="18" height="10" fill="#E2678A" />
+        <rect x="40" y="76" width="18" height="10" />
+        <rect x="66" y="76" width="18" height="10" />
+        <rect x="90" y="76" width="14" height="10" />
+        <rect x="14" y="96" width="18" height="10" />
+        <rect x="40" y="96" width="18" height="10" />
+        <rect x="66" y="96" width="18" height="10" fill="#4CC0AF" />
+        <rect x="90" y="96" width="14" height="10" />
+        <rect x="14" y="116" width="18" height="10" />
+        <rect x="40" y="116" width="18" height="10" />
+        <rect x="66" y="116" width="18" height="10" />
+        <rect x="90" y="116" width="14" height="10" />
+        <rect x="14" y="136" width="18" height="10" />
+        <rect x="40" y="136" width="18" height="10" />
+        <rect x="66" y="136" width="18" height="10" />
+        <rect x="90" y="136" width="14" height="10" />
+        <rect x="14" y="156" width="18" height="10" />
+        <rect x="40" y="156" width="18" height="10" />
+        <rect x="66" y="156" width="18" height="10" />
+        <rect x="90" y="156" width="14" height="10" />
+        <rect x="14" y="176" width="18" height="10" />
+        <rect x="40" y="176" width="18" height="10" />
+        <rect x="66" y="176" width="18" height="10" />
+        <rect x="90" y="176" width="14" height="10" />
+      </g>
+      <rect x="6" y="212" width="104" height="26" rx="3" fill="#8C1D3C" />
+      <text x="58" y="229" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="12" font-weight="700">
+        タワマン・マンション
+      </text>
+    </g>
+
+    <g transform="translate(256, 158)">
+      <polygon points="0,68 112,0 224,68" fill="#8C1D3C" stroke="#F7FAF8" stroke-width="2" />
+      <polygon points="42,52 112,10 176,52" fill="#1D4E6B" stroke="#7CC6FE" stroke-width="1.5" />
+      <line x1="78" y1="31" x2="144" y2="31" stroke="#7CC6FE" stroke-width="1" />
+      <line x1="112" y1="10" x2="112" y2="52" stroke="#7CC6FE" stroke-width="1" />
+      <rect x="18" y="68" width="188" height="109" fill="#F7FAF8" stroke="#13212A" stroke-width="2" />
+      <rect x="36" y="84" width="46" height="36" rx="2" fill="#F5D076" stroke="#13212A" stroke-width="2" />
+      <line x1="59" y1="84" x2="59" y2="120" stroke="#13212A" stroke-width="1.5" />
+      <rect x="136" y="84" width="48" height="36" rx="2" fill="#F5D076" stroke="#13212A" stroke-width="2" />
+      <line x1="160" y1="84" x2="160" y2="120" stroke="#13212A" stroke-width="1.5" />
+      <rect x="94" y="114" width="30" height="63" rx="2" fill="#7C4D2B" stroke="#13212A" stroke-width="2" />
+      <circle cx="118" cy="146" r="3" fill="#F5D076" />
+      <rect x="26" y="138" width="172" height="26" rx="3" fill="#0F6E68" />
+      <text x="112" y="155" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="12" font-weight="700">
+        一戸建て・長期優良ZEH
+      </text>
+    </g>
+
+    <rect x="0" y="335" width="510" height="183" fill="#101C24" />
+    <line x1="0" y1="335" x2="510" y2="335" stroke="#4CC0AF" stroke-width="2" />
+
+    <g transform="translate(24, 352)">
+      <rect x="0" y="0" width="462" height="142" rx="4" fill="#162630" stroke="#2D4654" stroke-width="1.5" />
+      <text x="14" y="22" fill="#A3B2AF" font-family="monospace" font-size="12" font-weight="700">
+        35年・50年 残債推移 vs 自宅時価・純資産（金利上昇・修繕・教育費反映）
+      </text>
+      <polyline
+        fill="none"
+        stroke="#F07B6B"
+        stroke-width="4"
+        points="20,44 95,52 170,66 245,84 320,104 395,122 442,128"
+      />
+      <polyline
+        fill="none"
+        stroke="#D9AF59"
+        stroke-width="3"
+        stroke-dasharray="6,4"
+        points="20,56 95,62 170,68 245,72 320,76 395,78 442,80"
+      />
+      <polyline
+        fill="none"
+        stroke="#4CC0AF"
+        stroke-width="4"
+        points="20,122 95,112 170,104 245,96 320,74 395,50 442,36"
+      />
+      <circle cx="268" cy="89" r="6" fill="#F3E2B3" stroke="#13212A" stroke-width="2" />
+      <text x="278" y="93" fill="#F3E2B3" font-family="sans-serif" font-size="11" font-weight="700">
+        損益分岐・アンダーローン転換点
+      </text>
+    </g>
+  </g>
+
+  <g transform="translate(596, 62)">
+    <rect x="0" y="0" width="356" height="34" rx="4" fill="#DCEDEA" stroke="#0F6E68" stroke-width="1.5" />
+    <text x="178" y="22" text-anchor="middle" fill="#0F6E68" font-family="monospace" font-size="15" font-weight="700">
+      MORTGAGE LIFE DOCUMENTARY
+    </text>
+
+    <text x="0" y="102" fill="#13212A" font-family="serif" font-size="64" font-weight="900" letter-spacing="1">
+      マイホーム完済記
+    </text>
+    <text x="0" y="154" fill="#8C1D3C" font-family="sans-serif" font-size="32" font-weight="800">
+      35年・50年ローンの家計と暮らし
+    </text>
+
+    <line x1="0" y1="176" x2="548" y2="176" stroke="#13212A" stroke-width="2" />
+
+    <g transform="translate(0, 196)" font-family="sans-serif" font-size="16" font-weight="700">
+      <rect x="0" y="0" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="0" width="8" height="48" rx="2" fill="#0F6E68" />
+      <text x="20" y="30" fill="#13212A">タワマン・マンション vs 戸建て</text>
+
+      <rect x="282" y="0" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="282" y="0" width="8" height="48" rx="2" fill="#8C1D3C" />
+      <text x="302" y="30" fill="#13212A">変動金利・5年/125%・未払利息</text>
+
+      <rect x="0" y="60" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="60" width="8" height="48" rx="2" fill="#0F6E68" />
+      <text x="20" y="90" fill="#13212A">固定資産税・火災保険・地震保険</text>
+
+      <rect x="282" y="60" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="282" y="60" width="8" height="48" rx="2" fill="#8C1D3C" />
+      <text x="302" y="90" fill="#13212A">定期リフォーム・修繕積立金高騰</text>
+
+      <rect x="0" y="120" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="120" width="8" height="48" rx="2" fill="#2B7A4E" />
+      <text x="20" y="150" fill="#13212A">中学受験・大学/専門・学資保険</text>
+
+      <rect x="282" y="120" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="282" y="120" width="8" height="48" rx="2" fill="#9C7020" />
+      <text x="302" y="150" fill="#13212A">昇給カーブ・退職金・定年後バイト</text>
+
+      <rect x="0" y="180" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="180" width="8" height="48" rx="2" fill="#2B7A4E" />
+      <text x="20" y="210" fill="#13212A">年齢別がん確率・団信免除審判</text>
+
+      <rect x="282" y="180" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="282" y="180" width="8" height="48" rx="2" fill="#9C7020" />
+      <text x="302" y="210" fill="#13212A">単独/ペアローン・子ども誕生転機</text>
+    </g>
+
+    <g transform="translate(0, 446)">
+      <rect x="0" y="0" width="420" height="62" rx="4" fill="#13212A" />
+      <text x="20" y="27" fill="#D9AF59" font-family="monospace" font-size="13" font-weight="700">
+        RANDOM GACHA OR FULL CUSTOM SETUP
+      </text>
+      <text x="20" y="49" fill="#FFFFFF" font-family="sans-serif" font-size="16" font-weight="700">
+        ランダム抽選でも・自分の条件でも即検証可能
+      </text>
+
+      <g transform="translate(442, -8) rotate(-8, 50, 38)">
+        <rect x="0" y="0" width="104" height="76" rx="6" fill="#F7FAF8" stroke="#B0362B" stroke-width="4" />
+        <text x="52" y="30" text-anchor="middle" fill="#B0362B" font-family="serif" font-size="18" font-weight="900">
+          完済か
+        </text>
+        <line x1="10" y1="38" x2="94" y2="38" stroke="#B0362B" stroke-width="2" />
+        <text x="52" y="62" text-anchor="middle" fill="#B0362B" font-family="serif" font-size="18" font-weight="900">
+          破産か
+        </text>
+      </g>
+    </g>
+  </g>
 </svg>

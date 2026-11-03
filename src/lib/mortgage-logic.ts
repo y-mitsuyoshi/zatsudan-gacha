@@ -4,12 +4,17 @@ import {
   ChronicleEntry,
   CompanionHousehold,
   ContractType,
+  CramSchoolPolicyType,
   DanshinSpec,
   DanshinType,
   EmploymentType,
   FamilyPlanType,
+  FireEarthquakeInsuranceType,
   FocusModeId,
+  HigherEdPathType,
   HouseholdArchetype,
+  JuniorHighPathType,
+  LeisureStyleType,
   LoanTermYears,
   MacroRegimeId,
   MortgageDecisionEvent,
@@ -17,13 +22,421 @@ import {
   MortgageGameState,
   MortgageSetupConfig,
   OutcomeFactor,
+  PostRetirementWorkType,
   PropertyCategory,
   PropertySpec,
   RateType,
   RepaymentMethod,
+  SalaryCurveType,
+  ScholarshipType,
+  SpouseWorkPatternType,
   UnderwritingResult,
   YearlySnapshot,
 } from '@/types/mortgage';
+
+export const SALARY_CURVE_SPECS: Record<
+  SalaryCurveType,
+  { id: SalaryCurveType; label: string; shortLabel: string; description: string }
+> = {
+  'steady-up': {
+    id: 'steady-up',
+    label: '順調昇給・昇進型（右肩上がり）',
+    shortLabel: '順調昇給型',
+    description: '年功＋昇進で50代前半まで着実に年収が伸び、役職定年の影響も軽微なキャリア。',
+  },
+  'standard-plateau': {
+    id: 'standard-plateau',
+    label: '標準・40代後半頭打ち＋55歳役職定年型',
+    shortLabel: '標準頭打ち型',
+    description: '40代半ばまで緩やかに昇給した後に頭打ちとなり、55歳役職定年で収入が約2割下がる標準モデル。',
+  },
+  'flat-stagnant': {
+    id: 'flat-stagnant',
+    label: '昇給なし・横ばい型（物価高に弱い）',
+    shortLabel: '昇給なし横ばい',
+    description: 'インフレや年齢上昇があっても基本給がほとんど上がらず、実質購買力が目減りしやすい給与体系。',
+  },
+  'performance-volatile': {
+    id: 'performance-volatile',
+    label: '成果主義・業績変動型（上がる年も下がる年も）',
+    shortLabel: '業績変動型',
+    description: '好業績の年は大きく跳ねる一方、不調時は賞与カットや年俸減額で年収が下がる実力主義型。',
+  },
+  'downward-pressure': {
+    id: 'downward-pressure',
+    label: '業績低迷・減収リスク型（徐々に下がる）',
+    shortLabel: '減収リスク型',
+    description: '業界縮小や手当廃止により、年齢を重ねても給与が上がらずむしろ下がりやすい厳しい環境。',
+  },
+};
+
+export const POST_RETIREMENT_SPECS: Record<
+  PostRetirementWorkType,
+  { id: PostRetirementWorkType; label: string; shortLabel: string; jobTitle: string; description: string }
+> = {
+  'reemploy-same': {
+    id: 'reemploy-same',
+    label: '60歳以降も嘱託再雇用・専門職で継続（現役時の約60%収入）',
+    shortLabel: '60歳嘱託再雇用',
+    jobTitle: '嘱託再雇用・シニア社員',
+    description: '60歳定年後も同じ職場・同職種で再雇用契約を結び、65歳まで現役時の約6割の年収を確保。',
+  },
+  'reemploy-light-job': {
+    id: 'reemploy-light-job',
+    label: '60歳以降は別職種へ転身（管理員・事務・軽作業等：年250万）',
+    shortLabel: '60歳別職種へ転身',
+    jobTitle: '別職種シニア社員（管理・事務職）',
+    description: '定年を機にプレッシャーの少ない別職種（ビル管理・施設事務・送迎等）へ転身して働く。',
+  },
+  'part-time-arubaito': {
+    id: 'part-time-arubaito',
+    label: '60歳以降は週3〜4日アルバイト・パート勤務（年140万）',
+    shortLabel: '60歳以降アルバイト',
+    jobTitle: 'シニアアルバイト・パート勤務',
+    description: '定年後はフルタイムを退き、健康維持を兼ねて週3〜4日のアルバイト・パート（年約140万円）で働く。',
+  },
+  'full-retire-60': {
+    id: 'full-retire-60',
+    label: '60歳で完全リタイア・働かない（65歳年金まで勤労収入0円）',
+    shortLabel: '60歳完全リタイア',
+    jobTitle: '完全リタイア（無職・悠々自適）',
+    description: '60歳定年で仕事を完全に辞める。65歳の公的年金受給開始までは退職金と貯蓄を取り崩して生活する。',
+  },
+};
+
+export const SPOUSE_WORK_SPECS: Record<
+  SpouseWorkPatternType,
+  { id: SpouseWorkPatternType; label: string; shortLabel: string; initialJobTitle: string; description: string }
+> = {
+  'fulltime-keep': {
+    id: 'fulltime-keep',
+    label: '正社員・フルタイム共働き継続（退職金・厚生年金あり）',
+    shortLabel: '配偶者：正社員継続',
+    initialJobTitle: '正社員フルタイム',
+    description: '配偶者も正社員として定年までフルタイム勤務を継続し、世帯の2馬力エンジンを維持します。',
+  },
+  'shift-to-part': {
+    id: 'shift-to-part',
+    label: '当初は社員 → 途中でパート・アルバイトへ転換（年120万へ）',
+    shortLabel: '配偶者：途中バイト・パート化',
+    initialJobTitle: '正社員（後にパート転換予定）',
+    description: '購入当初は社員として働くが、育児や生活変化により途中でパート・アルバイト勤務（年約120万円）へシフト。',
+  },
+  'part-time': {
+    id: 'part-time',
+    label: 'パート・アルバイト勤務（年100〜140万円前後）',
+    shortLabel: '配偶者：パート・バイト',
+    initialJobTitle: 'パート・アルバイト勤務',
+    description: '家事・子育てと両立しやすいパート・アルバイト（接客・事務・軽作業等）で毎年100〜140万円を稼ぐ。',
+  },
+  'homemaker-to-part': {
+    id: 'homemaker-to-part',
+    label: '当初は専業主婦(夫) → 子育て後にパート・バイト開始（年108万）',
+    shortLabel: '配偶者：専業→後にバイト開始',
+    initialJobTitle: '専業主婦（夫）',
+    description: '購入時は収入0円だが、子どもが成長したタイミング（または返済5年目）からパート・アルバイトを始める。',
+  },
+  homemaker: {
+    id: 'homemaker',
+    label: '専業主婦(夫)を継続（配偶者収入 0円・家事育児専念）',
+    shortLabel: '配偶者：専業主婦(夫)',
+    initialJobTitle: '専業主婦（夫）',
+    description: '配偶者は就労せず家庭を支える1馬力モデル。本人の収入変動や病気リスクへの備えが重要。',
+  },
+  'no-spouse': {
+    id: 'no-spouse',
+    label: '独身・単身世帯（配偶者なし・完全1人暮らし）',
+    shortLabel: '単身・配偶者なし',
+    initialJobTitle: '単身世帯（配偶者なし）',
+    description: '配偶者や子どものいない単身購入モデル。夫婦・子育てイベントは発生せず、自身のキャリアと老後資金が軸。',
+  },
+};
+
+export const JUNIOR_HIGH_SPECS: Record<
+  JuniorHighPathType,
+  { id: JuniorHighPathType; label: string; shortLabel: string; description: string }
+> = {
+  'public-jhs': {
+    id: 'public-jhs',
+    label: '公立中学校ルート（中学受験なし・地域の公立中へ進学）',
+    shortLabel: '公立中（中受なし）',
+    description: '小学校高学年の過熱する中学受験塾代（年120万）を回避し、高校・大学資金に向けて貯蓄を温存します。',
+  },
+  'private-exam-jhs': {
+    id: 'private-exam-jhs',
+    label: '中学受験・私立中高一貫ルート（小4〜小6塾代＋私立中高学費）',
+    shortLabel: '中学受験・私立中高',
+    description: '小4〜小6の進学塾費用（年約118万）と私立中高6年間の学費（年105〜142万）が重くのしかかります。',
+  },
+};
+
+export const HIGHER_ED_SPECS: Record<
+  HigherEdPathType,
+  { id: HigherEdPathType; label: string; shortLabel: string; description: string }
+> = {
+  'national-univ': {
+    id: 'national-univ',
+    label: '国公立大学（4年制：学費＋生活費 年約98万円）',
+    shortLabel: '国公立大学',
+    description: '授業料が年約54万円と標準的で、4年間の学費・教育関連費は1人あたり約430万円規模。',
+  },
+  'private-arts-univ': {
+    id: 'private-arts-univ',
+    label: '私立大学・文系（4年制：学費＋生活費 年約138万円）',
+    shortLabel: '私立大学（文系）',
+    description: '日本の大学生で最も多いボリュームゾーン。入学金＋4年間で1人あたり約600万円規模。',
+  },
+  'private-science-univ': {
+    id: 'private-science-univ',
+    label: '私立大学・理系/医療系（4年制：学費＋実験実習費 年約182万円）',
+    shortLabel: '私立大学（理系）',
+    description: '実験・設備費が高く、入学金＋4年間で1人あたり約790万円規模の大型教育支出となります。',
+  },
+  'vocational-2yr': {
+    id: 'vocational-2yr',
+    label: '専門学校・短期大学（2年制：18〜19歳のみ年132万 → 20歳で就職独立）',
+    shortLabel: '専門学校・短大(2年)',
+    description: '実務資格を取得する2年制。18〜19歳の2年間で完結し、20歳からは社会人として独立するため総額を抑えられます。',
+  },
+  'high-school-job': {
+    id: 'high-school-job',
+    label: '高校卒業後に就職・独立（大学・専門への進学なし：18歳で独立）',
+    shortLabel: '高卒就職（18歳独立）',
+    description: '18歳の高校卒業と同時に就職して独立。18歳以降の大学・専門学費がかからないため家計余力が大きく向上します。',
+  },
+};
+
+export const SCHOLARSHIP_SPECS: Record<
+  ScholarshipType,
+  { id: ScholarshipType; label: string; shortLabel: string; annualReliefMan: number; description: string }
+> = {
+  none: {
+    id: 'none',
+    label: '奨学金は借りない（親が学費・進学費用を全額負担）',
+    shortLabel: '奨学金なし(親全額)',
+    annualReliefMan: 0,
+    description: '子どもに借金を背負わせず親の貯蓄と収入から全額を出しますが、50代の家計キャッシュフローは厳しくなります。',
+  },
+  'jasso-loan': {
+    id: 'jasso-loan',
+    label: '貸与型奨学金（JASSO月5万）を利用（親の負担を年▲60万円軽減）',
+    shortLabel: '貸与型奨学金(年-60万)',
+    annualReliefMan: 60,
+    description: '大学生の約3人に1人が利用する貸与型奨学金を活用し、在学中の親の学費持ち出しを年間60万円軽減します。',
+  },
+  'grant-workstudy': {
+    id: 'grant-workstudy',
+    label: '給付型奨学金・授業料減免＋学生バイト併用（親の負担を年▲90万円軽減）',
+    shortLabel: '給付奨学金＋学生バイト',
+    annualReliefMan: 90,
+    description: '成績基準や多子世帯減免、子ども自身の学生アルバイトを組み合わせ、親の年間負担を90万円圧縮します。',
+  },
+};
+
+export const CRAM_SCHOOL_SPECS: Record<
+  CramSchoolPolicyType,
+  {
+    id: CramSchoolPolicyType;
+    label: string;
+    shortLabel: string;
+    elementaryExtraMan: number; // 小学生期の習い事・進学塾上乗せ(万円/年)
+    jhsCramAnnualMan: number; // 中1〜中3の高校受験塾・季節講習(万円/年)
+    hsYobikoAnnualMan: number; // 高1〜高3の大学受験予備校・講習(万円/年)
+    description: string;
+  }
+> = {
+  'intensive-cram': {
+    id: 'intensive-cram',
+    label: '早期入塾・進学塾＋夏期講習・大学受験予備校フル活用',
+    shortLabel: '進学塾・予備校フル',
+    elementaryExtraMan: 24,
+    jhsCramAnnualMan: 46,
+    hsYobikoAnnualMan: 68,
+    description:
+      '小学生からの英語・プログラミング・進学塾に加え、中学の高校受験塾・夏期冬期講習、高校の大手予備校まで惜しまず投資します（教育費負担は大）。',
+  },
+  'standard-cram': {
+    id: 'standard-cram',
+    label: '標準（小中は習い事・中2〜中3通塾＋高2〜高3で受験塾）',
+    shortLabel: '標準通塾（中2〜・高2〜）',
+    elementaryExtraMan: 8,
+    jhsCramAnnualMan: 26,
+    hsYobikoAnnualMan: 34,
+    description:
+      '文部科学省「子供の学習費調査」の平均水準。中学後半と高校後半の受験期を中心に通塾・季節講習を利用します。',
+  },
+  'minimal-self-study': {
+    id: 'minimal-self-study',
+    label: '通信教育・オンライン教材・自習中心（塾代・講習費を最小化）',
+    shortLabel: '通信教育・自習中心',
+    elementaryExtraMan: 0,
+    jhsCramAnnualMan: 6,
+    hsYobikoAnnualMan: 10,
+    description:
+      '高額な対面進学塾や夏期講習は控え、月数千円のオンライン学習サービスと学校の補習・自習室を活用して教育費を抑えます。',
+  },
+};
+
+export const LEISURE_STYLE_SPECS: Record<
+  LeisureStyleType,
+  {
+    id: LeisureStyleType;
+    label: string;
+    shortLabel: string;
+    baseAnnualCostSingleMan: number;
+    baseAnnualCostCoupleMan: number;
+    perChildExtraMan: number;
+    annualMentalDelta: number;
+    description: string;
+  }
+> = {
+  'active-travel': {
+    id: 'active-travel',
+    label: '毎年しっかり家族旅行・レジャー満喫（年48万〜＋物価連動）',
+    shortLabel: '毎年旅行・レジャー充実',
+    baseAnnualCostSingleMan: 36,
+    baseAnnualCostCoupleMan: 48,
+    perChildExtraMan: 14,
+    annualMentalDelta: 2,
+    description:
+      '年に1〜2回の国内温泉・沖縄/北海道旅行やテーマパーク、週末のレジャー・外食をしっかり楽しみ、家族の思い出と幸福度を高めます（宿泊・レジャー物価高の影響大）。',
+  },
+  'moderate-leisure': {
+    id: 'moderate-leisure',
+    label: '標準バランス（年1回の近場旅行・帰省＋月1〜2回の外食：年24万〜）',
+    shortLabel: '標準（近場旅行・外食）',
+    baseAnnualCostSingleMan: 18,
+    baseAnnualCostCoupleMan: 24,
+    perChildExtraMan: 8,
+    annualMentalDelta: 1,
+    description:
+      'オフシーズンやふるさと納税宿泊券を活用して年1回の旅行と週末ドライブを楽しみ、家計と娯楽のバランスを取ります。',
+  },
+  'frugal-staycation': {
+    id: 'frugal-staycation',
+    label: '節約・おうち時間＆近隣公園中心（旅行は控えめ：年10万〜）',
+    shortLabel: '節約・おうち時間中心',
+    baseAnnualCostSingleMan: 8,
+    baseAnnualCostCoupleMan: 10,
+    perChildExtraMan: 4,
+    annualMentalDelta: -1,
+    description:
+      'ホテル代が高騰する旅行やテーマパークは控え、マイホームでのBBQ・動画配信・市立施設やデイキャンプで娯楽費を最小限に抑えます。',
+  },
+};
+
+export const INSURANCE_PLAN_SPECS: Record<
+  FireEarthquakeInsuranceType,
+  {
+    id: FireEarthquakeInsuranceType;
+    label: string;
+    shortLabel: string;
+    fiveYearCostDetachedMan: number; // 戸建て5年更新保険料目安(万円)
+    fiveYearCostMansionMan: number; // マンション(RC耐火)5年更新保険料目安(万円)
+    fiveYearCostTowerMan: number; // タワマン5年更新保険料目安(万円)
+    hasEarthquake: boolean;
+    hasWaterFlood: boolean;
+    description: string;
+  }
+> = {
+  'full-fire-earthquake-water': {
+    id: 'full-fire-earthquake-water',
+    label: 'フル補償（火災・風災・水災・破損汚損 ＋ 地震保険 ＋ 個人賠償特約）',
+    shortLabel: '火災＋水災＋地震フル補償',
+    fiveYearCostDetachedMan: 26,
+    fiveYearCostMansionMan: 15,
+    fiveYearCostTowerMan: 18,
+    hasEarthquake: true,
+    hasWaterFlood: true,
+    description:
+      '5年ごとの更新保険料は高めですが、大型台風・ゲリラ豪雨浸水・震度6強の大地震・給排水管水漏れ賠償までほぼ全額カバーされる万全の盾。',
+  },
+  'standard-fire-earthquake': {
+    id: 'standard-fire-earthquake',
+    label: '標準プラン（火災・風災 ＋ 地震保険付帯 / 水災補償なし）',
+    shortLabel: '火災＋地震保険（水災なし）',
+    fiveYearCostDetachedMan: 18,
+    fiveYearCostMansionMan: 11,
+    fiveYearCostTowerMan: 13,
+    hasEarthquake: true,
+    hasWaterFlood: false,
+    description:
+      'ハザードマップで浸水リスクが低い地域やマンション中高層階で選ばれる標準プラン。大地震には備えつつ水災を外して保険料を抑えます。',
+  },
+  'minimal-fire-only': {
+    id: 'minimal-fire-only',
+    label: '最安プラン（火災・風災のみ / 地震保険なし・水災なし）',
+    shortLabel: '火災のみ最安（地震・水災なし）',
+    fiveYearCostDetachedMan: 9,
+    fiveYearCostMansionMan: 5,
+    fiveYearCostTowerMan: 6,
+    hasEarthquake: false,
+    hasWaterFlood: false,
+    description:
+      '銀行融資の最低条件である火災保険のみ加入し5年更新費を最安に抑えますが、大地震や豪雨水害が起きた際は保険金が下りず全額自己負担となります。',
+  },
+};
+
+/**
+ * 固定資産税・都市計画税の年次実効額（万円/年）を算出する
+ * - 新築住宅の建物部分は軽減措置（一般戸建て3年、長期優良戸建て5年、一般マンション5年、長期優良マンション7年）により当初半額
+ * - 軽減期間終了の翌年（4年目・6年目・8年目）に建物分の固定資産税が2倍に跳ね上がる「新築軽減終了の崖」を再現
+ * - 3年ごとの固定資産税評価替え（地価変動と建物経年減点補正）も反映
+ */
+export function calcEffectiveAnnualPropertyTaxMan(
+  property: PropertySpec,
+  yearIndex: number,
+  currentLandValueMan: number,
+  initialLandValueMan: number,
+): {
+  annualTaxMan: number;
+  reductionEndYear: number;
+  isReductionJustExpired: boolean;
+} {
+  const reductionEndYear = !property.isNew
+    ? 0
+    : property.buildingType === 'detached'
+      ? property.energyCert === 'long-term-excellent'
+        ? 5
+        : 3
+      : property.energyCert === 'long-term-excellent'
+        ? 7
+        : 5;
+
+  const isReductionJustExpired = reductionEndYear > 0 && yearIndex === reductionEndYear + 1;
+
+  // 初期基準額のうち約42%が土地分、約58%が建物分（新築軽減適用中）
+  const baseLandTax = property.annualPropertyTaxMan * 0.42;
+  const baseBuildingTaxReduced = property.annualPropertyTaxMan * 0.58;
+
+  // 3年ごとの評価替えタイミングで土地路線価トレンドを反映
+  const revalStep = Math.floor(yearIndex / 3) * 3;
+  const landRatioChange =
+    initialLandValueMan > 0 ? Math.max(0.65, Math.min(1.65, currentLandValueMan / initialLandValueMan)) : 1;
+  const effectiveLandTax =
+    revalStep > 0 ? baseLandTax * (0.3 + 0.7 * landRatioChange) : baseLandTax;
+
+  // 建物評価額は経年減点補正率で徐々に下がる（RCマンションは45年かけて緩やかに減価、木造戸建ては25年で下限20%へ）
+  const ageYears = property.builtAge + yearIndex;
+  const buildingAgeDecay =
+    property.buildingType === 'detached'
+      ? Math.max(0.35, 1 - ageYears * 0.022)
+      : Math.max(0.48, 1 - ageYears * 0.012);
+
+  // 新築軽減期間終了後は建物分の軽減（1/2）が外れて約1.85倍に跳ね上がる
+  const postReductionMult =
+    reductionEndYear > 0 && yearIndex > reductionEndYear ? 1.85 : 1.0;
+
+  const effectiveBuildingTax = baseBuildingTaxReduced * postReductionMult * buildingAgeDecay;
+  const annualTaxMan = Math.max(6, Math.round((effectiveLandTax + effectiveBuildingTax) * 10) / 10);
+
+  return {
+    annualTaxMan,
+    reductionEndYear,
+    isReductionJustExpired,
+  };
+}
+
 
 export const FOCUS_MODES: Record<
   FocusModeId,
@@ -117,19 +530,19 @@ export const ARCHETYPES: HouseholdArchetype[] = [
   {
     id: 'steady-couple-station',
     title: '首都圏・共働き駅近マンション世帯',
-    subtitle: '34歳・正社員×正社員（世帯年収 920万円）',
-    percentileLabel: '分譲マンション購入世帯の標準モデル（構成比 16.4%）',
+    subtitle: '34歳・正社員×正社員（世帯年収 1,020万円）',
+    percentileLabel: 'SUUMO首都圏新築マンション契約者の標準共働きモデル（構成比 16.4%）',
     age: 34,
     employment: 'listed-corp',
-    mainIncomeMan: 580,
-    subIncomeMan: 340,
-    initialSavingsMan: 950,
+    mainIncomeMan: 640,
+    subIncomeMan: 380,
+    initialSavingsMan: 1100,
     hasCreditBlemish: false,
     recommendedContract: 'pair',
     recommendedFamily: 'child-2-public',
     recommendedProperty: 'station-mansion-new',
     description:
-      '長期優良認定の駅近マンションをペアローンで購入する王道モデル。子ども2人の教育費ピーク（48〜54歳）と変動金利上昇をどう乗り切るかが勝負。',
+      'SUUMO首都圏新築マンション契約者平均（約7,300万円）の駅近マンションをペアローンで購入する王道モデル。子ども2人の教育費ピークと変動金利上昇・修繕積立金増額をどう乗り切るかが勝負。',
   },
   {
     id: 'civil-servant-single',
@@ -270,19 +683,19 @@ export const ARCHETYPES: HouseholdArchetype[] = [
   {
     id: 'power-couple-tower',
     title: '32歳・都心湾岸タワマン共働きパワーカップル世帯',
-    subtitle: '32歳・外資/IT×総合職（世帯年収 1,380万円）',
-    percentileLabel: '首都圏タワマン購入層（構成比 3.2%）',
+    subtitle: '32歳・外資/IT×総合職（世帯年収 1,480万円）',
+    percentileLabel: '東京23区新築マンション平均（約9,600万円）購入層（構成比 3.2%）',
     age: 32,
     employment: 'mega-venture',
-    mainIncomeMan: 820,
-    subIncomeMan: 560,
-    initialSavingsMan: 1450,
+    mainIncomeMan: 880,
+    subIncomeMan: 600,
+    initialSavingsMan: 1650,
     hasCreditBlemish: false,
     recommendedContract: 'pair',
     recommendedFamily: 'child-1-private',
     recommendedProperty: 'tower-mansion-new',
     description:
-      '夫婦ともに高収入でペアローンフル活用＆W住宅ローン控除を狙う都心タワマン世帯。ただし片方の休職・離婚・中学受験課金・タワマン修繕費高騰が重なると一気に綱渡りに。',
+      '夫婦ともに高収入でペアローンフル活用＆W住宅ローン控除を狙う都心タワマン（9,580万円）世帯。ただし片方の休職・離婚・中学受験課金・タワマン修繕費高騰が重なると一気に綱渡りに。',
   },
   {
     id: 'forty-something-cash-used',
@@ -328,42 +741,42 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     buildingType: 'tower',
     isNew: true,
     builtAge: 0,
-    locationLabel: '都心湾岸エリア・駅徒歩3分（38階）',
-    priceMan: 8480,
-    landRatio: 0.22,
+    locationLabel: '東京23区湾岸エリア・駅徒歩3分（38階）',
+    priceMan: 9580,
+    landRatio: 0.24,
     energyCert: 'long-term-excellent',
-    initialMgmtFeeMonthlyMan: 2.9,
-    initialRepairFeeMonthlyMan: 1.9,
-    parkingMonthlyMan: 3.2,
-    annualPropertyTaxMan: 28,
+    initialMgmtFeeMonthlyMan: 3.1,
+    initialRepairFeeMonthlyMan: 2.0,
+    parkingMonthlyMan: 3.3,
+    annualPropertyTaxMan: 29,
     landAnnualTrendRate: 0.012,
     utilityMonthlyDiffMan: -0.3,
     description:
-      '圧倒的な眺望と共用施設、高い資産流動性を誇る都心タワマン。長期優良住宅認定で住宅ローン控除枠は最大級。',
+      'SUUMO東京23区新築マンション契約者平均（約9,598万円）を反映した都心タワマン。長期優良住宅認定で住宅ローン控除枠は最大級、固定資産税も7年間半額軽減。',
     riskNote:
-      '【タワマンの罠】初期の修繕積立金は安く設定されているが、6年目・12年目・18年目の段階増額で月5万円超へ急騰し、大規模修繕時には一時金徴収リスクがある。',
+      '【タワマンの罠】初期の修繕積立金は低く抑えられているが、6年目・12年目・18年目の段階増額で月5万円超へ急騰し、8年目には固定資産税の新築軽減終了が到来する。',
   },
   'station-mansion-new': {
     id: 'station-mansion-new',
-    name: '人気急行停車駅・新築分譲マンション（長期優良）',
-    shortName: '駅近新築マンション',
+    name: '首都圏・急行停車駅 新築分譲マンション（長期優良）',
+    shortName: '首都圏駅近マンション',
     buildingType: 'mansion',
     isNew: true,
     builtAge: 0,
-    locationLabel: '都市近郊・急行停車駅 徒歩6分',
-    priceMan: 6180,
-    landRatio: 0.32,
+    locationLabel: '首都圏・急行停車駅 徒歩6分（70㎡・3LDK）',
+    priceMan: 7280,
+    landRatio: 0.34,
     energyCert: 'long-term-excellent',
-    initialMgmtFeeMonthlyMan: 1.8,
-    initialRepairFeeMonthlyMan: 1.3,
+    initialMgmtFeeMonthlyMan: 1.9,
+    initialRepairFeeMonthlyMan: 1.4,
     parkingMonthlyMan: 1.8,
-    annualPropertyTaxMan: 21,
+    annualPropertyTaxMan: 22,
     landAnnualTrendRate: 0.004,
     utilityMonthlyDiffMan: -0.4,
     description:
-      '通勤利便性と資産価値のバランスに優れた王道ファミリーマンション。長期優良住宅認定で子育て世帯なら最大5,000万円まで0.7%×13年の税額控除対象。',
+      'SUUMO首都圏新築マンション契約者平均（7,324万円）に準拠した王道ファミリー3LDK。長期優良住宅認定で子育て世帯なら最大5,000万円まで0.7%×13年の税額控除対象。',
     riskNote:
-      '修繕積立金は5年ごとに段階的に引き上げられる長期修繕計画となっており、管理費・駐車場・固定資産税を含めた実質住居費の管理が重要。',
+      '修繕積立金は5年ごとに段階的に引き上げられ、8年目からは建物の固定資産税半額軽減も終了するため実質住居費の管理が重要。',
   },
   'suburban-mansion-used': {
     id: 'suburban-mansion-used',
@@ -372,20 +785,20 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     buildingType: 'mansion',
     isNew: false,
     builtAge: 20,
-    locationLabel: '準都心エリア・駅徒歩8分',
-    priceMan: 3880,
-    landRatio: 0.38,
+    locationLabel: '準都心エリア・駅徒歩8分（68㎡・3LDK）',
+    priceMan: 4580,
+    landRatio: 0.4,
     energyCert: 'zeh',
-    initialMgmtFeeMonthlyMan: 1.6,
-    initialRepairFeeMonthlyMan: 2.6,
+    initialMgmtFeeMonthlyMan: 1.7,
+    initialRepairFeeMonthlyMan: 2.7,
     parkingMonthlyMan: 1.5,
-    annualPropertyTaxMan: 14,
-    landAnnualTrendRate: -0.002,
+    annualPropertyTaxMan: 15,
+    landAnnualTrendRate: -0.001,
     utilityMonthlyDiffMan: -0.2,
     description:
-      '新築より2,000万円以上安く購入でき、建物価格の初期下落が落ち着いている賢い選択肢。',
+      '新築マンション高騰を受け実需人気が集まる準都心リノベ済中古マンション（4,580万円）。新築より約2,700万円抑えられ、建物価格の初期下落が落ち着いている。',
     riskNote:
-      '【中古マンションの注意点】住宅ローン控除期間は10年（借入限度額3,000万円）に短縮され、すでに修繕積立金が高めなほか、築30〜35年目に給排水管更生工事イベントが到来する。',
+      '【中古マンションの注意点】住宅ローン控除期間は10年（借入限度額3,000万円）に短縮され、すでに修繕積立金が高めなほか、給排水管更新や専有部設備交換が到来する。',
   },
   'detached-custom-new': {
     id: 'detached-custom-new',
@@ -395,7 +808,7 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     isNew: true,
     builtAge: 0,
     locationLabel: '都市近郊・閑静な第一種低層住居専用地域',
-    priceMan: 5680,
+    priceMan: 5880,
     landRatio: 0.52,
     energyCert: 'long-term-excellent',
     initialMgmtFeeMonthlyMan: 0,
@@ -405,31 +818,31 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     landAnnualTrendRate: 0.001,
     utilityMonthlyDiffMan: -1.1,
     description:
-      '管理費・駐車場代が一生0円！太陽光発電＋高気密高断熱で毎月の光熱費も約1.1万円削減でき、資産の半分以上が「土地」として残る。',
+      '管理費・駐車場代が一生0円！太陽光発電＋高気密高断熱で毎月の光熱費も約1.1万円削減でき、資産の半分以上が「土地」として残る注文住宅。',
     riskNote:
-      '【戸建ての自己責任】マンションのような強制積立がない代わり、12〜15年ごとに外壁塗装・屋根防水・シロアリ防除・エコキュート交換（計160〜220万円）が自己負担で発生する。',
+      '【戸建ての自己責任】6年目から固定資産税の新築軽減が終了するほか、5年ごとの火災・地震保険更新と、12〜16年ごとの外壁塗装・屋根防水・給湯器交換が自己負担で発生する。',
   },
   'detached-powerbuilder-new': {
     id: 'detached-powerbuilder-new',
-    name: '郊外ニュータウン・新築建売一戸建て（一般省エネ）',
+    name: '郊外ベッドタウン・新築建売一戸建て（省エネ基準適合）',
     shortName: '郊外新築建売戸建て',
     buildingType: 'detached',
     isNew: true,
     builtAge: 0,
-    locationLabel: '郊外ベッドタウン・バス12分（カースペース2台付）',
-    priceMan: 4180,
-    landRatio: 0.45,
+    locationLabel: '郊外ベッドタウン・バス10分（4LDK・カースペース2台付）',
+    priceMan: 4380,
+    landRatio: 0.46,
     energyCert: 'standard',
     initialMgmtFeeMonthlyMan: 0,
     initialRepairFeeMonthlyMan: 0,
     parkingMonthlyMan: 0,
     annualPropertyTaxMan: 14,
-    landAnnualTrendRate: -0.016,
+    landAnnualTrendRate: -0.015,
     utilityMonthlyDiffMan: 0.2,
     description:
-      '4,000万円台前半で4LDK＋駐車場2台が手に入るコスパ抜群のパワービルダー建売住宅。月々の返済負担率を低く抑えられる。',
+      '省エネ基準義務化後の首都圏郊外パワービルダー建売相場（4,380万円）。4LDK＋駐車場2台が手に入り、マンションより月々の返済負担率を低く抑えられる。',
     riskNote:
-      '【郊外バス便の罠】少子高齢化で郊外ニュータウンの路線価が年率-1.6%ペースで下落しやすく、10〜15年後に売却しようとしても買い手がつきにくい（オーバーローンリスク）。',
+      '【郊外建売の注意点】一般新築戸建てのため固定資産税の半額軽減は3年で終了（4年目から建物税額2倍）し、郊外路線価の緩やかな下落と定期外装メンテへの備えが必要。',
   },
   'detached-used': {
     id: 'detached-used',
@@ -439,7 +852,7 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     isNew: false,
     builtAge: 26,
     locationLabel: '郊外住宅街・駅徒歩14分',
-    priceMan: 2580,
+    priceMan: 2680,
     landRatio: 0.74,
     energyCert: 'non-compliant',
     initialMgmtFeeMonthlyMan: 0,
@@ -449,9 +862,9 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     landAnnualTrendRate: -0.012,
     utilityMonthlyDiffMan: 0.9,
     description:
-      '物件価格の約74%が土地値のため、これ以上の資産価値下落が小さく、借入額を最小限に抑えて早期完済を狙える。',
+      '物件価格の約74%が土地値のため、これ以上の資産価値下落が小さく、借入額を2,000万円台に抑えて早期完済を狙える。',
     riskNote:
-      '【旧基準中古の罠】省エネ基準未満のため住宅ローン控除は少なく、断熱性が低いため冬・夏の光熱費が高い。入居後の水回り改修・耐震補強・雨漏り修繕費に備える必要がある。',
+      '【旧基準中古の罠】省エネ基準未満のため住宅ローン控除は少なく、断熱性が低いため光熱費が高い。木造築古のため火災・地震保険料が高めで、水回り・屋根改修費も早期に発生する。',
   },
   'regional-mansion-new': {
     id: 'regional-mansion-new',
@@ -461,41 +874,41 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     isNew: true,
     builtAge: 0,
     locationLabel: '地方政令指定都市・ターミナル駅徒歩4分',
-    priceMan: 4380,
+    priceMan: 4680,
     landRatio: 0.28,
     energyCert: 'zeh',
-    initialMgmtFeeMonthlyMan: 1.5,
-    initialRepairFeeMonthlyMan: 1.2,
+    initialMgmtFeeMonthlyMan: 1.6,
+    initialRepairFeeMonthlyMan: 1.3,
     parkingMonthlyMan: 1.1,
     annualPropertyTaxMan: 16,
-    landAnnualTrendRate: 0.0,
+    landAnnualTrendRate: 0.001,
     utilityMonthlyDiffMan: -0.5,
     description:
-      '地方中核都市のランドマークマンション。無理のない価格帯でZEH水準の断熱性と高い生活利便性を両立。',
+      '地方政令指定都市の駅前ランドマークマンション（4,680万円）。首都圏より抑えた価格でZEH水準の断熱性と高い生活利便性を両立。',
     riskNote:
-      '段階的な修繕積立金の増額と、機械式駐車場の維持更新費が将来的に管理組合の議題となりやすい。',
+      '6年目からの固定資産税軽減終了、段階的な修繕積立金の増額、専有部設備の15〜20年目リフォームへの備えが必要。',
   },
   'luxury-penthouse-new': {
     id: 'luxury-penthouse-new',
-    name: '都心一等地・プレミアムタワー最上階（新築・長期優良）',
-    shortName: '都心1.15億タワマン',
+    name: '都心3区・プレミアムタワー高層住戸（新築・長期優良）',
+    shortName: '都心1.25億タワマン',
     buildingType: 'tower',
     isNew: true,
     builtAge: 0,
-    locationLabel: '都心3区エリア・駅徒歩2分',
-    priceMan: 11500,
-    landRatio: 0.26,
+    locationLabel: '都心3区エリア・駅徒歩2分（85㎡・3LDK）',
+    priceMan: 12500,
+    landRatio: 0.28,
     energyCert: 'long-term-excellent',
-    initialMgmtFeeMonthlyMan: 3.8,
-    initialRepairFeeMonthlyMan: 2.5,
-    parkingMonthlyMan: 4.2,
-    annualPropertyTaxMan: 38,
+    initialMgmtFeeMonthlyMan: 4.1,
+    initialRepairFeeMonthlyMan: 2.7,
+    parkingMonthlyMan: 4.3,
+    annualPropertyTaxMan: 40,
     landAnnualTrendRate: 0.018,
     utilityMonthlyDiffMan: -0.2,
     description:
-      '都心一等地の1億円超えプレミアム物件。インフレ局面では国内外の需要で値上がり益（キャピタルゲイン）も狙える最高峰物件。',
+      '東京23区の新築分譲平均（約1.2〜1.3億円）を象徴する都心一等地プレミアム住戸。インフレ局面では国内外の需要で値上がり益も狙える最高峰物件。',
     riskNote:
-      'ペアローンで限度額ギリギリまで借りると、金利が1.5%上がっただけで年間返済額が120万円以上急増するハイリスク・ハイリターン領域。',
+      'ペアローンで限度額ギリギリまで借りると、金利が1.5%上がっただけで年間返済額が130万円以上急増するハイリスク・ハイリターン領域。',
   },
   'compact-mansion-new': {
     id: 'compact-mansion-new',
@@ -505,41 +918,41 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     isNew: true,
     builtAge: 0,
     locationLabel: '都心乗換駅 徒歩3分（54㎡・2LDK）',
-    priceMan: 4980,
-    landRatio: 0.34,
+    priceMan: 5480,
+    landRatio: 0.35,
     energyCert: 'zeh',
-    initialMgmtFeeMonthlyMan: 1.5,
-    initialRepairFeeMonthlyMan: 1.1,
+    initialMgmtFeeMonthlyMan: 1.6,
+    initialRepairFeeMonthlyMan: 1.2,
     parkingMonthlyMan: 0.3,
-    annualPropertyTaxMan: 16,
+    annualPropertyTaxMan: 17,
     landAnnualTrendRate: 0.008,
     utilityMonthlyDiffMan: -0.4,
     description:
-      '単身キャリアやDINKsに人気の駅近コンパクトレジデンス。車を持たずに暮らせるため駐車場負担がなく、賃貸に出すにも売却するにも流動性が高い。',
+      '単身キャリアやDINKsに人気の都心近接コンパクト2LDK（5,480万円）。車を持たずに暮らせるため駐車場負担がなく、賃貸にも売却にも流動性が高い。',
     riskNote:
-      '家族が増えて手狭になった場合は住み替えが必要になるほか、単身購入の場合は病気・休職リスクに備えた就業不能・がん団信の選択が重要。',
+      '途中で子どもが生まれて手狭になった場合の教育費・部屋割り対応や、単身購入時の病気・休職リスクに備えた団信選びが重要。',
   },
   'detached-semi-order-zeh': {
     id: 'detached-semi-order-zeh',
-    name: '都市近郊・駅徒歩10分 ZEHセミオーダー3階建て戸建て',
-    shortName: '都市型ZEH3階建戸建',
+    name: '首都圏近郊・駅徒歩10分 ZEHセミオーダー一戸建て',
+    shortName: '首都圏ZEH新築戸建',
     buildingType: 'detached',
     isNew: true,
     builtAge: 0,
-    locationLabel: '都市近郊・急行駅徒歩10分（ビルトイン車庫付）',
-    priceMan: 5280,
-    landRatio: 0.56,
+    locationLabel: '首都圏近郊・急行駅徒歩10分（カースペース付）',
+    priceMan: 4980,
+    landRatio: 0.55,
     energyCert: 'zeh',
     initialMgmtFeeMonthlyMan: 0,
     initialRepairFeeMonthlyMan: 0,
     parkingMonthlyMan: 0,
-    annualPropertyTaxMan: 17,
+    annualPropertyTaxMan: 16,
     landAnnualTrendRate: 0.003,
     utilityMonthlyDiffMan: -0.6,
     description:
-      '駅徒歩圏の利便性と「管理費・駐車場代0円の4LDK」を両立した都市型3階建て住宅。土地比率が高く資産価値が崩れにくい。',
+      'SUUMO首都圏新築一戸建て平均購入価格（4,844万〜4,980万円）を反映した都市近郊ZEH戸建て。駅徒歩圏の利便性と「管理費・駐車場代0円の4LDK」を両立。',
     riskNote:
-      '3階建ては外壁塗装・屋根修繕時の足場費用が2階建てより割高になりやすく、老後の階段昇降やホームエレベーター改修も論点になる。',
+      '4年目から固定資産税の新築軽減が終了するほか、12〜15年ごとの外壁・屋根塗装と水回り設備リフォーム費を計画的に確保する必要がある。',
   },
   'detached-regional-spacious': {
     id: 'detached-regional-spacious',
@@ -549,7 +962,7 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     isNew: true,
     builtAge: 0,
     locationLabel: '地方中核都市・郊外開発分譲地（敷地60坪）',
-    priceMan: 3480,
+    priceMan: 3680,
     landRatio: 0.38,
     energyCert: 'long-term-excellent',
     initialMgmtFeeMonthlyMan: 0,
@@ -559,9 +972,9 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     landAnnualTrendRate: -0.005,
     utilityMonthlyDiffMan: -1.2,
     description:
-      '広い庭と駐車場3台、大容量太陽光パネルを備えたゆとりの長期優良住宅。借入額を3,000万円台に抑えつつ光熱費も大幅に黒字化できる。',
+      '広い庭と駐車場3台、大容量太陽光パネルを備えたゆとりの長期優良住宅（3,680万円）。借入額を3,000万円台に抑えつつ光熱費も大幅に削減できる。',
     riskNote:
-      '夫婦それぞれマイカー2台を維持する地域のため、7〜9年ごとの車両買い替え費用と将来の外壁・防蟻メンテナンス費を計画的に積み立てる必要がある。',
+      '夫婦それぞれマイカー2台を維持する地域のため、車検・車両買い替え費用と、5年ごとの火災・地震保険更新および外壁・防蟻メンテナンス費の管理が鍵。',
   },
   'detached-kominka-reno': {
     id: 'detached-kominka-reno',
@@ -571,19 +984,19 @@ export const PROPERTIES: Record<PropertyCategory, PropertySpec> = {
     isNew: false,
     builtAge: 22,
     locationLabel: '湘南・文教住宅街エリア 駅徒歩11分',
-    priceMan: 3680,
+    priceMan: 3880,
     landRatio: 0.68,
     energyCert: 'zeh',
     initialMgmtFeeMonthlyMan: 0,
     initialRepairFeeMonthlyMan: 0,
     parkingMonthlyMan: 0,
-    annualPropertyTaxMan: 11,
+    annualPropertyTaxMan: 12,
     landAnnualTrendRate: 0.002,
     utilityMonthlyDiffMan: -0.3,
     description:
-      '人気の文教・海街エリアの中古戸建てを耐震・高断熱フルリノベーションした物件。価格の約7割が底堅い土地資産で構成され、建物減価リスクが極めて小さい。',
+      '人気の文教・海街エリアの中古戸建てを耐震・高断熱フルリノベーションした物件（3,880万円）。価格の約7割が底堅い土地資産で構成され、建物減価リスクが極めて小さい。',
     riskNote:
-      '中古住宅のため住宅ローン控除期間は10年間。築35年（返済13年目頃）で屋根葺き替えや給排水管の更新工事が到来する。',
+      '中古住宅のため住宅ローン控除期間は10年間。築35年（返済13年目頃）で屋根カバー工法や給排水管の更新工事が到来する。',
   },
 };
 
@@ -591,120 +1004,120 @@ export const BANKS: Record<BankId, BankSpec> = {
   'net-bank': {
     id: 'net-bank',
     name: 'あおぞらダイレクトネット銀行',
-    shortName: 'ネット銀行(変動0.68%)',
+    shortName: 'ネット銀行(変動0.78%)',
     categoryLabel: 'ネット専業・低金利変動（5年/125%ルールなし）',
     rateType: 'variable',
-    baseRate: 0.68,
-    screeningRate: 3.5,
+    baseRate: 0.78,
+    screeningRate: 3.6,
     maxDtiPercent: 35,
     supports50Years: true,
     has5Year125Rule: false,
     upfrontFeeRate: 0.022,
     rescheduleFlexibility: 1,
     description:
-      '日銀の相次ぐ利上げに伴い、かつての0.3%台から年0.68%へ改定されたネット専業の変動プラン。5年ルール・125%ルールがないため、今後の追加利上げ時は半年ごとに返済額が直撃上昇する。',
-    badgeText: 'ネット銀最安級 / 5年ルールなし',
+      '日銀の追加利上げと短期プライムレート上昇に伴い、年0.78%へ改定されたネット専業の変動プラン。5年ルール・125%ルールがないため、今後の利上げ時は半年ごとに毎月返済額が直撃上昇する。',
+    badgeText: 'ネット銀変動0.78% / 5年ルールなし',
   },
   'mega-bank': {
     id: 'mega-bank',
     name: 'メトロポリタン第一銀行（メガバンク）',
-    shortName: 'メガバンク(変動0.88%)',
+    shortName: 'メガバンク(変動0.92%)',
     categoryLabel: '都市銀行・王道変動（5年ルール・125%ルール付）',
     rateType: 'variable',
-    baseRate: 0.875,
-    screeningRate: 3.4,
+    baseRate: 0.92,
+    screeningRate: 3.5,
     maxDtiPercent: 35,
     supports50Years: false,
     has5Year125Rule: true,
     upfrontFeeRate: 0.022,
     rescheduleFlexibility: 3,
     description:
-      '短期プライムレート引き上げを反映し年0.875%となった王道メガバンク変動金利。5年ルール・125%ルール完備で5年間は毎月返済額が変わらないが、追加利上げ時には裏で「未払利息」が蓄積するリスクも。',
+      '短期プライムレート引き上げを反映し年0.92%となった王道メガバンク変動金利。5年ルール・125%ルール完備で5年間は毎月返済額が変わらないが、追加利上げ時には裏で「未払利息」が蓄積するリスクも。',
     badgeText: '5年・125%ルール有 / 35年迄',
   },
   'regional-bank': {
     id: 'regional-bank',
     name: 'ふるさと共栄地方銀行',
-    shortName: '地方銀行(50年対応1.05%)',
+    shortName: '地方銀行(50年対応1.15%)',
     categoryLabel: '地方銀行・柔軟審査＆50年ローン積極対応',
     rateType: 'variable',
-    baseRate: 1.05,
-    screeningRate: 3.2,
+    baseRate: 1.15,
+    screeningRate: 3.3,
     maxDtiPercent: 38,
     supports50Years: true,
     has5Year125Rule: true,
     upfrontFeeRate: 0.022,
     rescheduleFlexibility: 3,
     description:
-      '50年超長期ローンや個人事業主・転職直後・高倍率ローンにも柔軟に対応する地銀（年1.05%）。初期金利は1%台に乗っているが、家計困窮時のリスケ相談に最も親身。',
+      '50年超長期ローンや個人事業主・転職直後・高倍率ローンにも柔軟に対応する地銀（年1.15%）。初期金利は1.1%台に乗っているが、家計困窮時のリスケ相談に最も親身。',
     badgeText: '審査柔軟 / 50年ローン対応',
   },
   'flat35-agency': {
     id: 'flat35-agency',
     name: '住宅金融支援公庫【フラット35S / 全期間固定】',
-    shortName: 'フラット35(全期間固定2.24%)',
+    shortName: 'フラット35(全期間固定2.48%)',
     categoryLabel: '全期間完全固定金利（子育て・長期優良優遇あり）',
     rateType: 'flat-35',
-    baseRate: 2.24,
-    screeningRate: 2.24,
+    baseRate: 2.48,
+    screeningRate: 2.48,
     maxDtiPercent: 35,
     supports50Years: false,
     has5Year125Rule: false,
     upfrontFeeRate: 0.011,
     rescheduleFlexibility: 2,
     description:
-      '長期金利（10年国債利回り）の上昇により年2.24%水準となったが、完済まで35年間、世界情勢や日銀の追加利上げがどうなろうと返済額が1円も上がらない絶対防衛ライン！長期優良・子育て世帯は当初5年間▲0.5%優遇！',
+      '長期金利（10年国債利回り）の上昇により年2.48%水準となったが、完済まで35年間、世界情勢や日銀の追加利上げがどうなろうと返済額が1円も上がらない絶対防衛ライン！長期優良・子育て世帯は当初▲0.45%優遇！',
     badgeText: '金利上昇リスク完全ゼロ',
   },
   'neo-mix-bank': {
     id: 'neo-mix-bank',
     name: 'ネオ・トラスト信託銀行【変動50%＋固定50%ミックス】',
-    shortName: '信託ミックス(1.58%)',
+    shortName: '信託ミックス(1.68%)',
     categoryLabel: '変動金利と全期間固定の50:50ハイブリッド契約',
     rateType: 'mix',
-    baseRate: 1.58,
-    screeningRate: 3.0,
+    baseRate: 1.68,
+    screeningRate: 3.2,
     maxDtiPercent: 36,
     supports50Years: true,
     has5Year125Rule: true,
     upfrontFeeRate: 0.022,
     rescheduleFlexibility: 2,
     description:
-      '借入額の半分を変動金利、残り半分を固定金利で組むリスク分散プラン（合成金利 年1.58%）。今後の日銀追加利上げ時のダメージを半分に抑えつつ、全期間固定よりも初期返済額を軽減できる。',
+      '借入額の半分を変動金利、残り半分を固定金利で組むリスク分散プラン（合成金利 年1.68%）。今後の日銀追加利上げ時のダメージを半分に抑えつつ、全期間固定よりも初期返済額を軽減できる。',
     badgeText: '変動＋固定 50:50分散',
   },
   'fixed10-step-bank': {
     id: 'fixed10-step-bank',
     name: 'あさひ信託銀行【当初10年固定・段階特約プラン】',
-    shortName: '当初10年固定(1.75%)',
+    shortName: '当初10年固定(1.95%)',
     categoryLabel: '住宅ローン控除期間（当初10年）の金利を完全固定',
     rateType: 'fixed-10',
-    baseRate: 1.75,
-    screeningRate: 3.1,
+    baseRate: 1.95,
+    screeningRate: 3.3,
     maxDtiPercent: 36,
     supports50Years: true,
     has5Year125Rule: true,
     upfrontFeeRate: 0.022,
     rescheduleFlexibility: 2,
     description:
-      '長期金利上昇を反映し、残債が最も多い最初の10年間を年1.75%で完全固定するプラン。住宅ローン控除期間中の家計を安定させるが、11年目の特約満了時に優遇幅が縮小し金利が再改定される点に注意。',
+      '長期金利上昇を反映し、残債が最も多い最初の10年間を年1.95%で完全固定するプラン。住宅ローン控除期間中の家計を安定させるが、11年目の特約満了時に優遇幅が縮小し金利が再改定される点に注意。',
     badgeText: '10年間固定 / 11年目改定',
   },
   'coop-welfare-bank': {
     id: 'coop-welfare-bank',
     name: '中央勤労者福祉バンク（ろうきん・共済連係）',
-    shortName: '勤労福祉バンク(変動0.84%)',
+    shortName: '勤労福祉バンク(変動0.88%)',
     categoryLabel: '事務手数料低廉・繰上返済＆条件変更サポート充実',
     rateType: 'variable',
-    baseRate: 0.84,
-    screeningRate: 3.1,
+    baseRate: 0.88,
+    screeningRate: 3.2,
     maxDtiPercent: 36,
     supports50Years: false,
     has5Year125Rule: true,
     upfrontFeeRate: 0.008,
     rescheduleFlexibility: 3,
     description:
-      '融資事務手数料が一般的な銀行（2.2%）の半分以下（0.8%）で済み、初期諸費用を100万円近く節約できる勤労者向け金融機関（変動年0.84%）。5年・125%ルール付きで安定感が高い。',
+      '融資事務手数料が一般的な銀行（2.2%）の半分以下（0.8%）で済み、初期諸費用を100万円近く節約できる勤労者向け金融機関（変動年0.88%）。5年・125%ルール付きで安定感が高い。',
     badgeText: '諸費用最安級 / 5年ルール有',
   },
 };
@@ -1171,11 +1584,23 @@ export function runBankUnderwriting(config: MortgageSetupConfig): UnderwritingRe
   const family = FAMILY_PLANS[config.familyPlan];
   const isChildHousehold = family.childrenCount > 0;
 
-  // 諸費用計算（銀行融資事務手数料 + 登記・司法書士・印紙税 + 火災地震保険10年 + 引越家具）
+  // 諸費用計算（銀行融資事務手数料 + 登記・司法書士・印紙税 + 火災地震保険初回5年分 + 引越家具）
   const rawLoanNeeded = Math.max(500, property.priceMan - config.downPaymentMan);
   const bankFeeMan = Math.round(rawLoanNeeded * bank.upfrontFeeRate);
   const registrationAndTaxMan = Math.round(property.priceMan * 0.025);
-  const insuranceAndMovingMan = property.buildingType === 'detached' ? 115 : 95;
+  const insurancePlan: FireEarthquakeInsuranceType =
+    config.insurancePlan ??
+    (property.buildingType === 'detached'
+      ? 'full-fire-earthquake-water'
+      : 'standard-fire-earthquake');
+  const insSpec = INSURANCE_PLAN_SPECS[insurancePlan];
+  const first5YrInsuranceMan =
+    property.buildingType === 'detached'
+      ? insSpec.fiveYearCostDetachedMan
+      : property.buildingType === 'tower'
+        ? insSpec.fiveYearCostTowerMan
+        : insSpec.fiveYearCostMansionMan;
+  const insuranceAndMovingMan = first5YrInsuranceMan + (property.buildingType === 'detached' ? 60 : 55);
   const closingCostsMan = bankFeeMan + registrationAndTaxMan + insuranceAndMovingMan;
 
   // 頭金＋諸費用を初期貯蓄から支払えるか（足りない分は諸費用オーバーローンとして借入に上乗せ）
@@ -1355,7 +1780,155 @@ export function runBankUnderwriting(config: MortgageSetupConfig): UnderwritingRe
 }
 
 /**
- * 世帯属性（年齢・雇用・年収・頭金・家族構成・契約方式）のみを多彩にランダム生成する
+ * 職種（雇用形態）ごとの標準的な定年退職金目安（万円）を返す
+ * メガベンチャー・外資やフリーランスは退職金制度なし（0万円）が基本
+ */
+export function getDefaultRetirementAllowanceMan(employment: EmploymentType): number {
+  switch (employment) {
+    case 'civil-servant':
+      return 2100;
+    case 'listed-corp':
+      return 1750;
+    case 'sme':
+      return 550;
+    case 'mega-venture':
+      return 0;
+    case 'freelance':
+      return 0;
+  }
+}
+
+/**
+ * 世帯のキャリア・給与カーブ・退職金・定年後就労・配偶者就労・教育費設定の実効値を解決する
+ */
+export function resolveEffectiveHouseholdCareerAndEdu(config: MortgageSetupConfig): {
+  salaryCurve: SalaryCurveType;
+  retirementAllowanceMan: number;
+  postRetirementWork: PostRetirementWorkType;
+  spouseWorkPattern: SpouseWorkPatternType;
+  hasSpouse: boolean;
+  initialSubIncomeMan: number;
+  initialJobLabel: string;
+  initialSpouseJobLabel: string;
+  juniorHighPath: JuniorHighPathType;
+  higherEdPath: HigherEdPathType;
+  cramSchoolPolicy: CramSchoolPolicyType;
+  hasGakushiHoken: boolean;
+  scholarshipType: ScholarshipType;
+  insurancePlan: FireEarthquakeInsuranceType;
+  leisureStyle: LeisureStyleType;
+} {
+  const family = FAMILY_PLANS[config.familyPlan] ?? FAMILY_PLANS['child-1-public'];
+  const propForIns = resolveEffectiveProperty(config);
+
+  const defaultCurve: SalaryCurveType =
+    config.employment === 'civil-servant'
+      ? 'steady-up'
+      : config.employment === 'listed-corp'
+        ? 'standard-plateau'
+        : config.employment === 'mega-venture' || config.employment === 'freelance'
+          ? 'performance-volatile'
+          : 'flat-stagnant';
+  const salaryCurve = config.salaryCurve ?? defaultCurve;
+
+  const retirementAllowanceMan =
+    typeof config.retirementAllowanceMan === 'number'
+      ? Math.max(0, Math.round(config.retirementAllowanceMan))
+      : getDefaultRetirementAllowanceMan(config.employment);
+
+  const defaultPostRetire: PostRetirementWorkType =
+    config.employment === 'civil-servant' || config.employment === 'listed-corp'
+      ? 'reemploy-same'
+      : config.employment === 'sme'
+        ? 'reemploy-light-job'
+        : 'part-time-arubaito';
+  const postRetirementWork = config.postRetirementWork ?? defaultPostRetire;
+
+  // 配偶者の働き方パターンの解決
+  let spouseWorkPattern: SpouseWorkPatternType;
+  if (config.spouseWorkPattern) {
+    spouseWorkPattern = config.spouseWorkPattern;
+  } else if (
+    config.archetypeId === 'single-solo-compact' &&
+    config.contractType === 'single' &&
+    family.childrenCount === 0 &&
+    config.subIncomeMan === 0
+  ) {
+    spouseWorkPattern = 'no-spouse';
+  } else if (config.contractType === 'pair') {
+    spouseWorkPattern = 'fulltime-keep';
+  } else if (config.subIncomeMan >= 240) {
+    spouseWorkPattern = 'fulltime-keep';
+  } else if (config.subIncomeMan > 0) {
+    spouseWorkPattern = 'part-time';
+  } else {
+    spouseWorkPattern = family.childrenCount > 0 ? 'homemaker-to-part' : 'homemaker';
+  }
+
+  // ペアローン・収入合算なのに配偶者なし/専業となっている場合は整合させる
+  if (
+    (config.contractType === 'pair' || config.contractType === 'income-merge') &&
+    (spouseWorkPattern === 'no-spouse' || spouseWorkPattern === 'homemaker')
+  ) {
+    spouseWorkPattern = config.subIncomeMan >= 220 ? 'fulltime-keep' : 'part-time';
+  }
+
+  const hasSpouse = spouseWorkPattern !== 'no-spouse';
+
+  const initialSubIncomeMan =
+    !hasSpouse || spouseWorkPattern === 'homemaker' || spouseWorkPattern === 'homemaker-to-part'
+      ? 0
+      : spouseWorkPattern === 'part-time'
+        ? config.subIncomeMan > 0
+          ? Math.min(180, config.subIncomeMan)
+          : 120
+        : config.subIncomeMan > 0
+          ? config.subIncomeMan
+          : 300;
+
+  const initialJobLabel = `${EMPLOYMENT_LABELS[config.employment]}（${SALARY_CURVE_SPECS[salaryCurve].shortLabel}）`;
+  const initialSpouseJobLabel = SPOUSE_WORK_SPECS[spouseWorkPattern].initialJobTitle;
+
+  const juniorHighPath: JuniorHighPathType =
+    config.juniorHighPath ?? (family.isPrivateSchool ? 'private-exam-jhs' : 'public-jhs');
+  const higherEdPath: HigherEdPathType =
+    config.higherEdPath ?? (family.isPrivateSchool ? 'private-arts-univ' : 'national-univ');
+  const cramSchoolPolicy: CramSchoolPolicyType =
+    config.cramSchoolPolicy ??
+    (juniorHighPath === 'private-exam-jhs' ? 'intensive-cram' : 'standard-cram');
+  const hasGakushiHoken =
+    config.hasGakushiHoken !== undefined
+      ? config.hasGakushiHoken
+      : family.childrenCount > 0 && config.age <= 37;
+  const scholarshipType: ScholarshipType = config.scholarshipType ?? 'none';
+  const insurancePlan: FireEarthquakeInsuranceType =
+    config.insurancePlan ??
+    (propForIns.buildingType === 'detached'
+      ? 'full-fire-earthquake-water'
+      : 'standard-fire-earthquake');
+  const leisureStyle: LeisureStyleType = config.leisureStyle ?? 'moderate-leisure';
+
+  return {
+    salaryCurve,
+    retirementAllowanceMan,
+    postRetirementWork,
+    spouseWorkPattern,
+    hasSpouse,
+    initialSubIncomeMan,
+    initialJobLabel,
+    initialSpouseJobLabel,
+    juniorHighPath,
+    higherEdPath,
+    cramSchoolPolicy,
+    hasGakushiHoken,
+    scholarshipType,
+    insurancePlan,
+    leisureStyle,
+  };
+}
+
+/**
+ * 世帯属性（年齢・雇用・年収・給与カーブ・退職金・定年後就労・配偶者就労・教育方針・頭金・契約方式）を多彩にランダム生成する
  */
 export function randomizeHouseholdParams(
   prev: MortgageSetupConfig,
@@ -1379,18 +1952,182 @@ export function randomizeHouseholdParams(
       Math.max(300, Math.min(1400, arch.mainIncomeMan * (0.78 + rng() * 0.44))) / 10,
     ) * 10;
 
+  // 給与カーブ（職種に応じた現実的な確率で上がる人・横ばいの人・下がる人を抽選）
+  const curveRoll = rng();
+  const salaryCurve: SalaryCurveType =
+    employment === 'civil-servant'
+      ? curveRoll < 0.68
+        ? 'steady-up'
+        : 'standard-plateau'
+      : employment === 'listed-corp'
+        ? curveRoll < 0.35
+          ? 'steady-up'
+          : curveRoll < 0.78
+            ? 'standard-plateau'
+            : curveRoll < 0.92
+              ? 'performance-volatile'
+              : 'downward-pressure'
+        : employment === 'mega-venture'
+          ? curveRoll < 0.35
+            ? 'steady-up'
+            : curveRoll < 0.78
+              ? 'performance-volatile'
+              : 'downward-pressure'
+          : employment === 'sme'
+            ? curveRoll < 0.2
+              ? 'standard-plateau'
+              : curveRoll < 0.62
+                ? 'flat-stagnant'
+                : curveRoll < 0.82
+                  ? 'performance-volatile'
+                  : 'downward-pressure'
+            : curveRoll < 0.55
+              ? 'performance-volatile'
+              : curveRoll < 0.8
+                ? 'flat-stagnant'
+                : 'downward-pressure';
+
+  // 退職金（職種によって「退職金制度なし(0円)」〜「2,300万円」までリアルに抽選）
+  const retRoll = rng();
+  const retirementAllowanceMan =
+    employment === 'civil-servant'
+      ? 1800 + Math.floor(rng() * 6) * 100
+      : employment === 'listed-corp'
+        ? retRoll < 0.14
+          ? 0 // 前払い退職金制度・外資系等で退職金一時金0円のケース
+          : 1100 + Math.floor(rng() * 12) * 100
+        : employment === 'sme'
+          ? retRoll < 0.4
+            ? 0 // 中小企業の約4割は退職金制度なし
+            : 300 + Math.floor(rng() * 8) * 100
+          : employment === 'mega-venture'
+            ? retRoll < 0.78
+              ? 0
+              : 400 + Math.floor(rng() * 5) * 100
+            : retRoll < 0.75
+              ? 0
+              : 300 + Math.floor(rng() * 6) * 100;
+
+  // 定年後の働き方（嘱託再雇用 / 別職種転身 / アルバイト・パート / 完全リタイア）
+  const postRetireChoices: PostRetirementWorkType[] = [
+    'reemploy-same',
+    'reemploy-light-job',
+    'part-time-arubaito',
+    'full-retire-60',
+  ];
+  const postRetirementWork: PostRetirementWorkType =
+    employment === 'freelance'
+      ? rng() < 0.65
+        ? 'part-time-arubaito'
+        : 'full-retire-60'
+      : postRetireChoices[Math.floor(rng() * postRetireChoices.length)] ?? 'reemploy-same';
+
+  const familyKeys = Object.keys(FAMILY_PLANS) as FamilyPlanType[];
+  const familyPlan =
+    rng() < 0.6
+      ? arch.recommendedFamily
+      : (familyKeys[Math.floor(rng() * familyKeys.length)] ?? 'child-1-public');
+  const familySpec = FAMILY_PLANS[familyPlan];
+
+  const isSoloArchetype = arch.id === 'single-solo-compact' && familyPlan === 'dinks';
   const contractChoices: ContractType[] = ['single', 'pair', 'income-merge'];
-  const contractType =
-    rng() < 0.65
+  const contractType: ContractType = isSoloArchetype
+    ? 'single'
+    : rng() < 0.65
       ? arch.recommendedContract
       : (contractChoices[Math.floor(rng() * contractChoices.length)] ?? 'single');
 
-  const subIncomeMan =
-    contractType === 'single'
-      ? rng() < 0.45
-        ? 0
-        : Math.round((80 + rng() * 180) / 10) * 10
-      : Math.round((200 + rng() * 640) / 10) * 10;
+  // 配偶者（奥さん・パートナー）の働き方・バイト可能性
+  let spouseWorkPattern: SpouseWorkPatternType;
+  let subIncomeMan = 0;
+  if (isSoloArchetype && rng() < 0.75) {
+    spouseWorkPattern = 'no-spouse';
+    subIncomeMan = 0;
+  } else if (contractType === 'pair') {
+    spouseWorkPattern = rng() < 0.72 ? 'fulltime-keep' : 'shift-to-part';
+    subIncomeMan = Math.round((260 + rng() * 520) / 10) * 10;
+  } else if (contractType === 'income-merge') {
+    const spRoll = rng();
+    spouseWorkPattern =
+      spRoll < 0.45 ? 'part-time' : spRoll < 0.78 ? 'shift-to-part' : 'fulltime-keep';
+    subIncomeMan =
+      spouseWorkPattern === 'part-time'
+        ? Math.round((100 + rng() * 60) / 10) * 10
+        : Math.round((220 + rng() * 320) / 10) * 10;
+  } else {
+    // 単独ローンの場合：専業主婦 / 途中からパート・バイト復帰 / パート・バイト / 正社員共働き
+    const spRoll = rng();
+    if (spRoll < 0.25) {
+      spouseWorkPattern = 'homemaker';
+      subIncomeMan = 0;
+    } else if (spRoll < 0.55) {
+      spouseWorkPattern = 'homemaker-to-part';
+      subIncomeMan = 0;
+    } else if (spRoll < 0.85) {
+      spouseWorkPattern = 'part-time';
+      subIncomeMan = Math.round((90 + rng() * 60) / 10) * 10;
+    } else {
+      spouseWorkPattern = 'fulltime-keep';
+      subIncomeMan = Math.round((240 + rng() * 240) / 10) * 10;
+    }
+  }
+
+  // 子どもの教育プラン詳細（子どもがいる世帯のみ抽選）
+  const juniorHighPath: JuniorHighPathType =
+    familySpec.childrenCount === 0
+      ? 'public-jhs'
+      : familySpec.isPrivateSchool || rng() < 0.26
+        ? 'private-exam-jhs'
+        : 'public-jhs';
+
+  const higherEdCandidates: HigherEdPathType[] = [
+    'national-univ',
+    'private-arts-univ',
+    'private-science-univ',
+    'vocational-2yr',
+    'high-school-job',
+  ];
+  const higherEdPath: HigherEdPathType =
+    familySpec.childrenCount === 0
+      ? 'national-univ'
+      : juniorHighPath === 'private-exam-jhs'
+        ? rng() < 0.55
+          ? 'private-arts-univ'
+          : rng() < 0.85
+            ? 'private-science-univ'
+            : 'national-univ'
+        : (higherEdCandidates[Math.floor(rng() * higherEdCandidates.length)] ?? 'private-arts-univ');
+
+  const hasGakushiHoken = familySpec.childrenCount > 0 ? rng() < 0.52 : false;
+  const scholarshipChoices: ScholarshipType[] = ['none', 'none', 'jasso-loan', 'grant-workstudy'];
+  const scholarshipType: ScholarshipType =
+    familySpec.childrenCount === 0 || higherEdPath === 'high-school-job'
+      ? 'none'
+      : (scholarshipChoices[Math.floor(rng() * scholarshipChoices.length)] ?? 'none');
+
+  const cramChoices: CramSchoolPolicyType[] = [
+    'intensive-cram',
+    'standard-cram',
+    'standard-cram',
+    'minimal-self-study',
+  ];
+  const cramSchoolPolicy: CramSchoolPolicyType =
+    familySpec.childrenCount === 0
+      ? 'standard-cram'
+      : juniorHighPath === 'private-exam-jhs'
+        ? rng() < 0.72
+          ? 'intensive-cram'
+          : 'standard-cram'
+        : (cramChoices[Math.floor(rng() * cramChoices.length)] ?? 'standard-cram');
+
+  const leisureChoices: LeisureStyleType[] = [
+    'active-travel',
+    'moderate-leisure',
+    'moderate-leisure',
+    'frugal-staycation',
+  ];
+  const leisureStyle: LeisureStyleType =
+    leisureChoices[Math.floor(rng() * leisureChoices.length)] ?? 'moderate-leisure';
 
   const initialSavingsMan =
     Math.round(Math.max(200, Math.min(2800, arch.initialSavingsMan * (0.7 + rng() * 0.65))) / 50) * 50;
@@ -1401,12 +2138,6 @@ export function randomizeHouseholdParams(
       ? 0
       : Math.min(maxSafeDown, Math.round((rng() * maxSafeDown * 0.85) / 50) * 50);
 
-  const familyKeys = Object.keys(FAMILY_PLANS) as FamilyPlanType[];
-  const familyPlan =
-    rng() < 0.6
-      ? arch.recommendedFamily
-      : (familyKeys[Math.floor(rng() * familyKeys.length)] ?? 'child-1-public');
-
   const recProp = PROPERTIES[arch.recommendedProperty] ?? PROPERTIES['station-mansion-new'];
 
   return {
@@ -1416,6 +2147,16 @@ export function randomizeHouseholdParams(
     employment,
     mainIncomeMan,
     subIncomeMan,
+    salaryCurve,
+    retirementAllowanceMan,
+    postRetirementWork,
+    spouseWorkPattern,
+    juniorHighPath,
+    higherEdPath,
+    cramSchoolPolicy,
+    hasGakushiHoken,
+    scholarshipType,
+    leisureStyle,
     initialSavingsMan,
     downPaymentMan,
     hasCreditBlemish: rng() < 0.12,
@@ -1486,6 +2227,21 @@ export function randomizePropertyParams(
         ? Math.round((3.6 + rng() * 3.8) * 10) / 10
         : Math.round(Math.max(1.8, baseMaint * (0.8 + rng() * 0.45)) * 10) / 10;
 
+  // 火災保険・地震保険プランの抽選（一戸建てはフル補償または標準、マンションは標準中心）
+  const insRoll = rng();
+  const insurancePlan: FireEarthquakeInsuranceType =
+    customBuildingType === 'detached'
+      ? insRoll < 0.55
+        ? 'full-fire-earthquake-water'
+        : insRoll < 0.88
+          ? 'standard-fire-earthquake'
+          : 'minimal-fire-only'
+      : insRoll < 0.28
+        ? 'full-fire-earthquake-water'
+        : insRoll < 0.82
+          ? 'standard-fire-earthquake'
+          : 'minimal-fire-only';
+
   return {
     ...prev,
     propertyId,
@@ -1496,6 +2252,7 @@ export function randomizePropertyParams(
     customPropertyPriceMan,
     customLandRatio,
     customMgmtAndRepairMonthlyMan,
+    insurancePlan,
   };
 }
 
@@ -1549,17 +2306,17 @@ export function randomizeBankLoanParams(
 }
 
 /**
- * 抽選プロファイルおよび現在の契約条件サマリー文字列（年齢・世帯年収・自己資金・頭金・購入後の手元資金・物件・借入額・期間・金利・団信・毎月支払額）を生成する
+ * 抽選プロファイルおよび現在の契約条件サマリー文字列（年齢・世帯年収・退職金・給与カーブ・定年後・配偶者・教育方針・自己資金・頭金・購入後の手元資金・物件・借入額・期間・金利・団信・毎月支払額）を生成する
  */
 export function formatSetupProfileSummary(config: MortgageSetupConfig): string {
   const prop = resolveEffectiveProperty(config);
   const bank = resolveEffectiveBank(config);
   const danshin = resolveEffectiveDanshin(config);
   const family = FAMILY_PLANS[config.familyPlan];
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(config);
   const uw = runBankUnderwriting(config);
 
-  const householdGross =
-    config.mainIncomeMan + (config.contractType === 'single' ? 0 : config.subIncomeMan);
+  const householdGross = config.mainIncomeMan + careerEdu.initialSubIncomeMan;
   const bTypeLabel =
     prop.buildingType === 'tower'
       ? 'タワマン'
@@ -1582,8 +2339,17 @@ export function formatSetupProfileSummary(config: MortgageSetupConfig): string {
           ? '全期間固定'
           : 'ミックス';
   const methodShort = config.repaymentMethod === 'equal-principal' ? '元金均等' : '元利均等';
+  const retireLabel =
+    careerEdu.retirementAllowanceMan > 0
+      ? `退職金見込${careerEdu.retirementAllowanceMan.toLocaleString()}万円`
+      : '退職金制度なし(0円)';
+  const eduSummary =
+    family.childrenCount > 0
+      ? ` / 教育：${JUNIOR_HIGH_SPECS[careerEdu.juniorHighPath].shortLabel}→${HIGHER_ED_SPECS[careerEdu.higherEdPath].shortLabel}（${CRAM_SCHOOL_SPECS[careerEdu.cramSchoolPolicy].shortLabel}・${careerEdu.hasGakushiHoken ? '学資保険あり' : '学資保険なし'}・${SCHOLARSHIP_SPECS[careerEdu.scholarshipType].shortLabel}）`
+      : '';
+  const insSummary = `${INSURANCE_PLAN_SPECS[careerEdu.insurancePlan].shortLabel}・固定資産税 年${prop.annualPropertyTaxMan}万・${LEISURE_STYLE_SPECS[careerEdu.leisureStyle].shortLabel}`;
 
-  return `${config.age}歳・世帯年収${householdGross.toLocaleString()}万円（${contractLabel}・${family.name}） / 自己資金${config.initialSavingsMan.toLocaleString()}万円（頭金${config.downPaymentMan.toLocaleString()}万・諸費用${uw.closingCostsMan.toLocaleString()}万 → 購入後の手元資金${uw.cashRemainingAfterPurchaseMan.toLocaleString()}万円） / ${newUsedLabel}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円（借入元本${uw.loanPrincipalMan.toLocaleString()}万円） / ${config.termYears}年ローン・${uw.maturityAge}歳完済（${rateTypeShort} 金利${uw.effectiveInitialRate.toFixed(2)}%・${methodShort}・${danshin.shortName}） / 初年度 毎月返済${uw.initialMonthlyPaymentMan}万円（維持費・税込 実質月${uw.initialTotalMonthlyOutflowMan}万円）`;
+  return `${config.age}歳・世帯年収${householdGross.toLocaleString()}万円（${EMPLOYMENT_LABELS[config.employment]}・${SALARY_CURVE_SPECS[careerEdu.salaryCurve].shortLabel}・${retireLabel}・${POST_RETIREMENT_SPECS[careerEdu.postRetirementWork].shortLabel}・${SPOUSE_WORK_SPECS[careerEdu.spouseWorkPattern].shortLabel}・${contractLabel}・${family.name}）${eduSummary} / 自己資金${config.initialSavingsMan.toLocaleString()}万円（頭金${config.downPaymentMan.toLocaleString()}万・諸費用${uw.closingCostsMan.toLocaleString()}万 → 購入後の手元資金${uw.cashRemainingAfterPurchaseMan.toLocaleString()}万円） / ${newUsedLabel}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円（借入元本${uw.loanPrincipalMan.toLocaleString()}万円・${insSummary}） / ${config.termYears}年ローン・${uw.maturityAge}歳完済（${rateTypeShort} 金利${uw.effectiveInitialRate.toFixed(2)}%・${methodShort}・${danshin.shortName}） / 初年度 毎月返済${uw.initialMonthlyPaymentMan}万円（維持費・税込 実質月${uw.initialTotalMonthlyOutflowMan}万円）`;
 }
 
 /**
@@ -1613,10 +2379,10 @@ export function generateRandomHouseholdSetup(rng: () => number = Math.random): M
   const withHouse = randomizeHouseholdParams(baseDefault, rng);
   const withProp = randomizePropertyParams(withHouse, rng, true);
   const withLoan = randomizeBankLoanParams(withProp, rng);
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(withLoan);
 
   // 世帯収入と物件価格が極端に乖離しすぎないようリアルな範囲に自動調整（かつフルローンや背伸び購入のスリルも残す）
-  const householdGross =
-    withLoan.mainIncomeMan + (withLoan.contractType === 'single' ? 0 : withLoan.subIncomeMan);
+  const householdGross = withLoan.mainIncomeMan + careerEdu.initialSubIncomeMan;
   const minRealisticPrice = Math.max(1680, Math.round((householdGross * 3.4) / 20) * 20);
   const maxRealisticPrice = Math.min(15800, Math.round((householdGross * 9.2) / 20) * 20);
   const adjustedPrice = Math.max(
@@ -1635,6 +2401,7 @@ export function generateRandomHouseholdSetup(rng: () => number = Math.random): M
 
   const finalConfig: MortgageSetupConfig = {
     ...withLoan,
+    subIncomeMan: careerEdu.initialSubIncomeMan,
     customPropertyPriceMan: adjustedPrice,
     macroRegime,
   };
@@ -1652,10 +2419,22 @@ export function createMortgageGame(config: MortgageSetupConfig): MortgageGameSta
   const bank = resolveEffectiveBank(config);
   const property = resolveEffectiveProperty(config);
   const family = FAMILY_PLANS[config.familyPlan];
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(config);
   const effectiveTermYears: LoanTermYears = Math.max(10, Math.min(50, Math.round(config.termYears)));
   const normalizedConfig: MortgageSetupConfig = {
     ...config,
     termYears: effectiveTermYears,
+    salaryCurve: careerEdu.salaryCurve,
+    retirementAllowanceMan: careerEdu.retirementAllowanceMan,
+    postRetirementWork: careerEdu.postRetirementWork,
+    spouseWorkPattern: careerEdu.spouseWorkPattern,
+    juniorHighPath: careerEdu.juniorHighPath,
+    higherEdPath: careerEdu.higherEdPath,
+    cramSchoolPolicy: careerEdu.cramSchoolPolicy,
+    hasGakushiHoken: careerEdu.hasGakushiHoken,
+    scholarshipType: careerEdu.scholarshipType,
+    insurancePlan: careerEdu.insurancePlan,
+    leisureStyle: careerEdu.leisureStyle,
   };
   const underwriting = runBankUnderwriting(normalizedConfig);
 
@@ -1682,6 +2461,11 @@ export function createMortgageGame(config: MortgageSetupConfig): MortgageGameSta
           ? [5, 2, 0]
           : [];
 
+  const retireNote =
+    careerEdu.retirementAllowanceMan > 0
+      ? `退職金見込${careerEdu.retirementAllowanceMan.toLocaleString()}万円`
+      : '退職金制度なし(0円)';
+
   const initialChronicle: ChronicleEntry = {
     id: 1,
     yearIndex: 0,
@@ -1690,7 +2474,7 @@ export function createMortgageGame(config: MortgageSetupConfig): MortgageGameSta
     category: 'milestone',
     tone: 'neutral',
     title: `【融資実行・鍵引き渡し】借入 ${underwriting.loanPrincipalMan.toLocaleString()}万円（${effectiveTermYears}年ローン・${bank.shortName}）`,
-    body: `${property.name}（物件価格 ${property.priceMan.toLocaleString()}万円）の引渡しが完了。頭金 ${normalizedConfig.downPaymentMan}万円・諸費用 ${underwriting.closingCostsMan}万円を精算し、手元キャッシュ ${underwriting.cashRemainingAfterPurchaseMan}万円で${effectiveTermYears}年間の返済サバイバルが始まった。`,
+    body: `${property.name}（物件価格 ${property.priceMan.toLocaleString()}万円）の引渡しが完了。頭金 ${normalizedConfig.downPaymentMan}万円・諸費用 ${underwriting.closingCostsMan}万円を精算し、手元キャッシュ ${underwriting.cashRemainingAfterPurchaseMan}万円で${effectiveTermYears}年間の返済サバイバルが始まった（${careerEdu.initialJobLabel}・${retireNote}）。`,
     statNote: `完済予定年齢：${underwriting.maturityAge}歳 / 実質住居費（${property.buildingType === 'detached' ? '固定資産税・光熱費込' : '管理費・修繕積立金・税金込'}）：月${underwriting.initialTotalMonthlyOutflowMan}万円`,
   };
 
@@ -1715,11 +2499,16 @@ export function createMortgageGame(config: MortgageSetupConfig): MortgageGameSta
     currentRateType: bank.rateType,
     has5Year125Rule: bank.has5Year125Rule,
     mainIncomeMan: normalizedConfig.mainIncomeMan,
-    subIncomeMan: normalizedConfig.contractType === 'single' ? 0 : normalizedConfig.subIncomeMan,
+    subIncomeMan: careerEdu.initialSubIncomeMan,
+    currentJobLabel: careerEdu.initialJobLabel,
+    currentSpouseJobLabel: careerEdu.initialSpouseJobLabel,
     currentMgmtAndRepairMonthlyMan:
       property.initialMgmtFeeMonthlyMan +
       property.initialRepairFeeMonthlyMan +
       property.parkingMonthlyMan,
+    annualPropertyTaxCurrentMan: property.annualPropertyTaxMan,
+    cumulativePriceIndex: 100,
+    repairCostInflationMult: 1.0,
     mentalScore: 82,
     healthScore: 86,
     focusMode: 'balanced',
@@ -1744,24 +2533,99 @@ export function createMortgageGame(config: MortgageSetupConfig): MortgageGameSta
 }
 
 /**
- * 子ども1人あたりの年間教育費(万円)を年齢と公立/私立ルートから算出
+ * 子ども1人あたりの年間教育費(万円)を「中学受験の有無」「入塾・夏期講習・大学予備校方針」「高校卒業後の進路（国公立大/私立文系/私立理系/専門学校2年/高卒就職）」「学資保険積立」「奨学金」「累積物価指数」から精密算出
  */
-function calcChildAnnualEduCostMan(childAge: number, isPrivate: boolean): number {
-  if (childAge < 3) return 24;
-  if (childAge < 6) return isPrivate ? 48 : 30; // 幼稚園・保育園
-  if (childAge < 10) return isPrivate ? 55 : 32; // 小学校低学年
-  if (childAge < 12) return isPrivate ? 125 : 42; // 小4〜小6（中学受験SAPIX等の塾代ピーク！）
-  if (childAge < 15) return isPrivate ? 140 : 52; // 中学校
-  if (childAge < 18) return isPrivate ? 135 : 62; // 高校
-  if (childAge < 22) return isPrivate ? 175 : 115; // 大学4年間（学費＋仕送り等）
-  return 0; // 22歳で独立
+export function calcDetailedChildAnnualEduCostMan(
+  childAge: number,
+  config: MortgageSetupConfig,
+  cumulativePriceIndex = 100,
+): number {
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(config);
+  const isExamJhs = careerEdu.juniorHighPath === 'private-exam-jhs';
+  const higherEd = careerEdu.higherEdPath;
+  const cramSpec = CRAM_SCHOOL_SPECS[careerEdu.cramSchoolPolicy];
+  const gakushiPremium = careerEdu.hasGakushiHoken && childAge < 18 ? 11 : 0; // 学資保険積立：17歳まで年11万円（18歳時に+200万円満期受取）
+  // 教育費・塾月謝・季節講習費のインフレ連動（物価上昇の約55%が授業料・塾代に転嫁される現実的なモデル）
+  const eduInfMult = Math.max(0.95, Math.min(1.45, 1 + ((cumulativePriceIndex - 100) / 100) * 0.55));
+
+  if (childAge < 3) return Math.round(22 * eduInfMult) + gakushiPremium;
+  if (childAge < 6) return Math.round((isExamJhs ? 46 : 28) * eduInfMult) + gakushiPremium; // 幼稚園・保育園
+  if (childAge < 9) {
+    // 小1〜小3（学校費＋早期習い事・低学年塾）
+    const baseElemLow = (isExamJhs ? 44 : 26) + Math.round(cramSpec.elementaryExtraMan * 0.6);
+    return Math.round(baseElemLow * eduInfMult) + gakushiPremium;
+  }
+  if (childAge < 12) {
+    // 小4〜小6（中学受験ありなら進学塾代ピーク、公立中進学でも英語・算数塾や習い事）
+    const baseElemHigh = (isExamJhs ? 98 : 30) + cramSpec.elementaryExtraMan;
+    return Math.round(baseElemHigh * eduInfMult) + gakushiPremium;
+  }
+  if (childAge < 15) {
+    // 中1〜中3（私立中高一貫 or 公立中 ＋ 高校受験進学塾・夏期/冬期講習）
+    const baseJhs = (isExamJhs ? 114 : 30) + cramSpec.jhsCramAnnualMan;
+    return Math.round(baseJhs * eduInfMult) + gakushiPremium;
+  }
+  if (childAge < 18) {
+    // 高1〜高3（高校学費 ＋ 大学受験予備校・季節講習・模試代）
+    const hsYobiko =
+      higherEd === 'high-school-job'
+        ? Math.round(cramSpec.hsYobikoAnnualMan * 0.2)
+        : cramSpec.hsYobikoAnnualMan;
+    const baseHs = (isExamJhs ? 74 : 32) + hsYobiko;
+    return Math.round(baseHs * eduInfMult) + gakushiPremium;
+  }
+
+  // 18歳以降：進路（高卒就職 / 専門学校2年 / 国公立大4年 / 私立文系4年 / 私立理系4年）と奨学金軽減を反映
+  if (higherEd === 'high-school-job') {
+    return 0; // 18歳で高校卒業・就職独立！大学・専門費用は0円
+  }
+
+  const scholarshipRelief = SCHOLARSHIP_SPECS[careerEdu.scholarshipType].annualReliefMan;
+
+  if (higherEd === 'vocational-2yr') {
+    // 専門学校・短大（18〜19歳の2年間のみ在学、20歳で就職独立！）
+    if (childAge >= 18 && childAge < 20) {
+      const firstYearAdmission = childAge === 18 ? 35 : 0;
+      const grossVoc = Math.round((132 + firstYearAdmission) * eduInfMult);
+      return Math.max(15, grossVoc - scholarshipRelief);
+    }
+    return 0;
+  }
+
+  // 4年制大学（18〜21歳）
+  if (childAge >= 18 && childAge < 22) {
+    const firstYearAdmission = childAge === 18 ? 42 : 0;
+    const baseAnnualUniv =
+      higherEd === 'national-univ'
+        ? 98
+        : higherEd === 'private-science-univ'
+          ? 182
+          : 138; // private-arts-univ
+    const grossUniv = Math.round((baseAnnualUniv + firstYearAdmission) * eduInfMult);
+    return Math.max(15, grossUniv - scholarshipRelief);
+  }
+
+  return 0; // 22歳で大学卒業・独立
 }
 
 /**
- * 国立がん研究センター「がん統計」・厚生労働省「患者調査」に基づく年齢階級別・年間疾病発症確率の算出
- * - がん（悪性新生物）：30代は年0.1〜0.2%、40代で0.4〜0.6%、50代で0.9〜1.3%、60代で1.8〜2.3%（35年間の累積で約20〜24%・約4〜5人に1人）
- * - 心筋梗塞・脳卒中（3大疾病の血管疾患）：30代0.05%、40代0.18%、50代0.42%、60代0.75%（35年間累積で約8〜10%）
- * - 一般疾病・長期入院（椎間板ヘルニア・消化器疾患・適応障害等、がん/3大疾病以外）：年0.65〜1.3%（35年間累積で約25〜28%）
+ * 子どもが何歳で社会人として独立（親の扶養・基本生活費加算から外れるか）を返す
+ */
+export function getChildIndependenceAge(configOrPath: MortgageSetupConfig | HigherEdPathType): number {
+  const path =
+    typeof configOrPath === 'string'
+      ? configOrPath
+      : resolveEffectiveHouseholdCareerAndEdu(configOrPath).higherEdPath;
+  if (path === 'high-school-job') return 18;
+  if (path === 'vocational-2yr') return 20;
+  return 22;
+}
+
+/**
+ * 国立がん研究センター「がん統計」・厚生労働省「患者調査」に基づく5歳階級別・年間疾病発症確率の算出
+ * - がん（悪性新生物）：20代は年0.04%、30代前半0.08%、30代後半0.15%、40代前半0.28%、40代後半0.46%、50代前半0.75%、50代後半1.18%、60代前半1.68%、60代後半2.20%、70代2.68〜3.15%
+ * - 心筋梗塞・脳卒中（3大疾病の血管疾患）：20代0.02%、30代0.05%、40代0.18%、50代0.42%、60代0.75%
+ * - 一般疾病・長期入院（椎間板ヘルニア・消化器疾患・適応障害等、がん/3大疾病以外）：年0.55〜1.35%
  */
 export function calcAnnualHealthRiskProbabilities(
   age: number,
@@ -1770,28 +2634,37 @@ export function calcAnnualHealthRiskProbabilities(
 ): {
   cancerProb: number;
   vascularProb: number;
+  threeMajorProb: number;
   generalIllnessProb: number;
 } {
-  let baseCancer = 0.0012;
-  if (age >= 70) baseCancer = 0.027;
-  else if (age >= 65) baseCancer = 0.023;
-  else if (age >= 60) baseCancer = 0.0185;
-  else if (age >= 55) baseCancer = 0.0135;
-  else if (age >= 50) baseCancer = 0.0095;
-  else if (age >= 45) baseCancer = 0.006;
-  else if (age >= 40) baseCancer = 0.0038;
-  else if (age >= 35) baseCancer = 0.0022;
+  let baseCancer = 0.0004; // 20代（〜29歳）：年0.04%
+  if (age >= 75) baseCancer = 0.0315;
+  else if (age >= 70) baseCancer = 0.0268;
+  else if (age >= 65) baseCancer = 0.022;
+  else if (age >= 60) baseCancer = 0.0168;
+  else if (age >= 55) baseCancer = 0.0118;
+  else if (age >= 50) baseCancer = 0.0075;
+  else if (age >= 45) baseCancer = 0.0046;
+  else if (age >= 40) baseCancer = 0.0028;
+  else if (age >= 35) baseCancer = 0.0015;
+  else if (age >= 30) baseCancer = 0.0008;
 
-  let baseVascular = 0.0005;
+  let baseVascular = 0.0002;
   if (age >= 70) baseVascular = 0.011;
-  else if (age >= 60) baseVascular = 0.0075;
-  else if (age >= 50) baseVascular = 0.0042;
-  else if (age >= 40) baseVascular = 0.0018;
+  else if (age >= 65) baseVascular = 0.0088;
+  else if (age >= 60) baseVascular = 0.0068;
+  else if (age >= 55) baseVascular = 0.0048;
+  else if (age >= 50) baseVascular = 0.0034;
+  else if (age >= 45) baseVascular = 0.0021;
+  else if (age >= 40) baseVascular = 0.0013;
+  else if (age >= 35) baseVascular = 0.0006;
+  else if (age >= 30) baseVascular = 0.0004;
 
-  let baseGeneral = 0.0065;
+  let baseGeneral = 0.0055;
   if (age >= 60) baseGeneral = 0.0135;
   else if (age >= 50) baseGeneral = 0.0105;
-  else if (age >= 40) baseGeneral = 0.0085;
+  else if (age >= 40) baseGeneral = 0.0082;
+  else if (age >= 30) baseGeneral = 0.0065;
 
   let lifestyleMult = 1.0;
   if (focusMode === 'family-health') {
@@ -1805,9 +2678,12 @@ export function calcAnnualHealthRiskProbabilities(
     lifestyleMult *= 0.9;
   }
 
+  const cancerProb = Math.round(baseCancer * lifestyleMult * 100000) / 100000;
+  const vascularProb = Math.round(baseVascular * lifestyleMult * 100000) / 100000;
   return {
-    cancerProb: Math.round(baseCancer * lifestyleMult * 100000) / 100000,
-    vascularProb: Math.round(baseVascular * lifestyleMult * 100000) / 100000,
+    cancerProb,
+    vascularProb,
+    threeMajorProb: Math.round((cancerProb + vascularProb) * 100000) / 100000,
     generalIllnessProb: Math.round(baseGeneral * lifestyleMult * 100000) / 100000,
   };
 }
@@ -2076,6 +2952,34 @@ export function advanceOneYear(
 
   state.bojPolicyRate = Math.max(0.0, Math.min(4.25, Math.round((state.bojPolicyRate + bojDelta) * 100) / 100));
 
+  // 累積物価指数（食料品・光熱費・日用品・レジャー等の生活コスト上昇）と修繕・建築資材高騰倍率の年次更新
+  const prevPriceIndex = state.cumulativePriceIndex ?? 100;
+  state.cumulativePriceIndex = Math.max(
+    92,
+    Math.round(prevPriceIndex * (1 + inflationRate) * 10) / 10,
+  );
+  // 建築資材・設備・職人単価（2024年問題・人手不足）は一般物価よりもやや高い伸び率で上昇する現実を反映
+  const repairInfRate = Math.max(0.01, inflationRate * 1.18 + 0.004);
+  state.repairCostInflationMult = Math.min(
+    2.35,
+    Math.round((state.repairCostInflationMult ?? 1.0) * (1 + repairInfRate) * 100) / 100,
+  );
+
+  if (
+    (prevPriceIndex < 115 && state.cumulativePriceIndex >= 115) ||
+    (prevPriceIndex < 130 && state.cumulativePriceIndex >= 130)
+  ) {
+    const upPct = Math.round(state.cumulativePriceIndex - 100);
+    pushEntry(
+      'macro',
+      'bad',
+      `【物価上昇・生活コスト＆修繕単価の高騰】購入時(100)から累積物価が +${upPct}%（指数${state.cumulativePriceIndex.toFixed(1)}）に到達！`,
+      `長引くインフレにより、食料品・電気ガス代・日用品・教育費・宿泊レジャー代が購入時より約${upPct}%底上げされた。さらに建築資材と職人単価の高騰（×${state.repairCostInflationMult.toFixed(2)}倍）が修繕コストを押し上げている！`,
+      '名目ローン残高はインフレで目減りする一方、日々の生活費・光熱費・修繕費のキャッシュアウトは着実に膨張する。',
+      `物価指数 ${state.cumulativePriceIndex.toFixed(1)}`,
+    );
+  }
+
   // 金利タイプに応じた適用金利の更新（初期政策金利0.75%を基準として短期プライムレート連動）
   const prevAppliedRate = state.appliedInterestRate;
   if (state.currentRateType === 'variable') {
@@ -2131,76 +3035,288 @@ export function advanceOneYear(
     );
   }
 
-  // === 2. 年収・役職定年・定年再雇用の更新 ===
+  // === 2. 年収・給与カーブ・配偶者就労（パート/バイト転換）・役職定年・定年後（再雇用/別職種/バイト/リタイア）の更新 ===
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(state.config);
+  const prevMainIncome = state.mainIncomeMan;
+
   if (age < 55) {
-    if (state.config.employment === 'civil-servant') {
-      state.mainIncomeMan = Math.round(state.mainIncomeMan * 1.015);
+    if (careerEdu.salaryCurve === 'steady-up') {
+      const growth = age < 48 ? Math.max(0.016, wageGrowthRate + 0.01) : 0.012;
+      state.mainIncomeMan = Math.round(state.mainIncomeMan * (1 + growth));
+    } else if (careerEdu.salaryCurve === 'standard-plateau') {
+      const growth = age < 46 ? Math.max(0.008, wageGrowthRate) : 0.001;
+      state.mainIncomeMan = Math.round(state.mainIncomeMan * (1 + growth));
+    } else if (careerEdu.salaryCurve === 'flat-stagnant') {
+      // 昇給なし・横ばい型：インフレでも基本給はほぼ据え置き
+      const microDrift = (rng() - 0.5) * 0.006;
+      state.mainIncomeMan = Math.max(260, Math.round(state.mainIncomeMan * (1 + microDrift)));
+    } else if (careerEdu.salaryCurve === 'performance-volatile') {
+      // 成果主義・業績変動型：上がる年もあれば下がる年もある
+      const perfRoll = rng();
+      const perfDelta =
+        perfRoll < 0.32
+          ? 0.045 + rng() * 0.035 // 好調年 +4.5〜+8.0%
+          : perfRoll < 0.68
+            ? 0.005
+            : -(0.035 + rng() * 0.035); // 不調年 ▲3.5〜▲7.0%
+      state.mainIncomeMan = Math.max(250, Math.round(state.mainIncomeMan * (1 + perfDelta)));
+      if (state.mainIncomeMan - prevMainIncome >= 35 && y % 4 === 1) {
+        pushEntry(
+          'life',
+          'good',
+          `【好業績・インセンティブ昇給】成果評価により本人年収が ${prevMainIncome}万 → ${state.mainIncomeMan}万円に上昇！`,
+          '実力主義の給与テーブルで高い成果を出し、年俸・業績賞与が大きく跳ね上がった。',
+          undefined,
+          `年収 +${state.mainIncomeMan - prevMainIncome}万`,
+        );
+      } else if (prevMainIncome - state.mainIncomeMan >= 30 && y % 4 === 2) {
+        pushEntry(
+          'life',
+          'bad',
+          `【業績連動・年俸ダウン】市場環境と評価見直しにより本人年収が ${prevMainIncome}万 → ${state.mainIncomeMan}万円に減少`,
+          '成果主義・業績変動型の厳しさが直撃。住宅ローンの毎月返済額は変わらないまま手取り収入が減少した。',
+          undefined,
+          `年収 -${prevMainIncome - state.mainIncomeMan}万`,
+        );
+      }
     } else {
-      state.mainIncomeMan = Math.round(state.mainIncomeMan * (1 + wageGrowthRate));
+      // downward-pressure (業績低迷・減収リスク型)
+      const cutRate = rng() < 0.55 ? -(0.02 + rng() * 0.02) : -0.012;
+      state.mainIncomeMan = Math.max(240, Math.round(state.mainIncomeMan * (1 + cutRate)));
+      if (prevMainIncome - state.mainIncomeMan >= 20 && y % 5 === 0) {
+        pushEntry(
+          'life',
+          'bad',
+          `【業績低迷・手当カット】勤務先の収益悪化で本人年収が ${prevMainIncome}万 → ${state.mainIncomeMan}万円へ低下`,
+          '昇給が見込めないばかりか賞与や諸手当が削減され、住宅ローン返済比率がじわじわ上昇している。',
+          undefined,
+          `年収 -${prevMainIncome - state.mainIncomeMan}万`,
+        );
+      }
     }
-    if (state.subIncomeMan > 0 && !state.isDivorced) {
-      state.subIncomeMan = Math.round(state.subIncomeMan * (1 + wageGrowthRate * 0.8));
+  } else if (age === 55) {
+    // 55歳・役職定年（上場企業・中小企業の「順調昇進型以外」のみ発生。公務員・フリーランス・順調昇進型には一律発生させない）
+    if (
+      (state.config.employment === 'listed-corp' || state.config.employment === 'sme') &&
+      careerEdu.salaryCurve !== 'steady-up'
+    ) {
+      const ratio = careerEdu.salaryCurve === 'downward-pressure' ? 0.75 : 0.8;
+      state.mainIncomeMan = Math.max(250, Math.round(state.mainIncomeMan * ratio));
+      state.currentJobLabel = `${EMPLOYMENT_LABELS[state.config.employment]}（55歳役職定年・専任職）`;
+      pushEntry(
+        'life',
+        'bad',
+        `【55歳・役職定年】ライン管理職を離れ、本人年収が ${state.mainIncomeMan}万円（▲${Math.round((1 - ratio) * 100)}%）に減少`,
+        '日本企業特有の「55歳役職定年」が到来。子どもの進学費用や住宅ローン返済が続く中での手取り減少が家計を圧迫し始める。',
+        '50代後半の住宅ローン破綻原因の上位が「役職定年・定年再雇用による収入崖」。',
+        `本人年収 -${Math.round((1 - ratio) * 100)}%`,
+      );
+    } else if (careerEdu.salaryCurve === 'steady-up' && state.config.employment !== 'freelance') {
+      state.mainIncomeMan = Math.round(state.mainIncomeMan * 1.02);
+      state.currentJobLabel = `${EMPLOYMENT_LABELS[state.config.employment]}（上級管理職・専門幹部継続）`;
+      pushEntry(
+        'life',
+        'good',
+        `【55歳・役職定年を回避！】幹部・高度専門職ポストを維持し年収 ${state.mainIncomeMan}万円を確保`,
+        '55歳役職定年の対象外となる上位ポストを維持し、50代後半も高い収入基盤を守り抜いた。',
+      );
     }
-  } else if (age === 55 && state.config.employment !== 'freelance') {
-    state.mainIncomeMan = Math.round(state.mainIncomeMan * 0.78);
-    pushEntry(
-      'life',
-      'bad',
-      `【55歳・役職定年】管理職手当が外れ、本人年収が ${state.mainIncomeMan}万円（▲22%）に減少`,
-      '日本企業特有の「55歳役職定年」が到来。子どもの大学費用や住宅ローン返済が続く中での手取り減少が家計を圧迫し始める。',
-      '50代後半の住宅ローン破綻原因の第2位が「役職定年・定年再雇用による収入崖」。',
-      '本人年収 -22%',
-    );
+  } else if (age > 55 && age < 60) {
+    if (careerEdu.salaryCurve === 'downward-pressure') {
+      state.mainIncomeMan = Math.max(240, Math.round(state.mainIncomeMan * 0.985));
+    }
   } else if (age === 60) {
-    const retirementAllowanceMan =
-      state.config.employment === 'listed-corp'
-        ? 1850
-        : state.config.employment === 'civil-servant'
-          ? 2100
-          : state.config.employment === 'sme'
-            ? 850
-            : 400;
-    state.liquidSavingsMan += retirementAllowanceMan;
-    state.mainIncomeMan = Math.round(state.mainIncomeMan * 0.62);
-    if (state.subIncomeMan > 0) {
-      state.subIncomeMan = Math.round(state.subIncomeMan * 0.6);
+    // 60歳定年：退職金の有無（職種・設定により0円〜2,800万円）＋ 定年後の働き方（再雇用 / 別職種 / アルバイト / 完全リタイア）
+    const retirementAllowanceMan = careerEdu.retirementAllowanceMan;
+    const spouseRetirementMan =
+      careerEdu.hasSpouse &&
+      !state.isDivorced &&
+      careerEdu.spouseWorkPattern === 'fulltime-keep' &&
+      state.subIncomeMan >= 200
+        ? 450
+        : 0;
+    const totalRetireLumpMan = retirementAllowanceMan + spouseRetirementMan;
+    state.liquidSavingsMan += totalRetireLumpMan;
+
+    if (careerEdu.postRetirementWork === 'reemploy-same') {
+      state.mainIncomeMan = Math.max(210, Math.round(state.mainIncomeMan * 0.62));
+      state.currentJobLabel = '60代・嘱託再雇用（現職継続）';
+    } else if (careerEdu.postRetirementWork === 'reemploy-light-job') {
+      state.mainIncomeMan = 250;
+      state.currentJobLabel = '60代・別職種転身（ビル管理・施設事務）';
+    } else if (careerEdu.postRetirementWork === 'part-time-arubaito') {
+      state.mainIncomeMan = 140;
+      state.currentJobLabel = '60代・週3〜4日アルバイト/パート勤務';
+    } else {
+      // full-retire-60
+      state.mainIncomeMan = 0;
+      state.currentJobLabel = '60歳完全リタイア（無職・年金待機）';
     }
-    pushEntry(
-      'milestone',
-      'mixed',
-      `【60歳・定年退職＆再雇用】退職金 +${retirementAllowanceMan.toLocaleString()}万円受領 / 再雇用で収入4割減`,
-      `定年を迎え退職金 ${retirementAllowanceMan.toLocaleString()}万円が振り込まれた。一方、嘱託再雇用により世帯年収は大きく減少。残債（${Math.round(state.remainingBalanceMan)}万円）を一括返済するか老後資金として温存するかが問われる。`,
-      '60歳時点で住宅ローン残債がある世帯の割合は年々上昇し、退職金枯渇の主因となっている。',
-      `退職金 +${retirementAllowanceMan}万`,
-    );
+
+    if (totalRetireLumpMan > 0) {
+      pushEntry(
+        'milestone',
+        'mixed',
+        `【60歳・定年とセカンドキャリア】退職金 +${totalRetireLumpMan.toLocaleString()}万円受領 / 今後は「${state.currentJobLabel}（年収${state.mainIncomeMan}万）」へ`,
+        `60歳の節目を迎え、退職金 ${totalRetireLumpMan.toLocaleString()}万円（本人${retirementAllowanceMan}万${spouseRetirementMan > 0 ? `＋配偶者${spouseRetirementMan}万` : ''}）が振り込まれた！今後の働き方は「${POST_RETIREMENT_SPECS[careerEdu.postRetirementWork].shortLabel}」へ移行。`,
+        '退職金の有無と60代以降の就労形態が、老後の住宅ローン完済余力を大きく左右する。',
+        `退職金 +${totalRetireLumpMan}万`,
+      );
+    } else {
+      pushEntry(
+        'milestone',
+        'bad',
+        `【60歳到来・退職金制度なし（0円）】退職金ゼロで60代へ突入 / 今後は「${state.currentJobLabel}（年収${state.mainIncomeMan}万）」`,
+        `60歳を迎えたが、現在の職種・企業には退職金一時金制度がない（0円）。手元貯蓄と「${POST_RETIREMENT_SPECS[careerEdu.postRetirementWork].shortLabel}」の収入で残債（${Math.round(state.remainingBalanceMan).toLocaleString()}万円）に立ち向かう必要がある！`,
+        '退職金制度がない企業や外資・ベンチャー・フリーランス世帯では、60歳前の繰上返済または貯蓄形成が不可欠となる。',
+        '退職金 0円',
+      );
+    }
   } else if (age === 65) {
-    // 年金生活へ移行
-    state.mainIncomeMan = state.config.employment === 'freelance' ? 160 : 250;
-    state.subIncomeMan = state.subIncomeMan > 0 && !state.isDivorced ? 110 : 0;
+    // 65歳：公的年金受給開始（残債があり働く意向がある場合はシルバー短時間アルバイト併用）
+    const basePensionMan =
+      state.config.employment === 'freelance'
+        ? 150
+        : state.config.employment === 'civil-servant' || state.config.employment === 'listed-corp'
+          ? 250
+          : 220;
+    const doSilverArubaito =
+      state.remainingBalanceMan > 300 && careerEdu.postRetirementWork !== 'full-retire-60';
+    state.mainIncomeMan = basePensionMan + (doSilverArubaito ? 72 : 0);
+    state.currentJobLabel = doSilverArubaito
+      ? '公的年金受給 ＋ シルバー短時間アルバイト'
+      : '公的年金受給生活（完全リタイア）';
+
+    if (careerEdu.hasSpouse && !state.isDivorced) {
+      state.subIncomeMan =
+        careerEdu.spouseWorkPattern === 'fulltime-keep' ? 145 : 90;
+      state.currentSpouseJobLabel = '公的年金受給';
+    } else {
+      state.subIncomeMan = 0;
+    }
+
     pushEntry(
       'milestone',
       'mixed',
-      `【65歳・完全リタイア＆年金生活突入】世帯年金収入 年${state.mainIncomeMan + state.subIncomeMan}万円へ`,
+      `【65歳・公的年金受給スタート】世帯収入 年${state.mainIncomeMan + state.subIncomeMan}万円（${state.currentJobLabel}）`,
       state.remainingBalanceMan > 0
-        ? `65歳を迎え公的年金受給生活に入ったが、まだ住宅ローン残債が ${Math.round(state.remainingBalanceMan).toLocaleString()}万円残っている！貯蓄を取り崩しながらの老後返済が続く。`
+        ? `65歳を迎え年金受給が始まったが、まだ住宅ローン残債が ${Math.round(state.remainingBalanceMan).toLocaleString()}万円残っている！${doSilverArubaito ? '週3日のシルバーアルバイト収入（年72万円）を足しにして返済を続ける。' : '貯蓄を取り崩しながらの老後返済が続く。'}`
         : 'すでに住宅ローンを完済しているため、年金収入の範囲内で穏やかな老後生活を送ることができる！',
     );
+  } else if (age === 72 && state.currentJobLabel?.includes('アルバイト')) {
+    // 72歳でシルバーアルバイトも卒業し完全年金生活へ
+    state.mainIncomeMan = Math.max(150, state.mainIncomeMan - 72);
+    state.currentJobLabel = '公的年金受給生活（完全引退）';
   }
 
-  // === 3. マンション修繕積立金の段階増額 / 戸建てメンテナンス ===
+  // 配偶者（奥さん・パートナー）の働き方・パート/バイト転換の年次更新（65歳未満）
+  if (age < 65) {
+    if (!careerEdu.hasSpouse || state.isDivorced) {
+      state.subIncomeMan = 0;
+      state.currentSpouseJobLabel = state.isDivorced ? '離別（単身世帯）' : '単身世帯（配偶者なし）';
+    } else if (careerEdu.spouseWorkPattern === 'homemaker') {
+      // 専業主婦(夫)継続（もし決断イベントでパートを始めていなければ0円）
+      if (state.subIncomeMan > 0) {
+        state.currentSpouseJobLabel = 'パート・アルバイト勤務';
+      } else {
+        state.currentSpouseJobLabel = '専業主婦（夫）';
+      }
+    } else if (careerEdu.spouseWorkPattern === 'homemaker-to-part') {
+      // 子育て後に専業主婦(夫)からパート・アルバイト勤務へ復帰
+      const youngestChildAge =
+        state.childrenAges.length > 0 ? Math.min(...state.childrenAges) : 99;
+      if (
+        state.subIncomeMan === 0 &&
+        (y === 5 || (state.childrenAges.length > 0 && youngestChildAge === 6)) &&
+        !state.triggeredEventIds.includes('auto-spouse-part-start')
+      ) {
+        state.triggeredEventIds.push('auto-spouse-part-start');
+        state.subIncomeMan = 108;
+        state.currentSpouseJobLabel = 'パート・アルバイト勤務（週4日・接客/事務）';
+        pushEntry(
+          'life',
+          'good',
+          `【配偶者がパート・アルバイト勤務を開始！】年間 +108万円の世帯収入アップ`,
+          '子育てが一段落したのを機に、配偶者が近隣でのパート・アルバイト勤務（週4日）をスタート！年間108万円の収入が加わり、教育費と住宅ローン返済の心強い支えとなった。',
+          undefined,
+          '配偶者収入 +108万/年',
+        );
+      }
+    } else if (careerEdu.spouseWorkPattern === 'shift-to-part') {
+      // 正社員から途中でパート・アルバイトへシフト
+      if (y === 6 && state.subIncomeMan > 150 && !state.triggeredEventIds.includes('auto-spouse-shift-part')) {
+        state.triggeredEventIds.push('auto-spouse-shift-part');
+        const prevSub = state.subIncomeMan;
+        state.subIncomeMan = 120;
+        state.currentSpouseJobLabel = 'パート・アルバイト勤務（社員から転換）';
+        pushEntry(
+          'life',
+          'mixed',
+          `【配偶者の働き方転換】正社員（${prevSub}万）→ パート・アルバイト勤務（年収120万円）へシフト`,
+          '家庭・育児と健康のバランスを優先し、配偶者がフルタイム社員を退職して週3〜4日のパート・アルバイト勤務へ転換した。家族のゆとりは増えたが世帯年収は減少した。',
+          undefined,
+          `配偶者収入 ${120 - prevSub}万`,
+        );
+      } else if (age === 60 && state.subIncomeMan > 100) {
+        state.subIncomeMan = 96;
+        state.currentSpouseJobLabel = 'シニアパート・アルバイト勤務';
+      }
+    } else if (careerEdu.spouseWorkPattern === 'part-time') {
+      // パート・アルバイト継続
+      if (age === 60) {
+        state.subIncomeMan = Math.min(state.subIncomeMan, 96);
+        state.currentSpouseJobLabel = 'シニアパート・アルバイト勤務';
+      } else if (y % 4 === 0 && state.subIncomeMan > 0 && state.subIncomeMan < 155) {
+        state.subIncomeMan += 4; // 最低賃金・時給改定による微増
+      }
+    } else if (careerEdu.spouseWorkPattern === 'fulltime-keep') {
+      if (age < 55) {
+        state.subIncomeMan = Math.round(state.subIncomeMan * (1 + Math.max(0, wageGrowthRate * 0.8)));
+      } else if (age === 60) {
+        state.subIncomeMan = Math.round(state.subIncomeMan * 0.62);
+        state.currentSpouseJobLabel = '配偶者：嘱託再雇用・パート';
+      }
+    }
+  }
+
+  // === 3. マンション修繕積立金の段階増額（建築資材・職人単価の高騰を反映） / 固定資産税 / 火災保険・地震保険5年更新 ===
   if (property.buildingType !== 'detached' && (y === 6 || y === 12 || y === 18 || y === 25)) {
-    const hikeMan = property.buildingType === 'tower' ? 1.4 : 0.85;
+    const baseHikeMan = property.buildingType === 'tower' ? 1.4 : 0.85;
+    const repairInfScale = Math.max(1.0, Math.min(1.48, (state.repairCostInflationMult ?? 1.0) * 0.92));
+    const hikeMan = Math.round(baseHikeMan * repairInfScale * 10) / 10;
     state.currentMgmtAndRepairMonthlyMan =
       Math.round((state.currentMgmtAndRepairMonthlyMan + hikeMan) * 10) / 10;
     pushEntry(
       'property',
       'bad',
-      `【管理組合総会・修繕積立金値上げ】月額維持費が +${hikeMan}万円/月（計 ${state.currentMgmtAndRepairMonthlyMan}万円/月）に増額`,
+      `【管理組合総会・修繕積立金値上げ（資材高騰×${(state.repairCostInflationMult ?? 1.0).toFixed(2)}倍）】月額維持費が +${hikeMan}万円/月（計 ${state.currentMgmtAndRepairMonthlyMan}万円/月）に増額`,
       property.buildingType === 'tower'
-        ? 'タワーマンションの段階増額計画＋建築資材・人件費高騰により修繕積立金が大幅改定！ローン返済とは別に毎月出ていく固定費が重くのしかかる。'
-        : '長期修繕計画に基づき、マンションの修繕積立金が引き上げられた。',
-      '分譲マンションの約85%が「段階増額積立方式」を採用しており、入居時より15年後は2〜3倍になるケースが多い。',
+        ? `タワーマンションの段階増額計画に加え、建築資材・足場・職人単価の高騰（購入時比×${(state.repairCostInflationMult ?? 1.0).toFixed(2)}倍）により修繕積立金が大幅改定！ローン返済とは別に毎月出ていく固定費が重くのしかかる。`
+        : `長期修繕計画の見直しと建築資材・工事人件費の高騰（購入時比×${(state.repairCostInflationMult ?? 1.0).toFixed(2)}倍）を受け、マンションの修繕積立金が引き上げられた。`,
+      '分譲マンションの約85%が「段階増額積立方式」を採用しており、さらに近年の建築資材インフレで計画以上の値上げとなるケースが急増している。',
       `維持費 +${Math.round(hikeMan * 12)}万/年`,
+    );
+  }
+
+  // 火災保険・地震保険の5年ごと契約更新（2022年以降の最長5年契約ルール・気候変動による料率上昇を反映）
+  let insuranceRenewalCostThisYearMan = 0;
+  if (y > 0 && y % 5 === 0) {
+    const insSpec = INSURANCE_PLAN_SPECS[careerEdu.insurancePlan];
+    const base5YrCost =
+      property.buildingType === 'detached'
+        ? insSpec.fiveYearCostDetachedMan
+        : property.buildingType === 'tower'
+          ? insSpec.fiveYearCostTowerMan
+          : insSpec.fiveYearCostMansionMan;
+    const climateRateFactor = Math.min(1.42, 1 + Math.floor(y / 5) * 0.06);
+    insuranceRenewalCostThisYearMan = Math.round(base5YrCost * climateRateFactor);
+    pushEntry(
+      'property',
+      insuranceRenewalCostThisYearMan >= 40 ? 'bad' : 'neutral',
+      `【火災保険・地震保険の5年更新】「${insSpec.shortLabel}」の5年一括更新料 -${insuranceRenewalCostThisYearMan}万円を納付`,
+      `5年周期の火災保険・地震保険の契約更新時期が到来（自然災害激甚化に伴う損保料率改定を反映）。マイホームの災害リスクに備えるため5年分の更新保険料 ${insuranceRenewalCostThisYearMan}万円を支払った。`,
+      '2022年10月の制度改定により火災保険の最長契約期間は10年から「5年（地震保険も最長5年）」へ短縮され、5年ごとにまとまった更新費用が発生する。',
+      `保険5年更新 -${insuranceRenewalCostThisYearMan}万`,
     );
   }
 
@@ -2334,26 +3450,111 @@ export function advanceOneYear(
   const netHouseholdIncomeMan =
     estimateNetIncomeMan(state.mainIncomeMan) + estimateNetIncomeMan(state.subIncomeMan);
 
-  // 固定資産税（新築の当初3年/5年/7年軽減措置反映）
-  const propTaxDiscount =
-    property.isNew && y <= (property.energyCert === 'long-term-excellent' ? 5 : 3) ? 0.65 : 1.0;
+  // 固定資産税・都市計画税（新築の当初3年/5年/7年軽減措置終了の崖＋3年ごとの評価替え・経年減価を精密反映）
+  const initialLandMan = Math.round(property.priceMan * property.landRatio);
+  const propTaxCalc = calcEffectiveAnnualPropertyTaxMan(
+    property,
+    y,
+    state.landValueMan,
+    initialLandMan,
+  );
+  state.annualPropertyTaxCurrentMan = propTaxCalc.annualTaxMan;
+  if (propTaxCalc.isReductionJustExpired) {
+    const reductionYears =
+      property.energyCert === 'long-term-excellent'
+        ? property.buildingType === 'detached'
+          ? 5
+          : 7
+        : property.buildingType === 'detached'
+          ? 3
+          : 5;
+    pushEntry(
+      'property',
+      'bad',
+      `【固定資産税・新築軽減措置（${reductionYears}年間）終了！】家屋分の固定資産税が本来の額に戻り年額 ${propTaxCalc.annualTaxMan}万円へ増加！`,
+      `新築購入から${reductionYears}年間適用されていた「新築住宅の固定資産税（建物部分）1/2減額措置」が今年で満了！今年から毎年の固定資産税・都市計画税が年間 ${propTaxCalc.annualTaxMan}万円へ上昇した。`,
+      '新築一戸建ては3年目（長期優良5年目）、新築マンションは5年目（長期優良7年目）の翌年から家屋分の固定資産税が2倍（本来の税額）に戻る「固定資産税の崖」。',
+      `固定資産税 年${propTaxCalc.annualTaxMan}万`,
+    );
+  }
+
+  const priceMult = Math.max(0.92, (state.cumulativePriceIndex ?? 100) / 100);
+  const utilityInflationMult = property.utilityMonthlyDiffMan > 0 ? Math.pow(priceMult, 0.75) : 1.0;
+
   const annualRunningCostMan =
     Math.round(
       (state.currentMgmtAndRepairMonthlyMan * 12 +
-        property.annualPropertyTaxMan * propTaxDiscount +
-        property.utilityMonthlyDiffMan * 12) *
+        propTaxCalc.annualTaxMan +
+        insuranceRenewalCostThisYearMan +
+        property.utilityMonthlyDiffMan * 12 * utilityInflationMult) *
         10,
     ) / 10;
 
-  // 教育費＋基本生活費（インフレ連動）
+  // 学資保険の満期金受取（子どもが18歳になった年に1人あたり+200万円入金）
+  const kidsTurning18Count = state.childrenAges.filter((a) => a === 18).length;
+  if (careerEdu.hasGakushiHoken && kidsTurning18Count > 0) {
+    const gakushiMaturityMan = kidsTurning18Count * 200;
+    state.liquidSavingsMan += gakushiMaturityMan;
+    pushEntry(
+      'life',
+      'good',
+      `【学資保険・満期保険金受領！】18歳進学時に満期金 +${gakushiMaturityMan.toLocaleString()}万円が入金！`,
+      `0歳から毎年コツコツ積み立ててきた学資保険が満期を迎え、大学・専門学校等の進学資金として +${gakushiMaturityMan.toLocaleString()}万円が口座に振り込まれた！`,
+      undefined,
+      `学資満期 +${gakushiMaturityMan}万`,
+    );
+  }
+
+  // 子どもの就職・社会人独立マイルストーン（高卒就職18歳 / 専門学校20歳 / 大学22歳）
+  const independenceAge = getChildIndependenceAge(state.config);
+  const kidsGraduatingCount = state.childrenAges.filter((a) => a === independenceAge).length;
+  if (kidsGraduatingCount > 0) {
+    const gradPathLabel =
+      careerEdu.higherEdPath === 'high-school-job'
+        ? '高校卒業・就職'
+        : careerEdu.higherEdPath === 'vocational-2yr'
+          ? '専門学校卒業・就職'
+          : '大学卒業・就職';
+    pushEntry(
+      'milestone',
+      'good',
+      `【祝・子どもの${gradPathLabel}＆社会人独立！】（${independenceAge}歳）教育費負担が終了！`,
+      `子どもが無事に${gradPathLabel}を果たし社会人として独立！今年から1人分の学費・生活費負担がなくなり、住宅ローン返済と老後資金形成のペースが一気に上がる！`,
+      undefined,
+      '教育費負担減',
+    );
+  }
+
+  // 教育費（中学受験・入塾/夏期講習/予備校・進路・学資保険料・奨学金軽減・物価連動をすべて反映）＋基本生活費＋旅行・レジャー娯楽費
   const childrenEduCostMan = state.childrenAges.reduce(
-    (sum, cAge) => sum + calcChildAnnualEduCostMan(cAge, family.isPrivateSchool),
+    (sum, cAge) => sum + calcDetailedChildAnnualEduCostMan(cAge, state.config, state.cumulativePriceIndex ?? 100),
     0,
   );
+  const baseAdultLiving = careerEdu.hasSpouse && !state.isDivorced ? 204 : 152;
+  const dependentChildrenCount = state.childrenAges.filter((a) => a < independenceAge).length;
+  // 物価上昇（累積物価指数）に応じた生活コスト（食費・日用品・水道光熱費等）の上昇を反映
   const baseLivingCostMan = Math.round(
-    (225 + state.childrenAges.filter((a) => a < 22).length * 32) * Math.pow(1 + inflationRate * 0.5, Math.min(25, y)),
+    (baseAdultLiving + dependentChildrenCount * 30) * Math.pow(priceMult, 0.62),
   );
-  const annualLivingAndEduCostMan = baseLivingCostMan + childrenEduCostMan;
+
+  // 家族旅行・レジャー・外食・娯楽費（スタイル選択＋物価連動＋資金余裕度補正）
+  const leisureSpec = LEISURE_STYLE_SPECS[careerEdu.leisureStyle];
+  const baseLeisureMan =
+    (careerEdu.hasSpouse && !state.isDivorced
+      ? leisureSpec.baseAnnualCostCoupleMan
+      : leisureSpec.baseAnnualCostSingleMan) +
+    dependentChildrenCount * leisureSpec.perChildExtraMan;
+  const leisureAffordabilityMult = state.liquidSavingsMan < 220 ? 0.55 : age >= 65 ? 0.8 : 1.0;
+  const annualTravelLeisureCostMan = Math.round(
+    baseLeisureMan * Math.pow(priceMult, 0.78) * leisureAffordabilityMult,
+  );
+  state.mentalScore = Math.max(
+    10,
+    Math.min(100, state.mentalScore + leisureSpec.annualMentalDelta),
+  );
+
+  const annualLivingAndEduCostMan =
+    baseLivingCostMan + childrenEduCostMan + annualTravelLeisureCostMan;
 
   // 住宅ローン控除（年0.7%）
   const taxInfo = calcAnnualTaxDeductionMan(
@@ -2795,10 +3996,114 @@ export function advanceOneYear(
     return state;
   }
 
-  // === 8. 人生とローンの重大決断イベント発火判定（タイムライン自動一時停止） ===
-  // (C) ペアローン世帯の試練（4年目：配偶者の働き方・キャリアと夫婦関係）
+  // === 8. 人生とローンの重大決断イベント発火判定（世帯・雇用・配偶者・子ども・物件条件に完全一致するものだけを発火） ===
+  // (C0-1) 子どもがいない夫婦（DINKs・配偶者あり・41歳以下）の「第1子誕生・ライフプラン大転換」イベント（3年目）
+  if (
+    careerEdu.hasSpouse &&
+    !state.isDivorced &&
+    state.childrenAges.length === 0 &&
+    age <= 41 &&
+    y === 3 &&
+    !state.triggeredEventIds.includes('dinks-unexpected-childbirth')
+  ) {
+    state.triggeredEventIds.push('dinks-unexpected-childbirth');
+    state.pendingDecision = {
+      id: 'dinks-unexpected-childbirth',
+      yearIndex: y,
+      age,
+      category: 'life',
+      title: '【家族の大きな転機】夫婦2人（DINKs）世帯に新しい命の兆し・第1子誕生と家計再設計',
+      description:
+        '購入時は「子どもなし（DINKs）」の想定で住宅ローンを組んでいたが、夫婦の間に新しい命を授かる転機が訪れた！子どもを迎え入れれば0歳から22年間の育児・教育費が始まる一方、住宅ローン控除の子育て世帯拡充や児童手当も受けられる。どう選択するか？',
+      statisticalContext:
+        '国立社会保障・人口問題研究所調査：マイホーム購入後に第1子が誕生する夫婦は多く、出産を機に教育資金（学資保険または新NISA）と働き方の再設計が必要となる。',
+      choices: [
+        {
+          id: 'welcome-first-child-gakushi',
+          label: '新しい家族（第1子・0歳）を喜んで迎え入れ、将来の大学資金として学資保険も契約する（出産育児準備 -45万円）',
+          subLabel: '子ども1人（0歳）誕生！ / 手元資金 -45万円・学資保険積立開始（18歳時に+200万円満期）＋幸福度+14',
+          outcomeSummary:
+            '待望の第1子が誕生し、夫婦2人から3人家族での新しい暮らしがスタート！将来の進学に備えて学資保険も契約し、家族の大きな喜びと張り合いが生まれた！',
+          cashDeltaMan: -45,
+          addNewbornChild: true,
+          newHasGakushiHoken: true,
+          mentalDelta: 14,
+        },
+        {
+          id: 'welcome-first-child-flexible',
+          label: '第1子（0歳）を迎え入れ、学資保険には入らず手元キャッシュと新NISAで教育費に備える（出産準備 -30万円）',
+          subLabel: '子ども1人（0歳）誕生！ / 手元資金 -30万円・流動性を維持して育児スタート＋幸福度+12',
+          outcomeSummary:
+            '新しい家族（第1子）を迎え入れ、児童手当と手元資金の運用で柔軟に教育費を準備する体制を整えた！',
+          cashDeltaMan: -30,
+          addNewbornChild: true,
+          newHasGakushiHoken: false,
+          mentalDelta: 12,
+        },
+        {
+          id: 'stay-dinks-career-focus',
+          label: '当初のライフプラン通り夫婦2人（DINKs）の生活スタイルを貫き、キャリアとローン完済に集中する',
+          subLabel: '子どもなし継続 / 教育費負担 0円のまま資産形成に集中・幸福度+4',
+          outcomeSummary:
+            '夫婦でじっくり話し合い、これまで通り2人での暮らしとキャリア・資産形成に集中する道を選んだ。',
+          mentalDelta: 4,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (C0-2) 子ども1人世帯（配偶者あり・38歳以下）の「第2子誕生」選択イベント（5年目・確率45%）
+  if (
+    careerEdu.hasSpouse &&
+    !state.isDivorced &&
+    state.childrenAges.length === 1 &&
+    age <= 38 &&
+    y === 5 &&
+    rng() < 0.45 &&
+    !state.triggeredEventIds.includes('second-child-birth-choice')
+  ) {
+    state.triggeredEventIds.push('second-child-birth-choice');
+    state.pendingDecision = {
+      id: 'second-child-birth-choice',
+      yearIndex: y,
+      age,
+      category: 'life',
+      title: '【家族計画の岐路】2人目の子ども（第2子）を迎え入れるか、1人っ子に教育資源を集中するか？',
+      description:
+        '1人目の子育てが軌道に乗るなか、夫婦で「もう1人子ども（第2子）を迎えるか」の話し合いになった。マイホームの部屋数には余裕があるが、住宅ローン返済に加えて2人分の教育費（大学まで1人あたり1,000万〜1,800万円）がかかる！',
+      statisticalContext:
+        '出生動向基本調査：理想の子ども数（2人以上）に対し、住宅ローンと教育費の負担感から「1人っ子」にとどめるか「2人目」へ踏み出すかは30代世帯の大きな分岐点。',
+      choices: [
+        {
+          id: 'welcome-second-baby',
+          label: '第2子（0歳）を迎え入れ、4人家族でにぎやかに暮らす（出産・育児準備 -35万円）',
+          subLabel: '子どもが2人に！（0歳追加） / 手元資金 -35万円・家族の幸福度 +12',
+          outcomeSummary:
+            '元気な第2子が誕生し4人家族に！これから2人分の教育費とローン返済が始まるが、きょうだいが育つ温かいマイホームになった！',
+          cashDeltaMan: -35,
+          addNewbornChild: true,
+          mentalDelta: 12,
+        },
+        {
+          id: 'keep-one-child-focus',
+          label: '住宅ローン完済と1人目の進学資金を盤石にするため、子どもは1人に集中する',
+          subLabel: '子ども1人継続 / 家計の安全余裕度と教育資金を温存・幸福度 +4',
+          outcomeSummary:
+            '家計の安全性を最優先し、現在の1人の子どもに愛情と教育資金をしっかり注ぐ方針を固めた。',
+          mentalDelta: 4,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (C) ペアローン世帯の試練（4年目：ペアローンかつ配偶者が就労中の世帯のみ）
   if (
     state.config.contractType === 'pair' &&
+    careerEdu.hasSpouse &&
+    !state.isDivorced &&
+    state.subIncomeMan > 0 &&
     y === 4 &&
     !state.triggeredEventIds.includes('pair-loan-crossroad-4')
   ) {
@@ -2810,7 +4115,7 @@ export function advanceOneYear(
       category: 'pair-crisis',
       title: '【ペアローンの正念場】共働きフルタイム限界＆夫婦の働き方見直し',
       description:
-        'ペアローンで2人とも住宅ローンを抱えるプレッシャーの中、仕事と家事・育児の両立で配偶者が心身ともに疲弊。「働き方をセーブしたい」と切り出されたが、収入が減ればペアローンの返済負担率が一気に跳ね上がる！',
+        'ペアローンで2人とも住宅ローンを抱えるプレッシャーの中、仕事と家事・育児の両立で配偶者が心身ともに疲弊。「働き方をセーブするかパートに切り替えたい」と切り出されたが、収入が減ればペアローンの返済負担率が一気に跳ね上がる！',
       statisticalContext:
         '住宅金融支援機構調査：20代・30代のペアローン利用率は3割超に達する一方、出産・転職・離婚時の返済計画変更が最大のリスク要因となる。',
       choices: [
@@ -2825,11 +4130,12 @@ export function advanceOneYear(
         },
         {
           id: 'spouse-downshift',
-          label: '配偶者が時短・マイルド勤務へ転換するのを容認する',
-          subLabel: '配偶者年収 -35% / 幸福度 +5（配偶者名義のローン返済はそのまま残る）',
+          label: '配偶者がパート・時短勤務（年収140万円）へ転換するのを容認する',
+          subLabel: '配偶者年収 140万円へ減少 / 幸福度 +5（配偶者名義のローン返済はそのまま残る）',
           outcomeSummary:
-            '配偶者が働き方をセーブし家庭は落ち着いたが、配偶者名義のローン返済は減らないため世帯の貯蓄ペースが低下した。',
-          subIncomeMultiplierDelta: -0.35,
+            '配偶者がパート・時短勤務へセーブし家庭は落ち着いたが、配偶者名義のローン返済は減らないため世帯の貯蓄ペースが低下した。',
+          newSubIncomeAbsoluteMan: 140,
+          newSpouseJobLabel: 'パート・時短勤務（ペアローン返済中）',
           mentalDelta: 5,
         },
         {
@@ -2840,10 +4146,140 @@ export function advanceOneYear(
             '激しい口論の末に夫婦関係が破綻…。ペアローン共有名義のため簡単に売却も名義変更もできず、別居・調停費用で320万円が流出し実質1馬力となった。',
           cashDeltaMan: -320,
           subIncomeMultiplierDelta: -1.0,
+          newSpouseJobLabel: '離別（単身化）',
           mentalDelta: -28,
         },
       ],
     };
+    return state;
+  }
+
+  // (C2) 配偶者（奥さん・パートナー）の働き方・アルバイト/パート転換イベント（配偶者あり・非ペアローン世帯のみ）
+  if (
+    careerEdu.hasSpouse &&
+    !state.isDivorced &&
+    state.config.contractType !== 'pair' &&
+    (careerEdu.spouseWorkPattern === 'homemaker-to-part' ? y === 9 : y === 4) &&
+    !state.triggeredEventIds.includes('spouse-work-turning-point')
+  ) {
+    state.triggeredEventIds.push('spouse-work-turning-point');
+    if (state.subIncomeMan === 0) {
+      state.pendingDecision = {
+        id: 'spouse-work-turning-point',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: '【配偶者の働き方転機】物価高と教育・老後資金に備え、パート・アルバイトを始めるか？',
+        description:
+          '現在、配偶者は専業主婦（夫）として家庭を支えているが、近年の物価上昇と今後の住宅ローン返済・教育費を見据え、「近所でパート・アルバイトを始めるか、正社員・契約社員として働くか」の相談があった。',
+        statisticalContext:
+          '総務省「労働力調査」：住宅ローン返済世帯では、専業主婦（夫）がパート・アルバイト（年100〜130万円）に出るだけで30年間の累計手取りが2,500万円以上改善する。',
+        choices: [
+          {
+            id: 'spouse-start-arubaito',
+            label: '無理のない範囲で週3〜4日のパート・アルバイト（接客・事務・軽作業：年収108万円）を始める',
+            subLabel: '配偶者年収 +108万円/年 / 家庭と両立しながら毎年100万円超の安定収入確保',
+            outcomeSummary:
+              '近隣の職場で週3〜4日のパート・アルバイトを開始！家庭のペースを守りながら年間108万円の副収入が加わり、家計の安心感が一気に高まった！',
+            newSubIncomeAbsoluteMan: 108,
+            newSpouseJobLabel: 'パート・アルバイト勤務（週3〜4日）',
+            mentalDelta: 4,
+          },
+          {
+            id: 'spouse-start-fulltime',
+            label: 'キャリア・資格を活かし、契約・正社員フルタイム（年収240万円）として再就職する',
+            subLabel: '配偶者年収 +240万円/年 / 家事分担は増えるが貯蓄ペースが劇的アップ！',
+            outcomeSummary:
+              'フルタイムでの再就職に成功！世帯年収が240万円一気に底上げされ、繰上返済と教育資金準備が盤石になった！',
+            newSubIncomeAbsoluteMan: 240,
+            newSpouseJobLabel: '正社員・フルタイム再就職',
+            mentalDelta: 2,
+          },
+          {
+            id: 'spouse-keep-homemaker',
+            label: '外には働きに出ず、このまま専業主婦（夫）として家事・育児に専念する',
+            subLabel: '配偶者収入 0円継続 / 家庭のゆとりと幸福度 +6',
+            outcomeSummary:
+              '本人の収入1馬力で返済を続け、配偶者は家庭と子育てに専念する方針を維持した。',
+            newSpouseJobLabel: '専業主婦（夫）',
+            mentalDelta: 6,
+          },
+        ],
+      };
+    } else if (state.subIncomeMan <= 165) {
+      state.pendingDecision = {
+        id: 'spouse-work-turning-point',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: '【配偶者のパート・バイト転機】「扶養の壁」を超えて社員登用か、現状バイト継続か？',
+        description: `現在、配偶者はパート・アルバイト勤務（年収${state.subIncomeMan}万円）で家計を支えている。勤務先から「社会保険に加入してフルタイム・契約社員（年収240万円）にならないか」と打診された一方、体力面から短時間バイトに絞る選択肢もある。`,
+        statisticalContext:
+          '「106万円・130万円の壁」を超えて厚生年金に加入して働くと、現役時の手取りだけでなく将来の公的年金受給額も生涯で数百万円増加する。',
+        choices: [
+          {
+            id: 'part-to-regular-up',
+            label: '壁を超えて勤務時間を拡大し、契約・正社員登用（年収240万円）へステップアップする',
+            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 240万円へ増加！ / 将来の厚生年金も増額`,
+            outcomeSummary:
+              '思い切ってパートから社員登用を選択！世帯収入が大きく伸び、住宅ローンの返済余力が一段と高まった！',
+            newSubIncomeAbsoluteMan: 240,
+            newSpouseJobLabel: '正社員・契約社員（パートから登用）',
+            mentalDelta: 3,
+          },
+          {
+            id: 'keep-current-part',
+            label: `現在のパート・アルバイト勤務（年収${state.subIncomeMan}万円）を無理なくキープする`,
+            subLabel: '仕事と家庭のバランスを維持・幸福度 +4',
+            outcomeSummary:
+              '今のパート・アルバイトのペースを維持し、家事と仕事のベストバランスを守った。',
+            mentalDelta: 4,
+          },
+          {
+            id: 'reduce-to-light-arubaito',
+            label: '家庭・体調を最優先し、週2日の短時間アルバイト（年収78万円）へセーブする',
+            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 78万円 / ゆとり回復で幸福度 +7`,
+            outcomeSummary:
+              'シフトを減らして週2日の短時間アルバイトへ変更。収入は少し減ったが家庭に笑顔と余裕が戻った。',
+            newSubIncomeAbsoluteMan: 78,
+            newSpouseJobLabel: '短時間アルバイト（週2日）',
+            mentalDelta: 7,
+          },
+        ],
+      };
+    } else {
+      state.pendingDecision = {
+        id: 'spouse-work-turning-point',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: '【共働き配偶者の転機】正社員継続か、パート・アルバイトへの働き方転換か？',
+        description: `配偶者がフルタイム勤務（年収${state.subIncomeMan}万円）と家庭の両立に悩んでいる。「このまま正社員を続けるか、一度退職して近所のパート・アルバイト（年120万円）に切り替えたい」との相談を受けた。`,
+        statisticalContext:
+          '単独ローンまたは収入合算世帯でも、配偶者が正社員からパート・アルバイトへ転換すると生涯収入は大きく変わるため、固定費や教育費との兼ね合いが重要となる。',
+        choices: [
+          {
+            id: 'keep-spouse-fulltime-support',
+            label: '家事分担と時短家電（-40万円）で負担を減らし、正社員フルタイムを継続してもらう',
+            subLabel: '手元資金 -40万円 / 配偶者の正社員収入と将来の退職金・厚生年金を維持！',
+            outcomeSummary:
+              '家事の徹底分担と時短設備導入で配偶者の負担を解消！正社員としてのキャリアと高い世帯収入を守り抜いた。',
+            cashDeltaMan: -40,
+            mentalDelta: 6,
+          },
+          {
+            id: 'switch-spouse-to-arubaito',
+            label: '正社員退職を尊重し、近所のパート・アルバイト勤務（年収120万円）へ転換する',
+            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 120万円に減少 / 家庭のゆとり・幸福度 +8`,
+            outcomeSummary:
+              '配偶者が正社員を卒業し、無理のないパート・アルバイト勤務へシフト。世帯収入は減ったが、穏やかな暮らしを手に入れた。',
+            newSubIncomeAbsoluteMan: 120,
+            newSpouseJobLabel: 'パート・アルバイト勤務（社員から転換）',
+            mentalDelta: 8,
+          },
+        ],
+      };
+    }
     return state;
   }
 
@@ -3008,54 +4444,96 @@ export function advanceOneYear(
     return state;
   }
 
-  // (A1) 子育て世帯10年目：子どもの進学ルート・教育資金と住宅ローン返済のバランス決断
+  // (A1) 子育て世帯10年目：中学受験の有無・進学ルートと住宅ローン返済のバランス決断（子どもがいる世帯のみ発火）
   if (
     state.childrenAges.length > 0 &&
+    state.childrenAges.some((a) => a >= 8 && a <= 15) &&
     y === 10 &&
     !state.triggeredEventIds.includes('education-crossroad-10')
   ) {
     state.triggeredEventIds.push('education-crossroad-10');
+    const isExamMode = careerEdu.juniorHighPath === 'private-exam-jhs';
     state.pendingDecision = {
       id: 'education-crossroad-10',
       yearIndex: y,
       age,
       category: 'education',
-      title: '【教育費とローンの岐路】子どもの進学塾・習い事拡大と大学資金の準備方針',
-      description:
-        '子どもが高学年・進学準備期を迎え、周囲で進学塾や習い事の話題が急増している。一方、数年後には住宅ローン控除の終了や修繕イベントも控えている。教育投資と家計防衛のバランスをどう取るか？',
+      title: isExamMode
+        ? '【中学受験の天王山】進学塾（SAPIX・日能研等）の特別講習＆私立中進学か公立ルートか'
+        : '【教育費とローンの岐路】公立中進学・高校受験塾と将来の大学・専門進学プラン',
+      description: isExamMode
+        ? '中学受験に向けた進学塾の夏期講習・志望校別特訓で年間120万円近い塾代ピークが到来！このまま私立中高一貫校へ進むか、学費の安い公立中高一貫校・地域の公立中へ切り替えて大学資金とローン返済余力を守るか？'
+        : '子どもが進学準備期を迎え、周囲で中学受験や進学塾の話題が急増している。当初の公立中ルートを軸に堅実に大学資金を貯めるか、今から私立中学受験に参入するか？',
       statisticalContext:
-        '文部科学省「子供の学習費調査」：小学校高学年から大学卒業までの教育資金は、進路選択によって1人あたり800万〜2,200万円の差が生じる。',
-      choices: [
-        {
-          id: 'full-prep-school',
-          label: '希望通りの進学塾・夏期講習・英語教育にしっかり投資する（一時費用 95万円）',
-          subLabel: '手元資金 -95万円 / 家族の満足度・進学充実度 +10',
-          outcomeSummary:
-            '子どもの意欲を尊重して教育環境へ投資！出費は重なったが、家族の絆とモチベーションが大きく高まった。',
-          cashDeltaMan: -95,
-          mentalDelta: 10,
-        },
-        {
-          id: 'balanced-public-scholarship',
-          label: '通信教育と地域の公立トップ校ルートを軸にし、浮いた資金でローン元金を120万円繰上返済する',
-          subLabel: '手元資金 -120万円 → ローン残債 -120万円削減・将来利息カット',
-          outcomeSummary:
-            '見栄に流されず堅実な学習スタイルを選択し、温存した資金120万円で住宅ローン元金を直接削減！大学進学前の固定費圧縮に成功した。',
-          cashDeltaMan: -120,
-          principalDeltaMan: -120,
-          mentalDelta: 3,
-        },
-        {
-          id: 'parent-upskill-income',
-          label: '親自身が資格取得・キャリア転職に挑戦し、世帯年収そのものを引き上げる',
-          subLabel: '自己投資 -35万円 / 本人年収 +8%アップ・幸福度 +4',
-          outcomeSummary:
-            '教育費ピークに備えて親自身のキャリアアップを決断！年収が8%上昇し、教育費と住宅ローンの両立基盤が強化された。',
-          cashDeltaMan: -35,
-          incomeMultiplierDelta: 0.08,
-          mentalDelta: 4,
-        },
-      ],
+        '文部科学省「子供の学習費調査」：公立中（3年間約162万円）と私立中（3年間約430万円＋小4〜6の受験塾代約280万円）では、高校進学前に1人あたり約550万円の差が生じる。',
+      choices: isExamMode
+        ? [
+            {
+              id: 'keep-private-exam-jhs',
+              label: '予定通り中学受験・私立中高一貫ルートを完走する（直前講習・受験入学金 -95万円）',
+              subLabel: '手元資金 -95万円・今後も私立中高学費を継続 / 進学満足度・幸福度 +10',
+              outcomeSummary:
+                '子どもの努力を全力で後押しして第一志望の私立中学校に見事合格！教育費はかさむが家族の誇りと満足度は大きく高まった。',
+              cashDeltaMan: -95,
+              newJuniorHighPath: 'private-exam-jhs',
+              mentalDelta: 10,
+            },
+            {
+              id: 'switch-to-public-jhs-prepay',
+              label: '私立中受験から公立中トップ校ルートへ切り替え、浮いた資金120万円でローンを繰上返済する',
+              subLabel: '手元資金 -120万円 → ローン残債 -120万円削減 ＆ 中高学費が公立水準へ大幅軽減！',
+              outcomeSummary:
+                '家計全体のバランスを見据えて公立中学→難関高校ルートへ転換！今後6年間の学費負担が劇的に軽くなり、浮いた資金でローン元金も120万円削った！',
+              cashDeltaMan: -120,
+              principalDeltaMan: -120,
+              newJuniorHighPath: 'public-jhs',
+              mentalDelta: 3,
+            },
+            {
+              id: 'parent-upskill-income',
+              label: '私立進学を維持するため、親自身が資格取得・昇進転職で世帯年収を引き上げる',
+              subLabel: '自己投資 -35万円 / 本人年収 +8%アップ・私立中高ルート継続',
+              outcomeSummary:
+                '子どもの私立進学を支えるため親自身もキャリアアップを決断！年収が8%上昇し、高い教育費と住宅ローンの両立基盤を強化した。',
+              cashDeltaMan: -35,
+              incomeMultiplierDelta: 0.08,
+              newJuniorHighPath: 'private-exam-jhs',
+              mentalDelta: 5,
+            },
+          ]
+        : [
+            {
+              id: 'steady-public-jhs-plan',
+              label: '予定通り公立中＋地域の進学塾（-45万円）で堅実に学力を伸ばし、大学資金を温存する',
+              subLabel: '手元資金 -45万円 / 公立中ルート継続・幸福度 +6',
+              outcomeSummary:
+                '過熱する中学受験競争には乗らず、公立中＋地元の優良塾で基礎学力を徹底強化！高校・大学進学に向けた貯蓄をしっかり守った。',
+              cashDeltaMan: -45,
+              newJuniorHighPath: 'public-jhs',
+              mentalDelta: 6,
+            },
+            {
+              id: 'join-private-exam-late',
+              label: '周囲に触発され、今から進学塾へ通わせて私立中学受験に参入する（-110万円）',
+              subLabel: '手元資金 -110万円・以降「私立中高ルート（年142万）」へ変更 / 幸福度 +8',
+              outcomeSummary:
+                '急遽中学受験へ参戦し私立中へ進学！子どもの学習環境は充実したが、これからの私立学費と住宅ローンの二重負担が始まる。',
+              cashDeltaMan: -110,
+              newJuniorHighPath: 'private-exam-jhs',
+              mentalDelta: 8,
+            },
+            {
+              id: 'public-and-prepay-100',
+              label: '通信教育を活用して公立中へ進み、浮いた資金100万円を住宅ローンの繰上返済に充てる',
+              subLabel: '手元資金 -100万円 → ローン残債 -100万円削減・将来利息カット',
+              outcomeSummary:
+                '見栄に流されず堅実な学習スタイルを選び、100万円を住宅ローン元金の直接削減へ投入！大学進学前の固定費圧縮に成功した。',
+              cashDeltaMan: -100,
+              principalDeltaMan: -100,
+              newJuniorHighPath: 'public-jhs',
+              mentalDelta: 3,
+            },
+          ],
     };
     return state;
   }
@@ -3321,6 +4799,174 @@ export function advanceOneYear(
     }
   }
 
+  // (D1-Ins) 火災保険・地震保険・水災特約の見直し更新決断（子どもなし世帯は10年目、子育て世帯は11年目に発火）
+  if (
+    ((y === 10 && state.childrenAges.length === 0) ||
+      (y === 11 && state.childrenAges.length > 0)) &&
+    !state.triggeredEventIds.includes('fire-earthquake-insurance-renewal-10')
+  ) {
+    state.triggeredEventIds.push('fire-earthquake-insurance-renewal-10');
+    const isDetached = property.buildingType === 'detached';
+    const fullCost = isDetached
+      ? INSURANCE_PLAN_SPECS['full-fire-earthquake-water'].fiveYearCostDetachedMan
+      : property.buildingType === 'tower'
+        ? INSURANCE_PLAN_SPECS['full-fire-earthquake-water'].fiveYearCostTowerMan
+        : INSURANCE_PLAN_SPECS['full-fire-earthquake-water'].fiveYearCostMansionMan;
+    const stdCost = isDetached
+      ? INSURANCE_PLAN_SPECS['standard-fire-earthquake'].fiveYearCostDetachedMan
+      : property.buildingType === 'tower'
+        ? INSURANCE_PLAN_SPECS['standard-fire-earthquake'].fiveYearCostTowerMan
+        : INSURANCE_PLAN_SPECS['standard-fire-earthquake'].fiveYearCostMansionMan;
+    const minCost = isDetached
+      ? INSURANCE_PLAN_SPECS['minimal-fire-only'].fiveYearCostDetachedMan
+      : property.buildingType === 'tower'
+        ? INSURANCE_PLAN_SPECS['minimal-fire-only'].fiveYearCostTowerMan
+        : INSURANCE_PLAN_SPECS['minimal-fire-only'].fiveYearCostMansionMan;
+
+    state.pendingDecision = {
+      id: 'fire-earthquake-insurance-renewal-10',
+      yearIndex: y,
+      age,
+      category: 'repair-crisis',
+      title: isDetached
+        ? '【一戸建て・火災保険＆地震保険の補償見直し】自然災害激甚化と保険料改定への備え'
+        : '【区分所有・火災保険＆地震保険の補償見直し】家財・漏水個人賠償と地震特約の選択',
+      description: isDetached
+        ? `近年の大型台風・線状降水帯・地震リスクの高まりを受け、損害保険各社が火災保険・地震保険料率を改定！現在加入中の「${INSURANCE_PLAN_SPECS[careerEdu.insurancePlan].shortLabel}」から、今後の補償範囲をどう見直すか？`
+        : `分譲住宅の火災保険・地震保険の見直し時期が到来！現在加入中の「${INSURANCE_PLAN_SPECS[careerEdu.insurancePlan].shortLabel}」について、地震保険や水濡れ・個人賠償特約を手厚くするか、保険料を節約するか？`,
+      statisticalContext:
+        '内閣府・損保協会統計：住宅ローン利用中に大地震や水害で自宅が被災しても「住宅ローン残債は免除されない（二重ローンの危機）」ため、火災保険・地震保険の補償設計が極めて重要となる。',
+      choices: [
+        {
+          id: 'ins-choose-full',
+          label: `火災＋地震＋水災・風災・破損汚損の「フル補償プラン（5年目安${fullCost}万円）」で万全に備える`,
+          subLabel: '台風・豪雨浸水・大地震・漏水時の自己負担を最小化 / 安心感でメンタル+5',
+          outcomeSummary:
+            '自然災害と設備破損を全方位カバーするフル補償プランを選択！万が一の台風・豪雨・大地震でも二重ローンに陥らない盤石の備えを固めた。',
+          newInsurancePlan: 'full-fire-earthquake-water',
+          mentalDelta: 5,
+        },
+        {
+          id: 'ins-choose-standard',
+          label: `水災特約のみ外し、火災＋地震＋風災の基本を押さえた「標準プラン（5年目安${stdCost}万円）」にする`,
+          subLabel: '保険料と地震・台風補償のバランス重視 / 差額キャッシュ温存 +12万円',
+          outcomeSummary:
+            'ハザードマップを確認した上で不要な特約を整理し、火災・風災・地震保険をしっかり確保する標準プランへ最適化した。',
+          newInsurancePlan: 'standard-fire-earthquake',
+          cashDeltaMan: 12,
+          mentalDelta: 2,
+        },
+        {
+          id: 'ins-choose-minimal',
+          label: `保険料を徹底節約するため、地震保険・水災を外した「火災のみ最小プラン（5年目安${minCost}万円）」に削る`,
+          subLabel: '保険料節約で手元資金 +25万円 / 大地震・豪雨被災時は全額自己負担リスク！',
+          outcomeSummary:
+            '目先の保険料を大幅に削って25万円を浮かせたが、今後もし大地震や豪雨被害が発生した際は保険金が下りないリスクを抱えることになった。',
+          newInsurancePlan: 'minimal-fire-only',
+          cashDeltaMan: 25,
+          mentalDelta: -3,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D1-Reno16) 返済16年目：定期的な水回り設備・内装リフォーム決断（一戸建て vs マンション完全分離）
+  if (y === 16 && !state.triggeredEventIds.includes('periodic-renovation-year16')) {
+    state.triggeredEventIds.push('periodic-renovation-year16');
+    if (property.buildingType === 'detached') {
+      state.pendingDecision = {
+        id: 'periodic-renovation-year16',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: '【一戸建て16年目・定期リフォーム】システムキッチン・洗面化粧台・トイレ更新＆床下防蟻処理',
+        description:
+          '入居から16年が経過し、毎日使ってきたキッチン食洗機・レンジフード・温水洗浄便座・洗面台の劣化と、5年周期の床下シロアリ防蟻保証の更新時期が重なった！どこまでリフォームするか？',
+        statisticalContext:
+          '住宅リフォーム推進協議会調査：築15〜18年は水回り設備と内装の更新ピークであり、適切な定期改修が建物寿命と快適性を大きく左右する。',
+        choices: [
+          {
+            id: 'detached-reno16-full',
+            label: '最新システムキッチン・節水トイレ・洗面台への一新＋床下防蟻・断熱改修を実施（148万円）',
+            subLabel: '手元資金 -148万円 / 建物資産価値 +135万円・水道光熱費月-0.3万・幸福度+8',
+            outcomeSummary:
+              '148万円で水回り3点と床下防蟻を一括リフレッシュ！最新設備で家事効率と省エネ性能が上がり、一戸建ての資産価値も135万円回復した！',
+            cashDeltaMan: -148,
+            buildingValueBonusMan: 135,
+            repairCostMonthlyDeltaMan: -0.3,
+            mentalDelta: 8,
+          },
+          {
+            id: 'detached-reno16-standard',
+            label: '必須の床下シロアリ防蟻処理とトイレ・水栓金具・コンロ交換（62万円）に絞る',
+            subLabel: '手元資金 -62万円 / 建物資産価値 +45万円・堅実メンテナンス',
+            outcomeSummary:
+              '構造を守るシロアリ防蟻と故障しやすい水栓・コンロ・トイレの交換を62万円で堅実に実施し、手元資金とのバランスを取った。',
+            cashDeltaMan: -62,
+            buildingValueBonusMan: 45,
+            mentalDelta: 3,
+          },
+          {
+            id: 'detached-reno16-postpone',
+            label: 'まだ使えるのでリフォームは先送りし、パッキンDIY補修（5万円）のみで凌ぐ',
+            subLabel: '手元資金 -5万円 / 設備老朽化・シロアリ不安で建物価値 -75万円・メンタル-5',
+            outcomeSummary:
+              '5万円の応急処置で出費を抑えたが、水回りの古さと床下劣化が進み、建物評価額が75万円低下した。',
+            cashDeltaMan: -5,
+            buildingValueBonusMan: -75,
+            mentalDelta: -5,
+          },
+        ],
+      };
+    } else {
+      state.pendingDecision = {
+        id: 'periodic-renovation-year16',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: '【マンション16年目・専有部定期リフォーム】キッチン・トイレ・洗面水回り＆全室クロス貼替',
+        description:
+          '共用部の修繕とは別に、自室（専有部）のシステムキッチン・トイレ・洗面化粧台・壁紙クロスが築16年で更新期を迎えた！マンションの快適性と将来の売却査定額を保つため、どのレベルで改修するか？',
+        statisticalContext:
+          '分譲マンションの専有部リフォームは築15〜20年が第1のピーク。水回りと内装の定期更新を行わない住戸は中古査定で大幅な減額対象となりやすい。',
+        choices: [
+          {
+            id: 'mansion-reno16-full',
+            label: '専有部のキッチン・トイレ・洗面台交換＋全室クロス＆調湿エコカラット施工を実施（138万円）',
+            subLabel: '手元資金 -138万円 / マンション住戸評価額 +130万円・幸福度 +8',
+            outcomeSummary:
+              '138万円で専有部の水回りと内装を一新！新築モデルルームのような美しさが蘇り、住戸の査定価値も130万円アップした！',
+            cashDeltaMan: -138,
+            buildingValueBonusMan: 130,
+            mentalDelta: 8,
+          },
+          {
+            id: 'mansion-reno16-standard',
+            label: 'トイレ・水栓金具・レンジフード交換とリビング壁紙貼替（56万円）で手堅く整える',
+            subLabel: '手元資金 -56万円 / 住戸評価額 +45万円・幸福度 +3',
+            outcomeSummary:
+              '劣化した設備機器の交換とリビングのクロス貼替を56万円で実施し、無理のない予算で清潔感を取り戻した。',
+            cashDeltaMan: -56,
+            buildingValueBonusMan: 45,
+            mentalDelta: 3,
+          },
+          {
+            id: 'mansion-reno16-postpone',
+            label: '専有部リフォームは見送り、換気扇掃除とコーキング補修（4万円）のみで済ませる',
+            subLabel: '手元資金 -4万円 / 専有部設備の陳腐化で住戸価値 -65万円・メンタル-4',
+            outcomeSummary:
+              'まとまった出費を避けたが、水回りの黄ばみや設備の不調が目立ち始め、住戸の評価額が65万円下落した。',
+            cashDeltaMan: -4,
+            buildingValueBonusMan: -65,
+            mentalDelta: -4,
+          },
+        ],
+      };
+    }
+    return state;
+  }
+
   // (D2) 返済20年目：マンションエレベーター・配管更新 vs 一戸建て水回り・屋根ガルバ改修
   if (y === 20 && !state.triggeredEventIds.includes('property-year20-major')) {
     state.triggeredEventIds.push('property-year20-major');
@@ -3391,6 +5037,99 @@ export function advanceOneYear(
     return state;
   }
 
+  // (D2-Reno28) 返済28年目：第2回大規模修繕・老後バリアフリー＆配管・外装リフォーム決断（一戸建て vs マンション完全分離）
+  if (y === 28 && !state.triggeredEventIds.includes('periodic-renovation-year28')) {
+    state.triggeredEventIds.push('periodic-renovation-year28');
+    if (property.buildingType === 'detached') {
+      state.pendingDecision = {
+        id: 'periodic-renovation-year28',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: '【一戸建て28年目・第2回外装＆老後バリアフリー改修】外壁2回目塗装・給排水管更新と段差解消',
+        description:
+          '入居から28年が経過！13年目の塗装から15年が経ち「2回目の外壁・防水メンテナンス」と「給排水管の更新」、さらに老後を見据えた「手すり・段差解消・ヒートショック防止改修」が必要な時期を迎えた。',
+        statisticalContext:
+          '築30年前後の一戸建ては、給排水管と外装の2回目改修を行うことで築50〜60年まで快適に住み続けられる長期資産となる。',
+        choices: [
+          {
+            id: 'detached-reno28-full',
+            label: '外壁2回目塗装＋給排水管更新＋老後バリアフリー・内窓断熱改修を完遂する（210万円）',
+            subLabel: '手元資金 -210万円 / 建物資産価値 +195万円・老後も安心な終の棲家へ＋幸福度+9',
+            outcomeSummary:
+              '210万円を投じて外装・配管・バリアフリー改修を完了！これから先20年以上安心して暮らせる理想の終の棲家に生まれ変わった！',
+            cashDeltaMan: -210,
+            buildingValueBonusMan: 195,
+            mentalDelta: 9,
+          },
+          {
+            id: 'detached-reno28-essential',
+            label: '漏水防止の給排水管更新と防水シーリング・手すり設置（88万円）に絞って施工する',
+            subLabel: '手元資金 -88万円 / 建物資産価値 +75万円・必要十分な老後対策',
+            outcomeSummary:
+              '88万円で給排水管と防水・手すり改修を実施。老後資金を守りながら致命的な漏水リスクを確実に潰した。',
+            cashDeltaMan: -88,
+            buildingValueBonusMan: 75,
+            mentalDelta: 4,
+          },
+          {
+            id: 'detached-reno28-skip',
+            label: '老後キャッシュを減らしたくないため、改修を見送ってそのまま住み続ける',
+            subLabel: '出費 0円 / 配管・外装の老朽化で建物価値 -140万円・メンタル-6',
+            outcomeSummary:
+              '現金を守るため改修を見送ったが、外壁の色あせと配管の老朽化が進み、建物評価額が140万円低下した。',
+            buildingValueBonusMan: -140,
+            mentalDelta: -6,
+          },
+        ],
+      };
+    } else {
+      state.pendingDecision = {
+        id: 'periodic-renovation-year28',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: '【マンション28年目・第2回大規模修繕＆専有部バリアフリー改修】配管更新と老後リノベの選択',
+        description:
+          '入居28年目を迎え、マンション全体の第2回大規模修繕（外壁・サッシ・共用配管更新）と合わせて、自室内の専有部給排水管更新・バリアフリー床・内窓リフォームを同時施工すると割安になると案内された！',
+        statisticalContext:
+          '築28〜30年のマンションでは、専有部配管（床下給水・給湯管）の更新有無が漏水事故防止と売却可能性の生命線となる。',
+        choices: [
+          {
+            id: 'mansion-reno28-full',
+            label: '専有部給排水管の全面更新＋フラットフロア・断熱内窓リノベーションを実施（165万円）',
+            subLabel: '手元資金 -165万円 / 住戸資産価値 +160万円・漏水リスクゼロ＆幸福度+8',
+            outcomeSummary:
+              '165万円で専有部配管の全面更新とバリアフリー・内窓改修を完了！築30年を感じさせない快適で資産価値の高い住戸に仕上がった！',
+            cashDeltaMan: -165,
+            buildingValueBonusMan: 160,
+            mentalDelta: 8,
+          },
+          {
+            id: 'mansion-reno28-pipe-only',
+            label: '階下漏水を防ぐ「専有部給排水管の更新（65万円）」のみ実施し、内装は現状維持とする',
+            subLabel: '手元資金 -65万円 / 住戸価値 +55万円・漏水リスクを確実に解消',
+            outcomeSummary:
+              '必須の専有部配管更新のみ65万円で実施！マンションで最も怖い階下への水漏れリスクを解消しつつ手元現金を温存した。',
+            cashDeltaMan: -65,
+            buildingValueBonusMan: 55,
+            mentalDelta: 3,
+          },
+          {
+            id: 'mansion-reno28-skip',
+            label: '共用部の修繕積立金工事だけに任せ、自室の改修は見送る（0円）',
+            subLabel: '出費 0円 / 専有部配管の老朽化リスクで住戸価値 -110万円・メンタル-5',
+            outcomeSummary:
+              '自室の配管更新を見送ったため、いつ床下配管が漏水するか分からない不安が残り、住戸の評価額も110万円下落した。',
+            buildingValueBonusMan: -110,
+            mentalDelta: -5,
+          },
+        ],
+      };
+    }
+    return state;
+  }
+
   // (D3) 53歳時点：親の介護と地方実家の相続・空き家処分問題
   if (age === 53 && !state.triggeredEventIds.includes('parent-inheritance-53')) {
     state.triggeredEventIds.push('parent-inheritance-53');
@@ -3429,23 +5168,26 @@ export function advanceOneYear(
     return state;
   }
 
-  // (D4) 60歳定年退職時（残債600万円以上ある場合）：退職金で一括・大幅繰上返済するか温存するか
+  // (D4-1) 60歳定年退職時（退職金制度ありの世帯のみ！）：退職金で一括・大幅繰上返済するか温存するか
   if (
     age === 60 &&
-    state.remainingBalanceMan >= 600 &&
-    state.liquidSavingsMan >= 900 &&
+    careerEdu.retirementAllowanceMan >= 400 &&
+    state.remainingBalanceMan >= 500 &&
+    state.liquidSavingsMan >= 750 &&
     !state.triggeredEventIds.includes('retirement-lump-sum-60')
   ) {
     state.triggeredEventIds.push('retirement-lump-sum-60');
-    const payoffTarget = Math.min(Math.round(state.remainingBalanceMan), 1200);
+    const payoffTarget = Math.min(
+      Math.round(state.remainingBalanceMan),
+      Math.max(400, Math.min(1400, Math.round(state.liquidSavingsMan - 450))),
+    );
     state.pendingDecision = {
       id: 'retirement-lump-sum-60',
       yearIndex: y,
       age,
       category: 'retirement',
-      title: `【60歳定年・退職金の決断】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円に退職金を投入するか？`,
-      description:
-        '60歳定年を迎え退職金を受け取ったが、まだ住宅ローン残債が残っている。退職金を使って残債を大きく減らすか、それとも老後の生活防衛資金として手元に現金を残すか、60代最大の決断！',
+      title: `【60歳定年・退職金（+${careerEdu.retirementAllowanceMan.toLocaleString()}万円）の決断】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円に投入するか？`,
+      description: `60歳定年を迎え退職金 ${careerEdu.retirementAllowanceMan.toLocaleString()}万円を受け取ったが、まだ住宅ローン残債が残っている。退職金を使って残債を大きく減らすか、それとも老後の生活防衛資金として手元に現金を残すか、60代最大の決断！`,
       statisticalContext:
         '60歳定年時に退職金で住宅ローンを一括返済した結果、手元の老後資金が枯渇してしまう「退職金一括返済の罠」と「老後毎月返済の重圧」のどちらを取るかが問われる。',
       choices: [
@@ -3465,6 +5207,52 @@ export function advanceOneYear(
           outcomeSummary:
             '「現金が手元にあればいつでも返せる」と判断し、退職金を老後キャッシュとして温存。運用益を得ながら計画的に返済を続ける道を選んだ。',
           mentalDelta: 3,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D4-2) 60歳到来時（退職金制度なし・0円〜少額の世帯専用！）：退職金なしで残った住宅ローンを60代でどう返すか
+  if (
+    age === 60 &&
+    careerEdu.retirementAllowanceMan < 400 &&
+    state.remainingBalanceMan >= 450 &&
+    !state.triggeredEventIds.includes('no-retirement-60-survival')
+  ) {
+    state.triggeredEventIds.push('no-retirement-60-survival');
+    state.pendingDecision = {
+      id: 'no-retirement-60-survival',
+      yearIndex: y,
+      age,
+      category: 'retirement',
+      title: `【60歳・退職金なし世帯の正念場】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円を60代の就労でどう乗り切るか？`,
+      description:
+        '60歳を迎えたが、退職金一時金がない（または少額の）キャリアのため一括返済の原資がない！65歳の年金開始、さらにその先の完済に向けて、60代の仕事・職種・アルバイトをどう組み立てるか？',
+      statisticalContext:
+        '厚生労働省「就労条件総合調査」：日本企業の約25%（中小企業やベンチャー・外資では3〜7割）には退職金制度がなく、60代以降の就労継続と現役時の貯蓄が完済の生命線となる。',
+      choices: [
+        {
+          id: 'senior-fulltime-change-job',
+          label: '定年がない別職種（ビル設備管理・施設事務・ドライバー・介護事務等：年収260万円）へフルタイム転職して稼ぐ',
+          subLabel: '本人年収 260万円確保 / 70歳まで安定して働ける実務職種へシフト',
+          outcomeSummary:
+            'プライドを捨ててシニア需要の高い実務職種へフルタイム転身！年間260万円の安定収入を確保し、退職金なしでも毎月返済を継続できる体制を整えた！',
+          newMainIncomeAbsoluteMan: 260,
+          newJobLabel: '60代・別職種フルタイム（管理・設備実務職）',
+          mentalDelta: 4,
+        },
+        {
+          id: 'senior-arubaito-plus-prepay',
+          label: '週4日のシニアアルバイト（年収150万円）で無理なく働きつつ、手元貯蓄から250万円を繰上返済する',
+          subLabel: '本人年収 150万円 / 手元資金 -250万 → ローン残債 -250万円圧縮',
+          outcomeSummary:
+            '体を壊さないよう週4日のアルバイト勤務を選び、これまで貯めた自己資金から250万円を繰上返済して毎月の負担を引き下げた。',
+          newMainIncomeAbsoluteMan: 150,
+          newJobLabel: '60代・週4日アルバイト勤務',
+          cashDeltaMan: -250,
+          principalDeltaMan: -250,
+          mentalDelta: 5,
         },
       ],
     };
@@ -3514,41 +5302,73 @@ export function advanceOneYear(
     return state;
   }
 
-  // (D6) 子ども18歳・大学進学時の入学金＆仕送り・奨学金選択イベント
+  // (D6) 子ども18歳・大学／専門学校進学時の学費・奨学金・進路最終決断イベント（高卒就職以外の進学世帯のみ発火）
   if (
     state.childrenAges.includes(18) &&
+    careerEdu.higherEdPath !== 'high-school-job' &&
     !state.triggeredEventIds.includes('university-scholarship-choice')
   ) {
     state.triggeredEventIds.push('university-scholarship-choice');
+    const pathSpec = HIGHER_ED_SPECS[careerEdu.higherEdPath];
+    const gakushiNote = careerEdu.hasGakushiHoken
+      ? '（今年受け取った学資保険満期金+200万円も活用可能！）'
+      : '（学資保険の満期金はないため手元貯蓄と毎年の収入で対応）';
+
     state.pendingDecision = {
       id: 'university-scholarship-choice',
       yearIndex: y,
       age,
       category: 'education',
-      title: '【子ども18歳・大学進学の転機】大学入学金・前期授業料と4年間の学費分担',
-      description:
-        'ついに子どもが18歳を迎え大学進学が決定！合格発表と同時に入学金・前期授業料・新生活準備のまとまった振込期限が迫る。住宅ローン返済と並行してどう工面するか？',
+      title: `【子ども18歳・${pathSpec.shortLabel}進学】入学金・学費と「奨学金・学生バイト」の最終判断`,
+      description: `ついに子どもが18歳を迎え「${pathSpec.shortLabel}」への進学が決定！${gakushiNote} 住宅ローン返済と並行して、これからの学費負担と奨学金の利用をどう決めるか？`,
       statisticalContext:
-        '日本政策金融公庫「教育費負担の実態調査」：大学入学初年度にかかる費用平均は約160万〜230万円、学生の約2.7人に1人が奨学金を利用している。',
+        '日本政策金融公庫調査：国公立大（4年約430万）、私立文系（約600万）、私立理系（約790万）、専門学校2年（約300万）と進路で負担が大きく異なり、約2.7人に1人が奨学金を利用している。',
       choices: [
         {
           id: 'univ-parent-full-support',
-          label: '親の貯蓄から入学・進学初期費用（135万円）を全額出し、子どもには学業に専念させる',
-          subLabel: '手元資金 -135万円 / 家族の絆・子どもの安心感 +9',
-          outcomeSummary:
-            'これまで積み立ててきた資金から135万円を拠出し、子どもに借金を背負わせず大学へ送り出した！親としての大きな責任を果たした達成感に包まれた。',
-          cashDeltaMan: -135,
-          mentalDelta: 9,
+          label: `奨学金は借りず、親の貯蓄${careerEdu.hasGakushiHoken ? 'と学資保険満期金' : ''}から「${pathSpec.shortLabel}」の学費を全額負担する`,
+          subLabel: '一時出費 -90万円・奨学金なし（親全額負担） / 家族の絆・子どもの安心感 +10',
+          outcomeSummary: `子どもに奨学金の借金を背負わせず、親の力で「${pathSpec.shortLabel}」へ送り出した！親としての大きな責任を果たし家族の絆が深まった。`,
+          cashDeltaMan: -90,
+          newScholarshipType: 'none',
+          mentalDelta: 10,
         },
         {
           id: 'univ-jasso-scholarship',
-          label: 'JASSO奨学金と子どものアルバイトを併用してもらい、親の初期負担を60万円に抑える',
-          subLabel: '手元資金 -60万円 / 家計のキャッシュ防衛を優先（メンタル+2）',
+          label: '日本学生支援機構（JASSO）の貸与型奨学金（月5万）を利用し、在学中の親負担を年▲60万円軽減する',
+          subLabel: '一時出費 -40万円 / 在学中の教育費が毎年60万円軽減され住宅ローン破綻を回避',
           outcomeSummary:
-            '親子でしっかり話し合い、奨学金とアルバイトを組み合わせる堅実プランを選択。住宅ローン破綻を防ぎながら大学進学を実現した。',
-          cashDeltaMan: -60,
+            '親子でしっかり話し合い、JASSO貸与型奨学金を併用する堅実プランを選択。在学4年間の家計キャッシュフローが大きく守られた。',
+          cashDeltaMan: -40,
+          newScholarshipType: 'jasso-loan',
+          mentalDelta: 3,
+        },
+        {
+          id: 'univ-grant-and-arubaito',
+          label: '給付型奨学金・授業料減免の申請＋子どもの学生アルバイトで、親の負担を年▲90万円圧縮する',
+          subLabel: '一時出費 -25万円 / 在学中の親負担を年▲90万円大幅カット！',
+          outcomeSummary:
+            '授業料減免制度と子どもの学生アルバイト（塾講師・接客バイト）を組み合わせ、親の学費持ち出しを最小限に抑えて進学を実現した！',
+          cashDeltaMan: -25,
+          newScholarshipType: 'grant-workstudy',
           mentalDelta: 2,
         },
+        ...(careerEdu.higherEdPath === 'private-science-univ' ||
+        careerEdu.higherEdPath === 'private-arts-univ'
+          ? [
+              {
+                id: 'switch-to-national-or-vocational',
+                label:
+                  '家計状況を率直に話し合い、学費の安い「国公立大学」または「2年制専門学校」へ進路変更してもらう',
+                subLabel: '一時出費 -30万円 / 4年間の学費総額が200万〜350万円軽減！',
+                outcomeSummary:
+                  '家計と住宅ローンの実情を共有し、学費負担の軽い国公立ルートへ進路をシフト。50代の教育費破綻リスクを未然に回避した。',
+                cashDeltaMan: -30,
+                newHigherEdPath: 'national-univ' as const,
+                mentalDelta: -2,
+              },
+            ]
+          : []),
       ],
     };
     return state;
@@ -3930,13 +5750,16 @@ export function advanceOneYear(
     }
   }
 
-  // (D9) 全世帯共通・キャリア＆転勤のランダム転機イベント（現実的な確率で発火）
+  // (D9) 雇用形態・給与カーブ別のキャリア＆転勤・減収対応イベント（該当条件の世帯にのみ発火）
   if (isCooldownClear) {
     const careerRoll = rng();
 
-    // 1. 急な遠方転勤辞令（単身赴任 vs リロケーション賃貸 vs 転職定住：5〜13年目、年率5%）
+    // 1. 急な遠方転勤辞令（全国転勤のある上場企業・公務員 かつ 家族帯同/単身赴任の判断が生じる配偶者あり世帯のみ：5〜13年目）
     if (
-      state.config.employment !== 'freelance' &&
+      (state.config.employment === 'listed-corp' || state.config.employment === 'civil-servant') &&
+      careerEdu.hasSpouse &&
+      !state.isDivorced &&
+      age < 55 &&
       y >= 5 &&
       y <= 13 &&
       careerRoll < 0.05 &&
@@ -3950,7 +5773,7 @@ export function advanceOneYear(
         category: 'life',
         title: '【突然の人事異動・転勤辞令】マイホーム購入後の地方・海外赴任命令！どうする？',
         description:
-          'マイホームでの生活が軌道に乗った矢先、会社から3〜4年間の遠方赴任辞令が下った！家族全員で引っ越して自宅を期間限定賃貸（リロケーション）に出すか、単身赴任か、それとも転職して定住するか？',
+          'マイホームでの生活が軌道に乗った矢先、勤務先から3〜4年間の遠方赴任辞令が下った！家族全員で引っ越して自宅を期間限定賃貸（リロケーション）に出すか、単身赴任か、それとも転職して定住するか？',
         statisticalContext:
           '住宅ローン利用者が転勤になった場合、家族が住み続ければ住宅ローン控除は継続されるが、全員転居して賃貸に出すと原則として控除対象外・銀行への届出が必要となる。',
         choices: [
@@ -3962,6 +5785,7 @@ export function advanceOneYear(
               'これまでの実績を武器に転勤なしの優良企業へ転職成功！マイホームを手放すことなく、年収も6%アップする最高の転機となった！',
             cashDeltaMan: -15,
             incomeMultiplierDelta: 0.06,
+            newJobLabel: '転勤なし優良企業（キャリア転職）',
             mentalDelta: 7,
           },
           {
@@ -4015,6 +5839,7 @@ export function advanceOneYear(
             outcomeSummary:
               '思い切って成長企業へステップアップ転職！本人年収が11%上昇し、住宅ローンの返済負担率が一気に軽くなった！',
             incomeMultiplierDelta: 0.11,
+            newJobLabel: '成長企業・専門職（ステップアップ転職）',
             mentalDelta: 3,
           },
           {
@@ -4025,6 +5850,636 @@ export function advanceOneYear(
               '本業の勤続年数を守りながら副業と資格手当で年間収入を補強し、着実にキャッシュを積み増した。',
             cashDeltaMan: 45,
             incomeMultiplierDelta: 0.03,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 3. 給与頭打ち・業績減収リスク世帯の「賞与カット・実質賃金低下」への対抗決断（該当給与カーブの世帯のみ：6〜16年目、年率8%）
+    if (
+      (careerEdu.salaryCurve === 'downward-pressure' ||
+        careerEdu.salaryCurve === 'flat-stagnant' ||
+        careerEdu.salaryCurve === 'performance-volatile') &&
+      age < 56 &&
+      y >= 6 &&
+      y <= 16 &&
+      careerRoll >= 0.095 &&
+      careerRoll < 0.175 &&
+      !state.triggeredEventIds.includes('salary-decline-response')
+    ) {
+      state.triggeredEventIds.push('salary-decline-response');
+      state.pendingDecision = {
+        id: 'salary-decline-response',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: `【給与の壁・減収危機】本業の昇給停滞・賞与減額に対しどう家計を立て直すか？`,
+        description: `物価や住宅ローン金利が動く一方で、本業の給与（現在${state.mainIncomeMan}万円）が上がらない・または業績悪化で賞与が削られる厳しい局面に直面！職種転換・副業バイト・家計リストラのどれで突破するか？`,
+        statisticalContext:
+          '厚生労働省「賃金構造基本統計調査」：業種や企業規模によって40代以降の賃金カーブは二極化しており、減収世帯では副業や職種転換がローン維持の鍵を握る。',
+        choices: [
+          {
+            id: 'pivot-growth-industry',
+            label: '成長業界（IT・インフラ・専門職）へ異業種転職し、給与水準そのものを引き上げる',
+            subLabel: '本人年収 +12%アップ！ / 職種転換の勉強コスト -20万円',
+            outcomeSummary:
+              '減収リスクのある環境から思い切って成長分野へ異業種転職！年収が12%回復・上昇し、住宅ローン返済の危機を脱した！',
+            cashDeltaMan: -20,
+            incomeMultiplierDelta: 0.12,
+            newJobLabel: '成長業界・キャリア転職（昇給回復）',
+            mentalDelta: 4,
+          },
+          {
+            id: 'weekend-side-arubaito',
+            label: '現職を続けながら、週末の副業・スポットアルバイト（配送・実務委託等：年+48万円）で稼ぐ',
+            subLabel: '手元資金 +48万円・本人収入 +6%底上げ / 休日減少でメンタル-3',
+            outcomeSummary:
+              '週末や夜間の時間を活かして副業・アルバイトを稼働！本業の減収分をカバーして余りある年間収入を確保した。',
+            cashDeltaMan: 48,
+            incomeMultiplierDelta: 0.06,
+            newJobLabel: `${EMPLOYMENT_LABELS[state.config.employment]}＋週末副業バイト`,
+            mentalDelta: -3,
+          },
+          {
+            id: 'cut-fixed-living-costs',
+            label: '見栄を捨てて保険・通信費・娯楽費を徹底的に削り、今の収入の範囲内で黒字化する（+35万円）',
+            subLabel: '手元資金 +35万円（固定費削減） / 堅実耐乏',
+            outcomeSummary:
+              '住宅ローン以外の全固定費を聖域なく見直し、減収下でも貯蓄が減らない筋肉質な家計構造へ作り替えた。',
+            cashDeltaMan: 35,
+            mentalDelta: 1,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // (D10) 現実的な確率に基づく自然災害リスク（台風・豪雨浸水 / 大地震）＆ 人生の急な入用イベント（該当世帯条件のみ発火）
+    const riskAndExpenseRoll = rng();
+    const isDetachedHouse = property.buildingType === 'detached';
+    const insPlan = careerEdu.insurancePlan;
+
+    // 1. 線状降水帯・大型台風による水害・風災被災（現実的な年間被災確率：一戸建て1.2%・集合住宅0.6%）
+    const waterDisasterProb = isDetachedHouse ? 0.012 : 0.006;
+    if (
+      y >= 3 &&
+      riskAndExpenseRoll < waterDisasterProb &&
+      !state.triggeredEventIds.includes('disaster-typhoon-water-risk')
+    ) {
+      state.triggeredEventIds.push('disaster-typhoon-water-risk');
+      const hasWaterCover = insPlan === 'full-fire-earthquake-water';
+      const hasStandardWind = insPlan === 'standard-fire-earthquake';
+
+      state.pendingDecision = {
+        id: 'disaster-typhoon-water-risk',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: isDetachedHouse
+          ? '【自然災害・線状降水帯＆猛烈台風】記録的豪雨による敷地浸水・屋根破損と「火災保険（水災・風災）」審判！'
+          : '【自然災害・記録的豪雨＆暴風】ゲリラ豪雨による排水逆流・ベランダ隔て板破損と「火災保険」審判！',
+        description: isDetachedHouse
+          ? `記録的な線状降水帯と暴風が直撃し、一戸建ての床下・外構への泥水流入と屋根瓦・雨樋の破損が発生（復旧見積もり145万円）！ここで契約中の火災保険「${INSURANCE_PLAN_SPECS[insPlan].shortLabel}」の補償範囲が明暗を分ける！`
+          : `記録的なゲリラ豪雨と暴風が直撃し、バルコニー排水口からの雨水逆流による室内水濡れと窓ガラス・隔て板の破損が発生（専有部復旧見積もり85万円）！契約中の「${INSURANCE_PLAN_SPECS[insPlan].shortLabel}」はどこまでカバーできるか？`,
+        statisticalContext:
+          '国土交通省「水害統計」・損保料率機構データ：近年の気候変動により水災・風災被害は全国で年間数万件発生。火災保険の「水災特約」を外していると床上・床下浸水は補償対象外となる。',
+        choices: hasWaterCover
+          ? [
+              {
+                id: 'water-disaster-full-covered',
+                label: '【フル補償発動！】火災保険の水災・風災特約で復旧費用を全額カバーし、防水・止水対策も強化する',
+                subLabel: '保険金で復旧自己負担 0円！ / 災害見舞金＋予防改修で建物価値 +40万円・安心感 +6',
+                outcomeSummary:
+                  'フル補償プラン（水災・風災・破損特約付帯）に入っていたおかげで、復旧費用がすべて保険金から支払われ自己負担ゼロで完全復旧！手元資金を1円も減らさずに乗り切った！',
+                cashDeltaMan: 0,
+                buildingValueBonusMan: 40,
+                mentalDelta: 6,
+              },
+            ]
+          : hasStandardWind
+            ? [
+                {
+                  id: 'water-disaster-partial-wind',
+                  label: '風災分は保険適用されたが「水災特約なし」のため浸水・排水逆流の復旧費（-68万円）を自己負担する',
+                  subLabel: '手元資金 -68万円 / 今後への備えとしてフル補償プランへ切り替える',
+                  outcomeSummary:
+                    '暴風による破損は火災保険でカバーされたものの、水災特約を外していたため浸水部分の消毒・床張替費用68万円が自己負担となった。今後はフル補償へ見直すことを決意。',
+                  cashDeltaMan: -68,
+                  newInsurancePlan: 'full-fire-earthquake-water',
+                  mentalDelta: -4,
+                },
+                {
+                  id: 'water-disaster-partial-keep',
+                  label: '浸水部分の最低限の乾燥・補修（-42万円）のみ自己資金で行い、出費を抑える',
+                  subLabel: '手元資金 -42万円 / 湿気残りリスクで建物価値 -35万円・メンタル-5',
+                  outcomeSummary:
+                    '42万円の最小限補修で済ませたが、水災補償がなかった痛手により湿気ダメージが残り建物評価額が35万円下がった。',
+                  cashDeltaMan: -42,
+                  buildingValueBonusMan: -35,
+                  mentalDelta: -5,
+                },
+              ]
+            : [
+                {
+                  id: 'water-disaster-uninsured-pay',
+                  label: '最小プラン（水災補償なし・免責高額）のため、復旧費用（-125万円）を全額貯蓄から支払う',
+                  subLabel: '手元資金 -125万円 / 火災保険をフル補償プランへ緊急格上げ',
+                  outcomeSummary:
+                    '保険料をケチって最小プランにしていたツケが直撃…。125万円の修理費を全額自己資金から支払い、慌ててフル補償プランへ加入し直した。',
+                  cashDeltaMan: -125,
+                  newInsurancePlan: 'full-fire-earthquake-water',
+                  mentalDelta: -10,
+                },
+              ],
+      };
+      return state;
+    }
+
+    // 2. 震度6弱〜6強の大地震発生と「地震保険」審判（政府地震調査委員会の30年発生確率に基づく現実的な年率0.55%）
+    if (
+      y >= 4 &&
+      riskAndExpenseRoll >= waterDisasterProb &&
+      riskAndExpenseRoll < waterDisasterProb + 0.0055 &&
+      !state.triggeredEventIds.includes('disaster-major-earthquake-risk')
+    ) {
+      state.triggeredEventIds.push('disaster-major-earthquake-risk');
+      const hasEarthquakeIns =
+        insPlan === 'full-fire-earthquake-water' || insPlan === 'standard-fire-earthquake';
+
+      state.pendingDecision = {
+        id: 'disaster-major-earthquake-risk',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: isDetachedHouse
+          ? '【巨大地震発生・震度6弱】一戸建ての外壁クラック・基礎ひび割れ・家財損壊と「地震保険」審判！'
+          : '【巨大地震発生・震度6弱】共同住宅の室内家具転倒・内装ボード亀裂・ライフライン停止と「地震保険」審判！',
+        description: isDetachedHouse
+          ? `震度6弱の直下型地震が発生！新耐震・耐震等級のおかげで倒壊は免れたものの、一戸建ての外壁・基礎の一部損壊と室内家財・エコキュートの転倒被害が発生！普通の火災保険では「地震による損害は1円も出ない」が、地震保険の加入状況は！？`
+          : `震度6弱の直下型地震が発生！建物の構造躯体は無事だったものの、室内の大型家電・食器棚の損壊と内装壁の亀裂、さらに共用部復旧費が発生！火災保険単体では補償されない地震被害に対し、地震保険の加入状況は！？`,
+        statisticalContext:
+          '損害保険料率算出機構：地震・噴火・津波による損害は通常の火災保険では免責（補償0円）。地震保険に加入していれば「一部損・小半損・大半損・全損」の認定に応じて非課税の保険金が迅速に支払われる。',
+        choices: hasEarthquakeIns
+          ? [
+              {
+                id: 'earthquake-ins-payout-repair',
+                label: '【地震保険発動！】地震保険の「小半損・一部損」認定により非課税保険金を受領し、完全補修＋耐震補強を行う',
+                subLabel: '地震保険金受領で実質プラス収支（+45万円） / 建物価値 +50万円・安心感 +7',
+                outcomeSummary:
+                  '地震保険にしっかり加入していたおかげで、損害認定に基づく非課税の地震保険金がスピーディに振り込まれた！補修費用を全額賄った上で手元に45万円の生活再建資金が残り、耐震性も強化された！',
+                cashDeltaMan: 45,
+                buildingValueBonusMan: 50,
+                mentalDelta: 7,
+              },
+            ]
+          : [
+              {
+                id: 'earthquake-no-ins-self-pay',
+                label: '地震保険未加入のため保険金は0円…貯蓄から160万円を取り崩して補修と家財買い直しを行う',
+                subLabel: '手元資金 -160万円 / 今後の余震・本震に備えて地震保険付帯プランへ変更',
+                outcomeSummary:
+                  '「火災保険だけでは地震被害に1円も出ない」という現実を痛感…。160万円を貯蓄から取り崩して修理を行い、直ちに地震保険付帯プランへ切り替えた。',
+                cashDeltaMan: -160,
+                newInsurancePlan: 'standard-fire-earthquake',
+                mentalDelta: -11,
+              },
+              {
+                id: 'earthquake-no-ins-minimal-patch',
+                label: '現金流出を抑えるため最低限の片付け（-55万円）のみで済ませ、ひび割れは放置する',
+                subLabel: '手元資金 -55万円 / 構造・外装劣化進行で資産価値 -130万円・メンタル-9',
+                outcomeSummary:
+                  '55万円で最低限の復旧のみ行ったが、地震によるクラックを放置したことで資産価値が130万円下落してしまった。',
+                cashDeltaMan: -55,
+                buildingValueBonusMan: -130,
+                mentalDelta: -9,
+              },
+            ],
+      };
+      return state;
+    }
+
+    // 3. 子育て世帯の急な入用：子どもの歯列矯正＆部活遠征・PC教材費（8〜14歳の子どもがいる世帯のみ！年率6.5%）
+    if (
+      state.childrenAges.some((a) => a >= 8 && a <= 14) &&
+      y >= 5 &&
+      riskAndExpenseRoll >= 0.02 &&
+      riskAndExpenseRoll < 0.085 &&
+      !state.triggeredEventIds.includes('child-orthodontics-expense')
+    ) {
+      state.triggeredEventIds.push('child-orthodontics-expense');
+      state.pendingDecision = {
+        id: 'child-orthodontics-expense',
+        yearIndex: y,
+        age,
+        category: 'education',
+        title: '【子育て世帯の急な入用】子どもの小児歯列矯正（85万円）と部活・学習用PC購入の重なり',
+        description:
+          '学校歯科検診で子どもの歯並び・噛み合わせについて「今のうちに矯正治療（自由診療・約85万円）を始めるのが望ましい」と診断された！さらに部活動の遠征費・ユニフォーム一式・学習用タブレットPCの買い替えが同じ年に重なった！',
+        statisticalContext:
+          '子育て世帯の家計調査：学費や塾代以外にも「小児歯科矯正（平均70万〜100万円・医療費控除対象）」「部活・習い事遠征費」などのまとまった臨時出費が小中学生期に発生しやすい。',
+        choices: [
+          {
+            id: 'ortho-full-and-tax-deduct',
+            label: '子どもの将来のため歯列矯正と部活・PC環境をすべて整え、確定申告で「医療費控除」を申請する（実質 -72万円）',
+            subLabel: '手元資金 -72万円（医療費控除還付反映） / 子どもの健康と自己肯定感アップで幸福度 +9',
+            outcomeSummary:
+              '子どもの健康への一生モノの投資として歯列矯正を開始！発育段階の噛み合わせ治療として医療費控除もきっちり申請し、約13万円の税還付を取り戻した！',
+            cashDeltaMan: -72,
+            mentalDelta: 9,
+          },
+          {
+            id: 'ortho-dental-loan-split',
+            label: '手元資金の急減を防ぐため、無金利分割払いとリユース教材活用で初期出費を -38万円に抑える',
+            subLabel: '手元資金 -38万円 / 堅実にやりくりして幸福度 +4',
+            outcomeSummary:
+              '矯正歯科の無金利分割と先輩からの部活用品お下がりを賢く活用し、一度のキャッシュ流出を38万円に抑えて乗り切った。',
+            cashDeltaMan: -38,
+            mentalDelta: 4,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 4. 人生の急な入用：親族の冠婚葬祭・実家の緊急支援・親の医療介護一時金（38〜64歳、年率4.5%）
+    if (
+      age >= 38 &&
+      age <= 64 &&
+      y >= 5 &&
+      riskAndExpenseRoll >= 0.085 &&
+      riskAndExpenseRoll < 0.13 &&
+      !state.triggeredEventIds.includes('sudden-ceremony-family-expense')
+    ) {
+      state.triggeredEventIds.push('sudden-ceremony-family-expense');
+      state.pendingDecision = {
+        id: 'sudden-ceremony-family-expense',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: '【人生の急な入用】親の入院・介護住宅改修と親族の冠婚葬祭が重なる臨時支出',
+        description:
+          '高齢になった親の緊急入院・介護ベッド導入と、親族の法事・冠婚葬祭が同じ時期に重なり、まとまった「入用のお金」が必要になった！住宅ローン返済中の家計からどう捻出するか？',
+        statisticalContext:
+          '生命保険文化センター調査：40代〜60代では、親の介護初期費用（平均約74万円）や葬儀・法要・慶弔費など、予算外の臨時支出が数年に一度発生する。',
+        choices: [
+          {
+            id: 'use-public-care-insurance',
+            label: '公的介護保険の住宅改修補助・高額介護サービス費制度をフル活用し、兄弟姉妹で分担する（自己負担 -38万円）',
+            subLabel: '手元資金 -38万円 / 公的制度と家族分担で負担を最小化・メンタル +3',
+            outcomeSummary:
+              'ケアマネジャーに相談して介護保険の補助金（最大9割支給）と高額療養費制度をフル活用！兄弟姉妹ともしっかり話し合って分担し、38万円の持ち出しで円満に乗り切った。',
+            cashDeltaMan: -38,
+            mentalDelta: 3,
+          },
+          {
+            id: 'pay-all-alone-generously',
+            label: '長男・長女（代表）として自分が全面的に費用を引き受け、手厚く手配する（-92万円）',
+            subLabel: '手元資金 -92万円 / 親族からの信頼と感謝でメンタル +6',
+            outcomeSummary:
+              '92万円を拠出して親の医療介護環境と冠婚葬祭を手厚く整えた。手元貯蓄は減ったが、親孝行と家族の絆を守り抜いた。',
+            cashDeltaMan: -92,
+            mentalDelta: 6,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 5. 成人した子どもの結婚資金援助・初孫誕生のお祝い金（23歳以上の子どもがいる世帯のみ！年率14%）
+    if (
+      state.childrenAges.some((a) => a >= 23) &&
+      riskAndExpenseRoll >= 0.13 &&
+      riskAndExpenseRoll < 0.27 &&
+      !state.triggeredEventIds.includes('adult-child-marriage-grandchild')
+    ) {
+      state.triggeredEventIds.push('adult-child-marriage-grandchild');
+      state.pendingDecision = {
+        id: 'adult-child-marriage-grandchild',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: '【家族の慶事と入用】社会人になった子どもの結婚＆初孫誕生のお祝い・新生活援助',
+        description:
+          '立派に社会人として独立した子どもから「結婚が決まった（さらに新しい命も授かった）」と嬉しい報告が届いた！親として結婚・出産祝い金をどれくらい包むか、それとも自分たちの老後・住宅ローン完済資金を優先するか？',
+        statisticalContext:
+          'ゼクシィ結婚トレンド調査：親からの結婚・新生活資金援助の平均額は約150万〜200万円（ご祝儀・出産祝いのみの場合は30万〜50万円）となっている。',
+        choices: [
+          {
+            id: 'gift-generous-marriage-120',
+            label: '「結婚・出産資金の非課税贈与」を活用し、新生活と初孫のために120万円を援助する',
+            subLabel: '手元資金 -120万円 / 家族の幸福度・人生の満足度 +15！',
+            outcomeSummary:
+              'マイホームで育て上げた子どもの門出と初孫誕生に120万円を贈呈！週末に孫を連れて自宅へ遊びに来てくれる最高の楽しみが増えた！',
+            cashDeltaMan: -120,
+            mentalDelta: 15,
+          },
+          {
+            id: 'gift-standard-celebration-40',
+            label: '無理のない範囲でご祝儀・出産祝い（40万円）を贈り、自分たちの老後資金もしっかり守る',
+            subLabel: '手元資金 -40万円 / 老後資金と幸福度のバランス +9',
+            outcomeSummary:
+              '気持ちを込めたお祝い金40万円を贈りつつ、自分たちの住宅ローン完済と老後資金も崩さない堅実なバランスを保った！',
+            cashDeltaMan: -40,
+            mentalDelta: 9,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 6. 子どもの入塾・進学塾・夏期講習の選択（10〜14歳の小中学生がいる世帯のみ発火！年率22%）
+    if (
+      state.childrenAges.some((a) => a >= 10 && a <= 14) &&
+      y >= 2 &&
+      riskAndExpenseRoll >= 0.27 &&
+      riskAndExpenseRoll < 0.49 &&
+      !state.triggeredEventIds.includes('child-cram-school-entry')
+    ) {
+      state.triggeredEventIds.push('child-cram-school-entry');
+      state.pendingDecision = {
+        id: 'child-cram-school-entry',
+        yearIndex: y,
+        age,
+        category: 'education',
+        title: '【子どもの入塾・夏期講習の選択】周囲の通塾ラッシュと「進学塾・季節講習代」の波',
+        description:
+          'クラスメイトの多くが大手進学塾や個別指導塾に通い始め、子どもからも「友達と同じ塾や夏期講習に通いたい」と相談された！入塾金・毎月の授業料・夏期/冬期講習・模試代を含めると年間30万〜60万円以上の負担増になるが、どう選択する？',
+        statisticalContext:
+          '文部科学省「子供の学習費調査」：公立中学生の約7割が学習塾に通い、中3受験期には夏期講習・冬期講習・直前特訓で年間塾代が40万〜70万円に達する世帯も多い。',
+        choices: [
+          {
+            id: 'cram-choice-intensive',
+            label: '大手進学塾の本科コース＋夏期・冬期・直前特訓講習にフル参加させる（初期・講習費 -42万円）',
+            subLabel: '手元資金 -42万円・以降「進学塾・予備校フル活用」方針へ / 学力向上と安心感で幸福度 +7',
+            outcomeSummary:
+              '子どもの意欲を応援し、大手進学塾の本科コースと季節講習へフル参加させた！出費は大きいが、第一志望校合格に向けて万全の学習環境が整った。',
+            cashDeltaMan: -42,
+            newCramSchoolPolicy: 'intensive-cram',
+            mentalDelta: 7,
+          },
+          {
+            id: 'cram-choice-standard',
+            label: '苦手科目（英語・数学）に絞って標準通塾させ、季節講習は必要な講座だけ厳選する（-18万円）',
+            subLabel: '手元資金 -18万円・以降「標準通塾」方針へ / 家計と学習効果のバランス +4',
+            outcomeSummary:
+              '塾の営業トークに流されず、本当に必要な英語・数学の2科目と厳選した講習のみを受講！無理のない予算で着実に成績を伸ばした。',
+            cashDeltaMan: -18,
+            newCramSchoolPolicy: 'standard-cram',
+            mentalDelta: 4,
+          },
+          {
+            id: 'cram-choice-online-self',
+            label: '高額な通塾・講習は見送り、月額オンライン学習サービスと市販問題集・学校補習で自走させる（-4万円）',
+            subLabel: '手元資金 -4万円・以降「通信教育・自習中心」方針へ（年間教育費を大幅圧縮）',
+            outcomeSummary:
+              '月数千円のオンライン映像教材とリビング学習で自走する習慣を確立！高額な塾代を節約し、浮いた資金を将来の大学進学費用と住宅ローン返済に温存した。',
+            cashDeltaMan: -4,
+            newCramSchoolPolicy: 'minimal-self-study',
+            mentalDelta: 1,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 7. 高校生の大学受験予備校・季節講習の選択（15〜17歳の高校生がいて高卒就職以外の世帯のみ発火！年率24%）
+    if (
+      state.childrenAges.some((a) => a >= 15 && a <= 17) &&
+      careerEdu.higherEdPath !== 'high-school-job' &&
+      riskAndExpenseRoll >= 0.49 &&
+      riskAndExpenseRoll < 0.73 &&
+      !state.triggeredEventIds.includes('child-highschool-yobiko-entry')
+    ) {
+      state.triggeredEventIds.push('child-highschool-yobiko-entry');
+      state.pendingDecision = {
+        id: 'child-highschool-yobiko-entry',
+        yearIndex: y,
+        age,
+        category: 'education',
+        title: '【高校生の大学受験予備校】大手予備校の通年講座・夏期講習・模試ラッシュ（年60万〜100万円）への決断',
+        description:
+          '大学受験を見据えた高校生活が本格化！大手予備校や衛星予備校から「通年パック講座＋夏期・冬期講習＋志望校別特訓（一括約68万円）」の提案書が届いた。住宅ローン返済と大学入学金ピークが迫る中、予備校代をどうするか？',
+        statisticalContext:
+          '現役高校生の大学受験予備校費用は、高2〜高3の2年間で平均80万〜150万円に達し、大学初年度納入金（約100万〜180万円）と重なる「教育費クライマックス」となる。',
+        choices: [
+          {
+            id: 'yobiko-choice-full',
+            label: '志望大学合格のため、大手予備校の通年講座＋夏期・冬期直前講習をフル受講させる（-68万円）',
+            subLabel: '手元資金 -68万円・高校期の予備校フル活用方針へ / 受験サポート万全で幸福度 +7',
+            outcomeSummary:
+              '68万円を一括納入し、予備校の通年講座・季節講習・自習室をフル活用！親としてできる限りの受験環境を整えた。',
+            cashDeltaMan: -68,
+            newCramSchoolPolicy: 'intensive-cram',
+            mentalDelta: 7,
+          },
+          {
+            id: 'yobiko-choice-hybrid',
+            label: '高校の放課後受験補習と単科講座・オンライン映像授業を組み合わせ、費用を -26万円に抑える',
+            subLabel: '手元資金 -26万円・標準通塾方針へ / 賢く抑えて大学初年度費用を温存 +4',
+            outcomeSummary:
+              '学校の受験補習と予備校の単科受講を賢くハイブリッド活用！予備校代を26万円に抑え、来年の大学入学金に向けたキャッシュを守った。',
+            cashDeltaMan: -26,
+            newCramSchoolPolicy: 'standard-cram',
+            mentalDelta: 4,
+          },
+          {
+            id: 'yobiko-choice-self-scholarship',
+            label: '予備校には通わず学校自習室と参考書で受験し、進学後は奨学金も活用して家計を守る（-6万円）',
+            subLabel: '手元資金 -6万円・「通信自習＋貸与奨学金」へ切り替え家計破綻を防止',
+            outcomeSummary:
+              '子どもと家計状況を率直に話し合い、参考書学習と学校の先生への質問で受験に挑むことに。進学後の奨学金予約採用も申し込んだ。',
+            cashDeltaMan: -6,
+            newCramSchoolPolicy: 'minimal-self-study',
+            newScholarshipType: 'jasso-loan',
+            mentalDelta: 0,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 8. 物価上昇・生活コスト高騰の直撃（累積物価指数が111以上に達した時に発火！年率18%）
+    if (
+      (state.cumulativePriceIndex ?? 100) >= 111 &&
+      y >= 4 &&
+      riskAndExpenseRoll >= 0.73 &&
+      riskAndExpenseRoll < 0.85 &&
+      !state.triggeredEventIds.includes('inflation-living-cost-surge')
+    ) {
+      state.triggeredEventIds.push('inflation-living-cost-surge');
+      const infPct = Math.round((state.cumulativePriceIndex ?? 112) - 100);
+      state.pendingDecision = {
+        id: 'inflation-living-cost-surge',
+        yearIndex: y,
+        age,
+        category: 'boj-shock',
+        title: `【物価上昇・生活コスト高騰の直撃】購入時から物価 +${infPct}%！食費・電気ガス代・日用品の値上げラッシュ`,
+        description: `スーパーの食料品、電気・ガス料金、ガソリン、日用品、外食に至るまで値上げが止まらない！マイホーム購入時と比べて物価水準が約 +${infPct}%（指数${(state.cumulativePriceIndex ?? 112).toFixed(1)}）に膨張し、同じ暮らしをしているだけで毎月数万円が余計に消えていく！`,
+        statisticalContext:
+          '総務省「消費者物価指数（CPI）」・家計調査：年2%前後の物価上昇でも10年で生活コストは約22%上昇し、住宅ローン返済世帯の実質可処分所得を大きく圧迫する。',
+        choices: [
+          {
+            id: 'inflation-eco-window-fix',
+            label: '内窓（二重窓）断熱改修・高効率家電導入と通信・保険の固定費大手術で光熱費・生活費を恒久削減（初期 -28万円）',
+            subLabel: '手元資金 -28万円 / 毎月の光熱費・維持費が恒久的に ▲0.7万円/月（年8.4万）軽減・建物価値+30万',
+            outcomeSummary:
+              '国の省エネ補助金も活用して内窓断熱と省エネ化を実施し、さらに通信・サブスク・保険を徹底見直し！物価高に負けない低コスト体質を実現した！',
+            cashDeltaMan: -28,
+            repairCostMonthlyDeltaMan: -0.7,
+            buildingValueBonusMan: 30,
+            mentalDelta: 5,
+          },
+          {
+            id: 'inflation-income-boost',
+            label: '生活水準は落とさず、昇給・価格転嫁交渉や副業ワークで「インフレを上回る収入増（+6%）」を勝ち取る',
+            subLabel: '本人年収 +6%アップ！ / ハードワークでメンタル -2',
+            outcomeSummary:
+              'インフレ局面をチャンスに変え、本業でのベースアップ・単価交渉と副業収入により年収を6%引き上げて生活コスト上昇を突破した！',
+            incomeMultiplierDelta: 0.06,
+            mentalDelta: -2,
+          },
+          {
+            id: 'inflation-frugal-staycation',
+            label: '外食・旅行レジャーを「節約・おうち時間中心」へ切り替え、PB商品活用で支出を圧縮する（+16万円）',
+            subLabel: '手元資金 +16万円・以降「節約・おうち時間」方針へ / 我慢が増えメンタル -4',
+            outcomeSummary:
+              '外食や遠出のレジャーを控え、プライベートブランド食材と自炊・おうち時間を徹底することでインフレによる支出増を抑え込んだ。',
+            cashDeltaMan: 16,
+            newLeisureStyle: 'frugal-staycation',
+            mentalDelta: -4,
+          },
+        ],
+      };
+      return state;
+    }
+
+    // 9. 修繕費・建築資材・職人単価の高騰ショック（修繕費インフレ倍率が1.15倍以上に達した時に発火！戸建て/マンション完全分離）
+    if (
+      (state.repairCostInflationMult ?? 1.0) >= 1.15 &&
+      y >= 6 &&
+      riskAndExpenseRoll >= 0.85 &&
+      riskAndExpenseRoll < 0.93 &&
+      !state.triggeredEventIds.includes('repair-material-cost-surge')
+    ) {
+      state.triggeredEventIds.push('repair-material-cost-surge');
+      const repMultPct = Math.round(((state.repairCostInflationMult ?? 1.18) - 1) * 100);
+      state.pendingDecision = {
+        id: 'repair-material-cost-surge',
+        yearIndex: y,
+        age,
+        category: 'repair-crisis',
+        title: isDetachedHouse
+          ? `【一戸建て修繕費の高騰】建築資材高・職人不足で外装・設備の修繕単価が購入時比 +${repMultPct}%に急騰！`
+          : `【マンション修繕工事費の高騰】建築資材インフレ・職人不足で修繕工事見積が当初計画比 +${repMultPct}%に膨張！`,
+        description: isDetachedHouse
+          ? `塗料・屋根材・給湯設備のメーカー価格改定と建設業界の人手不足（職人単価上昇）により、一戸建てのメンテナンス相場が購入時より約 +${repMultPct}%（×${(state.repairCostInflationMult ?? 1.18).toFixed(2)}倍）に高騰している！今後の修繕にどう備えるか？`
+          : `建設業界の人手不足（2024年問題）と資材・足場代の高騰により、マンションの修繕工事見積もりが当初計画より約 +${repMultPct}%（×${(state.repairCostInflationMult ?? 1.18).toFixed(2)}倍）に上振れし、積立金不足の懸念が浮上した！管理組合としてどう動くか？`,
+        statisticalContext:
+          '建設物価調査会データ：建築資材価格と建設技能労働者の人件費は近年大幅に上昇しており、戸建てリフォーム費用やマンション修繕工事費は10年前と比べ1.3〜1.6倍に高騰している。',
+        choices: isDetachedHouse
+          ? [
+              {
+                id: 'detached-early-pack-contract',
+                label: 'さらに単価が上がる前に、地元直施工の工務店と早期メンテナンス契約を結び高耐久部材で予防改修する（-58万円）',
+                subLabel: '手元資金 -58万円 / 建物価値 +80万円・将来の大型修繕負担を抑制',
+                outcomeSummary:
+                  '中間マージンのない地元優良工務店に直発注し、58万円で高耐久シーリング・外装予防メンテを実施！資材高騰リスクを先回りで封じ込めた。',
+                cashDeltaMan: -58,
+                buildingValueBonusMan: 80,
+                mentalDelta: 4,
+              },
+              {
+                id: 'detached-subsidy-diy-save',
+                label: '自治体の省エネ・住宅改修補助金を活用しつつ、軽微なメンテナンスはDIYで行って出費を -22万円に抑える',
+                subLabel: '手元資金 -22万円 / 建物価値 +30万円・堅実防衛',
+                outcomeSummary:
+                  '補助金制度の申請と高圧洗浄・木部塗装のDIYを組み合わせ、22万円の最小コストで一戸建てのコンディションを維持した。',
+                cashDeltaMan: -22,
+                buildingValueBonusMan: 30,
+                mentalDelta: 2,
+              },
+            ]
+          : [
+              {
+                id: 'mansion-competitive-bidding',
+                label: '管理会社任せの随意契約をやめ、第三者コンサルを入れて「公募入札（相見積もり）」で工事費高騰を抑え込む',
+                subLabel: '一時金徴収を回避・月額 +0.3万円の微増のみ / マンション資産価値 +55万円',
+                outcomeSummary:
+                  '理事会で公募入札方式を導入し複数の元請け施工会社から相見積もりを取得！資材高騰下でも適正価格での発注に成功し、一時金徴収を回避した！',
+                repairCostMonthlyDeltaMan: 0.3,
+                buildingValueBonusMan: 55,
+                mentalDelta: 5,
+              },
+              {
+                id: 'mansion-accept-hike-and-lump',
+                label: '資材高騰を受け入れ、修繕積立金の追加引き上げ（月+0.6万円）と一時金（-32万円）を支払う',
+                subLabel: '手元資金 -32万円・毎月維持費 +0.6万円 / 建物価値 +25万円',
+                outcomeSummary:
+                  '管理会社の提案通り、工事単価の上昇分を一時金32万円と毎月の修繕積立金増額で補填した。',
+                cashDeltaMan: -32,
+                repairCostMonthlyDeltaMan: 0.6,
+                buildingValueBonusMan: 25,
+                mentalDelta: -4,
+              },
+            ],
+      };
+      return state;
+    }
+
+    // 10. 家族旅行・レジャー・娯楽費と物価高のバランス決断（全世帯対象、年率14%）
+    if (
+      y >= 3 &&
+      riskAndExpenseRoll >= 0.93 &&
+      !state.triggeredEventIds.includes('family-travel-leisure-crossroad')
+    ) {
+      state.triggeredEventIds.push('family-travel-leisure-crossroad');
+      const hasKidsNow = state.childrenAges.some((a) => a < 18);
+      state.pendingDecision = {
+        id: 'family-travel-leisure-crossroad',
+        yearIndex: y,
+        age,
+        category: 'life',
+        title: hasKidsNow
+          ? '【家族旅行・レジャー・娯楽費の選択】宿泊費・テーマパーク高騰下の「子どもとの思い出作り」と家計バランス'
+          : '【旅行・リフレッシュ・娯楽費の選択】ホテル代インフレ下の「人生の楽しみ」と住宅ローン返済のバランス',
+        description: hasKidsNow
+          ? 'インバウンド需要と物価上昇でホテル宿泊費やテーマパークチケット、航空券が大きく値上がりしている！それでも「子どもが親と一緒に旅行してくれる時期は今しかない」と大型連休の旅行を計画するか、それとも住宅ローンと教育費のために娯楽費を抑えるか？'
+          : '日々の仕事と住宅ローン返済が続く中、リフレッシュのための国内温泉旅行や趣味・外食を楽しみたいが、宿泊費やレジャー代も以前より大幅に値上がりしている。今後の旅行・娯楽スタイルをどう位置づけるか？',
+        statisticalContext:
+          '観光庁「旅行・観光消費動向調査」：近年の宿泊料金・交通費・レジャー施設料金の上昇により、家族4人の国内2泊3日旅行費用は平均15万〜35万円へと上昇している。',
+        choices: [
+          {
+            id: 'leisure-active-memories',
+            label: hasKidsNow
+              ? '「家族の思い出は一生の宝！」毎年しっかり旅行・テーマパーク・体験レジャーを楽しむ（今回旅行 -36万円 / 充実レジャー方針へ）'
+              : '人生の充実度を最優先し、毎年しっかり温泉旅行や趣味・グルメを楽しむ（今回旅行 -30万円 / 充実レジャー方針へ）',
+            subLabel: `手元資金 ${hasKidsNow ? '-36' : '-30'}万円・以降「毎年旅行・レジャー充実」へ / 家族の幸福度・メンタル +14！`,
+            outcomeSummary:
+              'プライスレスな思い出とリフレッシュを選択！最高の家族旅行で心身ともにエネルギーが満ち溢れ、仕事と返済へのモチベーションが大きく高まった！',
+            cashDeltaMan: hasKidsNow ? -36 : -30,
+            newLeisureStyle: 'active-travel',
+            mentalDelta: 14,
+          },
+          {
+            id: 'leisure-smart-moderate',
+            label: '早期割引・ふるさと納税宿泊券・平日有休や近場グランピングを活用し、賢く年1回の旅行を楽しむ（-15万円 / 標準方針へ）',
+            subLabel: '手元資金 -15万円・以降「標準（近場旅行・外食）」へ / 家計と幸福度の好バランス +8',
+            outcomeSummary:
+              'ピーク期の高値を避けて平日有休とふるさと納税クーポンをフル活用！15万円の予算内で大満足の旅行を実現し、家計の健全性もキープした！',
+            cashDeltaMan: -15,
+            newLeisureStyle: 'moderate-leisure',
+            mentalDelta: 8,
+          },
+          {
+            id: 'leisure-frugal-home-bbq',
+            label: '宿泊費高騰の今は遠出を控え、マイホームでの食事会や日帰り公園・キャンプで娯楽費を最小限にする（-4万円 / 節約方針へ）',
+            subLabel: '手元資金 -4万円・以降「節約・おうち時間中心」へ（年間レジャー費を大幅節約）',
+            outcomeSummary:
+              'せっかく買ったマイホームを最大限に楽しむ「おうちリゾート＆日帰りレジャー」へシフト！毎年の旅行・娯楽費を大幅に節約し、貯蓄ペースを加速させた。',
+            cashDeltaMan: -4,
+            newLeisureStyle: 'frugal-staycation',
+            mentalDelta: 2,
           },
         ],
       };
@@ -4099,6 +6554,7 @@ export function resolveMortgageDecision(
 
   let state: MortgageGameState = {
     ...currentState,
+    config: { ...currentState.config },
     pendingDecision: null,
     chronicle: [...currentState.chronicle],
   };
@@ -4120,13 +6576,49 @@ export function resolveMortgageDecision(
     }
   }
   if (typeof choice.incomeMultiplierDelta === 'number') {
-    state.mainIncomeMan = Math.max(200, Math.round(state.mainIncomeMan * (1 + choice.incomeMultiplierDelta)));
+    state.mainIncomeMan = Math.max(150, Math.round(state.mainIncomeMan * (1 + choice.incomeMultiplierDelta)));
+  }
+  if (typeof choice.newMainIncomeAbsoluteMan === 'number') {
+    state.mainIncomeMan = Math.max(0, Math.round(choice.newMainIncomeAbsoluteMan));
   }
   if (typeof choice.subIncomeMultiplierDelta === 'number') {
     state.subIncomeMan = Math.max(0, Math.round(state.subIncomeMan * (1 + choice.subIncomeMultiplierDelta)));
     if (choice.subIncomeMultiplierDelta <= -0.99) {
       state.isDivorced = true;
     }
+  }
+  if (typeof choice.newSubIncomeAbsoluteMan === 'number') {
+    state.subIncomeMan = Math.max(0, Math.round(choice.newSubIncomeAbsoluteMan));
+  }
+  if (choice.newJobLabel) {
+    state.currentJobLabel = choice.newJobLabel;
+  }
+  if (choice.newSpouseJobLabel) {
+    state.currentSpouseJobLabel = choice.newSpouseJobLabel;
+  }
+  if (choice.newJuniorHighPath) {
+    state.config.juniorHighPath = choice.newJuniorHighPath;
+  }
+  if (choice.newHigherEdPath) {
+    state.config.higherEdPath = choice.newHigherEdPath;
+  }
+  if (choice.newCramSchoolPolicy) {
+    state.config.cramSchoolPolicy = choice.newCramSchoolPolicy;
+  }
+  if (choice.newScholarshipType) {
+    state.config.scholarshipType = choice.newScholarshipType;
+  }
+  if (choice.newInsurancePlan) {
+    state.config.insurancePlan = choice.newInsurancePlan;
+  }
+  if (choice.newLeisureStyle) {
+    state.config.leisureStyle = choice.newLeisureStyle;
+  }
+  if (typeof choice.newHasGakushiHoken === 'boolean') {
+    state.config.hasGakushiHoken = choice.newHasGakushiHoken;
+  }
+  if (choice.addNewbornChild) {
+    state.childrenAges = [...state.childrenAges, 0];
   }
   if (typeof choice.mentalDelta === 'number') {
     state.mentalScore = Math.max(5, Math.min(100, state.mentalScore + choice.mentalDelta));
