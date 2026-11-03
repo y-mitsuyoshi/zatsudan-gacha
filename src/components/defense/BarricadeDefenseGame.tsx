@@ -36,11 +36,11 @@ const SHOP_MARKS: Record<string, string> = {
 
 function resultRank(result: RunResult, difficulty: Difficulty): { rank: string; label: string; color: string } {
   const cleared = result.victory || result.courseCleared;
-  if (cleared && difficulty === 'hard') return { rank: 'S', label: '完璧な出社', color: 'from-amber-300 to-orange-500 text-amber-950' };
-  if (cleared && result.endless > 0) return { rank: 'S', label: '残業の覇者', color: 'from-fuchsia-400 to-purple-600 text-white' };
-  if (cleared) return { rank: 'A', label: '定時退社', color: 'from-sky-400 to-cyan-500 text-white' };
-  if (result.score >= 8000) return { rank: 'B', label: 'あと一歩', color: 'from-emerald-400 to-teal-500 text-white' };
-  return { rank: 'C', label: '再挑戦', color: 'from-slate-400 to-slate-600 text-white' };
+  if (cleared && difficulty === 'hard') return { rank: 'S', label: '完璧な出社', color: 'bg-[#dfb15b] text-[#12100d]' };
+  if (cleared && result.endless > 0) return { rank: 'S', label: '残業の覇者', color: 'bg-[#e07054] text-[#fffaf0]' };
+  if (cleared) return { rank: 'A', label: '定時退社', color: 'bg-[#2f5d57] text-[#f2e9d8]' };
+  if (result.score >= 8000) return { rank: 'B', label: 'あと一歩', color: 'bg-[#83b8ac] text-[#12100d]' };
+  return { rank: 'C', label: '再挑戦', color: 'bg-[#5a4b38] text-[#f2e9d8]' };
 }
 
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
@@ -54,21 +54,21 @@ function Bar({ value, max, className }: { value: number; max: number; className:
 function BarricadeIntegrityBar({ wallHp, wallMax }: { wallHp: number; wallMax: number }) {
   const ratio = wallMax > 0 ? wallHp / wallMax : 0;
   let statusText = '堅牢';
-  let barColor = 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.6)]';
-  let badgeColor = 'text-cyan-400 bg-cyan-950/60 border-cyan-500/30';
+  let barColor = 'bg-[#dfb15b]';
+  let badgeColor = 'text-[#83b8ac] bg-[#172622] border-[#5a4b38]';
 
   if (ratio <= 0) {
     statusText = '崩壊！';
     barColor = 'bg-gray-600';
-    badgeColor = 'text-gray-400 bg-gray-900/60 border-gray-600/30';
+    badgeColor = 'text-[#8a7d69] bg-gray-900/60 border-gray-600/30';
   } else if (ratio < 0.3) {
     statusText = '警報！';
     barColor = 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]';
-    badgeColor = 'text-red-400 bg-red-950/60 border-red-500/30 animate-pulse';
+    badgeColor = 'text-[#e07054] bg-red-950/60 border-red-500/30 animate-pulse';
   } else if (ratio < 0.7) {
     statusText = '亀裂';
-    barColor = 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]';
-    badgeColor = 'text-amber-400 bg-amber-950/60 border-amber-500/30';
+    barColor = 'bg-[#dfb15b] shadow-[0_0_10px_rgba(245,158,11,0.6)]';
+    badgeColor = 'text-[#dfb15b] bg-[#2a231b]/60 border-[#5a4b38]';
   }
 
   return (
@@ -82,7 +82,7 @@ function BarricadeIntegrityBar({ wallHp, wallMax }: { wallHp: number; wallMax: n
         </div>
         <span className="font-mono font-bold text-xs">{wallHp} / {wallMax}</span>
       </div>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/40 border border-white/10 p-0.5">
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#12100d]/40 border border-[#3b3328] p-0.5">
         <div
           className={`h-full rounded-full transition-all duration-150 ${barColor}`}
           style={{ width: `${Math.max(0, Math.min(100, ratio * 100))}%` }}
@@ -99,7 +99,7 @@ function WeaponRing({ weaponId, durationLeft }: { weaponId: WeaponId; durationLe
   const frac = isTimed ? Math.max(0, Math.min(1, durationLeft / durationMax)) : 1;
 
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-sm">
+    <div className="flex items-center gap-2 rounded-sm bg-[#26211a] px-2.5 py-1 border border-[#3b3328]">
       <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
         <svg className="absolute inset-0 -rotate-90" width="32" height="32">
           <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" />
@@ -131,7 +131,7 @@ function WeaponRing({ weaponId, durationLeft }: { weaponId: WeaponId; durationLe
       </div>
       <div className="flex flex-col">
         <span className="text-xs font-black">{w.name}</span>
-        <span className="text-[10px] text-gray-300">
+        <span className="text-[10px] text-[#b7a992]">
           {isTimed ? `残り ${Math.ceil(durationLeft)}秒` : '標準装備'}
         </span>
       </div>
@@ -454,53 +454,53 @@ export default function BarricadeDefenseGame() {
   const w = WEAPONS[hud.weapon];
 
   return (
-    <div className="flex min-h-dvh w-full flex-col items-center bg-[#05070f] px-2 py-4 text-white">
+    <div className="flex min-h-dvh w-full flex-col items-center bg-[#12100d] px-2 py-4 text-white">
       <div className="w-full max-w-[520px]">
         {/* header */}
         <div className="mb-2 flex items-center justify-between">
           <p className="text-lg font-black tracking-wide">社畜通勤サバイバー</p>
           <div className="flex gap-2">
-            <button onClick={toggleMute} className="rounded-lg bg-white/10 px-2 py-1 text-xs font-bold" aria-label="ミュート切替">
+            <button onClick={toggleMute} className="rounded-lg bg-[#26211a] px-2 py-1 text-xs font-bold" aria-label="ミュート切替">
               {muted ? '消音' : '音量'}
             </button>
-            <button onClick={toggleShake} className="rounded-lg bg-white/10 px-2 py-1 text-xs font-bold" aria-label="振動切替">
+            <button onClick={toggleShake} className="rounded-lg bg-[#26211a] px-2 py-1 text-xs font-bold" aria-label="振動切替">
               {shake ? '振動ON' : '振動OFF'}
             </button>
             {(screen === 'playing') && (
-              <button onClick={pauseGame} className="rounded-lg bg-white/10 px-2 py-1 text-xs font-bold" aria-label="一時停止">一時停止</button>
+              <button onClick={pauseGame} className="rounded-lg bg-[#26211a] px-2 py-1 text-xs font-bold" aria-label="一時停止">一時停止</button>
             )}
           </div>
         </div>
 
         {/* Modern Glassmorphic HUD */}
         {(screen === 'playing' || screen === 'paused' || screen === 'shop') && (
-          <div className="mb-2.5 rounded-2xl border border-white/15 bg-slate-950/60 p-3 text-xs shadow-2xl backdrop-blur-md">
+          <div className="mb-2.5 border border-[#3b3328] bg-[#16130f] p-3 text-xs">
             {/* Top Row: Station Distance, Score, Coins */}
             <div className="mb-2 flex items-center justify-between font-bold">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="rounded-lg bg-blue-950/60 px-2 py-0.5 text-blue-300 border border-blue-500/30">
                   会社まで あと{hud.distLeft}m
                 </span>
-                <span className="rounded-lg bg-white/10 px-2 py-0.5 text-gray-200 border border-white/15 font-mono">
+                <span className="rounded-lg bg-[#26211a] px-2 py-0.5 text-[#e4d9c7] border border-[#3b3328] font-mono">
                   WAVE {hud.wave}/{hud.totalWaves}
                 </span>
                 {hud.endless > 0 && (
-                  <span className="rounded-lg bg-purple-950/60 px-1.5 py-0.5 text-[10px] text-purple-300 border border-purple-500/30 font-mono">
+                  <span className="rounded-lg bg-[#2b1a17]/60 px-1.5 py-0.5 text-[10px] text-[#e4c989] border border-[#e07054]/30 font-mono">
                     ∞ {hud.endless}日目
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-3 font-mono">
-                <span className="text-yellow-300 font-black">SCORE {hud.score.toLocaleString()}</span>
-                <span className="text-amber-300 font-black">{hud.coins} コイン</span>
+                <span className="text-[#f2e9d8] font-black">SCORE {hud.score.toLocaleString()}</span>
+                <span className="text-[#e4c989] font-black">{hud.coins} コイン</span>
               </div>
             </div>
 
             {/* Distance Progress Track */}
             <div className="mb-2.5">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/40 border border-white/10">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#12100d]/40 border border-[#3b3328]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-400 to-amber-300 transition-all duration-200"
+                  className="h-full rounded-full bg-[#dfb15b] transition-all duration-200"
                   style={{ width: `${Math.max(0, Math.min(100, ((hud.distTotal - hud.distLeft) / (hud.distTotal || 1)) * 100))}%` }}
                 />
               </div>
@@ -514,65 +514,65 @@ export default function BarricadeDefenseGame() {
             {/* Squad HP Bar */}
             <div className="mb-2.5 flex flex-col gap-0.5">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-bold text-red-300">部隊体力</span>
+                <span className="font-bold text-[#f0a08b]">部隊体力</span>
                 <span className="font-mono font-bold text-xs">{hud.baseHp} / {hud.baseMax}</span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-black/40 border border-white/10 p-0.5">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-[#12100d]/40 border border-[#3b3328] p-0.5">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-red-500 to-rose-400 transition-all duration-150"
+                  className="h-full rounded-full bg-[#e07054] transition-all duration-150"
                   style={{ width: `${Math.max(0, Math.min(100, (hud.baseHp / (hud.baseMax || 1)) * 100))}%` }}
                 />
               </div>
             </div>
 
             {/* Bottom Row: Active Weapon Ring, Squad Count Badge, Combo Streak */}
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#3b3328]">
               <WeaponRing weaponId={hud.weapon} durationLeft={hud.weaponT} />
 
               <div className="flex items-center gap-2">
                 {/* Gate Buff Badge */}
                 {hud.runDmgMul > 1.01 && (
-                  <div className="flex items-center gap-1 rounded-full bg-fuchsia-950/70 px-2.5 py-1 text-xs font-black text-fuchsia-300 border border-fuchsia-500/40 shadow-[0_0_10px_rgba(217,70,239,0.35)]">
+                  <div className="flex items-center gap-1 rounded-full bg-[#2b1a17] px-2.5 py-1 text-xs font-black text-[#e07054] border border-[#e07054]/40 shadow-[0_0_10px_rgba(217,70,239,0.35)]">
                     <span>火力</span>
-                    <span className="rounded-full bg-fuchsia-500/30 px-1.5 py-0.5 text-xs text-white font-mono">
+                    <span className="rounded-full bg-[#e07054]/30 px-1.5 py-0.5 text-xs text-white font-mono">
                       ×{hud.runDmgMul.toFixed(1)}
                     </span>
                   </div>
                 )}
 
                 {/* Squad Count Badge */}
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-950/70 px-2.5 py-1 text-xs font-black text-emerald-300 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                <div className="flex items-center gap-1.5 rounded-full bg-[#172622]/70 px-2.5 py-1 text-xs font-black text-[#9dd4c7] border border-[#83b8ac]/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
                   <span>同期</span>
-                  <span className="rounded-full bg-emerald-500/30 px-1.5 py-0.5 text-xs text-white font-mono">
+                  <span className="rounded-full bg-[#3f756d]/30 px-1.5 py-0.5 text-xs text-white font-mono">
                     {1 + hud.allies}人
                   </span>
                 </div>
 
                 {/* Combo & Kills Badges */}
-                <div className="flex flex-col items-end text-[10px] text-gray-300 font-bold">
-                  <span className="text-orange-400 font-mono">{hud.combo}連撃</span>
-                  <span className="text-gray-400 font-mono">{hud.kills}撃破</span>
+                <div className="flex flex-col items-end text-[10px] text-[#b7a992] font-bold">
+                  <span className="text-[#dfb15b] font-mono">{hud.combo}連撃</span>
+                  <span className="text-[#8a7d69] font-mono">{hud.kills}撃破</span>
                 </div>
               </div>
             </div>
 
             {/* Last Gate Effect Banner */}
             {hud.lastGate && (
-              <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-center text-[10px] font-bold text-gray-300">
-                直近の改札: <span className="text-amber-300">{hud.lastGate}</span>
+              <div className="mt-2 rounded-lg border border-[#3b3328] bg-[#1d1914] px-2 py-1 text-center text-[10px] font-bold text-[#b7a992]">
+                直近の改札: <span className="text-[#e4c989]">{hud.lastGate}</span>
               </div>
             )}
 
             {/* Boss Locomotive Bar */}
             {hud.bossMax > 0 && (
               <div className="mt-2.5 rounded-xl border border-red-500/40 bg-red-950/40 p-2 text-xs animate-pulse">
-                <div className="mb-1 flex items-center justify-between font-black text-red-300">
+                <div className="mb-1 flex items-center justify-between font-black text-[#f0a08b]">
                   <span>満員電車 (BOSS)</span>
                   <span className="font-mono">{hud.bossHp} / {hud.bossMax}</span>
                 </div>
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/50 border border-red-500/30">
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#12100d]/50 border border-red-500/30">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 transition-all duration-150"
+                    className="h-full rounded-full bg-[#e07054] transition-all duration-150"
                     style={{ width: `${Math.max(0, Math.min(100, (hud.bossHp / hud.bossMax) * 100))}%` }}
                   />
                 </div>
@@ -584,10 +584,10 @@ export default function BarricadeDefenseGame() {
         {/* stage */}
         <div
           ref={stageRef}
-          className={`relative overflow-hidden rounded-xl border bg-black/20 ${
+          className={`relative overflow-hidden rounded-xl border bg-[#12100d]/20 ${
             (hud.baseHp / (hud.baseMax || 1) < 0.3 || hud.wallHp / (hud.wallMax || 1) < 0.2)
               ? 'border-red-500/70 ring-2 ring-red-500/40'
-              : 'border-white/15'
+              : 'border-[#3b3328]'
           } cursor-crosshair`}
           style={{ aspectRatio: '3 / 5' }}
           onPointerDown={onPointer}
@@ -596,9 +596,9 @@ export default function BarricadeDefenseGame() {
           <canvas ref={canvasRef} className="h-full w-full touch-none select-none" width={480} height={800} />
 
           {banner && (screen === 'playing') && (
-            <div key={banner.key} className="pointer-events-none absolute inset-x-4 top-16 rounded-xl bg-black/70 p-3 text-center">
-              <p className="text-base font-black text-yellow-300">{banner.title}</p>
-              <p className="text-xs text-gray-200">{banner.sub}</p>
+            <div key={banner.key} className="pointer-events-none absolute inset-x-4 top-16 rounded-xl bg-[#12100d]/85 p-3 text-center">
+              <p className="text-base font-black text-[#f2e9d8]">{banner.title}</p>
+              <p className="text-xs text-[#e4d9c7]">{banner.sub}</p>
             </div>
           )}
 
@@ -615,16 +615,16 @@ export default function BarricadeDefenseGame() {
           )}
 
           {screen === 'paused' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-y-auto bg-black/75 p-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-y-auto bg-[#12100d]/90 p-4">
               <p className="text-2xl font-black">一時停止（サボり中）</p>
-              <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-center text-xs">
-                <p className="font-bold text-cyan-200">WAVE {hud.wave}/{hud.totalWaves} ・ SCORE {hud.score.toLocaleString()}</p>
-                <p className="mt-1 text-gray-300">コイン {hud.coins} ・ 同期 {1 + hud.allies}人 ・ 撃破 {hud.kills}</p>
+              <div className="rounded-xl border border-[#3b3328] bg-[#26211a] px-4 py-2 text-center text-xs">
+                <p className="font-bold text-[#9dd4c7]">WAVE {hud.wave}/{hud.totalWaves} ・ SCORE {hud.score.toLocaleString()}</p>
+                <p className="mt-1 text-[#b7a992]">コイン {hud.coins} ・ 同期 {1 + hud.allies}人 ・ 撃破 {hud.kills}</p>
               </div>
-              <p className="max-w-[280px] text-center text-[11px] text-gray-300">
+              <p className="max-w-[280px] text-center text-[11px] text-[#b7a992]">
                 画面を左右にドラッグ／タップで移動。PCは ←→ / A D でも移動できます。
               </p>
-              <button type="button" onClick={resumeGame} className="rounded-xl bg-green-600 px-8 py-3 font-black shadow-lg hover:bg-green-500">業務に戻る</button>
+              <button type="button" onClick={resumeGame} className="rounded-xl bg-[#b23a2a] px-8 py-3 font-black shadow-lg hover:bg-[#b23a2a]">業務に戻る</button>
               <button type="button" onClick={quitToTitle} className="rounded-xl bg-white/15 px-8 py-3 font-bold hover:bg-white/20">タイトルに戻る</button>
             </div>
           )}
@@ -637,7 +637,7 @@ export default function BarricadeDefenseGame() {
             />
           )}
         </div>
-        <p className="mt-2 text-center text-[11px] text-gray-400">
+        <p className="mt-2 text-center text-[11px] text-[#8a7d69]">
           画面を左右にドラッグ／タップで移動（PCは ←→ / A D でも移動）・緑ゲートを選んで強化・段ボールで武器GET・SOSで同期救出
         </p>
       </div>
@@ -662,23 +662,23 @@ function TitleOverlay(props: {
   const toggle = (t: HandbookTab) => setTab((prev) => (prev === t ? 'none' : t));
   const achCount = prog.achievements.length;
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-black/90 via-black/85 to-black/95 p-4">
-      <div className="relative mb-3 overflow-hidden rounded-xl border border-cyan-500/40 shadow-lg shadow-cyan-950/50">
+    <div className="absolute inset-0 overflow-y-auto bg-[#12100d]/95 p-4">
+      <div className="relative mb-3 overflow-hidden rounded-xl border border-[#5a4b38]">
         <Image
           src="/assets/defense_cover.jpg"
           alt="Commuter Defense 3D"
           width={800}
           height={447}
-          className="h-32 w-full object-cover"
+          className="h-32 w-full object-cover grayscale-[0.2] saturate-75"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-2.5">
-          <p className="text-[10px] font-black tracking-widest text-cyan-400 font-mono">COMMUTER DEFENSE: 3D</p>
-          <h2 className="text-lg font-black text-white drop-shadow-md">社畜通勤サバイバー</h2>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#12100d] via-[#12100d]/60 to-transparent flex flex-col justify-end p-2.5">
+          <p className="text-[10px] font-black tracking-widest text-[#dfb15b] font-mono">COMMUTER DEFENSE: 3D</p>
+          <h2 className="text-lg font-black text-[#f2e9d8] drop-shadow-md">社畜通勤サバイバー</h2>
         </div>
       </div>
-      <p className="mt-1 text-center text-xs text-gray-300">満員ラッシュを突破して会社へ！緑ゲートで強化、段ボールで武器GET、同期を救出せよ！</p>
+      <p className="mt-1 text-center text-xs text-[#b7a992]">満員ラッシュを突破して会社へ！緑ゲートで強化、段ボールで武器GET、同期を救出せよ！</p>
 
-      <p className="mb-1 mt-4 text-xs font-bold text-gray-300">■ 路線選択</p>
+      <p className="mb-1 mt-4 text-xs font-bold text-[#b7a992]">■ 路線選択</p>
       <div className="grid grid-cols-3 gap-2">
         {COURSE_ORDER.map((c) => {
           const def = COURSES[c];
@@ -693,14 +693,14 @@ function TitleOverlay(props: {
               onClick={() => setCourse(c)}
               title={def.desc}
               className={`rounded-xl border p-2 text-center transition ${
-                course === c ? 'border-yellow-300 bg-yellow-300/15 shadow-[0_0_12px_rgba(253,224,71,0.15)]' : 'border-white/15 bg-white/5 hover:border-white/30'
+                course === c ? 'border-[#dfb15b] bg-[#2a231b] shadow-[0_0_12px_rgba(253,224,71,0.15)]' : 'border-[#3b3328] bg-[#1d1914] hover:border-[#5a4b38]'
               } ${locked ? 'opacity-40' : ''}`}
             >
               <span className="text-lg" aria-hidden="true">{locked ? '未' : COURSE_MARK[c]}</span>
               <p className="mt-0.5 text-xs font-bold leading-tight">{def.name}</p>
-              <p className="text-[10px] text-gray-400">{def.waves * 100}m</p>
+              <p className="text-[10px] text-[#8a7d69]">{def.waves * 100}m</p>
               <span className={`mt-1 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-black ${
-                cleared ? 'bg-amber-300/20 text-amber-200' : locked ? 'bg-white/10 text-gray-400' : 'bg-emerald-300/15 text-emerald-200'
+                cleared ? 'bg-[#dfb15b]/20 text-[#e4c989]' : locked ? 'bg-[#26211a] text-[#8a7d69]' : 'bg-[#dfb15b]/15 text-[#e4c989]'
               }`}>
                 {cleared ? '制覇' : locked ? '未開放' : '挑戦可'}
               </span>
@@ -708,9 +708,9 @@ function TitleOverlay(props: {
           );
         })}
       </div>
-      <p className="mt-1 text-center text-[10px] text-gray-400">{COURSES[course].desc}</p>
+      <p className="mt-1 text-center text-[10px] text-[#8a7d69]">{COURSES[course].desc}</p>
 
-      <p className="mb-1 mt-3 text-xs font-bold text-gray-300">■ 働き方</p>
+      <p className="mb-1 mt-3 text-xs font-bold text-[#b7a992]">■ 働き方</p>
       <div className="grid grid-cols-3 gap-2">
         {DIFFICULTY_ORDER.map((d) => {
           const def = DIFFICULTIES[d];
@@ -721,48 +721,48 @@ function TitleOverlay(props: {
               aria-pressed={difficulty === d}
               onClick={() => setDifficulty(d)}
               className={`rounded-xl border p-2 text-center transition ${
-                difficulty === d ? 'border-green-300 bg-green-300/15' : 'border-white/15 bg-white/5 hover:border-white/30'
+                difficulty === d ? 'border-[#dfb15b] bg-[#dfb15b]/15' : 'border-[#3b3328] bg-[#1d1914] hover:border-[#5a4b38]'
               }`}
             >
               <p className="text-xs font-black">{def.name}</p>
-              <p className="mt-0.5 text-[9px] leading-tight text-gray-400">{def.desc}</p>
-              <p className="mt-0.5 text-[10px] font-mono text-amber-300">×{def.scoreMul}</p>
-              {d === 'easy' && <span className="mt-0.5 inline-block rounded-full bg-sky-300/15 px-1.5 text-[8px] font-bold text-sky-200">はじめて</span>}
-              {d === 'hard' && <span className="mt-0.5 inline-block rounded-full bg-rose-300/15 px-1.5 text-[8px] font-bold text-rose-200">やりこみ</span>}
+              <p className="mt-0.5 text-[9px] leading-tight text-[#8a7d69]">{def.desc}</p>
+              <p className="mt-0.5 text-[10px] font-mono text-[#e4c989]">×{def.scoreMul}</p>
+              {d === 'easy' && <span className="mt-0.5 inline-block rounded-full bg-[#dfb15b]/15 px-1.5 text-[8px] font-bold text-[#e4c989]">はじめて</span>}
+              {d === 'hard' && <span className="mt-0.5 inline-block rounded-full bg-[#e07054]/15 px-1.5 text-[8px] font-bold text-[#f0a08b]">やりこみ</span>}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-[11px] font-bold text-gray-200">
+      <div className="mt-3 rounded-xl border border-[#3b3328] bg-[#1d1914] px-3 py-2 text-center text-[11px] font-bold text-[#e4d9c7]">
         {COURSES[course].name} × {DIFFICULTIES[difficulty].name} / {COURSES[course].waves * 100}m
       </div>
 
-      <button type="button" onClick={onStart} className="mt-3 w-full rounded-xl bg-gradient-to-r from-red-600 to-rose-500 py-3 text-lg font-black shadow-lg transition hover:from-red-500 hover:to-rose-400 active:scale-[0.99]">
+      <button type="button" onClick={onStart} className="mt-3 w-full border border-[#f2e9d8] bg-[#b23a2a] py-3 text-lg font-black shadow-[3px_3px_0_#f2e9d8] transition hover:bg-[#c94b38]">
         出社する
       </button>
-      <p className="mt-1 text-center text-[10px] text-gray-400">左右にドラッグ／タップで移動・自動射撃</p>
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-300">
+      <p className="mt-1 text-center text-[10px] text-[#8a7d69]">左右にドラッグ／タップで移動・自動射撃</p>
+      <div className="mt-2 flex items-center justify-between text-xs text-[#b7a992]">
         <span>へそくり: {bank} コイン</span>
         <span>{prog.totalKills}撃破・{prog.totalRuns}出社</span>
       </div>
 
-      <p className="mb-1 mt-3 text-xs font-bold text-gray-300">■ 社畜手帳（やりこみ）</p>
+      <p className="mb-1 mt-3 text-xs font-bold text-[#b7a992]">■ 社畜手帳（やりこみ）</p>
       <div className="grid grid-cols-4 gap-2 text-xs">
-        <button onClick={() => setShowHelp(!showHelp)} className={`rounded-lg px-2 py-2 font-bold ${showHelp ? 'bg-indigo-600' : 'bg-white/10'}`}>遊び方</button>
-        <button onClick={() => toggle('perk')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'perk' ? 'bg-indigo-600' : 'bg-white/10'}`}>強化</button>
-        <button onClick={() => toggle('ach')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'ach' ? 'bg-indigo-600' : 'bg-white/10'}`}>実績 {achCount}/{ACHIEVEMENTS.length}</button>
-        <button onClick={() => toggle('codex')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'codex' ? 'bg-indigo-600' : 'bg-white/10'}`}>図鑑</button>
+        <button onClick={() => setShowHelp(!showHelp)} className={`rounded-lg px-2 py-2 font-bold ${showHelp ? 'bg-[#b23a2a]' : 'bg-[#26211a]'}`}>遊び方</button>
+        <button onClick={() => toggle('perk')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'perk' ? 'bg-[#b23a2a]' : 'bg-[#26211a]'}`}>強化</button>
+        <button onClick={() => toggle('ach')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'ach' ? 'bg-[#b23a2a]' : 'bg-[#26211a]'}`}>実績 {achCount}/{ACHIEVEMENTS.length}</button>
+        <button onClick={() => toggle('codex')} className={`rounded-lg px-2 py-2 font-bold ${tab === 'codex' ? 'bg-[#b23a2a]' : 'bg-[#26211a]'}`}>図鑑</button>
       </div>
 
       {showHelp && (
-        <div className="mt-2 space-y-2 rounded-xl border border-white/10 bg-white/10 p-3 text-[11px] leading-relaxed">
-          <p className="font-black text-cyan-200">はじめての方へ</p>
+        <div className="mt-2 space-y-2 rounded-xl border border-[#3b3328] bg-[#26211a] p-3 text-[11px] leading-relaxed">
+          <p className="font-black text-[#dfb15b]">はじめての方へ</p>
           <p><b>① 移動</b>: 画面を左右にドラッグ／タップ（PCは ←→ / A D）。自動で前進＆射撃します。</p>
           <p><b>② ゲート</b>: 緑は強化（火力×2・連射UP・同期+1など）、赤は弱体化。通りたい側へ移動しよう。</p>
           <p><b>③ 拾う</b>: 段ボールで武器チェンジ、SOSケージで同期が参戦。同期は自動で援護します。</p>
           <p><b>④ ボス</b>: 満員電車の体当たりは、光る地点から離れて回避。倒せなくてもゴール可能です。</p>
-          <p className="text-gray-300">ガードが壊れると体力にダメージ。体力0で過労ダウン。スコア・解放・へそくりは自動セーブされます。</p>
+          <p className="text-[#b7a992]">ガードが壊れると体力にダメージ。体力0で過労ダウン。スコア・解放・へそくりは自動セーブされます。</p>
         </div>
       )}
 
@@ -774,22 +774,22 @@ function TitleOverlay(props: {
             const cost = perk.cost(lv);
             const afford = bank >= cost;
             return (
-              <div key={perk.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/10 p-2 text-xs">
+              <div key={perk.id} className="flex items-center justify-between gap-2 rounded-xl bg-[#26211a] p-2 text-xs">
                 <div>
                   <p className="font-bold">{perk.name} Lv{lv}/{perk.max}</p>
-                  <p className="text-gray-300">{perk.desc}</p>
+                  <p className="text-[#b7a992]">{perk.desc}</p>
                 </div>
                 <button
                   disabled={maxed || !afford}
                   onClick={() => onBuyPerk(perk.id)}
-                  className={`shrink-0 rounded-lg px-3 py-2 font-bold ${!maxed && afford ? 'bg-green-600' : 'bg-white/10 opacity-50'}`}
+                  className={`shrink-0 rounded-lg px-3 py-2 font-bold ${!maxed && afford ? 'bg-[#b23a2a]' : 'bg-[#26211a] opacity-50'}`}
                 >
                   {maxed ? 'MAX' : `${cost} コイン`}
                 </button>
               </div>
             );
           })}
-          <p className="text-[10px] text-gray-400">※ へそくり（残業代）で恒久強化。出社ごとに効果発動。</p>
+          <p className="text-[10px] text-[#8a7d69]">※ へそくり（残業代）で恒久強化。出社ごとに効果発動。</p>
         </div>
       )}
 
@@ -798,9 +798,9 @@ function TitleOverlay(props: {
           {ACHIEVEMENTS.map((a) => {
             const got = prog.achievements.includes(a.id);
             return (
-              <div key={a.id} className={`rounded-xl p-2 text-xs ${got ? 'bg-yellow-300/15 border border-yellow-300/50' : 'bg-white/5 opacity-50'}`}>
+              <div key={a.id} className={`rounded-xl p-2 text-xs ${got ? 'bg-[#2a231b] border border-[#dfb15b]/50' : 'bg-[#1d1914] opacity-50'}`}>
                 <p className="font-bold">{got ? a.name : '？？？'}</p>
-                <p className="text-[10px] text-gray-300">{got ? a.desc : 'まだ解除されていない'}</p>
+                <p className="text-[10px] text-[#b7a992]">{got ? a.desc : 'まだ解除されていない'}</p>
               </div>
             );
           })}
@@ -813,9 +813,9 @@ function TitleOverlay(props: {
             const def = ENEMIES[k];
             const n = prog.codex[k] ?? 0;
             return (
-              <div key={k} className="flex items-center justify-between rounded-lg bg-white/5 px-2 py-1 text-[11px]">
+              <div key={k} className="flex items-center justify-between rounded-lg bg-[#1d1914] px-2 py-1 text-[11px]">
                 <span>{n > 0 ? def.name : '？？？'}</span>
-                <span className="font-bold text-yellow-300">{n > 0 ? `${n}撃破` : '未確認'}</span>
+                <span className="font-bold text-[#f2e9d8]">{n > 0 ? `${n}撃破` : '未確認'}</span>
               </div>
             );
           })}
@@ -824,12 +824,12 @@ function TitleOverlay(props: {
 
       {records.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1 text-xs font-bold text-gray-300">■ 最高記録</p>
+          <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 最高記録</p>
           <div className="space-y-1">
             {records.slice(0, 5).map((r, i) => (
-              <div key={`${r.date}-${i}`} className="flex justify-between rounded-lg bg-white/5 px-2 py-1 text-[11px]">
+              <div key={`${r.date}-${i}`} className="flex justify-between rounded-lg bg-[#1d1914] px-2 py-1 text-[11px]">
                 <span>{i + 1}位 {r.victory ? '[制覇] ' : ''}{COURSES[r.course].name} {DIFFICULTIES[r.difficulty].name}</span>
-                <span className="font-bold text-yellow-300">{r.score.toLocaleString()}pt</span>
+                <span className="font-bold text-[#f2e9d8]">{r.score.toLocaleString()}pt</span>
               </div>
             ))}
           </div>
@@ -844,11 +844,11 @@ function TitleOverlay(props: {
 function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; onNext: () => void; onEndless: () => void; onFinish: () => void }) {
   const { shop, onBuy, onNext, onEndless, onFinish } = props;
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4">
-      <h2 className="text-center text-xl font-black text-yellow-300">
+    <div className="absolute inset-0 overflow-y-auto bg-[#12100d]/95 p-4">
+      <h2 className="text-center text-xl font-black text-[#f2e9d8]">
         {shop.victory ? '定時出社達成！' : '中間報告！'}
       </h2>
-      <p className="mt-1 text-center text-sm text-amber-300">所持 {shop.coins} コイン ／ ガード {shop.wallHp}/{shop.wallMax} ／ 体力 {shop.baseHp}/{shop.baseMax} ／ 同期 {shop.allies}/{MAX_ALLIES}</p>
+      <p className="mt-1 text-center text-sm text-[#e4c989]">所持 {shop.coins} コイン ／ ガード {shop.wallHp}/{shop.wallMax} ／ 体力 {shop.baseHp}/{shop.baseMax} ／ 同期 {shop.allies}/{MAX_ALLIES}</p>
       <div className="mt-3 space-y-2">
         {SHOP.map((item) => {
           const cost = shop.costs[item.id] ?? 0;
@@ -860,20 +860,20 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
           const extra = item.id === 'power' ? ` (Lv${shop.powerLv})` : item.id === 'wall' ? ` (Lv${shop.wallLv})` : '';
           const buttonLabel = maxed ? 'MAX' : !afford ? 'コイン不足' : `${cost} コイン`;
           return (
-            <div key={item.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 p-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/30 text-lg" aria-hidden="true">
+            <div key={item.id} className="flex items-center gap-2 rounded-xl border border-[#3b3328] bg-[#26211a] p-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#12100d]/30 text-lg" aria-hidden="true">
                 {SHOP_MARKS[item.id] ?? '店'}
               </span>
               <div className="min-w-0 flex-1 text-xs">
                 <p className="font-bold">{item.name}{extra}</p>
-                <p className="text-gray-300">{item.desc}</p>
+                <p className="text-[#b7a992]">{item.desc}</p>
               </div>
               <button
                 type="button"
                 disabled={!afford || maxed}
                 onClick={() => onBuy(item.id)}
                 className={`shrink-0 rounded-lg px-3 py-2 text-[10px] font-black ${
-                  afford && !maxed ? 'bg-green-600 hover:bg-green-500' : 'bg-white/10 opacity-50'
+                  afford && !maxed ? 'bg-[#b23a2a] hover:bg-[#b23a2a]' : 'bg-[#26211a] opacity-50'
                 }`}
               >
                 {buttonLabel}
@@ -884,8 +884,8 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
       </div>
       {shop.victory ? (
         <div className="mt-3 space-y-2">
-          <p className="text-center text-[10px] text-gray-400">ここで買い物をしてから、残業に挑むか帰宅できます。</p>
-          <button type="button" onClick={onEndless} className="w-full rounded-xl bg-purple-600 py-3 font-black shadow-lg transition hover:bg-purple-500">
+          <p className="text-center text-[10px] text-[#8a7d69]">ここで買い物をしてから、残業に挑むか帰宅できます。</p>
+          <button type="button" onClick={onEndless} className="w-full rounded-xl bg-[#b23a2a] py-3 font-black shadow-lg transition hover:bg-[#b23a2a]">
             終わらぬ残業に突入する
           </button>
           <button type="button" onClick={onFinish} className="w-full rounded-xl bg-yellow-500 py-3 font-black text-black shadow-lg transition hover:bg-yellow-400">
@@ -893,7 +893,7 @@ function ShopOverlay(props: { shop: ShopSnapshot; onBuy: (id: string) => void; o
           </button>
         </div>
       ) : (
-        <button type="button" onClick={onNext} className="mt-3 w-full rounded-xl bg-red-600 py-3 font-black">
+        <button type="button" onClick={onNext} className="mt-3 w-full rounded-xl bg-[#b23a2a] py-3 font-black">
           WAVE {shop.endless > 0 ? `${shop.wave} +∞${shop.endless + 1}` : shop.wave + 1} へ出社
         </button>
       )}
@@ -909,27 +909,27 @@ function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; dif
   const rank = resultRank(result, meta.difficulty);
   const endedInEndless = !result.victory && result.courseCleared;
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-black/85 p-4 text-center">
-      <p className="text-2xl font-black text-amber-300">{cleared ? '出社達成' : '過労ダウン'}</p>
-      <h2 className={`mt-1 text-2xl font-black ${cleared ? 'text-yellow-300' : 'text-red-400'}`}>
+    <div className="absolute inset-0 overflow-y-auto bg-[#12100d]/95 p-4 text-center">
+      <p className="text-2xl font-black text-[#e4c989]">{cleared ? '出社達成' : '過労ダウン'}</p>
+      <h2 className={`mt-1 text-2xl font-black ${cleared ? 'text-[#f2e9d8]' : 'text-[#e07054]'}`}>
         {endedInEndless ? '本編クリア＋残業終了' : result.victory ? '定時出社成功！' : '過労でダウン…'}
       </h2>
-      <p className="text-xs text-gray-300">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}{result.endless > 0 ? ` ＋ 無限${result.endless}` : ''}</p>
-      <div className={`mx-auto mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-to-r ${rank.color} px-4 py-1 text-sm font-black shadow-lg`}>
+      <p className="text-xs text-[#b7a992]">{COURSES[meta.course].name} × {DIFFICULTIES[meta.difficulty].name}{result.endless > 0 ? ` ＋ 無限${result.endless}` : ''}</p>
+      <div className={`mx-auto mt-2 inline-flex items-center gap-2 rounded-full ${rank.color} px-4 py-1 text-sm font-black shadow-lg`}>
         <span className="text-xs opacity-80">RANK</span>
         <span className="text-xl">{rank.rank}</span>
         <span className="text-[10px] opacity-90">{rank.label}</span>
       </div>
       <div className="mx-auto mt-3 grid max-w-[300px] grid-cols-2 gap-2 text-sm">
-        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">スコア</p><p className="text-lg font-black text-yellow-300">{result.score.toLocaleString()}</p></div>
-        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">走破距離</p><p className="text-lg font-black">{result.dist}m</p></div>
-        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">撃破数</p><p className="text-lg font-black">{result.kills}</p></div>
-        <div className="rounded-xl bg-white/10 p-2"><p className="text-[10px] text-gray-400">最大連撃</p><p className="text-lg font-black">{result.maxCombo}</p></div>
+        <div className="rounded-xl bg-[#26211a] p-2"><p className="text-[10px] text-[#8a7d69]">スコア</p><p className="text-lg font-black text-[#f2e9d8]">{result.score.toLocaleString()}</p></div>
+        <div className="rounded-xl bg-[#26211a] p-2"><p className="text-[10px] text-[#8a7d69]">走破距離</p><p className="text-lg font-black">{result.dist}m</p></div>
+        <div className="rounded-xl bg-[#26211a] p-2"><p className="text-[10px] text-[#8a7d69]">撃破数</p><p className="text-lg font-black">{result.kills}</p></div>
+        <div className="rounded-xl bg-[#26211a] p-2"><p className="text-[10px] text-[#8a7d69]">最大連撃</p><p className="text-lg font-black">{result.maxCombo}</p></div>
       </div>
-      <p className="mt-2 text-xs text-amber-300">{result.coins} コイン をへそくりに加算しました</p>
+      <p className="mt-2 text-xs text-[#e4c989]">{result.coins} コイン をへそくりに加算しました</p>
       {newAch.length > 0 && (
-        <div className="mx-auto mt-2 max-w-[300px] rounded-xl border border-yellow-300/50 bg-yellow-300/10 p-2 text-xs">
-          <p className="font-bold text-yellow-300">実績解除！</p>
+        <div className="mx-auto mt-2 max-w-[300px] rounded-xl border border-[#dfb15b]/50 bg-yellow-300/10 p-2 text-xs">
+          <p className="font-bold text-[#f2e9d8]">実績解除！</p>
           {newAch.map((id) => {
             const a = ACHIEVEMENTS.find((x) => x.id === id);
             return <p key={id}>{a ? `${a.name} — ${a.desc}` : id}</p>;
@@ -937,16 +937,16 @@ function ResultOverlay(props: { result: RunResult; meta: { course: CourseId; dif
         </div>
       )}
       <div className="mt-3 space-y-2">
-        <button onClick={onRetry} className="w-full rounded-xl bg-red-600 py-3 font-black">もう一度出社</button>
+        <button onClick={onRetry} className="w-full rounded-xl bg-[#b23a2a] py-3 font-black">もう一度出社</button>
         <button onClick={onTitle} className="w-full rounded-xl bg-white/15 py-3 font-black">タイトルに戻る</button>
       </div>
       {records.length > 0 && (
         <div className="mt-3 text-left">
-          <p className="mb-1 text-xs font-bold text-gray-300">■ 最高記録</p>
+          <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 最高記録</p>
           {records.slice(0, 5).map((r, i) => (
-            <div key={`${r.date}-${i}`} className="mb-1 flex justify-between rounded-lg bg-white/5 px-2 py-1 text-[11px]">
+            <div key={`${r.date}-${i}`} className="mb-1 flex justify-between rounded-lg bg-[#1d1914] px-2 py-1 text-[11px]">
               <span>{i + 1}位 {r.victory ? '[制覇] ' : ''}{COURSES[r.course].name} {DIFFICULTIES[r.difficulty].name}</span>
-              <span className="font-bold text-yellow-300">{r.score.toLocaleString()}pt</span>
+              <span className="font-bold text-[#f2e9d8]">{r.score.toLocaleString()}pt</span>
             </div>
           ))}
         </div>

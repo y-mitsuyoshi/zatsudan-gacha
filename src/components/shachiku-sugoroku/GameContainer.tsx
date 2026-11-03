@@ -170,24 +170,24 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
         <section className="order-1 lg:col-span-8" aria-label="キャリアボード">
-          <div className="mb-2 flex items-center justify-between rounded-xl border border-[#e2d4b8] bg-[#fffaf0]/90 px-3 py-2 dark:border-[#4c3f2c] dark:bg-[#211e19]/90 lg:hidden">
+          <div className="mb-2 flex items-center justify-between border border-[var(--line)] bg-[var(--paper-strong)] px-3 py-2 lg:hidden">
             <div className="min-w-0">
-              <p className="truncate text-sm font-black text-[#3b2f1e] dark:text-amber-50">
-                {gameState.playerName} <span className="text-xs font-bold text-[#8a7557] dark:text-stone-400">({gameState.job})</span>
+              <p className="truncate text-sm font-black text-[var(--ink)]">
+                {gameState.playerName} <span className="text-xs font-bold text-[var(--ink-soft)]">({gameState.job})</span>
               </p>
-              <p className="text-[10px] font-bold text-[#8a7557] dark:text-stone-400">
+              <p className="text-[10px] font-bold text-[var(--ink-soft)]">
                 {stageLabel} / ターン {gameState.turn}
               </p>
             </div>
             <div className="flex items-center gap-2 text-right">
               <div>
-                <p className="text-[9px] font-bold text-[#8a7557] dark:text-stone-400">やる気</p>
-                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{gameState.yaruki}</p>
+                <p className="text-[9px] font-bold text-[var(--ink-soft)]">やる気</p>
+                <p className="text-lg font-black text-[#2f5d57]">{gameState.yaruki}</p>
               </div>
-              <div className="h-8 w-px bg-[#e2d4b8] dark:bg-[#4c3f2c]" />
+              <div className="h-8 w-px bg-[var(--line)]" />
               <div>
-                <p className="text-[9px] font-bold text-[#8a7557] dark:text-stone-400">評価</p>
-                <p className="text-lg font-black text-amber-600 dark:text-amber-300">{career}</p>
+                <p className="text-[9px] font-bold text-[var(--ink-soft)]">評価</p>
+                <p className="text-lg font-black text-[#c9922e]">{career}</p>
               </div>
             </div>
           </div>
@@ -201,19 +201,19 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
         </section>
 
         <aside className="order-2 space-y-4 lg:col-span-4" aria-label="プレイヤー情報と操作">
-          <section className="overflow-hidden rounded-2xl border-2 border-[#e2d4b8] bg-[#fffaf0] shadow-lg dark:border-[#4c3f2c] dark:bg-[#211e19]">
-            <div className={`bg-gradient-to-r ${profile.accent} px-4 py-3 text-white`}>
+          <section className="overflow-hidden border border-[var(--line)] bg-[var(--paper-strong)] shadow-[3px_3px_0_var(--paper-shadow)]">
+            <div className="border-b border-[var(--line)] bg-[var(--ink)] px-4 py-3 text-[var(--paper-strong)]">
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-white/40 bg-white/20 text-2xl shadow-inner" aria-hidden="true">
-                  {profile.icon}
+                <span className="font-editorial flex h-11 w-11 items-center justify-center border border-[var(--paper-strong)]/40 bg-[var(--paper-strong)]/10 text-lg" aria-hidden="true">
+                  {gameState.job.slice(0, 1)}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black tracking-[0.25em] text-white/80">PLAYER</p>
+                  <p className="font-label text-[9px] opacity-70">Player</p>
                   <p className="truncate text-lg font-black">{gameState.playerName}</p>
-                  <p className="text-[10px] font-bold text-white/85">{gameState.job}</p>
+                  <p className="text-[10px] font-bold opacity-80">{gameState.job}</p>
                 </div>
                 <div className="ml-auto text-right">
-                  <p className="text-[9px] font-bold text-white/70">TURN</p>
+                  <p className="font-label text-[9px] opacity-70">Turn</p>
                   <p className="text-2xl font-black tabular-nums">{gameState.turn}</p>
                 </div>
               </div>
@@ -221,17 +221,17 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
 
             <div className="space-y-4 p-4">
               <div>
-                <div className="mb-1 flex items-center justify-between text-[10px] font-black text-[#8a7557] dark:text-stone-400">
+                <div className="mb-1 flex items-center justify-between text-[10px] font-black text-[var(--ink-soft)]">
                   <span>{stageLabel}</span>
                   <span>残り {remaining} マス</span>
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full border border-[#d8c6a2] bg-[#efe3ca] dark:border-[#5c4a32] dark:bg-[#342d22]">
+                <div className="h-2 overflow-hidden border border-[var(--line)] bg-[var(--paper-muted)]">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
+                    className="h-full bg-[var(--accent)] transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <div className="mt-1 flex justify-between text-[9px] font-bold text-[#a58c66] dark:text-stone-500">
+                <div className="mt-1 flex justify-between text-[9px] font-bold text-[var(--ink-soft)]">
                   <span>START</span>
                   <span>{gameState.position}/60</span>
                   <span>GOAL</span>
@@ -240,37 +240,36 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
 
               <YarukiGauge value={gameState.yaruki} />
 
-              <div className="flex items-center justify-between rounded-xl border border-[#e2d4b8] bg-[#f8efdd] px-3 py-2 dark:border-[#4c3f2c] dark:bg-[#2a251d]">
+              <div className="flex items-center justify-between border border-[var(--line)] bg-[var(--paper-muted)] px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg" aria-hidden="true">⭐</span>
+                  <span className="font-label text-[9px] text-[var(--accent)]" aria-hidden="true">CAREER</span>
                   <div>
-                    <p className="text-[9px] font-black tracking-widest text-[#9a8464] dark:text-stone-400">評価ポイント</p>
-                    <p className="text-xs font-bold text-[#6f5d42] dark:text-stone-300">選択でキャリアが変わる</p>
+                    <p className="text-[9px] font-black tracking-widest text-[var(--ink-soft)]">評価ポイント</p>
+                    <p className="text-xs font-bold text-[var(--ink-soft)]">選択でキャリアが変わる</p>
                   </div>
                 </div>
-                <span className="text-2xl font-black tabular-nums text-amber-600 dark:text-amber-300">{career}</span>
+                <span className="text-2xl font-black tabular-nums text-[#c9922e]">{career}</span>
               </div>
 
               {(gameState.diceBoost || 0) > 0 && (
-                <p className="rounded-lg bg-orange-100 px-3 py-2 text-xs font-bold text-orange-800 dark:bg-orange-900/30 dark:text-orange-200">
-                  ⚡ 栄養ドリンク効果: 次のダイス +{gameState.diceBoost}
+                <p className="border border-[#d8bf85] bg-[#fbf5e6] px-3 py-2 text-xs font-bold text-[#7a5a3a] dark:border-[#5a4b38] dark:bg-[#2a231b] dark:text-[#e4c989]">
+                  栄養ドリンク効果: 次のダイス +{gameState.diceBoost}
                 </p>
               )}
               {gameState.slowNextTurn && (
-                <p className="rounded-lg bg-blue-100 px-3 py-2 text-xs font-bold text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                  🍺 二日酔い: 次のターンは1マス固定
+                <p className="border border-[#b8cdc8] bg-[#edf5f2] px-3 py-2 text-xs font-bold text-[#2f5d57] dark:border-[#355952] dark:bg-[#172622] dark:text-[#9dd4c7]">
+                  二日酔い: 次のターンは1マス固定
                 </p>
               )}
             </div>
           </section>
 
-          <section className="rounded-2xl border-2 border-[#e2d4b8] bg-[#fffaf0] p-4 shadow-lg dark:border-[#4c3f2c] dark:bg-[#211e19]">
+          <section className="border border-[var(--line)] bg-[var(--paper-strong)] p-4 shadow-[3px_3px_0_var(--paper-shadow)]">
             <div className="mb-3 flex items-center gap-2">
-              <span className="text-lg" aria-hidden="true">📢</span>
-              <h2 className="text-xs font-black tracking-widest text-[#8a7557] dark:text-stone-300">お知らせ</h2>
+              <h2 className="font-label text-[9px] text-[var(--ink-soft)]">お知らせ</h2>
             </div>
             <p
-              className="min-h-[64px] whitespace-pre-line rounded-xl border border-dashed border-[#d8c6a2] bg-[#f8efdd]/70 p-3 text-sm font-medium leading-relaxed text-[#3b2f1e] dark:border-[#5c4a32] dark:bg-[#2a251d] dark:text-amber-50"
+              className="min-h-[64px] whitespace-pre-line border border-dashed border-[var(--line-strong)] bg-[var(--paper-muted)] p-3 text-sm font-medium leading-7 text-[var(--ink)]"
               role="status"
               aria-live="polite"
             >
@@ -279,27 +278,27 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
 
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="flex items-center gap-1.5 text-xs font-black tracking-widest text-[#8a7557] dark:text-stone-300">
-                  <span aria-hidden="true">🎒</span> 持ち物
+                <h2 className="flex items-center gap-1.5 text-xs font-black tracking-widest text-[var(--ink-soft)]">
+                  持ち物
                 </h2>
-                <span className="text-[10px] font-bold text-[#a58c66] dark:text-stone-500">{gameState.items.length}個</span>
+                <span className="text-[10px] font-bold text-[var(--ink-soft)]">{gameState.items.length}個</span>
               </div>
               {gameState.items.length > 0 ? (
                 <div className="space-y-2">
                   {gameState.items.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="flex items-center gap-2 rounded-xl border border-[#e2d4b8] bg-white/80 p-2 dark:border-[#4c3f2c] dark:bg-[#2b2720]">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-100 text-lg dark:bg-yellow-900/30" aria-hidden="true">
-                        {item.id === 'energy-drink' ? '🥤' : item.id === 'paid-leave' ? '📝' : '📦'}
+                    <div key={`${item.id}-${index}`} className="flex items-center gap-2 border border-[var(--line)] bg-[var(--paper-strong)] p-2">
+                      <span className="font-label flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--line)] bg-[var(--paper-muted)] text-[9px] text-[var(--accent)]" aria-hidden="true">
+                        {item.id === 'energy-drink' ? 'DRINK' : item.id === 'paid-leave' ? 'LEAVE' : 'ITEM'}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-black text-[#3b2f1e] dark:text-amber-50">{item.name}</p>
-                        <p className="text-[10px] leading-snug text-[#8a7557] dark:text-stone-400">{item.description}</p>
+                        <p className="text-xs font-black text-[var(--ink)]">{item.name}</p>
+                        <p className="text-[10px] leading-snug text-[var(--ink-soft)]">{item.description}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleUseItem(item.id)}
                         disabled={isBusy}
-                        className="shrink-0 rounded-lg border border-amber-600 px-2.5 py-1 text-[10px] font-black text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-900/20"
+                        className="paper-button shrink-0 px-2.5 py-1 text-[10px]"
                       >
                         使う
                       </button>
@@ -307,13 +306,13 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                   ))}
                 </div>
               ) : (
-                <p className="rounded-xl bg-[#f8efdd]/70 p-3 text-center text-xs font-medium text-[#a58c66] dark:bg-[#2a251d] dark:text-stone-500">
+                <p className="border border-dashed border-[var(--line)] bg-[var(--paper-muted)] p-3 text-center text-xs font-medium text-[var(--ink-soft)]">
                   まだ持ち物はありません
                 </p>
               )}
             </div>
 
-            <div className="mt-5 rounded-2xl border-2 border-[#d8c6a2] bg-[#f8efdd] p-3 dark:border-[#5c4a32] dark:bg-[#2a251d]">
+            <div className="mt-5 border border-[var(--line-strong)] bg-[var(--paper-muted)] p-3">
               <div className="flex items-center justify-between gap-3">
                 <DiceComponent isRolling={isRolling} finalValue={diceValue} onRollComplete={handleDiceRollComplete} />
                 <div className="min-w-0 flex-1">
@@ -321,7 +320,7 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                     type="button"
                     onClick={handleTakeTurn}
                     disabled={isBusy || gameState.isFinished}
-                    className="w-full rounded-xl border-b-4 border-amber-800 bg-gradient-to-b from-amber-500 to-amber-600 px-3 py-3 text-sm font-black text-white shadow-md transition-all hover:from-amber-400 hover:to-amber-500 active:translate-y-0.5 active:border-b-2 disabled:cursor-not-allowed disabled:border-stone-500 disabled:from-stone-400 disabled:to-stone-500"
+                    className="paper-button-primary w-full px-3 py-3 text-sm"
                   >
                     {isRolling
                       ? '抽選中…'
@@ -333,9 +332,9 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
                             ? 'カードを確認中…'
                             : gameState.isResting > 0
                               ? `休みを消化（あと${gameState.isResting}）`
-                              : '🎲 サイコロを振る'}
+                              : 'サイコロを振る'}
                   </button>
-                  <p className="mt-1.5 text-center text-[10px] font-bold text-[#9a8464] dark:text-stone-400">
+                  <p className="mt-1.5 text-center text-[10px] font-bold text-[var(--ink-soft)]">
                     {isBusy ? '盤面の動きを確認中' : '止まったマスでイベント発生'}
                   </p>
                 </div>
@@ -343,31 +342,31 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
             </div>
           </section>
 
-          <section className="rounded-2xl border-2 border-[#e2d4b8] bg-[#fffaf0] p-4 shadow-lg dark:border-[#4c3f2c] dark:bg-[#211e19]">
-            <h2 className="mb-2 flex items-center gap-1.5 text-xs font-black tracking-widest text-[#8a7557] dark:text-stone-300">
-              <span aria-hidden="true">👣</span> 足あと
+          <section className="border border-[var(--line)] bg-[var(--paper-strong)] p-4 shadow-[3px_3px_0_var(--paper-shadow)]">
+            <h2 className="mb-2 flex items-center gap-1.5 text-xs font-black tracking-widest text-[var(--ink-soft)]">
+              足あと
             </h2>
             <ol className="space-y-1.5">
               {recentSquares.length === 0 ? (
-                <li className="text-xs text-[#a58c66] dark:text-stone-500">まだ歩き始めたばかりです</li>
+                <li className="text-xs text-[var(--ink-soft)]">まだ歩き始めたばかりです</li>
               ) : (
                 recentSquares.map((entry) => (
-                  <li key={`${entry.position}-${entry.index}`} className="flex items-center gap-2 rounded-lg bg-[#f8efdd]/70 px-2 py-1.5 dark:bg-[#2a251d]">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-sm dark:bg-[#342d22]" aria-hidden="true">
-                      {entry.square?.icon ?? '•'}
+                  <li key={`${entry.position}-${entry.index}`} className="flex items-center gap-2 border border-[var(--line)] bg-[var(--paper-strong)] px-2 py-1.5">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-[var(--line)] bg-[var(--paper-muted)] text-sm" aria-hidden="true">
+                      {entry.square?.type.slice(0, 1).toUpperCase() ?? '•'}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-[#6f5d42] dark:text-stone-300">
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-[var(--ink-soft)]">
                       {entry.square?.title}
                     </span>
-                    <span className="shrink-0 text-[9px] font-bold text-[#a58c66] dark:text-stone-500">{entry.position}</span>
+                    <span className="shrink-0 text-[9px] font-bold text-[var(--ink-soft)]">{entry.position}</span>
                   </li>
                 ))
               )}
             </ol>
             {gameState.decisionHistory && gameState.decisionHistory.length > 0 && (
-              <div className="mt-3 border-t border-dashed border-[#d8c6a2] pt-2 dark:border-[#4c3f2c]">
-                <p className="mb-1 text-[10px] font-black tracking-widest text-[#9a8464] dark:text-stone-400">最近の選択</p>
-                <p className="text-[11px] font-bold text-[#6f5d42] dark:text-stone-300">
+              <div className="mt-3 border-t border-dashed border-[var(--line)] pt-2">
+                <p className="mb-1 text-[10px] font-black tracking-widest text-[var(--ink-soft)]">最近の選択</p>
+                <p className="text-[11px] font-bold text-[var(--ink-soft)]">
                   {gameState.decisionHistory[gameState.decisionHistory.length - 1].title} → {gameState.decisionHistory[gameState.decisionHistory.length - 1].choice}
                 </p>
               </div>
@@ -381,21 +380,20 @@ export const GameContainer: React.FC<GameContainerProps> = ({ initialState, onRe
         type="button"
         onClick={handleTakeTurn}
         disabled={isBusy || gameState.isFinished}
-        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full border-b-4 border-amber-800 bg-gradient-to-b from-amber-500 to-amber-600 px-5 py-3 text-sm font-black text-white shadow-xl transition-all active:translate-y-0.5 active:border-b-2 disabled:cursor-not-allowed disabled:border-stone-500 disabled:from-stone-400 disabled:to-stone-500 lg:hidden"
+        className="paper-button-primary fixed bottom-4 right-4 z-40 flex items-center gap-2 px-5 py-3 text-sm lg:hidden"
         aria-label="サイコロを振る"
       >
-        <span className="text-xl" aria-hidden="true">🎲</span>
         {isRolling ? '抽選中' : isMoving ? '移動中' : gameState.isResting > 0 ? `休み${gameState.isResting}` : 'サイコロ'}
       </button>
 
       <button
         type="button"
         onClick={toggleSound}
-        className="fixed bottom-4 left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#d8c6a2] bg-[#fffaf0] text-xl shadow-lg transition-transform hover:scale-105 dark:border-[#5c4a32] dark:bg-[#211e19]"
+        className="paper-button fixed bottom-4 left-4 z-40 flex h-11 w-11 items-center justify-center text-[10px] font-bold"
         aria-label={isSoundOn ? 'サウンドをオフにする' : 'サウンドをオンにする'}
         title={isSoundOn ? 'サウンドをオフにする' : 'サウンドをオンにする'}
       >
-        {isSoundOn ? '🔊' : '🔇'}
+        {isSoundOn ? 'ON' : 'OFF'}
       </button>
     </>
   );

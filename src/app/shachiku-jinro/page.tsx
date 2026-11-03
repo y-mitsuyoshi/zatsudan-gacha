@@ -12,8 +12,8 @@ export default function ShachikuJinroPage() {
   const [gameState, actions] = useJinroGame();
 
   return (
-    <div className="min-h-screen bg-slate-900 font-sans text-gray-100">
-      <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800">
+    <div className="game-night min-h-screen font-sans">
+      <div>
         {gameState.phase === 'LOBBY' ? (
           <Lobby onStart={actions.startGame} />
         ) : (

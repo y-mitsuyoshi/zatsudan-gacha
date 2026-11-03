@@ -96,7 +96,7 @@ const sections = [
     title: '免責事項',
     body: [
       '本サイトの利用により発生した損害について、運営者は責任を負いかねます。ゲームのプレイやツールの利用は自己責任でお願いします。',
-      '外部サービス（Google Analytics、Google AdSense、Google Gemini APIなど）の仕様変更や停止により、一部機能が利用できなくなる場合があります。',
+      '外部サービス（Google Analytics、Google AdSense、OpenCode Go APIなど）の仕様変更や停止により、一部機能が利用できなくなる場合があります。',
       '詳しくはプライバシーポリシーをご確認ください。',
     ],
   },

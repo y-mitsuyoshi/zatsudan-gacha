@@ -135,89 +135,118 @@ const jsonLd = [
 
 export default function GamesPage() {
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-900">
+    <main className="paper-page min-h-screen">
       <JsonLd data={jsonLd} />
-      <div className="mx-auto max-w-5xl px-4 pt-5">
-        <div className="flex justify-end">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <header className="flex items-center justify-between border-b border-[var(--line)] pb-4">
+          <Link href="/" className="font-label text-[10px] text-[var(--ink-soft)] transition-colors hover:text-[var(--accent)]">
+            ← 雑談テーマガチャ
+          </Link>
           <ThemeToggleButton />
-        </div>
-        <nav aria-label="パンくずリスト" className="mb-5 text-xs text-gray-500 dark:text-gray-400">
+        </header>
+
+        <nav aria-label="パンくずリスト" className="mt-4 font-label text-[9px] text-[var(--ink-soft)]">
           <ol className="flex items-center gap-1.5">
-            <li><Link href="/" className="hover:underline">雑談テーマガチャ</Link></li>
+            <li><Link href="/" className="hover:text-[var(--accent)]">雑談テーマガチャ</Link></li>
             <li aria-hidden="true">/</li>
             <li aria-current="page">無料ゲーム一覧</li>
           </ol>
         </nav>
-        <header className="mb-8 max-w-3xl">
-          <p className="text-xs font-black tracking-[0.25em] text-indigo-600 dark:text-indigo-400">GAME LIBRARY</p>
-          <h1 className="mt-2 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl">
-            無料で遊べる社畜ゲーム一覧
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:text-base">
-            通勤ラッシュ、残業、人狼、すごろく。会社という名の戦場を舞台にした無料ブラウザゲームをまとめました。
-            スマートフォン・PCのどちらでも、インストール不要で遊べます。
-          </p>
-        </header>
-      </div>
 
-      <SeoContentSection
-        eyebrow="PICK A GAME"
-        title="6つの無料ブラウザゲーム"
-        intro="短時間で遊べるものから、やりこみ要素のあるものまで。気になるゲームを選んでください。"
-        faqs={faqs}
-        related={[]}
-      >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {games.map((game) => (
-            <Link
-              key={game.href}
-              href={game.href}
-              className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500"
-            >
-              <div className="relative h-40 overflow-hidden bg-gray-900">
-                <Image
-                  src={game.image}
-                  alt={`${game.name}のカバー画像`}
-                  width={800}
-                  height={447}
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
-                <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-bold text-white">
-                  {game.genre}
-                </span>
-              </div>
-              <div className="p-4">
-                <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400">{game.tagline}</p>
-                <h3 className="mt-1 text-base font-black text-gray-900 dark:text-white">{game.name}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{game.description}</p>
-                <span className="mt-3 inline-flex text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                  無料で遊ぶ →
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <div className="mt-10 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-white">ゲーム以外の無料ツール</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">会議のアイスブレイクやプロフィール作成に使えるツールも用意しています。</p>
-            </div>
-            <Link href="/tools" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-              ツール一覧を見る →
-            </Link>
+        <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
+          <div>
+            <p className="paper-kicker">Game Archive / 6 Titles</p>
+            <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
+              無料で遊べる<br className="sm:hidden" />社畜ゲーム一覧
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
+              通勤ラッシュ、残業、人狼、すごろく。会社という名の戦場を舞台にしたブラウザゲームをまとめました。
+              インストール不要、スマートフォンでも遊べます。
+            </p>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {tools.map((tool) => (
-              <Link key={tool.href} href={tool.href} className="rounded-xl border border-gray-200 p-3 transition hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-gray-700 dark:hover:border-indigo-500 dark:hover:bg-indigo-900/10">
-                <span className="block text-sm font-bold text-gray-800 dark:text-gray-100">{tool.name}</span>
-                <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{tool.description}</span>
+          <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
+            <p className="font-label text-[9px] text-[var(--accent)]">Play Note</p>
+            <p className="mt-2">
+              すきま時間に遊ぶならすごろく・人狼。長めに遊ぶなら通勤サバイバー・サバイバー・スパイラル・シューティング。
+            </p>
+          </div>
+        </section>
+
+        <section aria-labelledby="game-list-heading">
+          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
+            <h2 id="game-list-heading" className="font-editorial text-2xl">ゲーム一覧</h2>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 06</span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {games.map((game, index) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group flex flex-col border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden border-b border-[var(--line)] bg-[#1d1914]">
+                  <Image
+                    src={game.image}
+                    alt={`${game.name}のカバー画像`}
+                    width={800}
+                    height={447}
+                    className="h-full w-full object-cover grayscale-[0.15] saturate-75 transition duration-500 group-hover:scale-[1.03] group-hover:saturate-100"
+                  />
+                  <span className="font-label absolute left-3 top-3 bg-[#12100d]/85 px-2 py-1 text-[9px] text-[#f2e9d8]">
+                    {String(index + 1).padStart(2, '0')} / {game.genre}
+                  </span>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="font-label text-[9px] text-[var(--accent)]">{game.tagline}</p>
+                  <h3 className="font-editorial mt-2 text-xl leading-snug">{game.name}</h3>
+                  <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
+                  <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                    Play <span aria-hidden="true">→</span>
+                  </span>
+                </div>
               </Link>
             ))}
           </div>
-        </div>
-      </SeoContentSection>
+        </section>
+
+        <section className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="tools-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="paper-kicker">Other Tools</p>
+              <h2 id="tools-heading" className="font-editorial mt-2 text-2xl">ゲーム以外の無料ツール</h2>
+            </div>
+            <Link href="/tools" className="font-label text-[9px] text-[var(--accent)] hover:underline">
+              ツール一覧を見る →
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-x-6 sm:grid-cols-2">
+            {tools.map((tool, index) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="group flex items-baseline gap-3 border-b border-dashed border-[var(--line)] py-3"
+              >
+                <span className="font-label w-5 text-[9px] text-[var(--ink-soft)]">{String(index + 1).padStart(2, '0')}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold transition-colors group-hover:text-[var(--accent)]">{tool.name}</span>
+                  <span className="mt-0.5 block text-[11px] text-[var(--ink-soft)]">{tool.description}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <SeoContentSection
+          eyebrow="GAME GUIDE"
+          title="6つの無料ブラウザゲーム"
+          intro="短時間で遊べるものから、やりこみ要素のあるものまで。気になるゲームを選んでください。"
+          faqs={faqs}
+          related={[
+            { href: '/tools', label: '無料ツール一覧', description: 'プロフィール・診断・駅名標' },
+            { href: '/guides', label: 'シーン別・雑談ガイド', description: '会議や1on1の話題を探す' },
+          ]}
+        />
+      </div>
     </main>
   );
 }

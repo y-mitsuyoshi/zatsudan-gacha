@@ -12,9 +12,12 @@
 `.env.local` ファイルを作成し、以下の値を設定してください：
 
 ```bash
-# Google AI Studio (https://aistudio.google.com/app/apikey) で取得したAPIキーを設定してください
-# 開発環境でのみ使用（本番環境ではFirebase Functionsで管理）
-GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+# OpenCode Go (https://opencode.ai/console) で取得したAPIキーを設定してください
+# 開発環境でのみ使用（本番環境ではFirebase Functionsのシークレットで管理）
+OPENCODE_GO_API_KEY="YOUR_OPENCODE_GO_API_KEY"
+
+# 任意: 使用するモデルID（未指定時は deepseek-v4.1-flash）
+# OPENCODE_GO_MODEL="deepseek-v4.1-flash"
 
 # Firebase 設定（Firebase Console のプロジェクト設定から取得）
 NEXT_PUBLIC_FIREBASE_API_KEY="your-api-key"
@@ -28,14 +31,14 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="G-XXXXXXXXXX"
 
 ## 2. Firebase Functions の設定
 
-Firebase Functions で Gemini API を使用するために、環境変数を設定します：
+Firebase Functions で OpenCode Go API を使用するために、シークレットを設定します：
 
 ```bash
-# Firebase CLI で環境変数を設定
-firebase functions:secrets:set GEMINI_API_KEY
+# Firebase CLI でシークレットを設定
+firebase functions:secrets:set OPENCODE_GO_API_KEY
 
-# 設定を確認
-firebase functions:secrets:get GEMINI_API_KEY
+# 設定済みか確認（値は表示しない）
+firebase functions:secrets:describe OPENCODE_GO_API_KEY
 ```
 
 ## 2. Functions のデプロイ
@@ -89,9 +92,10 @@ https://us-central1-zatsudan-gacha.cloudfunctions.net/gemini
 - 1IPアドレスあたり1日20回まで（短時間の連打は一時ブロック、全体の1日上限も設定）
 - メモリベースの制限（Function再起動時にリセット）
 
-### キャッシュ機能
-- 同一テーマのリクエストを30分間キャッシュ
-- APIコール数の削減
+### 入力データの取り扱い
+- AIへの入力内容と生成結果はサーバーに保存しない
+- ユーザー間でAIの入力・生成結果を共有しない
+- プロンプト、生成結果、APIキーはログに出力しない
 
 ## API仕様
 
@@ -123,4 +127,4 @@ https://us-central1-zatsudan-gacha.cloudfunctions.net/gemini
 
 - **開発環境**: `/api/gemini` エンドポイントを使用（Next.js API Routes）
 - **本番環境**: Firebase Functions エンドポイントを使用
-- APIキーは開発環境では `.env.local`、本番環境では Firebase Functions の環境変数で管理
+- APIキーは開発環境では `.env.local`、本番環境では Firebase Functions のシークレットで管理

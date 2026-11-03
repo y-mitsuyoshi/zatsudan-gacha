@@ -2,151 +2,84 @@
 
 import Link from 'next/link';
 
+const services = [
+  { title: '雑談テーマガチャ', href: '/', note: '会話のきっかけを抽選' },
+  { title: 'シーン別ガイド', href: '/guides', note: '会議・1on1・飲み会' },
+  { title: '無料ゲーム一覧', href: '/games', note: '社畜ゲームを遊ぶ' },
+  { title: '無料ツール一覧', href: '/tools', note: 'プロフィール・駅名標' },
+  { title: '社畜通勤サバイバー', href: '/barricade-defense', note: '満員ラッシュ突破' },
+  { title: '社畜サバイバー', href: '/shachiku-survivor', note: '18時まで生き残る' },
+  { title: '社畜スパイラル', href: '/shachiku-spiral', note: '渦巻く業務を迎撃' },
+  { title: '社畜シューティングNEO', href: '/shachiku-shooting', note: '定時退社の弾幕STG' },
+  { title: '社畜すごろくNEO', href: '/shachiku-sugoroku', note: 'キャリアボードゲーム' },
+  { title: '社畜人狼', href: '/shachiku-jinro', note: '会社員ソロ人狼' },
+  { title: '究極の言い訳ジェネレーター', href: '/excuse-generator', note: '言い逃れ文を作成' },
+  { title: '駅名標メーカー', href: '/station-sign-maker', note: 'オリジナル駅名標' },
+];
+
+const siteLinks = [
+  { label: '無料ゲーム一覧', href: '/games' },
+  { label: '無料ツール一覧', href: '/tools' },
+  { label: 'シーン別ガイド', href: '/guides' },
+  { label: '会議のアイスブレイク', href: '/icebreak' },
+  { label: 'お題カテゴリ一覧', href: '/themes' },
+  { label: 'よくある質問', href: '/#faq' },
+  { label: '運営者情報', href: '/about' },
+  { label: 'プライバシーポリシー', href: '/privacy' },
+  { label: 'サイトマップ', href: '/sitemap.xml' },
+];
+
 export const Footer: React.FC = () => {
-  const services = [
-    {
-      title: '雑談テーマガチャ',
-      description: 'アイスブレイクや会話のきっかけに',
-      href: '/',
-      emoji: '🎲'
-    },
-    {
-      title: '異世界転生ステータスカード',
-      description: 'あなたの異世界での姿を診断',
-      href: '/isekai-status',
-      emoji: '⚔️'
-    },
-    {
-      title: '推し活プロフィールメーカー',
-      description: 'あなたの「好き」をカードに',
-      href: '/profile-maker',
-      emoji: '💖'
-    },
-    {
-      title: '社畜すごろく',
-      description: '目指せ！定時退社＆ボーナス支給',
-      href: '/shachiku-sugoroku',
-      emoji: '🏢'
-    },
-    {
-      title: '社畜シューティング',
-      description: 'ストレス社会で戦うあなたへ',
-      href: '/shachiku-shooting',
-      emoji: '🔫'
-    },
-    {
-      title: '社畜人狼',
-      description: '会社という名の戦場',
-      href: '/shachiku-jinro',
-      emoji: '🐺'
-    },
-    {
-      title: '社畜通勤サバイバー',
-      description: '満員ラッシュを突破！会社を目指す3Dシューティング',
-      href: '/barricade-defense',
-      emoji: '🚃'
-    },
-    {
-      title: '社畜サバイバー',
-      description: '18時まで生き残る10分サバイバル',
-      href: '/shachiku-survivor',
-      emoji: '🏢'
-    },
-    {
-      title: '社畜スパイラル',
-      description: '渦巻く業務の列からコアを守る15ウェーブ',
-      href: '/shachiku-spiral',
-      emoji: '🌀'
-    },
-    {
-      title: '究極の言い訳ジェネレーター',
-      description: 'AIが必死に考える、最高の言い逃れ',
-      href: '/excuse-generator',
-      emoji: '🙇‍♂️'
-    },
-    {
-      title: '駅名標メーカー',
-      description: 'あの有名な駅名標を、あなた専用に',
-      href: '/station-sign-maker',
-      emoji: '🚉'
-    }
-  ];
-
   return (
-    <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* サービス一覧 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-          {services.map((service) => (
-            <Link
-              key={service.href}
-              href={service.href}
-              className="group p-6 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all duration-200 hover:shadow-lg"
-            >
-              <div className="flex items-start space-x-4">
-                <div className="text-3xl group-hover:scale-110 transition-transform duration-200">
-                  {service.emoji}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {service.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {service.description}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+    <footer className="border-t border-[var(--line)] bg-[var(--paper-strong)] text-[var(--ink)]">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.5fr]">
+          <div>
+            <p className="paper-kicker">ZATSUDAN THEME GACHA</p>
+            <h2 className="font-editorial mt-2 text-2xl sm:text-3xl">雑談テーマガチャ</h2>
+            <p className="mt-3 max-w-sm text-sm leading-7 text-[var(--ink-soft)]">
+              会議のアイスブレイク、1on1、リモートワークの雑談に。
+              お題・ガイド・ゲーム・ツールを、ひとつの場所にまとめています。
+            </p>
+            <p className="mt-5 text-xs text-[var(--ink-soft)]">
+              © 2026 雑談テーマガチャ
+            </p>
+          </div>
 
-        {/* サイト情報 */}
-        <div className="border-t border-gray-200 dark:border-gray-600 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-center md:text-left">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">
-                雑談テーマガチャ
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                コミュニケーションをもっと楽しく、もっと豊かに
-              </p>
+          <div>
+            <div className="mb-3 flex items-end justify-between border-b border-[var(--line)] pb-2">
+              <h3 className="font-label text-xs text-[var(--ink-soft)]">Contents</h3>
+              <span className="font-label text-[10px] text-[var(--ink-soft)]">{services.length} entries</span>
             </div>
-            
-            <div className="text-center md:text-right">
-              <nav aria-label="フッターナビゲーション" className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 mb-3 text-sm">
-                <Link href="/games" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  無料ゲーム一覧
+            <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              {services.map((service, index) => (
+                <Link
+                  key={service.href}
+                  href={service.href}
+                  className="group flex items-baseline gap-3 border-b border-dashed border-[var(--line)] py-2 text-sm transition-colors hover:text-[var(--accent)]"
+                >
+                  <span className="font-label w-5 shrink-0 text-[10px] text-[var(--ink-soft)]">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold leading-5">{service.title}</span>
+                    <span className="block text-[11px] text-[var(--ink-soft)]">{service.note}</span>
+                  </span>
                 </Link>
-                <Link href="/tools" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  無料ツール一覧
-                </Link>
-                <Link href="/guides" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  シーン別ガイド
-                </Link>
-                <Link href="/icebreak" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  会議のアイスブレイク
-                </Link>
-                <Link href="/themes" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  お題カテゴリ一覧
-                </Link>
-                <Link href="/#faq" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  よくある質問
-                </Link>
-                <Link href="/about" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  運営者情報
-                </Link>
-                <Link href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  プライバシーポリシー
-                </Link>
-                <Link href="/sitemap.xml" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline">
-                  サイトマップ
-                </Link>
-              </nav>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
-                © 2026 雑談テーマガチャ. All rights reserved.
-              </p>
+              ))}
             </div>
           </div>
+        </div>
+
+        <div className="mt-10 flex flex-col gap-4 border-t border-[var(--line)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <nav aria-label="フッターナビゲーション" className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--ink-soft)]">
+            {siteLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="transition-colors hover:text-[var(--accent)]">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <p className="font-label text-[10px] text-[var(--ink-soft)]">Made for better small talk.</p>
         </div>
       </div>
     </footer>

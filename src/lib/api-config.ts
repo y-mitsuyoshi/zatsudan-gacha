@@ -4,17 +4,14 @@ const FUNCTIONS_BASE_URL = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL
 
 // API設定
 export const API_CONFIG = {
-  // 本番環境ではFirebase Functions、開発環境では直接APIアクセス
-  GEMINI_ENDPOINT: process.env.NODE_ENV === 'production'
+  // 本番環境ではFirebase Functions、開発環境ではNext.js API Routes
+  THEME_QUESTIONS_ENDPOINT: process.env.NODE_ENV === 'production'
     ? `${FUNCTIONS_BASE_URL}/gemini`
     : '/api/gemini',
 
   EXCUSE_GENERATOR_ENDPOINT: process.env.NODE_ENV === 'production'
     ? `${FUNCTIONS_BASE_URL}/excuseGenerator`
     : '/api/excuse-generator',
-
-  // 開発環境でのみ使用されるAPIキー
-  USE_DIRECT_API: process.env.NODE_ENV === 'development',
 };
 
 async function requestJson<T>(url: string, body: unknown): Promise<T> {
@@ -44,8 +41,8 @@ async function requestJson<T>(url: string, body: unknown): Promise<T> {
   }
 }
 
-export async function callGeminiAPI(theme: string): Promise<{ text: string }> {
-  return requestJson<{ text: string }>(API_CONFIG.GEMINI_ENDPOINT, { theme });
+export async function callThemeQuestionsAPI(theme: string): Promise<{ text: string }> {
+  return requestJson<{ text: string }>(API_CONFIG.THEME_QUESTIONS_ENDPOINT, { theme });
 }
 
 export async function callExcuseGeneratorAPI(situation: string, tone: string, details?: string): Promise<{ excuse: string }> {

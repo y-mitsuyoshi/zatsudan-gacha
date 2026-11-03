@@ -53,3 +53,12 @@ functions/node_modules/
 functions/lib/
 functions/.env
 functions/.env.local
+
+
+# agent artifacts
+.agents/
+jules-scratch/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md

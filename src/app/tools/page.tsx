@@ -33,41 +33,33 @@ const tools = [
   {
     name: '推し活プロフィールメーカー',
     href: '/profile-maker',
-    icon: '💖',
     tagline: '推しの「好き」をカードに',
     description: '名前・好きなところ・出会いのきっかけ・名言を入力して、オリジナルの推し紹介カードを作成。10種類のテンプレート、自動保存、画像保存、テキストコピー、Xシェアに対応。',
-    color: 'from-fuchsia-500 to-pink-500',
   },
   {
     name: '異世界転生ステータスカード',
     href: '/isekai-status',
-    icon: '⚔️',
     tagline: '異世界での自分を診断',
     description: '5つの質問に答えるだけで、職業・能力値・固有スキル・装備・レアリティを診断。N/R/SR/SSRのレアリティ判定と画像保存に対応。',
-    color: 'from-indigo-500 to-purple-500',
   },
   {
     name: '究極の言い訳ジェネレーター',
     href: '/excuse-generator',
-    icon: '🙇‍♂️',
     tagline: 'AIが言い訳を考えます',
     description: '遅刻・納期遅れ・飲み会の断りなど、シチュエーションと10種類のトーンからAIが言い訳を生成。生成履歴はブラウザに保存されます。',
-    color: 'from-sky-500 to-cyan-500',
   },
   {
     name: '駅名標メーカー',
     href: '/station-sign-maker',
-    icon: '🚉',
     tagline: 'オリジナル駅名標を作成',
     description: '駅名・ローマ字・路線記号・駅番号・路線カラーを入力して、自分だけの駅名標を作成。3種類のテンプレート、画像保存、Xシェアに対応。',
-    color: 'from-emerald-500 to-teal-500',
   },
 ];
 
 const faqs = [
   { q: '紹介しているツールは無料ですか？', a: 'はい。すべて無料で利用できます。会員登録やログインは不要です。' },
   { q: 'スマートフォンでも使えますか？', a: 'はい。各ツールはスマートフォンのブラウザに対応しています。' },
-  { q: '入力した内容はサーバーに送信されますか？', a: 'ツールによって異なります。プロフィールと駅名標はブラウザ内で処理され、サーバーには送信されません。言い訳ジェネレーターはAI生成のため、入力内容がGoogle Gemini APIに送信されます。' },
+  { q: '入力した内容はサーバーに送信されますか？', a: 'ツールによって異なります。プロフィールと駅名標はブラウザ内で処理され、サーバーには送信されません。言い訳ジェネレーターはAI生成のため、入力内容がOpenCode Go APIに送信されます。' },
   { q: '作成した画像はSNSで使えますか？', a: 'はい。画像として保存できるツールは、SNSの投稿やプロフィールに利用できます。' },
 ];
 
@@ -111,59 +103,81 @@ const jsonLd = [
 
 export default function ToolsPage() {
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-900">
+    <main className="paper-page min-h-screen">
       <JsonLd data={jsonLd} />
-      <div className="mx-auto max-w-5xl px-4 pt-5">
-        <div className="flex justify-end">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <header className="flex items-center justify-between border-b border-[var(--line)] pb-4">
+          <Link href="/" className="font-label text-[10px] text-[var(--ink-soft)] transition-colors hover:text-[var(--accent)]">
+            ← 雑談テーマガチャ
+          </Link>
           <ThemeToggleButton />
-        </div>
-        <nav aria-label="パンくずリスト" className="mb-5 text-xs text-gray-500 dark:text-gray-400">
+        </header>
+
+        <nav aria-label="パンくずリスト" className="mt-4 font-label text-[9px] text-[var(--ink-soft)]">
           <ol className="flex items-center gap-1.5">
-            <li><Link href="/" className="hover:underline">雑談テーマガチャ</Link></li>
+            <li><Link href="/" className="hover:text-[var(--accent)]">雑談テーマガチャ</Link></li>
             <li aria-hidden="true">/</li>
             <li aria-current="page">無料ツール一覧</li>
           </ol>
         </nav>
-        <header className="mb-8 max-w-3xl">
-          <p className="text-xs font-black tracking-[0.25em] text-indigo-600 dark:text-indigo-400">FREE TOOLS</p>
-          <h1 className="mt-2 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl">
-            無料で使える便利ツール
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:text-base">
-            推し活プロフィール、異世界キャラ診断、AI言い訳、駅名標作成。登録不要で今すぐ使える無料Webツールをまとめました。
-            スマートフォン・PCのどちらでも利用できます。
-          </p>
-        </header>
-      </div>
 
-      <SeoContentSection
-        eyebrow="PICK A TOOL"
-        title="4つの無料Webツール"
-        intro="用途に合わせて、気になるツールを選んでください。"
-        faqs={faqs}
-        related={[
-          { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームをまとめて探す' },
-          { href: '/themes', label: '雑談お題カテゴリ一覧', description: '会話のネタを探す' },
-        ]}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          {tools.map((tool) => (
-            <Link
-              key={tool.href}
-              href={tool.href}
-              className="group overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500"
-            >
-              <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${tool.color} text-2xl shadow-sm`} aria-hidden="true">
-                {tool.icon}
-              </div>
-              <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400">{tool.tagline}</p>
-              <h3 className="mt-1 text-base font-black text-gray-900 dark:text-white">{tool.name}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{tool.description}</p>
-              <span className="mt-3 inline-flex text-xs font-bold text-indigo-600 dark:text-indigo-400">無料で使う →</span>
-            </Link>
-          ))}
-        </div>
-      </SeoContentSection>
+        <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
+          <div>
+            <p className="paper-kicker">Tool Archive / 4 Titles</p>
+            <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
+              無料で使える<br className="sm:hidden" />便利ツール
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
+              推し活プロフィール、異世界キャラ診断、言い訳作成、駅名標作成。
+              登録不要で今すぐ使えるWebツールをまとめました。
+            </p>
+          </div>
+          <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
+            <p className="font-label text-[9px] text-[var(--accent)]">Privacy Note</p>
+            <p className="mt-2">
+              プロフィールと駅名標はブラウザ内で処理。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
+            </p>
+          </div>
+        </section>
+
+        <section aria-labelledby="tool-list-heading">
+          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
+            <h2 id="tool-list-heading" className="font-editorial text-2xl">ツール一覧</h2>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 04</span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {tools.map((tool, index) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
+                </div>
+                <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
+                <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
+                <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
+                <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                  Open tool →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <SeoContentSection
+          eyebrow="TOOL GUIDE"
+          title="4つの無料Webツール"
+          intro="用途に合わせて、気になるツールを選んでください。"
+          faqs={faqs}
+          related={[
+            { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームをまとめて探す' },
+            { href: '/themes', label: '雑談お題カテゴリ一覧', description: '会話のネタを探す' },
+          ]}
+        />
+      </div>
     </main>
   );
 }

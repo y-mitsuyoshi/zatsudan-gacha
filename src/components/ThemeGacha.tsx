@@ -12,7 +12,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { callGeminiAPI } from '@/lib/api-config';
+import { callThemeQuestionsAPI } from '@/lib/api-config';
 import { copyToClipboard } from '@/lib/clipboard';
 import { themeData } from '@/lib/themeData';
 import {
@@ -72,7 +72,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
     const [currentTheme, setCurrentTheme] = useState('');
     const [previewTheme, setPreviewTheme] = useState('');
     const [isSpinning, setIsSpinning] = useState(false);
-    const [showGeminiArea, setShowGeminiArea] = useState(false);
+    const [showAiArea, setShowAiArea] = useState(false);
     const [isDiggingDeeper, setIsDiggingDeeper] = useState(false);
     const [digDeeperQuestions, setDigDeeperQuestions] = useState<string[] | null>(null);
     const [digDeeperError, setDigDeeperError] = useState('');
@@ -154,7 +154,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         };
     }, []);
 
-    const resetGeminiFeatures = useCallback(() => {
+    const resetAiFeatures = useCallback(() => {
         digRequestIdRef.current += 1;
         setDigDeeperQuestions(null);
         setDigDeeperError('');
@@ -173,10 +173,10 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
     const updateTheme = useCallback((theme: string) => {
         setCurrentTheme(theme);
         setPreviewTheme('');
-        setShowGeminiArea(true);
+        setShowAiArea(true);
         setCopyMessage('');
-        resetGeminiFeatures();
-    }, [resetGeminiFeatures]);
+        resetAiFeatures();
+    }, [resetAiFeatures]);
 
     useEffect(() => {
         if (!initialCategory || !themeData[initialCategory]) {
@@ -186,10 +186,10 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         stopSpin();
         setSelectedCategory(initialCategory);
         setCurrentTheme('');
-        setShowGeminiArea(false);
+        setShowAiArea(false);
         setCopyMessage('');
-        resetGeminiFeatures();
-    }, [initialCategory, resetGeminiFeatures, stopSpin]);
+        resetAiFeatures();
+    }, [initialCategory, resetAiFeatures, stopSpin]);
 
     const handleModeChange = (mode: GameMode) => {
         if (mode === gameMode) {
@@ -206,9 +206,9 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         setSelectedCategory(newCategory);
         setCurrentTheme('');
         setPreviewTheme('');
-        setShowGeminiArea(false);
+        setShowAiArea(false);
         setCopyMessage('');
-        resetGeminiFeatures();
+        resetAiFeatures();
         trackEvent('category_changed', {
             category: newCategory,
             previous_category: selectedCategory,
@@ -259,7 +259,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         if (themePool.length === 0) {
             setCurrentTheme('');
             setPreviewTheme('');
-            setShowGeminiArea(false);
+            setShowAiArea(false);
             setCopyStatus('error');
             setCopyMessage('このカテゴリにはお題がありません。別のカテゴリを選んでください。');
             return;
@@ -272,9 +272,9 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         setIsSpinning(true);
         setPreviewTheme(themePool[Math.floor(Math.random() * themePool.length)]);
         setCurrentTheme('');
-        setShowGeminiArea(false);
+        setShowAiArea(false);
         setCopyMessage('');
-        resetGeminiFeatures();
+        resetAiFeatures();
 
         trackEvent('gacha_spin', {
             category: selectedCategory,
@@ -318,7 +318,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         currentTheme,
         gameMode,
         isSpinning,
-        resetGeminiFeatures,
+        resetAiFeatures,
         selectedCategory,
         themePool,
         updateTheme,
@@ -349,7 +349,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
         });
 
         try {
-            const result = await callGeminiAPI(currentTheme);
+            const result = await callThemeQuestionsAPI(currentTheme);
             if (!mountedRef.current || requestId !== digRequestIdRef.current) {
                 return;
             }
@@ -589,8 +589,8 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                         </p>
                     )}
 
-                    {showGeminiArea && currentTheme && (
-                        <div id="gemini-feature-area" className="mb-5">
+                    {showAiArea && currentTheme && (
+                        <div id="ai-feature-area" className="mb-5">
                             <button
                                 id="dig-deeper-button"
                                 type="button"

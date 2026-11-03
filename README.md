@@ -12,7 +12,7 @@
 
 - **カテゴリ別テーマ**: 「趣味」「旅行」「仕事」など、様々なカテゴリからテーマを絞り込めます。もちろん、すべてのテーマからランダムに選ぶことも可能です。
 - **ガチャ演出**: ボタンを押すと、テーマが高速で切り替わるアニメーションで、ガチャを回すワクワク感を楽しめます。
-- **AIによる深掘り**: Gemini APIを活用し、選ばれたテーマに対して「AIに深掘り質問を考えてもらう」機能があります。これにより、一つのテーマからさらに会話を広げることができます。本番環境では、Firebase Functionsを使用してAPIキーの安全性を確保しています。
+- **AIによる深掘り**: OpenCode Go APIを活用し、選ばれたテーマに対して「AIに深掘り質問を考えてもらう」機能があります。これにより、一つのテーマからさらに会話を広げることができます。本番環境では、Firebase Functionsのシークレットを使用してAPIキーの安全性を確保しています。
 
 ## 🚀 はじめに
 
@@ -54,7 +54,7 @@
 
 ### 3. 環境変数の設定
 
-AIによる深掘り機能を利用するには、Google Gemini APIキーが必要です。
+AIによる深掘り機能を利用するには、OpenCode Go APIキーが必要です。
 
 1. **`.env.example`をコピーして`.env.local`を作成します。**
    ```bash
@@ -63,9 +63,9 @@ AIによる深掘り機能を利用するには、Google Gemini APIキーが必�
 
 2. **`.env.local`ファイルを開き、あなたのAPIキーを設定します。**
    ```
-   GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+   OPENCODE_GO_API_KEY="YOUR_OPENCODE_GO_API_KEY"
    ```
-   APIキーは[Google AI Studio](https://aistudio.google.com/app/apikey)で取得できます。
+   APIキーは[OpenCode Console](https://opencode.ai/console)で取得できます。使用モデルは`OPENCODE_GO_MODEL`で変更できます（未指定時は`deepseek-v4.1-flash`）。
 
 ### 4. 開発サーバーの起動
 
@@ -83,12 +83,12 @@ pnpm run dev
 - [React](https://react.dev/) – UIライブラリ
 - [TypeScript](https://www.typescriptlang.org/) – 型付け
 - [Tailwind CSS](https://tailwindcss.com/) – CSSフレームワーク
-- [Google Gemini API](https://ai.google.dev/) – AIモデル
+- [OpenCode Go API](https://opencode.ai/) – AIモデル
 - [Firebase](https://firebase.google.com/) – ホスティング・Functions（本番環境）
 
 ## 🔥 Firebaseへのデプロイ
 
-このアプリケーションはFirebase HostingとFirebase Functionsにデプロイできます。本番環境では、セキュリティを向上させるためにFirebase FunctionsでGemini APIを処理します。
+このアプリケーションはFirebase HostingとFirebase Functionsにデプロイできます。本番環境では、セキュリティを向上させるためにFirebase FunctionsでOpenCode Go APIを処理します。
 
 ### 前提条件
 
@@ -112,11 +112,11 @@ pnpm run dev
 本番環境では、APIキーをFirebase Functionsの環境変数として設定します：
 
 ```bash
-# Gemini APIキーを設定
-firebase functions:secrets:set GEMINI_API_KEY
+# OpenCode Go APIキーを設定
+firebase functions:secrets:set OPENCODE_GO_API_KEY
 
-# 設定を確認
-firebase functions:secrets:get GEMINI_API_KEY
+# 設定を確認（値は表示せず、設定済みかだけ確認）
+firebase functions:secrets:describe OPENCODE_GO_API_KEY
 ```
 
 ### デプロイ手順
@@ -160,10 +160,11 @@ firebase functions:secrets:get GEMINI_API_KEY
 
 本番環境では以下のセキュリティ機能が有効になります：
 
-- **APIキー保護**: Firebase Functionsの環境変数で管理
+- **APIキー保護**: Firebase Functionsのシークレットで管理（クライアントへは公開しない）
 - **CORS設定**: 信頼できるドメインからのアクセスのみ許可
 - **レート制限**: 1IPアドレスあたり1日20回まで（短時間の連打は一時ブロック、全体の1日上限も設定）
-- **キャッシュ機能**: 同一テーマを30分間キャッシュ
+- **入力の分離**: AIへの入力・生成結果をサーバーに保存せず、ユーザー間で共有しない
+- **ログ保護**: プロンプト・生成結果・APIキーをログに出力しない
 
 ### Firebase設定ファイル
 
@@ -188,7 +189,7 @@ curl -X POST \
 
 ### トラブルシューティング
 
-- **Functions デプロイエラー**: `firebase functions:secrets:get GEMINI_API_KEY`でAPI設定を確認
+- **Functions デプロイエラー**: `firebase functions:secrets:describe OPENCODE_GO_API_KEY`でシークレット設定を確認
 - **CORS エラー**: `functions/src/index.ts`でドメイン設定を確認
 - **Node.js バージョンエラー**: Functions用にNode.js 24が必要
 

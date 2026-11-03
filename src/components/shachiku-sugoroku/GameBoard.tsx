@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GAME_BOARD } from '@/lib/sugoroku-logic';
 import { BoardSquare, SquareType } from '@/types/sugoroku';
 import { PlayerToken } from './PlayerToken';
@@ -14,116 +14,173 @@ interface GameBoardProps {
   visited?: number[];
 }
 
-type StageTheme = {
+type Chapter = {
   id: number;
   title: string;
   subtitle: string;
   range: [number, number];
-  header: string;
-  badge: string;
-  line: string;
-  glow: string;
+  numberClass: string;
+  barClass: string;
+  tintClass: string;
 };
 
-const STAGES: StageTheme[] = [
-  { id: 1, title: '入社', subtitle: '研修と初仕事', range: [0, 9], header: 'from-sky-600 to-cyan-500', badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', line: 'bg-sky-200 dark:bg-sky-900/60', glow: 'shadow-sky-200/60' },
-  { id: 2, title: '新人', subtitle: '現場で学ぶ日々', range: [10, 19], header: 'from-teal-600 to-emerald-500', badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200', line: 'bg-teal-200 dark:bg-teal-900/60', glow: 'shadow-teal-200/60' },
-  { id: 3, title: '若手', subtitle: '仕事の波に乗る', range: [20, 29], header: 'from-violet-600 to-purple-500', badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200', line: 'bg-violet-200 dark:bg-violet-900/60', glow: 'shadow-violet-200/60' },
-  { id: 4, title: '中堅', subtitle: '責任と忙しさの狭間', range: [30, 39], header: 'from-orange-600 to-amber-500', badge: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200', line: 'bg-orange-200 dark:bg-orange-900/60', glow: 'shadow-orange-200/60' },
-  { id: 5, title: '管理職', subtitle: 'チームを動かす', range: [40, 49], header: 'from-rose-600 to-pink-500', badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200', line: 'bg-rose-200 dark:bg-rose-900/60', glow: 'shadow-rose-200/60' },
-  { id: 6, title: '役員', subtitle: '最終章・ボーナス支給日へ', range: [50, 60], header: 'from-amber-600 to-yellow-500', badge: 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200', line: 'bg-amber-200 dark:bg-amber-900/60', glow: 'shadow-amber-200/60' },
+const CHAPTERS: Chapter[] = [
+  { id: 1, title: '入社', subtitle: '研修と初仕事', range: [0, 9], numberClass: 'bg-[#2f5d57] text-[#f2e9d8]', barClass: 'bg-[#2f5d57]', tintClass: 'bg-[#edf3f0] dark:bg-[#172622]' },
+  { id: 2, title: '新人', subtitle: '現場で学ぶ日々', range: [10, 19], numberClass: 'bg-[#c9922e] text-[#12100d]', barClass: 'bg-[#c9922e]', tintClass: 'bg-[#fbf5e6] dark:bg-[#2a231b]' },
+  { id: 3, title: '若手', subtitle: '仕事の波に乗る', range: [20, 29], numberClass: 'bg-[#b23a2a] text-[#fffaf0]', barClass: 'bg-[#b23a2a]', tintClass: 'bg-[#fbefeb] dark:bg-[#2b1a17]' },
+  { id: 4, title: '中堅', subtitle: '責任と忙しさの狭間', range: [30, 39], numberClass: 'bg-[#4b5d73] text-[#f2e9d8]', barClass: 'bg-[#4b5d73]', tintClass: 'bg-[#eef1f4] dark:bg-[#1b222b]' },
+  { id: 5, title: '管理職', subtitle: 'チームを動かす', range: [40, 49], numberClass: 'bg-[#7a5a3a] text-[#f2e9d8]', barClass: 'bg-[#7a5a3a]', tintClass: 'bg-[#f5efe7] dark:bg-[#2a231b]' },
+  { id: 6, title: '役員', subtitle: '最終章・ボーナス支給日へ', range: [50, 60], numberClass: 'bg-[#2a2a2a] text-[#dfb15b]', barClass: 'bg-[#2a2a2a]', tintClass: 'bg-[#f1ede4] dark:bg-[#211e19]' },
 ];
 
-const SQUARE_STYLES: Record<SquareType, { tile: string; dot: string; label: string }> = {
-  start: { tile: 'border-emerald-400 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/40', dot: 'bg-emerald-500', label: 'スタート' },
-  goal: { tile: 'border-yellow-400 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-950/40', dot: 'bg-yellow-500', label: 'ゴール' },
-  salary: { tile: 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30', dot: 'bg-blue-500', label: '給料日' },
-  item: { tile: 'border-purple-300 bg-purple-50 dark:border-purple-700 dark:bg-purple-950/30', dot: 'bg-purple-500', label: 'アイテム' },
-  'job-specific': { tile: 'border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950/30', dot: 'bg-indigo-500', label: '職業イベント' },
-  event: { tile: 'border-pink-300 bg-pink-50 dark:border-pink-700 dark:bg-pink-950/30', dot: 'bg-pink-500', label: 'イベント' },
-  decision: { tile: 'border-cyan-400 bg-cyan-50 dark:border-cyan-600 dark:bg-cyan-950/30', dot: 'bg-cyan-500', label: '選択' },
-  normal: { tile: 'border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900/50', dot: 'bg-stone-400', label: '通常' },
+const TYPE_STYLE: Record<SquareType, { label: string; glyph: string; tile: string; glyphClass: string; dot: string }> = {
+  start: { label: 'スタート', glyph: '▶', tile: 'border-[#2f5d57] bg-[#e7f0ec] dark:border-[#83b8ac] dark:bg-[#172622]', glyphClass: 'text-[#2f5d57] dark:text-[#9dd4c7]', dot: 'bg-[#2f5d57]' },
+  goal: { label: 'ゴール', glyph: '★', tile: 'border-[#c9922e] bg-[#fbf2dd] dark:border-[#dfb15b] dark:bg-[#2a231b]', glyphClass: 'text-[#a8751d] dark:text-[#dfb15b]', dot: 'bg-[#c9922e]' },
+  salary: { label: '給料日', glyph: '¥', tile: 'border-[#d8bf85] bg-[#fbf5e6] dark:border-[#5a4b38] dark:bg-[#2a231b]', glyphClass: 'text-[#a8751d] dark:text-[#dfb15b]', dot: 'bg-[#c9922e]' },
+  item: { label: 'アイテム', glyph: '+', tile: 'border-[#b8cdbd] bg-[#eef5ee] dark:border-[#355952] dark:bg-[#172622]', glyphClass: 'text-[#2f5d57] dark:text-[#9dd4c7]', dot: 'bg-[#2f5d57]' },
+  'job-specific': { label: '職業', glyph: 'J', tile: 'border-[#cfc5b4] bg-[#f5f0e8] dark:border-[#5a4b38] dark:bg-[#2a231b]', glyphClass: 'text-[#6b5a45] dark:text-[#e4c989]', dot: 'bg-[#7a5a3a]' },
+  event: { label: 'イベント', glyph: '!', tile: 'border-[#e0c1b7] bg-[#fbf0ec] dark:border-[#6d3027] dark:bg-[#2b1a17]', glyphClass: 'text-[#b23a2a] dark:text-[#f0a08b]', dot: 'bg-[#b23a2a]' },
+  decision: { label: '選択', glyph: '?', tile: 'border-[#b8cdc8] bg-[#edf5f2] dark:border-[#355952] dark:bg-[#172622]', glyphClass: 'text-[#2f5d57] dark:text-[#9dd4c7]', dot: 'bg-[#2f5d57]' },
+  normal: { label: '通常', glyph: '·', tile: 'border-[var(--line)] bg-[var(--paper-strong)]', glyphClass: 'text-[var(--ink-soft)]', dot: 'bg-[#8a7d69]' },
 };
 
-const getSquareIcon = (square: BoardSquare): string => {
-  if (square.icon) return square.icon;
-  switch (square.type) {
-    case 'start': return '🏁';
-    case 'goal': return '🎊';
-    case 'salary': return '💰';
-    case 'item': return '🎁';
-    case 'job-specific': return '💼';
-    case 'decision': return '🧭';
-    case 'event': return '⚡';
-    default: return '•';
-  }
-};
+function buildTrack(squares: BoardSquare[], reverse: boolean): BoardSquare[] {
+  return reverse ? [...squares].reverse() : squares;
+}
 
-const BoardTile = ({
-  square,
-  isActive,
-  isVisited,
+function buildMobileTrack(squares: BoardSquare[], columns: number): BoardSquare[] {
+  const first = squares.slice(0, columns);
+  const second = squares.slice(columns).reverse();
+  return [...first, ...second];
+}
+
+function TrackGrid({
+  squares,
+  columns,
+  activePosition,
+  visitedSet,
   playerName,
   job,
 }: {
-  square: BoardSquare;
-  isActive: boolean;
-  isVisited: boolean;
+  squares: BoardSquare[];
+  columns: number;
+  activePosition: number;
+  visitedSet: Set<number>;
   playerName: string;
   job?: string;
-}) => {
-  const style = SQUARE_STYLES[square.type];
-  const isGoal = square.type === 'goal';
-  const isStart = square.type === 'start';
+}) {
+  const rows = Math.ceil(squares.length / columns);
+  const logicalSquares = [...squares].sort((a, b) => a.position - b.position);
+  const activeIndex = logicalSquares.findIndex((square) => square.position === activePosition);
+  const points = logicalSquares.map((square) => {
+    const displayIndex = squares.findIndex((item) => item.position === square.position);
+    const row = Math.floor(displayIndex / columns);
+    const column = displayIndex % columns;
+    return `${((column + 0.5) / columns) * 100},${((row + 0.5) / rows) * 100}`;
+  });
+  const visitedPoints = activeIndex >= 0 ? points.slice(0, activeIndex + 1) : [];
 
   return (
-    <li
-      className={`relative flex min-h-[66px] flex-col justify-between rounded-xl border-2 p-1.5 text-left shadow-sm transition-all duration-300 sm:min-h-[78px] ${style.tile} ${
-        isActive
-          ? '-translate-y-1 scale-[1.04] shadow-xl ring-4 ring-amber-400/80 dark:ring-amber-300/80 z-10'
-          : isVisited
-            ? 'ring-2 ring-amber-300/30 dark:ring-amber-500/20'
-            : 'hover:-translate-y-0.5 hover:shadow-md'
-      } ${isGoal ? 'border-4' : ''}`}
-      aria-current={isActive ? 'step' : undefined}
-      title={`${square.position}マス目: ${square.title} — ${square.description}`}
-    >
-      <div className="flex items-start justify-between gap-1">
-        <span className={`flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-[9px] font-black ${
-          isStart || isGoal
-            ? 'bg-stone-800 text-white dark:bg-amber-200 dark:text-stone-900'
-            : 'bg-white/80 text-stone-500 dark:bg-stone-800/80 dark:text-stone-300'
-        }`}>
-          {isStart ? 'START' : isGoal ? 'GOAL' : square.position}
-        </span>
-        <span className="text-base leading-none" aria-hidden="true">{getSquareIcon(square)}</span>
-      </div>
+    <div className="relative">
+      <svg
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <polyline
+          points={points.join(' ')}
+          fill="none"
+          stroke="var(--line-strong)"
+          strokeWidth="0.7"
+          strokeDasharray="1.6 1.6"
+          vectorEffect="non-scaling-stroke"
+        />
+        {visitedPoints.length > 1 && (
+          <polyline
+            points={visitedPoints.join(' ')}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth="1.1"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </svg>
 
-      <p className={`mt-1 text-[9px] font-black leading-[1.25] line-clamp-2 sm:text-[10px] ${
-        isStart || isGoal ? 'text-stone-800 dark:text-amber-100' : 'text-stone-700 dark:text-stone-200'
-      }`}>
-        {square.title}
-      </p>
+      <ol
+        className="relative z-10 grid gap-0 auto-rows-[64px] sm:auto-rows-[86px]"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
+        {squares.map((square) => {
+          const type = TYPE_STYLE[square.type];
+          const isActive = square.position === activePosition;
+          const isVisited = visitedSet.has(square.position);
+          const isGoal = square.type === 'goal';
+          return (
+            <li
+              key={square.position}
+              className={`relative m-[2px] flex min-w-0 flex-col justify-between border p-1.5 transition-all duration-200 sm:p-2 ${type.tile} ${
+                isActive
+                  ? 'z-20 -translate-y-0.5 border-[var(--ink)] shadow-[2px_2px_0_var(--ink)] ring-1 ring-[var(--ink)]'
+                  : isVisited
+                    ? 'border-[var(--line-strong)]'
+                    : 'hover:-translate-y-0.5 hover:border-[var(--line-strong)]'
+              } ${isGoal ? 'border-[3px]' : ''}`}
+              aria-current={isActive ? 'step' : undefined}
+              data-active={isActive ? 'true' : undefined}
+              title={`${square.position}マス目: ${square.title} — ${square.description}`}
+            >
+              <div className="flex items-start justify-between gap-1">
+                <span className="font-label text-[7px] leading-none text-[var(--ink-soft)] sm:text-[8px]">
+                  {String(square.position).padStart(2, '0')}
+                </span>
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center border border-[var(--line)] text-[9px] font-black leading-none ${type.glyphClass}`} aria-hidden="true">
+                  {type.glyph}
+                </span>
+              </div>
 
-      <div className="mt-1 flex items-center gap-1">
-        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} aria-hidden="true" />
-        <span className="text-[8px] font-bold tracking-wide text-stone-400 dark:text-stone-500">{style.label}</span>
-      </div>
+              <p className={`mt-1 line-clamp-2 text-[8px] font-black leading-[1.3] sm:text-[10px] ${isActive ? 'text-[var(--ink)]' : 'text-[var(--ink)]'}`}>
+                {square.title}
+              </p>
 
-      {isVisited && !isActive && (
-        <span className="absolute bottom-1 right-1 flex h-3 w-3 items-center justify-center rounded-full bg-amber-400 text-[7px] font-black text-amber-950" aria-hidden="true">
-          ✓
-        </span>
-      )}
+              <div className="mt-1 flex items-center gap-1">
+                <span className={`h-1 w-1 shrink-0 ${type.dot}`} aria-hidden="true" />
+                <span className="font-label truncate text-[6px] text-[var(--ink-soft)] sm:text-[7px]">{type.label}</span>
+              </div>
 
-      {isActive && (
-        <div key={square.position} className="pointer-events-none absolute -top-5 left-1/2 z-30 -translate-x-1/2 animate-[bounce_0.45s_ease-out_1]">
-          <PlayerToken playerName={playerName} job={job} />
-        </div>
-      )}
-    </li>
+              {isVisited && !isActive && (
+                <span className="absolute bottom-1 right-1 flex h-3 w-3 items-center justify-center border border-[var(--line-strong)] bg-[var(--paper-muted)] text-[7px] font-black text-[var(--ink-soft)]" aria-hidden="true">
+                  ✓
+                </span>
+              )}
+
+              {isActive && (
+                <div key={square.position} className="pointer-events-none absolute -top-7 left-1/2 z-30 -translate-x-1/2">
+                  <PlayerToken playerName={playerName} job={job} />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
-};
+}
+
+function ChapterConnector({ chapterIndex }: { chapterIndex: number }) {
+  const fromRight = chapterIndex % 2 === 0;
+  return (
+    <div className="relative h-7" aria-hidden="true">
+      <span className="absolute left-[2px] top-0 h-full w-px bg-[var(--line-strong)] sm:hidden" />
+      <span className="absolute left-[2px] top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[var(--line-strong)] sm:hidden" />
+      <span className={`absolute top-0 hidden h-full w-px bg-[var(--line-strong)] sm:block ${fromRight ? 'right-[2px]' : 'left-[2px]'}`} />
+      <span className={`absolute top-1/2 hidden h-2 w-2 -translate-y-1/2 border-b border-r border-[var(--line-strong)] sm:block ${fromRight ? 'right-[2px] translate-x-1/2 -rotate-45' : 'left-[2px] -translate-x-1/2 rotate-[135deg]'}`} />
+      <span className="font-label absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border border-[var(--line)] bg-[var(--paper-strong)] px-2 py-0.5 text-[7px] text-[var(--ink-soft)]">
+        NEXT CHAPTER
+      </span>
+    </div>
+  );
+}
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   position,
@@ -131,107 +188,97 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   job,
   visited = [],
 }) => {
-  const boardMap = React.useMemo(() => new Map(GAME_BOARD.map((square) => [square.position, square])), []);
   const visitedSet = React.useMemo(() => new Set([...visited, position]), [position, visited]);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const lastPositionRef = useRef(position);
 
-  const stages = React.useMemo(
-    () =>
-      STAGES.map((stage) => ({
-        ...stage,
-        squares: GAME_BOARD.filter(
-          (square) => square.position >= stage.range[0] && square.position <= stage.range[1]
-        ),
-      })),
-    []
-  );
+  useEffect(() => {
+    if (lastPositionRef.current === position) {
+      return;
+    }
+    lastPositionRef.current = position;
+    const activeTiles = boardRef.current?.querySelectorAll('[data-active="true"]') ?? [];
+    const activeTile = Array.from(activeTiles).find((tile) => tile instanceof HTMLElement && tile.offsetParent !== null);
+    activeTile?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [position]);
 
   return (
-    <div className="relative overflow-hidden rounded-[1.6rem] border-[6px] border-[#d7c19a] bg-[#fffdf8] p-2.5 shadow-[0_18px_35px_rgba(82,61,30,0.18)] dark:border-[#4b3d2b] dark:bg-[#1d1b17] sm:p-4">
-      {/* board corner rivets */}
+    <div ref={boardRef} className="relative overflow-hidden border border-[var(--line-strong)] bg-[var(--paper-strong)] p-2.5 shadow-[6px_6px_0_var(--paper-shadow)] sm:p-4">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(var(--line-strong)_0.55px,transparent_0.55px)] [background-size:16px_16px]"
+        aria-hidden="true"
+      />
       {['left-2 top-2', 'right-2 top-2', 'bottom-2 left-2', 'bottom-2 right-2'].map((pos) => (
-        <span key={pos} className={`pointer-events-none absolute ${pos} h-2.5 w-2.5 rounded-full border border-amber-900/30 bg-amber-200/80 shadow-inner dark:border-amber-100/20 dark:bg-amber-900/50`} aria-hidden="true" />
+        <span key={pos} className={`pointer-events-none absolute ${pos} z-20 h-2 w-2 border border-[var(--line-strong)] bg-[var(--paper-muted)]`} aria-hidden="true" />
       ))}
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f7efdd] px-3 py-2 dark:bg-[#2a251d]">
+      <div className="relative z-10 mb-3 flex flex-wrap items-end justify-between gap-2 border-b border-[var(--line)] pb-3">
         <div>
-          <p className="text-[10px] font-black tracking-[0.25em] text-amber-700 dark:text-amber-300">CAREER BOARD</p>
-          <p className="text-sm font-black text-[#3b2f1e] dark:text-amber-50">60マスのキャリアコース</p>
+          <p className="paper-kicker">Career Board / 60 Steps</p>
+          <h2 className="font-editorial mt-1 text-xl text-[var(--ink)] sm:text-2xl">社畜キャリアコース</h2>
         </div>
         <div className="flex flex-wrap items-center gap-1.5" aria-label="マスの種類">
           {(['event', 'decision', 'salary', 'item', 'goal'] as SquareType[]).map((type) => (
-            <span key={type} className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[9px] font-bold text-stone-500 dark:bg-stone-900/50 dark:text-stone-300">
-              <span className={`h-1.5 w-1.5 rounded-full ${SQUARE_STYLES[type].dot}`} aria-hidden="true" />
-              {SQUARE_STYLES[type].label}
+            <span key={type} className="inline-flex items-center gap-1 border border-[var(--line)] bg-[var(--paper-strong)] px-1.5 py-0.5 text-[8px] font-bold text-[var(--ink-soft)]">
+              <span className={`h-1.5 w-1.5 ${TYPE_STYLE[type].dot}`} aria-hidden="true" />
+              {TYPE_STYLE[type].label}
             </span>
           ))}
         </div>
       </div>
 
-      <div className="space-y-3">
-        {stages.map((stage, index) => {
-          const stagePosition = stage.squares.findIndex((square) => square.position === position);
-          const stageVisited = stage.squares.filter((square) => visitedSet.has(square.position)).length;
-          const gridCols = stage.squares.length > 10 ? 'lg:grid-cols-11' : 'lg:grid-cols-10';
-
+      <div className="relative z-10 space-y-1">
+        {CHAPTERS.map((chapter, chapterIndex) => {
+          const chapterSquares = GAME_BOARD.filter(
+            (square) => square.position >= chapter.range[0] && square.position <= chapter.range[1]
+          );
+          const visitedCount = chapterSquares.filter((square) => visitedSet.has(square.position)).length;
+          const progress = (visitedCount / chapterSquares.length) * 100;
+          const desktopSquares = buildTrack(chapterSquares, chapterIndex % 2 === 1);
+          const mobileColumns = chapterSquares.length > 10 ? 6 : 5;
+          const mobileSquares = buildMobileTrack(chapterSquares, mobileColumns);
           return (
-            <React.Fragment key={stage.id}>
-              <section aria-label={`第${stage.id}章 ${stage.title}`} className="rounded-xl border border-[#eadcc0] bg-white/60 p-2 dark:border-[#403725] dark:bg-[#24211b]/70 sm:p-2.5">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-md bg-gradient-to-r ${stage.header} px-2 py-1 text-[10px] font-black text-white shadow-sm`}>
-                      STAGE {stage.id}
+            <React.Fragment key={chapter.id}>
+              <section aria-label={`第${chapter.id}章 ${chapter.title}`} className={`relative border border-[var(--line)] p-2 sm:p-3 ${chapter.tintClass}`}>
+                <header className="mb-2 flex items-end justify-between gap-3 border-b border-[var(--line)] pb-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className={`font-label flex h-8 w-8 shrink-0 items-center justify-center text-[10px] font-bold ${chapter.numberClass}`}>
+                      {String(chapter.id).padStart(2, '0')}
                     </span>
-                    <div>
-                      <h2 className="text-xs font-black text-[#3b2f1e] dark:text-amber-50">{stage.title}</h2>
-                      <p className="text-[9px] font-medium text-[#9a8464] dark:text-stone-400">{stage.subtitle}</p>
+                    <div className="min-w-0">
+                      <p className="font-label text-[7px] text-[var(--ink-soft)]">Chapter {chapter.id}</p>
+                      <h3 className="font-editorial truncate text-base text-[var(--ink)] sm:text-lg">{chapter.title}</h3>
+                      <p className="truncate text-[9px] text-[var(--ink-soft)]">{chapter.subtitle}</p>
                     </div>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${stage.badge}`}>
-                    {stageVisited}/{stage.squares.length}
-                  </span>
-                </div>
+                  <div className="w-20 shrink-0 text-right">
+                    <p className="font-label text-[7px] text-[var(--ink-soft)]">{visitedCount}/{chapterSquares.length}</p>
+                    <div className="mt-1 h-1 w-full bg-[var(--line)]">
+                      <div className={`h-full ${chapter.barClass} transition-all duration-500`} style={{ width: `${progress}%` }} />
+                    </div>
+                  </div>
+                </header>
 
-                <div className="relative">
-                  <div className={`absolute left-1 right-1 top-1/2 h-1 -translate-y-1/2 rounded-full ${stage.line} opacity-70`} aria-hidden="true" />
-                  <ol className={`relative grid grid-cols-5 gap-1.5 sm:gap-2 ${gridCols}`}>
-                    {stage.squares.map((square) => (
-                      <BoardTile
-                        key={square.position}
-                        square={square}
-                        isActive={position === square.position}
-                        isVisited={visitedSet.has(square.position)}
-                        playerName={playerName}
-                        job={job}
-                      />
-                    ))}
-                  </ol>
+                <div className="hidden sm:block">
+                  <TrackGrid squares={desktopSquares} columns={desktopSquares.length > 10 ? 11 : 10} activePosition={position} visitedSet={visitedSet} playerName={playerName} job={job} />
                 </div>
-
-                {stagePosition >= 0 && (
-                  <span className="sr-only">現在は第{stage.id}章 {stage.title}の{stagePosition + 1}マス目にいます</span>
-                )}
+                <div className="sm:hidden">
+                  <TrackGrid squares={mobileSquares} columns={mobileColumns} activePosition={position} visitedSet={visitedSet} playerName={playerName} job={job} />
+                </div>
               </section>
 
-              {index < stages.length - 1 && (
-                <div className="flex items-center justify-center gap-2 py-0.5" aria-hidden="true">
-                  <span className="h-px w-8 bg-[#d7c19a] dark:bg-[#4b3d2b]" />
-                  <span className="rounded-full border border-[#d7c19a] bg-[#f7efdd] px-2 py-0.5 text-[9px] font-black text-[#9a7a4a] dark:border-[#4b3d2b] dark:bg-[#2a251d] dark:text-amber-300">
-                    次の章へ
-                  </span>
-                  <span className="h-px w-8 bg-[#d7c19a] dark:bg-[#4b3d2b]" />
-                </div>
-              )}
+              {chapterIndex < CHAPTERS.length - 1 && <ChapterConnector chapterIndex={chapterIndex} />}
             </React.Fragment>
           );
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-dashed border-[#d7c19a] bg-[#fbf4e4]/80 px-3 py-2 dark:border-[#4b3d2b] dark:bg-[#2a251d]">
-        <p className="text-[10px] font-bold text-[#8a7557] dark:text-stone-300">
-          現在地 <span className="font-black text-[#3b2f1e] dark:text-amber-50">{position}</span> / 60
+      <div className="relative z-10 mt-3 flex items-center justify-between gap-2 border-t border-[var(--line)] pt-2">
+        <p className="font-label text-[8px] text-[var(--ink-soft)]">
+          現在地 <span className="text-[10px] font-black text-[var(--ink)]">{position}</span> / 60
         </p>
-        <p className="text-[10px] font-bold text-[#8a7557] dark:text-stone-300">
-          {playerName} {job ? `（${job}）` : ''}
+        <p className="font-label truncate text-[8px] text-[var(--ink-soft)]">
+          {playerName}{job ? ` / ${job}` : ''}
         </p>
       </div>
     </div>

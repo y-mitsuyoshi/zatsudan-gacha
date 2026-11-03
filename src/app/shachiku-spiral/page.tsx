@@ -6,7 +6,7 @@ const game = GAME_SEO_DATA.spiral;
 
 export default function Page() {
   return (
-    <main className="bg-[#0a0e1f]">
+    <main className="bg-[#12100d]">
       <h1 className="sr-only">{game.h1}</h1>
       <ShachikuSpiralClient />
       <SeoContentSection

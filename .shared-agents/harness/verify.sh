@@ -66,6 +66,33 @@ if (fs.readFileSync('out/index.html', 'utf8').includes('fonts.googleapis.com')) 
 console.log('OK: ' + (required.length + themeCategories.length + guides.length) + ' generated routes verified');
 "
 
+echo "==> AI provider and secret checks"
+if grep -RIn "GEMINI_API_KEY\|generativelanguage.googleapis.com\|Google Gemini\|Gemini API" functions/src src .env.example README.md FIREBASE_SETUP.md; then
+  echo "ERROR: legacy Gemini provider reference remains"
+  exit 1
+fi
+if grep -RIn "OPENCODE_GO_API_KEY=\"[^Y]" .env.example; then
+  echo "ERROR: .env.example must not contain a real API key"
+  exit 1
+fi
+if grep -RIl "OPENCODE_GO_API_KEY\|opencode.ai/inference/go" out; then
+  echo "ERROR: server-side AI secret or endpoint leaked into static output"
+  exit 1
+fi
+if git ls-files | grep -E '(^|/)\.env(\.|$)' | grep -v '\.env\.example'; then
+  echo "ERROR: environment file is tracked by git"
+  exit 1
+fi
+if ! grep -q "allow read, write: if false" firestore.rules; then
+  echo "ERROR: Firestore client access is not denied"
+  exit 1
+fi
+if ! grep -q "deepseek-v4.1-flash" src/lib/opencode.ts functions/src/opencode.ts; then
+  echo "ERROR: expected OpenCode Go model is not configured"
+  exit 1
+fi
+echo "OK: provider migration and secret checks passed"
+
 echo "==> End-to-end game tests"
 if [ -f tests/e2e/run_all.ts ]; then
   npx tsx tests/e2e/run_all.ts

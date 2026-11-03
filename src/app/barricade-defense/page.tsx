@@ -6,7 +6,7 @@ const game = GAME_SEO_DATA.defense;
 
 export default function Page() {
   return (
-    <main className="bg-[#05070f]">
+    <main className="bg-[#12100d]">
       <h1 className="sr-only">{game.h1}</h1>
       <BarricadeDefenseClient />
       <SeoContentSection

@@ -21,9 +21,9 @@ export default function ChatLog({ logs, players, myId, conversations }: ChatLogP
   const chatLogs = logs.filter(l => l.type === 'CHAT');
 
   return (
-    <div className="h-48 overflow-y-auto p-3 space-y-2.5 bg-gray-900/30">
+    <div className="custom-scrollbar h-48 space-y-2.5 overflow-y-auto bg-[#16130f] p-3">
       {conversations.length === 0 && chatLogs.length === 0 && (
-        <p className="text-center text-gray-600 text-xs py-6">議論はまだ始まっていません...</p>
+        <p className="py-6 text-center text-xs text-[#756957]">議論はまだ始まっていません...</p>
       )}
 
       {conversations.map((conv, idx) => {
@@ -36,18 +36,18 @@ export default function ChatLog({ logs, players, myId, conversations }: ChatLogP
           <div key={`conv-${idx}`} className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] ${isSelf ? 'order-1' : ''}`}>
               <div className={`flex items-baseline gap-1.5 mb-0.5 ${isSelf ? 'justify-end' : ''}`}>
-                <span className="text-xs font-semibold text-gray-400">
+                <span className="text-xs font-semibold text-[#b7a992]">
                   {player.name}
                 </span>
                 {!player.isAlive && (
-                  <span className="text-[10px] text-red-500">(退職済)</span>
+                  <span className="text-[10px] text-[#e07054]">(退職済)</span>
                 )}
               </div>
               <div className={`
-                px-3 py-2 rounded-xl text-sm leading-relaxed
+                border px-3 py-2 text-sm leading-relaxed
                 ${isSelf
-                  ? 'bg-blue-600/30 text-blue-200 rounded-br-sm border border-blue-700/30'
-                  : 'bg-gray-800/80 text-gray-300 rounded-bl-sm border border-gray-700/30'
+                  ? 'border-[#5a4b38] bg-[#2a231b] text-[#f2e9d8]'
+                  : 'border-[#3b3328] bg-[#1d1914] text-[#b7a992]'
                 }
               `}>
                 {conv.message}

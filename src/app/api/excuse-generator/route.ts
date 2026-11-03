@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited } from '@/lib/rate-limiter';
-import { AI_TIMEOUT_MS, getClientKey, isOversizedRequest, parseJsonObject } from '@/lib/api-security';
+import { getClientKey, isOversizedRequest, parseJsonObject } from '@/lib/api-security';
+import { generateOpenCodeGoText, OpenCodeGoError } from '@/lib/opencode';
 
 const MAX_SITUATION_LENGTH = 100;
 const MAX_TONE_LENGTH = 50;
 const MAX_DETAILS_LENGTH = 500;
+const RESPONSE_HEADERS = {
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+};
 
 const ALLOWED_TONES = new Set([
   '真面目・ビジネス用',
@@ -18,14 +24,18 @@ const ALLOWED_TONES = new Set([
   'ギャル風',
 ]);
 
+function jsonResponse(body: unknown, status = 200): NextResponse {
+  return NextResponse.json(body, { status, headers: RESPONSE_HEADERS });
+}
+
 export async function POST(request: Request) {
   if (isOversizedRequest(request)) {
-    return NextResponse.json({ error: 'Request body is too large' }, { status: 413 });
+    return jsonResponse({ error: 'Request body is too large' }, 413);
   }
 
   const body = await parseJsonObject(request);
   if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
   const rawSituation = body.situation;
@@ -33,11 +43,11 @@ export async function POST(request: Request) {
   const rawDetails = body.details;
 
   if (!rawSituation || typeof rawSituation !== 'string' || !rawTone || typeof rawTone !== 'string') {
-    return NextResponse.json({ error: 'Situation and tone are required' }, { status: 400 });
+    return jsonResponse({ error: 'Situation and tone are required' }, 400);
   }
 
   if (rawDetails !== undefined && rawDetails !== null && typeof rawDetails !== 'string') {
-    return NextResponse.json({ error: 'Details must be a string' }, { status: 400 });
+    return jsonResponse({ error: 'Details must be a string' }, 400);
   }
 
   const situation = rawSituation.trim();
@@ -51,22 +61,22 @@ export async function POST(request: Request) {
     tone.length > MAX_TONE_LENGTH ||
     details.length > MAX_DETAILS_LENGTH
   ) {
-    return NextResponse.json({ error: 'Input length exceeds allowed limits' }, { status: 400 });
+    return jsonResponse({ error: 'Input length exceeds allowed limits' }, 400);
   }
 
   if (!ALLOWED_TONES.has(tone)) {
-    return NextResponse.json({ error: 'Invalid tone' }, { status: 400 });
+    return jsonResponse({ error: 'Invalid tone' }, 400);
   }
 
   const clientKey = getClientKey(request);
   if (isRateLimited(clientKey)) {
-    return NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
+    return jsonResponse({ error: 'Too Many Requests' }, 429);
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENCODE_GO_API_KEY;
   if (!apiKey) {
-    console.error('GEMINI_API_KEY is not configured');
-    return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+    console.error('OPENCODE_GO_API_KEY is not configured');
+    return jsonResponse({ error: 'AI service is not configured' }, 500);
   }
 
   const systemPrompt = `あなたは「究極の言い訳ジェネレーター」です。ユーザーから提供される条件に基づいて、メッセージアプリ等でそのまま送信できる最高に言い訳がましい、あるいは面白いテキストを生成してください。
@@ -91,50 +101,21 @@ export async function POST(request: Request) {
 ・トーン: ${tone}
 ・詳細情報: ${details || '特になし'}`;
 
-  const payload = {
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ role: 'user', parts: [{ text: userCondition }] }],
-    generationConfig: {
-      temperature: 1.0,
-      maxOutputTokens: 800,
-    },
-  };
-
-  const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
-
   try {
-    const apiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    const text = await generateOpenCodeGoText({
+      apiKey,
+      system: systemPrompt,
+      user: userCondition,
+      temperature: 1.0,
+      maxTokens: 800,
     });
-
-    if (!apiResponse.ok) {
-      const errorBody = await apiResponse.text();
-      console.error('Gemini API request failed:', errorBody);
-      throw new Error('Upstream API Error');
-    }
-
-    const result = await apiResponse.json();
-    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (typeof text === 'string' && text.length > 0) {
-      return NextResponse.json({ excuse: text }, {
-        headers: { 'Cache-Control': 'no-store' },
-      });
-    }
-
-    console.error('Invalid response structure from Gemini API');
-    throw new Error('Invalid AI response');
+    return jsonResponse({ excuse: text });
   } catch (error) {
-    console.error('Gemini API call failed:', error);
-    return NextResponse.json(
-      { error: 'AIからの回答の生成に失敗しました。しばらく経ってから再度お試しください。' },
-      { status: 500 }
-    );
+    if (error instanceof OpenCodeGoError) {
+      console.error('AI excuse request failed: upstream status', error.status);
+    } else {
+      console.error('AI excuse request failed:', error instanceof Error ? error.name : 'unknown error');
+    }
+    return jsonResponse({ error: 'AIからの回答の生成に失敗しました。しばらく経ってから再度お試しください。' }, 500);
   }
 }

@@ -56,7 +56,7 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
   };
 
   const getDotClassName = (position: string) => {
-    const base = 'absolute h-3.5 w-3.5 rounded-full bg-stone-800 shadow-inner';
+    const base = 'absolute h-3 w-3 rounded-full bg-[var(--ink)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]';
     const positions = {
       'top-left': 'left-3 top-3',
       'top-right': 'right-3 top-3',
@@ -72,18 +72,17 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
   return (
     <div className="flex flex-col items-center">
       <div className="relative">
-        {isRolling && <div className="absolute inset-0 -z-10 scale-125 rounded-full bg-amber-400/30 blur-xl" aria-hidden="true" />}
         <div
           role="img"
           aria-label={`サイコロの目: ${currentValue}`}
-          className={`relative flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-[#e5d7bb] bg-gradient-to-br from-white to-[#f5eee0] shadow-[5px_5px_12px_rgba(82,61,30,0.2),-5px_-5px_10px_rgba(255,255,255,0.8)] transition-transform duration-300 ${
+          className={`relative flex h-20 w-20 items-center justify-center rounded-[18px] border-2 border-[var(--line-strong)] bg-[var(--paper-strong)] shadow-[4px_4px_0_var(--paper-shadow)] transition-transform duration-300 sm:h-24 sm:w-24 ${
             isRolling ? 'animate-[spin_0.5s_linear_infinite]' : showFinal ? 'animate-[bounce_0.4s_ease-out_1]' : ''
           }`}
         >
           {getDotPositions(currentValue).map((position, index) => (
             <div key={index} className={getDotClassName(position)} />
           ))}
-          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-stone-800 px-2 py-0.5 text-[9px] font-black tracking-widest text-amber-200">
+          <span className="font-label absolute -bottom-2 left-1/2 -translate-x-1/2 border border-[var(--line-strong)] bg-[var(--ink)] px-2 py-0.5 text-[7px] text-[var(--paper-strong)]">
             DICE
           </span>
         </div>
@@ -91,13 +90,13 @@ export const DiceComponent: React.FC<DiceComponentProps> = ({
 
       <div className="mt-3 min-h-6 text-center" aria-live="polite">
         {isRolling ? (
-          <span className="text-xs font-black text-amber-700 dark:text-amber-300">コロコロ…</span>
+          <span className="text-xs font-black text-[var(--accent)]">コロコロ…</span>
         ) : showFinal ? (
-          <span className="text-sm font-black text-amber-700 dark:text-amber-300">
-            出目 <span className="text-xl text-[#3b2f1e] dark:text-amber-50">{currentValue}</span>
+          <span className="text-sm font-black text-[var(--ink)]">
+            出目 <span className="font-editorial text-2xl text-[var(--accent)]">{currentValue}</span>
           </span>
         ) : (
-          <span className="text-[11px] font-bold text-[#9a8464] dark:text-stone-400">サイコロを振ろう</span>
+          <span className="text-[11px] font-bold text-[var(--ink-soft)]">サイコロを振ろう</span>
         )}
       </div>
     </div>

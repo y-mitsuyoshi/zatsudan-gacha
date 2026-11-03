@@ -33,14 +33,14 @@ type TitleTab = 'play' | 'power' | 'dex' | 'daily' | 'ach';
 
 const DEFAULT_HUD: HudSnapshot = {
   hp: 120, maxHp: 120, wave: 1, totalWaves: FINAL_WAVE,
-  phase: 'build', timeSec: 0, score: 0, coins: 0, segs: 0, chainsLeft: 0,
+  phase: 'build', timeSec: 0, score: 0, coins: 0, segs: 0, chainsLeft: 0, chests: 0, drops: 0,
   build: { dmg: 10, interval: 0.5, count: 1, pierce: 0, crit: 0.05, orbN: 0, blastLv: 0, beamLv: 0 },
   levels: [], bossName: '', bossHp: 0, bossMax: 0, endless: false,
 };
 
 function Bar({ value, max, className }: { value: number; max: number; className: string }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-[#1d1914]">
       <div
         className={`h-full rounded-full transition-all ${className}`}
         style={{ width: `${Math.max(0, Math.min(100, (value / (max || 1)) * 100))}%` }}
@@ -372,35 +372,37 @@ export default function ShachikuSpiralGame() {
   const title = bestTitle();
   const comp = encyCompletion();
   const missions = todayMissions();
+  const nextBoss = hud.wave < 5 ? '上司' : hud.wave < 10 ? '役員' : hud.wave < 15 ? '社長' : '無限残業';
+  const waveProgress = Math.min(100, (hud.wave / hud.totalWaves) * 100);
 
   return (
-    <div className="flex min-h-dvh w-full flex-col items-center bg-[#070a14] px-2 py-4 text-slate-100 selection:bg-cyan-500 selection:text-white">
+    <div className="flex min-h-dvh w-full flex-col items-center bg-[#070a14] px-2 py-4 text-[#f2e9d8] selection:bg-[#dfb15b] selection:text-white">
       <div className="w-full max-w-[680px]">
         {/* Top Navbar */}
-        <div className="mb-2 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 backdrop-blur">
+        <div className="mb-2 flex items-center justify-between border border-[#3b3328] bg-[#1d1914] px-3 py-2">
           <div className="flex items-center gap-2">
-            <SpiralLogoIcon className="h-6 w-6 text-cyan-400" />
-            <p className="text-base font-black tracking-wider text-cyan-400">社畜スパイラル</p>
+            <SpiralLogoIcon className="h-6 w-6 text-[#83b8ac]" />
+            <p className="text-base font-black tracking-wider text-[#83b8ac]">社畜スパイラル</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-950/40 px-2 py-1 text-xs font-bold text-amber-300">
+            <div className="flex items-center gap-1 rounded-lg border border-[#5a4b38] bg-[#2a231b]/40 px-2 py-1 text-xs font-bold text-[#e4c989]">
               <CreditIcon className="h-3.5 w-3.5" />
               <span>{bank.toLocaleString()}</span>
             </div>
-            <div className="rounded-lg border border-slate-700 bg-slate-800/80 px-2 py-1 text-xs font-semibold text-slate-300">
-              <span className="text-[10px] text-cyan-400">役職: </span>{title.name}
+            <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] px-2 py-1 text-xs font-semibold text-[#b7a992]">
+              <span className="text-[10px] text-[#83b8ac]">役職: </span>{title.name}
             </div>
             <button
               onClick={toggleMute}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#3b3328] bg-[#1d1914] hover:bg-[#3b3328]"
               aria-label="ミュート切替"
             >
-              {muted ? <VolumeMuteIcon className="h-4 w-4" /> : <VolumeOnIcon className="h-4 w-4 text-cyan-400" />}
+              {muted ? <VolumeMuteIcon className="h-4 w-4" /> : <VolumeOnIcon className="h-4 w-4 text-[#83b8ac]" />}
             </button>
             {screen === 'playing' && (
               <button
                 onClick={pauseGame}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-950/50 text-cyan-400 hover:bg-cyan-900/50"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#5a4b38] bg-[#172622] text-[#83b8ac] hover:bg-[#172622]"
                 aria-label="一時停止"
               >
                 <PauseIcon className="h-4 w-4" />
@@ -411,75 +413,108 @@ export default function ShachikuSpiralGame() {
 
         {/* In-Game Modern Cyber HUD */}
         {(screen === 'playing' || screen === 'paused' || screen === 'build') && (
-          <div className="mb-2 rounded-xl border border-slate-800 bg-slate-900/90 p-2.5 text-xs shadow-lg backdrop-blur">
+          <div className="mb-2 border border-[#3b3328] bg-[#1d1914] p-2.5 text-xs shadow-lg">
             <div className="mb-1.5 flex items-center justify-between font-black tracking-wide">
-              <div className="flex items-center gap-1.5 text-cyan-400">
+              <div className="flex items-center gap-1.5 text-[#83b8ac]">
                 <WaveIcon className="h-4 w-4" />
                 <span>WAVE {hud.wave}{hud.endless ? '+' : `/${hud.totalWaves}`}</span>
               </div>
-              <div className="text-yellow-400">
+              <div className="text-[#dfb15b]">
                 SCORE <span className="font-mono">{hud.score.toLocaleString()}</span>
               </div>
-              <div className="flex items-center gap-1 text-amber-300">
+              <div className="flex items-center gap-1 text-[#e4c989]">
                 <CreditIcon className="h-3.5 w-3.5" />
                 <span className="font-mono">{hud.coins}</span>
               </div>
-              <div className="flex items-center gap-1 text-pink-400">
+              <div className="flex items-center gap-1 text-[#e07054]">
                 <BurstIcon className="h-3.5 w-3.5" />
                 <span className="font-mono">{hud.segs}</span>
               </div>
             </div>
 
             <div className="mb-1.5 flex items-center gap-2">
-              <div className="flex w-16 shrink-0 items-center gap-1 font-bold text-green-400">
+              <span className="font-label w-10 shrink-0 text-[8px] text-[#8a7d69]">WAVE</span>
+              <div className="h-1 flex-1 bg-[#3b3328]">
+                <div className="h-full bg-[#83b8ac] transition-all duration-500" style={{ width: `${waveProgress}%` }} />
+              </div>
+              <span className="font-mono text-[10px] text-[#b7a992]">{hud.wave}/{hud.totalWaves}</span>
+            </div>
+
+            <div className="mb-1.5 flex items-center gap-2">
+              <div className="flex w-16 shrink-0 items-center gap-1 font-bold text-[#83b8ac]">
                 <HpIcon className="h-3.5 w-3.5" />
                 <span>HP</span>
               </div>
-              <Bar value={hud.hp} max={hud.maxHp} className="bg-gradient-to-r from-emerald-500 to-cyan-500" />
-              <span className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-slate-300">
+              <Bar value={hud.hp} max={hud.maxHp} className="bg-[#83b8ac]" />
+              <span className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-[#b7a992]">
                 {hud.hp}/{hud.maxHp}
               </span>
             </div>
 
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 text-[9px]">
+              <span className="font-label border border-[#5a4b38] bg-[#2a231b] px-1.5 py-0.5 text-[#e07054]">
+                NEXT {nextBoss}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="font-label border border-[#3b3328] bg-[#12100d] px-1.5 py-0.5 text-[#b7a992]">
+                  ENEMY {hud.chainsLeft}
+                </span>
+                {hud.chests > 0 && (
+                  <span className="font-label border border-[#5a4b38] bg-[#2a231b] px-1.5 py-0.5 text-[#dfb15b]">
+                    CHEST {hud.chests}
+                  </span>
+                )}
+                {hud.drops > 0 && (
+                  <span className="font-label border border-[#355952] bg-[#172622] px-1.5 py-0.5 text-[#9dd4c7]">
+                    DROP {hud.drops}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {hud.chests > 0 && (
+              <p className="font-label mb-1.5 text-[8px] text-[#dfb15b]">宝箱を撃つと武器進化 / ドロップは自動回収</p>
+            )}
+
             <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.5 text-cyan-300">
+              <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#83b8ac]">
                 <BlasterIcon className="h-3 w-3" />
                 <span>ATK {hud.build.dmg}</span>
-                <span className="text-slate-400">×{hud.build.count}</span>
-                <span className="text-amber-400">貫{hud.build.pierce}</span>
+                <span className="text-[#8a7d69]">×{hud.build.count}</span>
+                <span className="text-[#dfb15b]">貫{hud.build.pierce}</span>
               </span>
               {hud.build.orbN > 0 && (
-                <span className="flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.5 text-cyan-300">
+                <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#83b8ac]">
                   <DroneIcon className="h-3 w-3" />
                   <span>×{hud.build.orbN}</span>
                 </span>
               )}
               {hud.build.blastLv > 0 && (
-                <span className="flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.5 text-orange-300">
+                <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#e4c989]">
                   <EnergyDrinkIcon className="h-3 w-3" />
                   <span>Lv{hud.build.blastLv}</span>
                 </span>
               )}
               {hud.build.beamLv > 0 && (
-                <span className="flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.5 text-yellow-300">
+                <span className="flex items-center gap-1 rounded bg-[#1d1914] px-1.5 py-0.5 text-[#f2e9d8]">
                   <LaserBeamIcon className="h-3 w-3" />
                   <span>Lv{hud.build.beamLv}</span>
                 </span>
               )}
-              {hud.levels.length > 0 && <span className="text-slate-600">|</span>}
+              {hud.levels.length > 0 && <span className="text-[#756957]">|</span>}
               {hud.levels.map((l) => (
-                <span key={l.id} className="flex items-center gap-0.5 rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 text-[10px]">
-                  <TechUpgradeIcon id={l.id} className="h-3 w-3 text-cyan-400" />
-                  <span className="font-mono text-amber-300 font-bold">{l.lv}</span>
+                <span key={l.id} className="flex items-center gap-0.5 rounded border border-[#3b3328] bg-[#1d1914] px-1.5 py-0.5 text-[10px]">
+                  <TechUpgradeIcon id={l.id} className="h-3 w-3 text-[#83b8ac]" />
+                  <span className="font-mono text-[#e4c989] font-bold">{l.lv}</span>
                 </span>
               ))}
             </div>
 
             {hud.bossMax > 0 && (
               <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/30 p-1.5">
-                <span className="w-28 shrink-0 truncate text-xs font-black text-red-400">{hud.bossName}</span>
-                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-gradient-to-r from-red-600 to-amber-500" />
-                <span className="font-mono text-[10px] font-bold text-red-300">{hud.bossHp}</span>
+                <span className="w-28 shrink-0 truncate text-xs font-black text-[#e07054]">{hud.bossName}</span>
+                <Bar value={hud.bossHp} max={hud.bossMax} className="bg-[#e07054]" />
+                <span className="font-mono text-[10px] font-bold text-[#f0a08b]">{hud.bossHp}</span>
               </div>
             )}
           </div>
@@ -488,7 +523,7 @@ export default function ShachikuSpiralGame() {
         {/* Game Canvas Container */}
         <div
           ref={stageRef}
-          className="relative mx-auto w-full max-w-[560px] overflow-hidden rounded-xl border border-slate-800 bg-[#0a0e1f] shadow-2xl"
+          className="relative mx-auto w-full max-w-[560px] overflow-hidden border border-[#5a4b38] bg-[#12100d] shadow-[6px_6px_0_#0b0907]"
           style={{ aspectRatio: '1 / 1' }}
         >
           <canvas
@@ -516,9 +551,9 @@ export default function ShachikuSpiralGame() {
 
           {/* Banner notification */}
           {banner && (screen === 'playing' || screen === 'build') && (
-            <div key={banner.key} className="pointer-events-none absolute inset-x-4 top-8 z-20 rounded-xl border border-cyan-500/40 bg-slate-950/85 p-3 text-center shadow-xl backdrop-blur">
-              <p className="text-sm font-black tracking-wide text-cyan-300">{banner.title}</p>
-              <p className="mt-0.5 text-xs text-slate-300">{banner.sub}</p>
+            <div key={banner.key} className="pointer-events-none absolute inset-x-4 top-8 z-20 border border-[#5a4b38] bg-[#12100d]/95 p-3 text-center shadow-xl">
+              <p className="text-sm font-black tracking-wide text-[#83b8ac]">{banner.title}</p>
+              <p className="mt-0.5 text-xs text-[#b7a992]">{banner.sub}</p>
             </div>
           )}
 
@@ -540,15 +575,15 @@ export default function ShachikuSpiralGame() {
 
           {/* Build Tree Modal Overlay */}
           {screen === 'build' && build && (
-            <div className="absolute inset-0 z-30 flex flex-col justify-between overflow-y-auto bg-slate-950/90 p-4 backdrop-blur">
-              <div>
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#12100d]/85 p-3">
+              <div className="max-h-full w-full max-w-[520px] overflow-y-auto border border-[#5a4b38] bg-[#1d1914] p-4 shadow-[6px_6px_0_#0b0907]">
                 <div className="flex items-center justify-center gap-2">
-                  <WaveIcon className="h-6 w-6 text-cyan-400" />
-                  <h2 className="text-xl font-black tracking-wider text-cyan-400">
-                    {build.fromChest ? '宝箱 GET！ 武器進化' : `WAVE ${build.wave} 作戦強化`}
+                  <WaveIcon className="h-6 w-6 text-[#83b8ac]" />
+                  <h2 className="text-xl font-black tracking-wider text-[#83b8ac]">
+                    {build.fromChest ? '宝箱 GET！ 武器進化' : `WAVE ${build.wave} 開始前 作戦強化`}
                   </h2>
                 </div>
-                <p className="mt-1 text-center text-xs text-slate-400">
+                <p className="mt-1 text-center text-xs text-[#8a7d69]">
                   {build.fromChest
                     ? '3つの選択肢から1つ選んでコアリアクターを強化せよ'
                     : '渦の進行に備え、コアリアクターの兵装を1つ強化してください'}
@@ -559,60 +594,63 @@ export default function ShachikuSpiralGame() {
                     <button
                       key={`${c.kind}:${c.id}`}
                       onClick={() => chooseUpgrade(`${c.kind}:${c.id}`)}
-                      className="group flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/90 p-3 text-left transition hover:border-cyan-400 hover:bg-slate-800"
+                      className="group flex items-center gap-3 rounded-xl border border-[#3b3328] bg-[#1d1914]/95 p-3 text-left transition hover:border-[#83b8ac] hover:bg-[#1d1914]"
                     >
-                      <div className="pointer-events-none flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 group-hover:border-cyan-400">
-                        <TechUpgradeIcon id={c.id} className="h-6 w-6 text-cyan-400" />
+                      <div className="pointer-events-none flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#3b3328] bg-[#1d1914] group-hover:border-[#83b8ac]">
+                        <TechUpgradeIcon id={c.id} className="h-6 w-6 text-[#83b8ac]" />
                       </div>
                       <div className="pointer-events-none flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-black text-slate-100 group-hover:text-cyan-300">{c.name}</p>
+                          <p className="text-sm font-black text-[#f2e9d8] group-hover:text-[#83b8ac]">{c.name}</p>
                           {c.isNew ? (
-                            <span className="rounded bg-emerald-600 px-1.5 py-0.2 text-[10px] font-bold text-white">NEW</span>
+                            <span className="rounded bg-[#2f5d57] px-1.5 py-0.2 text-[10px] font-bold text-white">NEW</span>
                           ) : c.toLv > 0 ? (
-                            <span className="font-mono text-xs font-bold text-amber-400">Lv.{c.toLv}</span>
+                            <span className="font-mono text-xs font-bold text-[#dfb15b]">Lv.{c.toLv}</span>
                           ) : null}
                         </div>
-                        <p className="mt-0.5 text-xs text-slate-400">{c.desc}</p>
+                        <p className="mt-0.5 text-xs text-[#8a7d69]">{c.desc}</p>
                       </div>
                     </button>
                   ))}
                 </div>
-              </div>
 
-              {build.canReroll && (
-                <div className="mx-auto mt-4 w-full max-w-[480px]">
-                  <button
-                    onClick={() => engineRef.current?.rerollBuild()}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-950/40 py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-900/40"
-                  >
-                    <RefreshIcon className="h-4 w-4 text-amber-400" />
-                    <span>選択肢リロール（残1回）</span>
-                  </button>
-                </div>
-              )}
+                {build.canReroll && (
+                  <div className="mx-auto mt-4 w-full max-w-[480px]">
+                    <button
+                      onClick={() => engineRef.current?.rerollBuild()}
+                      className="flex w-full items-center justify-center gap-2 border border-[#5a4b38] bg-[#2a231b] py-2.5 text-xs font-bold text-[#e4c989] hover:bg-[#342d22]"
+                    >
+                      <RefreshIcon className="h-4 w-4 text-[#dfb15b]" />
+                      <span>選択肢リロール（残1回）</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {/* Paused Overlay */}
           {screen === 'paused' && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-slate-950/80 backdrop-blur">
-              <PauseIcon className="h-10 w-10 text-cyan-400" />
-              <p className="text-2xl font-black tracking-wider text-slate-100">作戦一時待機</p>
-              <p className="text-xs text-slate-400">画面ドラッグまたは仮想スティックで移動・攻撃全自動</p>
-              <button
-                onClick={resumeGame}
-                className="mt-2 flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-3 font-black text-white shadow-lg hover:brightness-110"
-              >
-                <PlayIcon className="h-4 w-4" />
-                <span>業務再開</span>
-              </button>
-              <button
-                onClick={quitToTitle}
-                className="rounded-xl border border-slate-700 bg-slate-800 px-8 py-2.5 text-sm font-bold text-slate-300 hover:bg-slate-700"
-              >
-                タイトルに戻る
-              </button>
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#12100d]/85 p-4">
+              <div className="w-full max-w-xs border border-[#5a4b38] bg-[#1d1914] p-5 text-center shadow-[6px_6px_0_#0b0907]">
+                <p className="font-label text-[9px] text-[#8a7d69]">Paused</p>
+                <PauseIcon className="mx-auto mt-2 h-8 w-8 text-[#dfb15b]" />
+                <p className="mt-2 text-xl font-black tracking-wider text-[#f2e9d8]">作戦一時待機</p>
+                <p className="mt-1 text-xs text-[#8a7d69]">画面ドラッグまたは仮想スティックで照準</p>
+                <button
+                  onClick={resumeGame}
+                  className="mt-4 flex w-full items-center justify-center gap-2 border border-[#f2e9d8] bg-[#b23a2a] px-6 py-3 font-black text-white shadow-[3px_3px_0_#f2e9d8] hover:bg-[#c94b38]"
+                >
+                  <PlayIcon className="h-4 w-4" />
+                  <span>業務再開</span>
+                </button>
+                <button
+                  onClick={quitToTitle}
+                  className="mt-2 w-full border border-[#3b3328] bg-[#12100d] px-6 py-2.5 text-sm font-bold text-[#b7a992] hover:border-[#5a4b38]"
+                >
+                  タイトルに戻る
+                </button>
+              </div>
             </div>
           )}
 
@@ -627,8 +665,8 @@ export default function ShachikuSpiralGame() {
           )}
         </div>
 
-        <p className="mt-2.5 text-center text-[11px] text-slate-400">
-          コアは中心固定。タップ／ドラッグで狙いを定めて撃て！列の隙間の宝箱を壊すと武器進化を3択で選択。
+        <p className="mt-2.5 text-center text-[11px] text-[#8a7d69]">
+          コアは中心固定。タップ／ドラッグで狙いを定めて撃て！列の隙間の宝箱を壊すと武器進化を3択で選択。ドロップは自動回収。
         </p>
       </div>
     </div>
@@ -660,32 +698,32 @@ function TitleOverlay(props: {
     { id: 'ach', label: '実績', icon: <TrophyIcon className="h-4 w-4" /> },
   ];
   return (
-    <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4">
+    <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#12100d] p-4">
       <div className="my-auto">
-        <div className="relative mb-3 overflow-hidden rounded-xl border border-cyan-500/40 shadow-lg shadow-cyan-950/50">
+        <div className="relative mb-3 overflow-hidden rounded-xl border border-[#5a4b38] ">
           <Image
             src="/assets/spiral_cover.jpg"
             alt="Cybernetic Syndicate Spiral"
             width={800}
             height={447}
-            className="h-28 w-full object-cover"
+            className="h-28 w-full object-cover grayscale-[0.2] saturate-75"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-2.5">
-            <p className="text-[10px] font-black tracking-widest text-cyan-400 font-mono">CYBERNETIC SPIRAL DEFENSE</p>
-            <h2 className="text-lg font-black text-cyan-300 drop-shadow-md">社畜スパイラル</h2>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#12100d] via-[#12100d]/60 to-transparent flex flex-col justify-end p-2.5">
+            <p className="text-[10px] font-black tracking-widest text-[#dfb15b] font-mono">CYBERNETIC SPIRAL DEFENSE</p>
+            <h2 className="text-lg font-black text-[#f2e9d8] drop-shadow-md">社畜スパイラル</h2>
           </div>
         </div>
-        <p className="mt-1 text-center text-xs text-slate-400">
+        <p className="mt-1 text-center text-xs text-[#8a7d69]">
           中央コアを守れ！渦巻く業務の多節列を迎撃する全15ウェーブ・ベクター防衛戦
         </p>
 
-        <div className="mx-auto mt-4 flex max-w-[480px] gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 p-1">
+        <div className="mx-auto mt-4 flex max-w-[480px] gap-1 overflow-x-auto rounded-xl border border-[#3b3328] bg-[#16130f] p-1">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-bold transition ${
-                tab === t.id ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+                tab === t.id ? 'bg-[#dfb15b] text-[#12100d] shadow-md' : 'text-[#8a7d69] hover:text-[#e4d9c7]'
               }`}
             >
               {t.icon}
@@ -717,7 +755,7 @@ function PlayTab(props: {
 
   return (
     <div>
-      <p className="mb-1 text-xs font-bold text-slate-300">■ 配属先（ステージ）</p>
+      <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 配属先（ステージ）</p>
       <div className="mb-3 grid grid-cols-2 gap-2">
         {STAGE_ORDER.map((s) => {
           const def = STAGES[s];
@@ -729,17 +767,17 @@ function PlayTab(props: {
               disabled={locked}
               onClick={() => setStageSel(s)}
               className={`rounded-xl border p-2 text-left transition ${
-                isSelected ? 'border-cyan-400 bg-cyan-950/40 text-cyan-300' : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700'
+                isSelected ? 'border-[#83b8ac] bg-[#172622] text-[#83b8ac]' : 'border-[#3b3328] bg-[#1d1914] text-[#8a7d69] hover:border-[#3b3328]'
               } ${locked ? 'opacity-40' : ''}`}
             >
               <p className="text-xs font-bold">{locked ? '[施錠] ' : ''}{def.name}</p>
-              <p className="mt-0.5 text-[10px] text-slate-500">{def.desc}</p>
+              <p className="mt-0.5 text-[10px] text-[#756957]">{def.desc}</p>
             </button>
           );
         })}
       </div>
 
-      <p className="mb-1 text-xs font-bold text-slate-300">■ 業務負荷難易度</p>
+      <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 業務負荷難易度</p>
       <div className="grid grid-cols-3 gap-2">
         {DIFFICULTY_ORDER.map((d) => {
           const def = DIFFICULTIES[d];
@@ -749,12 +787,12 @@ function PlayTab(props: {
               key={d}
               onClick={() => setDifficulty(d)}
               className={`rounded-xl border p-2 text-center transition ${
-                isSelected ? 'border-cyan-400 bg-cyan-950/40 text-cyan-300' : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700'
+                isSelected ? 'border-[#83b8ac] bg-[#172622] text-[#83b8ac]' : 'border-[#3b3328] bg-[#1d1914] text-[#8a7d69] hover:border-[#3b3328]'
               }`}
             >
               <p className="text-xs font-bold">{def.name}</p>
-              <p className="mt-0.5 text-[10px] text-slate-500">{def.desc}</p>
-              <p className="mt-1 font-mono text-[10px] font-bold text-amber-400">×{def.scoreMul}</p>
+              <p className="mt-0.5 text-[10px] text-[#756957]">{def.desc}</p>
+              <p className="mt-1 font-mono text-[10px] font-bold text-[#dfb15b]">×{def.scoreMul}</p>
             </button>
           );
         })}
@@ -762,42 +800,42 @@ function PlayTab(props: {
 
       <button
         onClick={onStart}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 py-3 text-base font-black text-white shadow-xl hover:brightness-110"
+        className="mt-3 flex w-full items-center justify-center gap-2 border border-[#f2e9d8] bg-[#b23a2a] py-3 text-base font-black text-[#fffaf0] shadow-[3px_3px_0_#f2e9d8] transition hover:bg-[#c94b38]"
       >
         <PlayIcon className="h-5 w-5" />
         <span>出勤迎撃開始（全{FINAL_WAVE}ウェーブ）</span>
       </button>
 
       <div className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px]">
-        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-          <p className="text-slate-400">出勤</p>
-          <p className="font-mono text-base font-black text-slate-200">{stats.runs}</p>
+        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
+          <p className="text-[#8a7d69]">出勤</p>
+          <p className="font-mono text-base font-black text-[#e4d9c7]">{stats.runs}</p>
         </div>
-        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-          <p className="text-slate-400">制圧</p>
-          <p className="font-mono text-base font-black text-emerald-400">{stats.wins}</p>
+        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
+          <p className="text-[#8a7d69]">制圧</p>
+          <p className="font-mono text-base font-black text-[#83b8ac]">{stats.wins}</p>
         </div>
-        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-          <p className="text-slate-400">最高W</p>
-          <p className="font-mono text-base font-black text-cyan-400">{stats.bestWave}</p>
+        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
+          <p className="text-[#8a7d69]">最高W</p>
+          <p className="font-mono text-base font-black text-[#83b8ac]">{stats.bestWave}</p>
         </div>
-        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-          <p className="text-slate-400">切断数</p>
-          <p className="font-mono text-base font-black text-amber-400">{stats.totalSegs.toLocaleString()}</p>
+        <div className="rounded-lg border border-[#3b3328] bg-[#1d1914] p-2">
+          <p className="text-[#8a7d69]">切断数</p>
+          <p className="font-mono text-base font-black text-[#dfb15b]">{stats.totalSegs.toLocaleString()}</p>
         </div>
       </div>
 
-      <p className="mt-2 text-center font-mono text-[11px] text-slate-400">
+      <p className="mt-2 text-center font-mono text-[11px] text-[#8a7d69]">
         図鑑解析: 業務列 {comp.chains}/{comp.chainsTotal} ・ 兵装 {comp.upgrades}/{comp.upgradesTotal}
       </p>
 
       {records.length > 0 && (
         <div className="mt-2">
-          <p className="mb-1 text-xs font-bold text-slate-300">■ 迎撃スコア記録</p>
+          <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 迎撃スコア記録</p>
           {records.slice(0, 3).map((r, i) => (
-            <div key={`${r.date}-${i}`} className="mb-1 flex justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1 text-[11px]">
+            <div key={`${r.date}-${i}`} className="mb-1 flex justify-between rounded-lg border border-[#3b3328] bg-[#1d1914] px-2 py-1 text-[11px]">
               <span>{i + 1}位 {r.victory ? '[制圧] ' : ''}W{r.wave} ({DIFFICULTIES[r.difficulty]?.name})</span>
-              <span className="font-mono font-bold text-yellow-400">{r.score.toLocaleString()} pt</span>
+              <span className="font-mono font-bold text-[#dfb15b]">{r.score.toLocaleString()} pt</span>
             </div>
           ))}
         </div>
@@ -810,8 +848,8 @@ function PowerTab(props: { bank: number; metaLv: Record<string, number>; onBuyMe
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs text-slate-300">所持残業代（恒久兵装強化）</p>
-        <div className="flex items-center gap-1 font-mono text-xs font-bold text-amber-300">
+        <p className="text-xs text-[#b7a992]">所持残業代（恒久兵装強化）</p>
+        <div className="flex items-center gap-1 font-mono text-xs font-bold text-[#e4c989]">
           <CreditIcon className="h-3.5 w-3.5" />
           <span>{props.bank.toLocaleString()}</span>
         </div>
@@ -822,14 +860,14 @@ function PowerTab(props: { bank: number; metaLv: Record<string, number>; onBuyMe
           const maxed = lv >= m.maxLv;
           const cost = m.cost(lv);
           return (
-            <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/70 p-2.5">
+            <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl border border-[#3b3328] bg-[#1d1914] p-2.5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
-                  <TechUpgradeIcon id={m.id} className="h-5 w-5 text-cyan-400" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#3b3328] bg-[#1d1914]">
+                  <TechUpgradeIcon id={m.id} className="h-5 w-5 text-[#83b8ac]" />
                 </div>
                 <div className="text-xs">
-                  <p className="font-bold text-slate-200">{m.name} <span className="font-mono text-cyan-400">Lv.{lv}/{m.maxLv}</span></p>
-                  <p className="text-[11px] text-slate-400">{m.desc}</p>
+                  <p className="font-bold text-[#e4d9c7]">{m.name} <span className="font-mono text-[#83b8ac]">Lv.{lv}/{m.maxLv}</span></p>
+                  <p className="text-[11px] text-[#8a7d69]">{m.desc}</p>
                 </div>
               </div>
               <button
@@ -837,8 +875,8 @@ function PowerTab(props: { bank: number; metaLv: Record<string, number>; onBuyMe
                 onClick={() => props.onBuyMeta(m.id)}
                 className={`shrink-0 rounded-lg px-3 py-1.5 font-mono text-xs font-bold transition ${
                   !maxed && props.bank >= cost
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                    : 'bg-slate-800 text-slate-500'
+                    ? 'bg-[#2f5d57] text-white hover:bg-[#3f756d]'
+                    : 'bg-[#1d1914] text-[#756957]'
                 }`}
               >
                 {maxed ? 'MAX' : `${cost}`}
@@ -861,29 +899,29 @@ function AchTab(props: { ach: AchState; onClaim: (id: string) => void }) {
           <div
             key={a.id}
             className={`flex items-center justify-between gap-2 rounded-xl border p-2.5 text-xs ${
-              un ? 'border-amber-500/30 bg-slate-900/90' : 'border-slate-800 bg-slate-950/40 opacity-60'
+              un ? 'border-[#5a4b38] bg-[#1d1914]/95' : 'border-[#3b3328] bg-[#16130f] opacity-60'
             }`}
           >
             <div className="flex items-center gap-2">
-              <TrophyIcon className={`h-5 w-5 shrink-0 ${un ? 'text-amber-400' : 'text-slate-600'}`} />
+              <TrophyIcon className={`h-5 w-5 shrink-0 ${un ? 'text-[#dfb15b]' : 'text-[#756957]'}`} />
               <div>
-                <p className="font-bold text-slate-200">{a.name}</p>
-                <p className="text-[11px] text-slate-400">{a.desc}</p>
+                <p className="font-bold text-[#e4d9c7]">{a.name}</p>
+                <p className="text-[11px] text-[#8a7d69]">{a.desc}</p>
               </div>
             </div>
             {cl ? (
-              <span className="flex shrink-0 items-center gap-1 text-[11px] text-slate-500">
+              <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#756957]">
                 <CheckIcon className="h-3.5 w-3.5" /> 受取済
               </span>
             ) : un ? (
               <button
                 onClick={() => props.onClaim(a.id)}
-                className="shrink-0 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 px-2.5 py-1 text-xs font-bold text-slate-950 hover:brightness-110"
+                className="shrink-0 rounded-lg bg-[#dfb15b] px-2.5 py-1 text-xs font-bold text-[#12100d] hover:brightness-110"
               >
                 +{a.reward}
               </button>
             ) : (
-              <LockIcon className="h-4 w-4 shrink-0 text-slate-600" />
+              <LockIcon className="h-4 w-4 shrink-0 text-[#756957]" />
             )}
           </div>
         );
@@ -897,33 +935,33 @@ function DexTab() {
   const upgrades = encyUpgrades();
   return (
     <div>
-      <p className="mb-1 text-xs font-bold text-slate-300">■ 業務列データベース</p>
+      <p className="mb-1 text-xs font-bold text-[#b7a992]">■ 業務列データベース</p>
       <div className="grid grid-cols-3 gap-2">
         {chains.map((e) => (
           <div
             key={e.kind}
             className={`rounded-xl border p-2 text-center text-[11px] ${
-              e.found ? 'border-slate-700 bg-slate-900/80' : 'border-slate-800 bg-slate-950/40 opacity-50'
+              e.found ? 'border-[#3b3328] bg-[#1d1914]/95' : 'border-[#3b3328] bg-[#16130f] opacity-50'
             }`}
           >
-            <p className="font-bold text-slate-200">{e.found ? e.name : '？？？'}</p>
-            <p className="mt-0.5 text-slate-400">{e.kills} 列撃破</p>
+            <p className="font-bold text-[#e4d9c7]">{e.found ? e.name : '？？？'}</p>
+            <p className="mt-0.5 text-[#8a7d69]">{e.kills} 列撃破</p>
           </div>
         ))}
       </div>
-      <p className="mb-1 mt-3 text-xs font-bold text-slate-300">■ 兵装アップグレード図鑑</p>
+      <p className="mb-1 mt-3 text-xs font-bold text-[#b7a992]">■ 兵装アップグレード図鑑</p>
       <div className="grid grid-cols-2 gap-2">
         {upgrades.map((w) => (
           <div
             key={w.id}
             className={`flex items-center gap-2 rounded-xl border p-2 text-[11px] ${
-              w.found ? 'border-slate-700 bg-slate-900/80' : 'border-slate-800 bg-slate-950/40 opacity-50'
+              w.found ? 'border-[#3b3328] bg-[#1d1914]/95' : 'border-[#3b3328] bg-[#16130f] opacity-50'
             }`}
           >
-            <TechUpgradeIcon id={w.id} className="h-6 w-6 text-cyan-400" />
+            <TechUpgradeIcon id={w.id} className="h-6 w-6 text-[#83b8ac]" />
             <div>
-              <p className="font-bold text-slate-200">{w.found ? w.name : '？？？'}</p>
-              <p className="text-slate-400">{w.found ? w.desc : '未入手'}</p>
+              <p className="font-bold text-[#e4d9c7]">{w.found ? w.name : '？？？'}</p>
+              <p className="text-[#8a7d69]">{w.found ? w.desc : '未入手'}</p>
             </div>
           </div>
         ))}
@@ -939,31 +977,31 @@ function DailyTab(props: {
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-slate-400">毎日0時に更新。出勤して日課を完了してください。</p>
+      <p className="text-[11px] text-[#8a7d69]">毎日0時に更新。出勤して日課を完了してください。</p>
       {props.missions.map((m) => {
         const prog = Math.min(m.target, props.daily.progress[m.id] ?? 0);
         const done = prog >= m.target;
         const cl = props.daily.claimed[m.id] === true;
         return (
-          <div key={m.id} className="rounded-xl border border-slate-800 bg-slate-900/70 p-2.5 text-xs">
+          <div key={m.id} className="rounded-xl border border-[#3b3328] bg-[#1d1914] p-2.5 text-xs">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-bold text-slate-200">{m.name}</p>
+              <p className="font-bold text-[#e4d9c7]">{m.name}</p>
               {cl ? (
-                <span className="text-[11px] text-slate-500">受取済</span>
+                <span className="text-[11px] text-[#756957]">受取済</span>
               ) : done ? (
                 <button
                   onClick={() => props.onClaim(m.id)}
-                  className="rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-bold text-slate-950 hover:brightness-110"
+                  className="rounded-lg bg-[#dfb15b] px-2.5 py-1 text-xs font-bold text-[#12100d] hover:brightness-110"
                 >
                   +{m.reward}
                 </button>
               ) : (
-                <span className="font-mono text-slate-400">{prog}/{m.target}</span>
+                <span className="font-mono text-[#8a7d69]">{prog}/{m.target}</span>
               )}
             </div>
-            <p className="mt-0.5 text-slate-400">{m.desc}</p>
+            <p className="mt-0.5 text-[#8a7d69]">{m.desc}</p>
             <div className="mt-1.5">
-              <Bar value={prog} max={m.target} className="bg-amber-400" />
+              <Bar value={prog} max={m.target} className="bg-[#dfb15b]" />
             </div>
           </div>
         );
@@ -980,83 +1018,84 @@ function ResultOverlay(props: {
   const fresh = ACHIEVEMENTS.filter((a) => freshAch.includes(a.id));
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-between overflow-y-auto bg-slate-950/90 p-4 text-center backdrop-blur">
-      <div>
-        <h2 className={`mt-2 text-2xl font-black tracking-wider ${result.victory ? 'text-cyan-300' : 'text-rose-400'}`}>
-          {result.victory ? '全業務制圧完了！！' : `WAVE ${result.wave} で業務崩壊…`}
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#12100d]/85 p-3">
+      <div className="max-h-full w-full max-w-[440px] overflow-y-auto border border-[#5a4b38] bg-[#1d1914] p-5 text-center shadow-[6px_6px_0_#0b0907]">
+        <p className="font-label text-[9px] text-[#8a7d69]">Shift Report</p>
+        <h2 className={`mt-1 text-2xl font-black tracking-wider ${result.victory ? 'text-[#83b8ac]' : 'text-[#e07054]'}`}>
+          {result.victory ? '全業務制圧完了' : `WAVE ${result.wave} で業務崩壊`}
         </h2>
-        <p className="mt-1 text-xs text-slate-400 font-mono">
-          {DIFFICULTIES[result.difficulty]?.name} × {formatTime(result.timeSec)} 勤務
+        <p className="mt-1 font-mono text-[11px] text-[#8a7d69]">
+          {DIFFICULTIES[result.difficulty]?.name} / {formatTime(result.timeSec)}
         </p>
 
-        <div className="mx-auto mt-4 grid max-w-[340px] grid-cols-2 gap-2 text-sm">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-2.5">
-            <p className="text-[10px] text-slate-400">最終スコア</p>
-            <p className="font-mono text-lg font-black text-yellow-400">{result.score.toLocaleString()}</p>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-left">
+          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
+            <p className="font-label text-[8px] text-[#8a7d69]">SCORE</p>
+            <p className="font-mono text-lg font-black text-[#dfb15b]">{result.score.toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-2.5">
-            <p className="text-[10px] text-slate-400">到達 WAVE</p>
-            <p className="font-mono text-lg font-black text-cyan-400">{result.wave}</p>
+          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
+            <p className="font-label text-[8px] text-[#8a7d69]">WAVE</p>
+            <p className="font-mono text-lg font-black text-[#83b8ac]">{result.wave}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-2.5">
-            <p className="text-[10px] text-slate-400">体節切断数</p>
-            <p className="font-mono text-lg font-black text-emerald-400">{result.segs.toLocaleString()}</p>
+          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
+            <p className="font-label text-[8px] text-[#8a7d69]">SEGMENTS</p>
+            <p className="font-mono text-lg font-black text-[#83b8ac]">{result.segs.toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-2.5">
-            <p className="text-[10px] text-slate-400">業務列撃破</p>
-            <p className="font-mono text-lg font-black text-pink-400">{result.chains}</p>
+          <div className="border border-[#3b3328] bg-[#12100d] p-2.5">
+            <p className="font-label text-[8px] text-[#8a7d69]">CHAINS</p>
+            <p className="font-mono text-lg font-black text-[#e07054]">{result.chains}</p>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-center gap-1.5 font-mono text-xs font-bold text-amber-300">
+        <div className="mt-3 flex items-center justify-center gap-1.5 font-mono text-xs font-bold text-[#e4c989]">
           <CreditIcon className="h-4 w-4" />
           <span>+{result.coins} 残業手当加算</span>
         </div>
 
         {fresh.length > 0 && (
-          <div className="mx-auto mt-3 max-w-[340px] rounded-xl border border-amber-500/30 bg-amber-950/30 p-2.5 text-left text-xs">
-            <p className="font-bold text-amber-300">実績解除！（実績タブで受取）</p>
+          <div className="mt-3 border border-[#5a4b38] bg-[#2a231b] p-2.5 text-left text-xs">
+            <p className="font-bold text-[#e4c989]">実績解除</p>
             {fresh.map((a) => (
-              <p key={a.id} className="mt-0.5 text-slate-300">{a.name} <span className="text-amber-400">+{a.reward}</span></p>
+              <p key={a.id} className="mt-0.5 text-[#b7a992]">{a.name} <span className="text-[#dfb15b]">+{a.reward}</span></p>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4 space-y-2">
+          {onEndless && (
+            <button
+              onClick={onEndless}
+              className="w-full border border-[#f2e9d8] bg-[#b23a2a] py-3 font-black text-white shadow-[3px_3px_0_#f2e9d8] hover:bg-[#c94b38]"
+            >
+              残業突入（エンドレス）
+            </button>
+          )}
+          <button
+            onClick={onRetry}
+            className="w-full border border-[#f2e9d8] bg-[#b23a2a] py-3 font-black text-white shadow-[3px_3px_0_#f2e9d8] hover:bg-[#c94b38]"
+          >
+            もう一度出勤する
+          </button>
+          <button
+            onClick={onTitle}
+            className="w-full border border-[#3b3328] bg-[#12100d] py-2.5 text-sm font-bold text-[#b7a992] hover:border-[#5a4b38]"
+          >
+            タイトルへ戻る
+          </button>
+        </div>
+
+        {records.length > 0 && (
+          <div className="mt-4 text-left">
+            <p className="font-label text-[8px] text-[#8a7d69]">BEST RECORDS</p>
+            {records.slice(0, 3).map((r, i) => (
+              <div key={`${r.date}-${i}`} className="mt-1 flex justify-between border-b border-[#3b3328] px-1 py-1 text-[10px]">
+                <span>{i + 1}. {r.victory ? '制圧 ' : ''}W{r.wave}</span>
+                <span className="font-mono font-bold text-[#dfb15b]">{r.score.toLocaleString()} pt</span>
+              </div>
             ))}
           </div>
         )}
       </div>
-
-      <div className="mx-auto mt-4 w-full max-w-[340px] space-y-2">
-        {onEndless && (
-          <button
-            onClick={onEndless}
-            className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-3 font-black text-white shadow-lg hover:brightness-110"
-          >
-            残業突入（エンドレスモード）
-          </button>
-        )}
-        <button
-          onClick={onRetry}
-          className="w-full rounded-xl bg-gradient-to-r from-red-600 to-rose-600 py-3 font-black text-white shadow-lg hover:brightness-110"
-        >
-          もう一度出勤する
-        </button>
-        <button
-          onClick={onTitle}
-          className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 text-sm font-bold text-slate-300 hover:bg-slate-700"
-        >
-          タイトルへ戻る
-        </button>
-      </div>
-
-      {records.length > 0 && (
-        <div className="mx-auto mt-3 max-w-[340px] text-left">
-          <p className="mb-1 text-[10px] font-bold text-slate-400">■ 過去最高記録</p>
-          {records.slice(0, 2).map((r, i) => (
-            <div key={`${r.date}-${i}`} className="mb-1 flex justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-0.5 text-[10px]">
-              <span>{i + 1}位 {r.victory ? '[制圧] ' : ''}W{r.wave}</span>
-              <span className="font-mono font-bold text-yellow-400">{r.score.toLocaleString()} pt</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

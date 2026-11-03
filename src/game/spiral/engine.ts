@@ -39,6 +39,7 @@ export interface HudSnapshot {
   phase: 'build' | 'wave' | 'over';
   timeSec: number; score: number; coins: number;
   segs: number; chainsLeft: number;
+  chests: number; drops: number;
   build: HudBuild;
   levels: { id: UpgradeId; icon: string; lv: number }[];
   bossName: string; bossHp: number; bossMax: number;
@@ -164,6 +165,7 @@ interface Chest {
   spin: number;
   openT: number; // >0 while opening animation plays
   taken: boolean;
+  free: boolean;
 }
 
 interface SpawnReq { kind: ChainKind; at: number }
@@ -565,6 +567,7 @@ export class SpiralEngine {
           spin: rand(0, Math.PI * 2),
           openT: 0,
           taken: false,
+          free: false,
         });
       }
     }
@@ -624,6 +627,7 @@ export class SpiralEngine {
 
   private updateBuildFx(dt: number): void {
     this.orbAngle += dt * 2;
+    this.updateChests(dt);
     this.updateFx(dt);
   }
 
@@ -1156,6 +1160,7 @@ export class SpiralEngine {
 
   /** Chest opened → pause for a 3-choice weapon evolution pick. */
   private openChest(c: Chest): void {
+    if (this.phase !== 'wave' || this.over) return;
     c.taken = true;
     c.openT = 0.45;
     this.burst(c.x, c.y, '#fde047', 26, 300);
@@ -1181,10 +1186,19 @@ export class SpiralEngine {
         ch.openT -= dt;
         continue;
       }
-      // Follow the gap between the two segments; drop the chest if the chain broke there.
-      if (!this.chains.includes(ch.chain) || ch.segA.hp <= 0 || ch.segB.hp <= 0) {
-        ch.taken = true;
-        ch.openT = 0.3;
+      const attached = this.chains.includes(ch.chain) && ch.chain.segs.includes(ch.segA) && ch.chain.segs.includes(ch.segB) && ch.segA.hp > 0 && ch.segB.hp > 0;
+      if (!attached) {
+        ch.free = true;
+      }
+      if (ch.free) {
+        const dx = CENTER - ch.x;
+        const dy = CENTER - ch.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance > 1) {
+          const speed = 28;
+          ch.x += (dx / distance) * speed * dt;
+          ch.y += (dy / distance) * speed * dt;
+        }
         continue;
       }
       ch.x = (ch.segA.x + ch.segB.x) / 2;
@@ -1416,45 +1430,46 @@ export class SpiralEngine {
   }
 
   private updateCoins(dt: number): void {
-    const mr = 150;
-    const mr2 = mr * mr;
     for (let i = this.coinPs.length - 1; i >= 0; i--) {
       const c = this.coinPs[i];
-      const d2 = dist2(c.x, c.y, this.px, this.py);
-      if (c.val < 0) {
-        // heal bento: drift to player when close
-        if (d2 < mr2) {
-          const d = Math.max(1, Math.sqrt(d2));
-          c.vx += ((this.px - c.x) / d) * 2000 * dt;
-          c.vy += ((this.py - c.y) / d) * 2000 * dt;
-        }
-        c.x += c.vx * dt;
-        c.y += c.vy * dt;
-        if (d2 < 26 * 26) {
-          this.coinPs.splice(i, 1);
+      const dx = this.px - c.x;
+      const dy = this.py - c.y;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance > 0.001) {
+        const pull = distance < 150 ? 2600 : 1150;
+        c.vx += (dx / distance) * pull * dt;
+        c.vy += (dy / distance) * pull * dt;
+      }
+
+      const drag = Math.max(0, 1 - 2.2 * dt);
+      c.vx *= drag;
+      c.vy *= drag;
+
+      const speed = Math.hypot(c.vx, c.vy);
+      const maxSpeed = 560;
+      if (speed > maxSpeed) {
+        c.vx = (c.vx / speed) * maxSpeed;
+        c.vy = (c.vy / speed) * maxSpeed;
+      }
+
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+
+      const collectDistance = c.val < 0 ? 34 : 30;
+      if (Math.hypot(this.px - c.x, this.py - c.y) <= collectDistance) {
+        this.coinPs.splice(i, 1);
+        if (c.val < 0) {
           this.hp = Math.min(this.maxHp, this.hp + 20);
           this.shield = Math.min(this.maxShield, this.shield + 20);
           this.dmgNumbers.spawn(this.px, this.py - 14, '+20', 'heal');
           this.ev.onBanner('エナジーパック回収！', 'HPとシールドが回復！');
           this.sound.heal();
+        } else {
+          this.coins += c.val;
+          this.score += c.val * 5;
+          this.sound.coin();
         }
-        continue;
-      }
-      if (d2 < mr2) {
-        const d = Math.max(1, Math.sqrt(d2));
-        c.vx += ((this.px - c.x) / d) * 2400 * dt;
-        c.vy += ((this.py - c.y) / d) * 2400 * dt;
-      } else {
-        c.vx *= Math.max(0, 1 - 4 * dt);
-        c.vy *= Math.max(0, 1 - 4 * dt);
-      }
-      c.x += c.vx * dt;
-      c.y += c.vy * dt;
-      if (d2 < 26 * 26) {
-        this.coinPs.splice(i, 1);
-        this.coins += c.val;
-        this.score += c.val * 5;
-        this.sound.coin();
       }
     }
   }
@@ -1524,6 +1539,7 @@ export class SpiralEngine {
       phase: this.phase,
       timeSec: Math.floor(this.runTime), score: Math.round(this.score), coins: this.coins,
       segs: this.segsKilled, chainsLeft: this.chains.length + this.queue.length,
+      chests: this.chests.filter((c) => !c.taken).length, drops: this.coinPs.length,
       build: {
         dmg: Math.round(this.shotDmg()), interval: this.interval(),
         count: this.shotCount(), pierce: this.pierce(), crit: this.critCh(),

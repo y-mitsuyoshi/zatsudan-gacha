@@ -1,6 +1,6 @@
 'use client';
 
-import { GameState, getRoleName, getRoleEmoji, getRoleDescription } from '@/types/shachiku-jinro';
+import { GameState, getRoleName, getRoleDescription } from '@/types/shachiku-jinro';
 import { getMaxTimeForPhase } from './useJinroGame';
 import PlayerCard from './PlayerCard';
 import ActionPanel from './ActionPanel';
@@ -29,21 +29,21 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
   const getPhaseInfo = () => {
     switch (phase) {
       case 'ROLE_REVEAL':
-        return { title: '役職発表', subtitle: 'あなたの正体は...', icon: '🎭', color: 'from-purple-600 to-pink-600' };
+        return { title: '役職発表', subtitle: 'あなたの正体は...' };
       case 'DAY_CONVERSATION':
-        return { title: '昼休み', subtitle: `${dayCount}日目 - 議論中`, icon: '☀️', color: 'from-amber-500 to-orange-500' };
+        return { title: '昼休み', subtitle: `${dayCount}日目 - 議論中` };
       case 'DAY_VOTE':
-        return { title: '人事評価会議', subtitle: `${dayCount}日目 - 投票`, icon: '🗳️', color: 'from-red-500 to-rose-600' };
+        return { title: '人事評価会議', subtitle: `${dayCount}日目 - 投票` };
       case 'VOTE_RESULT':
-        return { title: '投票結果', subtitle: `${dayCount}日目`, icon: '📊', color: 'from-orange-500 to-red-500' };
+        return { title: '投票結果', subtitle: `${dayCount}日目` };
       case 'NIGHT_ACTION':
-        return { title: '残業時間', subtitle: `${dayCount}日目 - 夜`, icon: '🌙', color: 'from-indigo-600 to-purple-700' };
+        return { title: '残業時間', subtitle: `${dayCount}日目 - 夜` };
       case 'NIGHT_RESULT':
-        return { title: '朝のニュース', subtitle: `${dayCount}日目の夜の結果`, icon: '🌅', color: 'from-blue-500 to-indigo-600' };
+        return { title: '朝のニュース', subtitle: `${dayCount}日目の夜の結果` };
       case 'GAME_OVER':
-        return { title: '決算報告', subtitle: 'ゲーム終了', icon: '🏁', color: winner === 'COMPANY' ? 'from-blue-500 to-cyan-500' : winner === 'SPIES' ? 'from-red-600 to-pink-600' : 'from-yellow-500 to-orange-500' };
+        return { title: '決算報告', subtitle: 'ゲーム終了' };
       default:
-        return { title: '待機中', subtitle: '', icon: '⏳', color: 'from-gray-500 to-gray-600' };
+        return { title: '待機中', subtitle: '' };
     }
   };
 
@@ -51,31 +51,24 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
   const isNight = phase === 'NIGHT_ACTION' || phase === 'NIGHT_RESULT';
 
   return (
-    <div className={`min-h-screen pb-6 transition-colors duration-700 ${
-      isNight ? 'bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950' : 'bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800'
-    }`}>
+    <div className={`min-h-screen pb-6 ${isNight ? 'bg-[#0e0c0a]' : 'bg-[#12100d]'}`}>
 
-      {/* Header */}
-      <div className={`sticky top-0 z-20 bg-gradient-to-r ${phaseInfo.color} shadow-lg`}>
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{phaseInfo.icon}</span>
-            <div>
-              <h1 className="text-lg font-bold text-white">{phaseInfo.title}</h1>
-              <p className="text-xs text-white/70">{phaseInfo.subtitle}</p>
-            </div>
+      <div className="sticky top-0 z-20 border-b border-[#3b3328] bg-[#1d1914]">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
+          <div>
+            <p className="font-label text-[9px] text-[#dfb15b]">{phase}</p>
+            <h1 className="mt-0.5 text-lg font-bold text-[#f2e9d8]">{phaseInfo.title}</h1>
+            <p className="text-xs text-[#b7a992]">{phaseInfo.subtitle}</p>
           </div>
 
-          {/* Timer */}
           {timeRemaining > 0 && phase !== 'GAME_OVER' && (
             <div className="text-right">
-              <div className={`text-2xl font-mono font-bold ${timeRemaining <= 10 ? 'text-yellow-300 animate-pulse' : 'text-white'}`}>
+              <div className={`font-mono text-2xl font-bold ${timeRemaining <= 10 ? 'animate-pulse text-[#e07054]' : 'text-[#f2e9d8]'}`}>
                 {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
               </div>
-              {/* Timer bar */}
-              <div className="w-24 h-1.5 bg-white/20 rounded-full mt-1 overflow-hidden">
+              <div className="mt-1 h-1 w-24 overflow-hidden bg-[#3b3328]">
                 <div
-                  className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-linear"
+                  className="h-full bg-[#dfb15b] transition-all duration-1000 ease-linear"
                   style={{ width: `${Math.min(100, (timeRemaining / getMaxTimeForPhase(phase)) * 100)}%` }}
                 />
               </div>
@@ -91,27 +84,26 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
         {phase === 'DAY_CONVERSATION' && (
           <button
             onClick={onSkip}
-            className="w-full py-2 bg-gray-800/60 border border-gray-700/50 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 transition-colors"
+            className="game-panel w-full py-2 text-sm text-[#b7a992] transition-colors hover:border-[#5a4b38] hover:text-[#f2e9d8]"
           >
-            ⏭ 議論をスキップして投票へ
+            議論をスキップして投票へ
           </button>
         )}
         {phase === 'ROLE_REVEAL' && (
           <button
             onClick={onSkip}
-            className="w-full py-2 bg-gray-800/60 border border-gray-700/50 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-700/60 transition-colors"
+            className="game-panel w-full py-2 text-sm text-[#b7a992] transition-colors hover:border-[#5a4b38] hover:text-[#f2e9d8]"
           >
-            ⏭ スキップ
+            スキップ
           </button>
         )}
 
         {/* Role Reveal */}
         {phase === 'ROLE_REVEAL' && myself && (
-          <div className="bg-gray-800/70 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 text-center animate-scale-in">
-            <p className="text-gray-400 text-sm mb-3">あなたの役職は...</p>
-            <div className="text-6xl mb-3">{getRoleEmoji(myself.role)}</div>
-            <h2 className="text-3xl font-extrabold text-white mb-2">{getRoleName(myself.role)}</h2>
-            <p className="text-gray-400 text-sm max-w-sm mx-auto leading-relaxed">
+          <div className="game-panel p-6 text-center">
+            <p className="font-label text-[9px] text-[#8a7d69]">Your Role</p>
+            <h2 className="font-editorial mt-2 text-3xl text-[#f2e9d8]">{getRoleName(myself.role)}</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-7 text-[#b7a992]">
               {getRoleDescription(myself.role)}
             </p>
           </div>
@@ -119,25 +111,23 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
 
         {/* Game Over Banner */}
         {phase === 'GAME_OVER' && (
-          <div className={`rounded-2xl p-8 text-center shadow-2xl animate-scale-in bg-gradient-to-r ${phaseInfo.color}`}>
-            <div className="text-5xl mb-4">
-              {winner === 'COMPANY' ? '🎉' : winner === 'SPIES' ? '💀' : '🦊'}
-            </div>
-            <h2 className="text-3xl font-extrabold text-white mb-2">
+          <div className={`border p-8 text-center ${winner === 'COMPANY' ? 'border-[#355952] bg-[#172622]' : winner === 'SPIES' ? 'border-[#6d3027] bg-[#2b1a17]' : 'border-[#5a4b38] bg-[#2a231b]'}`}>
+            <p className="font-label text-[9px] text-[#8a7d69]">Game Over</p>
+            <h2 className="font-editorial mt-3 text-3xl text-[#f2e9d8]">
               {winner === 'COMPANY' ? '会社存続！' :
                winner === 'SPIES' ? '会社倒産...' :
                'コンサルの一人勝ち！'}
             </h2>
-            <p className="text-white/80 mb-6">
+            <p className="mb-6 mt-2 text-sm leading-7 text-[#b7a992]">
               {winner === 'COMPANY' ? '社畜たちは平和な日常を取り戻しました。' :
                winner === 'SPIES' ? 'スパイの暗躍により、会社は崩壊しました。' :
                '会社もスパイも利用され、コンサルだけが利益を得ました。'}
             </p>
             <button
               onClick={onReset}
-              className="px-8 py-3 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl border border-white/30 transition-colors"
+              className="border border-[#f2e9d8] bg-[#b23a2a] px-8 py-3 text-sm font-black text-[#fffaf0] shadow-[3px_3px_0_#f2e9d8] transition hover:bg-[#c94b38]"
             >
-              🔄 もう一度プレイ
+              もう一度プレイ
             </button>
           </div>
         )}
@@ -156,9 +146,10 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
 
         {/* Player Grid */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
-            社員一覧 ({alivePlayers.length}名 生存)
-          </h3>
+          <div className="mb-2 flex items-center justify-between border-b border-[#3b3328] pb-2">
+            <h3 className="font-label text-[9px] text-[#dfb15b]">社員一覧</h3>
+            <span className="font-label text-[9px] text-[#8a7d69]">{alivePlayers.length} alive</span>
+          </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
             {sortedPlayers.map((p) => (
               <PlayerCard
@@ -186,10 +177,10 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
 
         {/* Chat / Conversation Log */}
         {(phase === 'DAY_CONVERSATION' || currentConversations.length > 0) && (
-          <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl border border-gray-700/40 overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-gray-700/40 flex items-center gap-2">
-              <span className="text-xs">💬</span>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">議論</span>
+          <div className="game-panel overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#3b3328] px-4 py-2.5">
+              <span className="font-label text-[9px] text-[#dfb15b]">議論</span>
+              <span className="font-label text-[9px] text-[#8a7d69]">Chat</span>
             </div>
             <ChatLog
               logs={logs}
@@ -201,24 +192,23 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
         )}
 
         {/* System Log */}
-        <div className="bg-gray-800/40 backdrop-blur-sm rounded-xl border border-gray-700/30 overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-gray-700/30 flex items-center gap-2">
-            <span className="text-xs">📋</span>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">業務日誌</span>
+        <div className="game-panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[#3b3328] px-4 py-2.5">
+            <span className="font-label text-[9px] text-[#dfb15b]">業務日誌</span>
+            <span className="font-label text-[9px] text-[#8a7d69]">Log</span>
           </div>
-          <div className="h-40 overflow-y-auto p-3 space-y-1.5">
+          <div className="custom-scrollbar h-40 space-y-1.5 overflow-y-auto p-3">
             {logs.filter(l => {
               if (l.type === 'CHAT') return false;
               // PRIVATEは宛先本人のみに表示(情報漏洩防止)。宛先なしPRIVATEは非表示。
               if (l.type === 'PRIVATE') return l.playerId === myself?.id;
               return true;
             }).map(log => (
-              <div key={log.id} className={`text-xs px-2 py-1 rounded ${
-                log.type === 'RESULT' ? 'bg-red-900/30 text-red-300' :
-                log.type === 'PRIVATE' ? 'bg-purple-900/30 text-purple-300' :
-                'text-gray-500'
+              <div key={log.id} className={`border-l-2 px-2 py-1 text-xs ${
+                log.type === 'RESULT' ? 'border-[#e07054] bg-[#2b1a17] text-[#f0a08b]' :
+                log.type === 'PRIVATE' ? 'border-[#dfb15b] bg-[#2a231b] text-[#e4c989]' :
+                'border-transparent text-[#8a7d69]'
               }`}>
-                {log.type === 'PRIVATE' && <span className="mr-1">🔒</span>}
                 {log.message}
               </div>
             ))}
@@ -226,15 +216,6 @@ export default function Dashboard({ gameState, onVote, onNightAction, onSkip, on
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes scale-in {
-          from { opacity: 0; transform: scale(0.9); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-scale-in {
-          animation: scale-in 0.5s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
@@ -261,25 +242,24 @@ function PrivateResults({ role, myselfId, players, divinationResults, gossipResu
   if (!hasHr && !hasGossip && !hasEngineer) return null;
 
   return (
-    <div className="bg-purple-900/30 backdrop-blur-sm rounded-xl border border-purple-700/40 p-4">
-      <h3 className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-2 flex items-center gap-1">
-        <span>🔒</span>
+    <div className="border border-[#5a4b38] bg-[#2a231b] p-4">
+      <h3 className="font-label mb-2 text-[9px] text-[#dfb15b]">
         {role === 'HR' ? '人事調査結果' : role === 'GOSSIP' ? 'お局情報' : 'エンジニア回線'}
       </h3>
       <div className="space-y-1.5">
         {role === 'HR' && divinationResults.map((r, i) => (
-          <div key={i} className={`text-xs px-2 py-1.5 rounded-md ${r.isSpy ? 'bg-red-900/40 text-red-300' : 'bg-green-900/40 text-green-300'}`}>
-            {r.dayNumber}日目: {r.targetName} → {r.isSpy ? '⚠️ スパイ！' : '✅ シロ'}
+          <div key={i} className={`border-l-2 px-2 py-1.5 text-xs ${r.isSpy ? 'border-[#e07054] bg-[#2b1a17] text-[#f0a08b]' : 'border-[#83b8ac] bg-[#172622] text-[#9dd4c7]'}`}>
+            {r.dayNumber}日目: {r.targetName} → {r.isSpy ? 'スパイ' : 'シロ'}
           </div>
         ))}
         {role === 'GOSSIP' && gossipResults.map((r, i) => (
-          <div key={i} className={`text-xs px-2 py-1.5 rounded-md ${r.wasSpy ? 'bg-red-900/40 text-red-300' : 'bg-green-900/40 text-green-300'}`}>
-            {r.dayNumber}日目: {r.targetName} → {r.wasSpy ? '⚠️ スパイだった' : '✅ スパイじゃなかった'}
+          <div key={i} className={`border-l-2 px-2 py-1.5 text-xs ${r.wasSpy ? 'border-[#e07054] bg-[#2b1a17] text-[#f0a08b]' : 'border-[#83b8ac] bg-[#172622] text-[#9dd4c7]'}`}>
+            {r.dayNumber}日目: {r.targetName} → {r.wasSpy ? 'スパイだった' : 'スパイではなかった'}
           </div>
         ))}
         {role === 'ENGINEER' && engineerPartners.map(p => (
-          <div key={p.id} className="text-xs px-2 py-1.5 rounded-md bg-blue-900/40 text-blue-300">
-            💻 相方: {p.name} {!p.isAlive ? '(解雇済み)' : ''}
+          <div key={p.id} className="border-l-2 border-[#dfb15b] bg-[#2a231b] px-2 py-1.5 text-xs text-[#e4c989]">
+            相方: {p.name} {!p.isAlive ? '(解雇済み)' : ''}
           </div>
         ))}
       </div>
