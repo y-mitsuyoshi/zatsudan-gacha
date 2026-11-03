@@ -21,18 +21,46 @@ import {
   executeSellProperty,
   setFocusMode,
   analyzeOutcomeFactors,
+  calcAnnualHealthRiskProbabilities,
+  formatConsistentHouseholdTitle,
+  resolveEffectiveProperty,
 } from '../src/lib/mortgage-logic';
 import { MortgageSetupConfig } from '../src/types/mortgage';
 
 console.log('=== Verifying Mortgage Survival Simulation: マイホーム完済記 (/mortgage-life) ===');
 
-// 1. Verify Data Catalogs (Expanded Patterns)
+// 1. Verify Data Catalogs & Current Higher Interest Rate Baselines (2026 Post-BOJ Hikes)
 assert.equal(ARCHETYPES.length, 12, 'Should have 12 household archetypes');
 assert.equal(Object.keys(PROPERTIES).length, 12, 'Should have 12 property presets');
 assert.equal(Object.keys(BANKS).length, 7, 'Should have 7 bank plans');
 assert.ok(Object.keys(DANSHIN_PLANS).length >= 4, 'Should have at least 4 Danshin plans');
 assert.ok(Object.keys(MACRO_REGIMES).length >= 5, 'Should have at least 5 Macro regimes');
 assert.ok(Object.keys(FAMILY_PLANS).length >= 6, 'Should have at least 6 Family plans');
+
+assert.ok(
+  BANKS['net-bank'].baseRate >= 0.6,
+  `Net bank variable rate (${BANKS['net-bank'].baseRate}%) must reflect current post-BOJ hike levels (>= 0.60%)`,
+);
+assert.ok(
+  BANKS['mega-bank'].baseRate >= 0.8,
+  `Mega bank variable rate (${BANKS['mega-bank'].baseRate}%) must reflect current post-BOJ hike levels (>= 0.80%)`,
+);
+assert.ok(
+  BANKS['flat35-agency'].baseRate >= 2.1,
+  `Flat 35 fixed rate (${BANKS['flat35-agency'].baseRate}%) must reflect current long-term rate levels (>= 2.10%)`,
+);
+
+// Verify realistic age-stratified cancer & illness probabilities
+const riskAge32 = calcAnnualHealthRiskProbabilities(32, 'balanced', 85);
+const riskAge58 = calcAnnualHealthRiskProbabilities(58, 'balanced', 85);
+assert.ok(
+  riskAge32.cancerProb > 0.0005 && riskAge32.cancerProb < 0.003,
+  `32yo annual cancer probability (${riskAge32.cancerProb}) must be ~0.12%`,
+);
+assert.ok(
+  riskAge58.cancerProb > riskAge32.cancerProb * 5 && riskAge58.cancerProb < 0.025,
+  `58yo annual cancer probability (${riskAge58.cancerProb}) must be higher than 32yo (~1.35%)`,
+);
 
 // 2. Verify Equal Payment (元利均等) vs Equal Principal (元金均等) Math
 const principalMan = 5000; // 5,000万円
@@ -198,17 +226,97 @@ assert.ok(afterSale.status !== 'playing', 'Selling property must conclude the si
 assert.ok(afterSale.ending !== null, 'Selling property must produce an ending summary');
 assert.ok(analyzeOutcomeFactors(afterSale).length >= 2, 'Outcome factor analysis must return key reasons');
 
-// 7. Run 50 Full-Lifecycle Simulations across Random Gacha Setups & Macro Regimes
-let completedSimulations = 0;
-const endingCounts: Record<string, number> = {};
+// 7. Verify Starting Age Consistency (e.g. 29歳・地方都市の敷地60坪＆太陽光戸建て世帯 starts at 29yo) & Strict Detached vs Mansion Event Separation
+const regionalArch = ARCHETYPES.find((a) => a.id === 'regional-dual-car-detached')!;
+assert.equal(regionalArch.age, 29, 'regional-dual-car-detached archetype age must be 29');
+const regionalSetup: MortgageSetupConfig = {
+  ...baseSetup,
+  archetypeId: regionalArch.id,
+  age: regionalArch.age,
+  propertyId: regionalArch.recommendedProperty,
+};
+const regionalGame = createMortgageGame(regionalSetup);
+assert.equal(regionalGame.age, 29, '29歳・地方都市の敷地60坪＆太陽光戸建て世帯 must start at age 29');
+assert.ok(
+  formatConsistentHouseholdTitle(regionalSetup).startsWith('29歳・'),
+  'Household title must start with 29歳・ when borrowing age is 29',
+);
+assert.equal(
+  resolveEffectiveProperty(regionalSetup).buildingType,
+  'detached',
+  'regional-dual-car-detached must resolve to detached house',
+);
+assert.equal(
+  regionalGame.currentMgmtAndRepairMonthlyMan,
+  0,
+  'Detached house initial condo management & repair fee must be 0',
+);
 
-for (let i = 0; i < 50; i++) {
-  const randomSetup = generateRandomHouseholdSetup();
+// Verify bonus repayment ratio normalization
+const uwWithBonus = runBankUnderwriting({ ...baseSetup, bonusRepaymentRatio: 0.2 });
+assert.ok(uwWithBonus.initialMonthlyPaymentMan > 0, 'Bonus repayment ratio 0.2 must yield positive monthly payment');
+
+const MANSION_ONLY_EVENT_IDS = [
+  'mansion-mgmt-parking-7',
+  'mansion-special-levy-14',
+  'mansion-noise-water-trouble',
+  'tower-highrise-elevator',
+  'mansion-unit-appliance',
+  'mansion-board-leader',
+];
+const DETACHED_ONLY_EVENT_IDS = [
+  'detached-solar-ev-7',
+  'detached-repair-13',
+  'detached-car-replace',
+  'detached-storm-gutter',
+  'detached-ecocute-fail',
+  'detached-neighbor-boundary',
+];
+
+// 8. Run 100 Full-Lifecycle Simulations across Random Gacha Setups & Macro Regimes
+let completedSimulations = 0;
+let majorHealthTriggeredCount = 0;
+const endingCounts: Record<string, number> = {};
+const uniqueEventsTriggered = new Set<string>();
+
+// Deterministic LCG for reproducible statistical test
+let seed = 20261103;
+const seededRng = () => {
+  seed = (seed * 1664525 + 1013904223) >>> 0;
+  return seed / 0x100000000;
+};
+
+for (let i = 0; i < 100; i++) {
+  const randomSetup = generateRandomHouseholdSetup(seededRng);
+  const effProp = resolveEffectiveProperty(randomSetup);
+  const title = formatConsistentHouseholdTitle(randomSetup);
+  assert.ok(
+    title.startsWith(`${randomSetup.age}歳・`),
+    `Formatted title (${title}) must match setup borrowing age (${randomSetup.age}歳)`,
+  );
+  assert.ok(
+    randomSetup.randomRollSummary?.includes('自己資金') &&
+      randomSetup.randomRollSummary?.includes('購入後の手元資金') &&
+      randomSetup.randomRollSummary?.includes('借入元本') &&
+      randomSetup.randomRollSummary?.includes('毎月返済'),
+    `Random roll summary must include savings, remaining cash after purchase, loan principal, and monthly payment: ${randomSetup.randomRollSummary}`,
+  );
+  if (effProp.buildingType === 'detached') {
+    assert.equal(
+      title.includes('マンション') || title.includes('タワマン'),
+      false,
+      `Detached property must never have Mansion/Tower in household title (${title})`,
+    );
+  }
+
   let state = createMortgageGame(randomSetup);
+  assert.equal(state.age, randomSetup.age, 'Game initial age must equal setup borrowing age');
+  assert.equal(state.bojPolicyRate, 0.75, 'Initial BOJ policy rate must be 0.75%');
   let safetyTicks = 0;
   while (state.status === 'playing' && safetyTicks < 65) {
-    state = advanceOneYear(state);
+    state = advanceOneYear(state, seededRng);
     if (state.pendingDecision) {
+      uniqueEventsTriggered.add(state.pendingDecision.id);
       const choiceIdx = i % state.pendingDecision.choices.length;
       state = resolveMortgageDecision(state, state.pendingDecision.choices[choiceIdx].id);
     }
@@ -216,11 +324,59 @@ for (let i = 0; i < 50; i++) {
   }
   assert.ok(state.status !== 'playing', `Simulation #${i} should finish within 65 years`);
   assert.ok(state.ending !== null, `Simulation #${i} must generate an ending`);
+
+  // Strictly verify no cross-contamination between detached and mansion events/chronicles
+  if (effProp.buildingType === 'detached') {
+    for (const mId of MANSION_ONLY_EVENT_IDS) {
+      assert.equal(
+        state.triggeredEventIds.includes(mId),
+        false,
+        `Detached house simulation #${i} must NEVER trigger mansion event ${mId}`,
+      );
+    }
+    for (const entry of state.chronicle) {
+      assert.equal(
+        entry.title.includes('管理組合') || entry.title.includes('マンション') || entry.title.includes('タワマン'),
+        false,
+        `Detached house chronicle must NEVER contain mansion/condo titles: ${entry.title}`,
+      );
+    }
+  } else {
+    for (const dId of DETACHED_ONLY_EVENT_IDS) {
+      assert.equal(
+        state.triggeredEventIds.includes(dId),
+        false,
+        `Mansion/Tower simulation #${i} must NEVER trigger detached event ${dId}`,
+      );
+    }
+    for (const entry of state.chronicle) {
+      assert.equal(
+        entry.title.includes('一戸建て') || entry.title.includes('戸建て'),
+        false,
+        `Mansion/Tower chronicle must NEVER contain detached house titles: ${entry.title}`,
+      );
+    }
+  }
+
+  if (state.triggeredEventIds.includes('danshin-health-judgment')) {
+    majorHealthTriggeredCount++;
+  }
   endingCounts[state.ending.rank] = (endingCounts[state.ending.rank] ?? 0) + 1;
   completedSimulations++;
 }
 
-console.log(`Completed ${completedSimulations} full-lifecycle simulations. Ending rank distribution:`, endingCounts);
+console.log(
+  `Completed ${completedSimulations} full-lifecycle simulations. Unique decision events seen: ${uniqueEventsTriggered.size}. Major health/cancer rate: ${majorHealthTriggeredCount}%. Ending rank distribution:`,
+  endingCounts,
+);
+assert.ok(
+  uniqueEventsTriggered.size >= 12,
+  `Should trigger at least 12 distinct turning point decision types across 100 simulations (saw ${uniqueEventsTriggered.size})`,
+);
+assert.ok(
+  majorHealthTriggeredCount >= 10 && majorHealthTriggeredCount <= 55,
+  `Major health/cancer event rate (${majorHealthTriggeredCount}%) must be statistically realistic (10-55%, never 100%!)`,
+);
 
 // 8. Verify Zero Emojis, Zero Personal Surnames, Zero Copycat Title, and Zero Truncation in Mortgage files
 const filesToCheck = [

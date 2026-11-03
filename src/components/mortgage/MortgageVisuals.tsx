@@ -1609,8 +1609,9 @@ export function MultiPerspectiveCharts({ state }: { state: MortgageGameState }) 
     ...snapshots.map((s) => `${xOf(s.yearIndex)},${yOf(s.remainingBalanceMan + s.unpaidInterestMan)}`),
   ].join(' ');
 
+  const effectiveProp = resolveEffectiveProperty(state.config);
   const propPoints = [
-    `${xOf(0)},${yOf(PROPERTIES[state.config.propertyId].priceMan * 0.92)}`,
+    `${xOf(0)},${yOf(effectiveProp.priceMan * 0.92)}`,
     ...snapshots.map((s) => `${xOf(s.yearIndex)},${yOf(s.propertyValueMan)}`),
   ].join(' ');
 
