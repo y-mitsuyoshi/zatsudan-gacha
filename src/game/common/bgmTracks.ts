@@ -18,6 +18,7 @@ export const BGM_TRACK_IDS = [
   'danmaku-boss', // 社畜シューティング: ボス戦
   'jinro-day', // 社畜人狼: 昼の議論/投票
   'jinro-night', // 社畜人狼: 夜
+  'mortgage-life', // 1,300万世帯分の1：住宅ローン破産サバイバル（ドキュメンタリーアンビエント）
 ] as const;
 
 export type BgmTrackId = (typeof BGM_TRACK_IDS)[number];
@@ -1286,4 +1287,49 @@ export const BGM_TRACKS: Record<string, BgmTrack> = {
     }
   ]
 },
+  'mortgage-life': {
+    id: 'mortgage-life',
+    title: '1,300万世帯分の1の年代記',
+    bpm: 84,
+    master: 0.78,
+    voices: [
+      {
+        id: 'bass',
+        wave: 'sine',
+        gain: 0.14,
+        attack: 0.04,
+        release: 0.28,
+        cutoff: 450,
+      },
+      {
+        id: 'pad',
+        wave: 'triangle',
+        gain: 0.05,
+        attack: 0.08,
+        release: 0.32,
+        cutoff: 1400,
+        detune: 8,
+        pan: -0.2,
+      },
+      {
+        id: 'piano',
+        wave: 'sine',
+        gain: 0.06,
+        attack: 0.008,
+        release: 0.22,
+        cutoff: 2200,
+        pan: 0.15,
+      },
+    ],
+    sections: [
+      {
+        bars: 8,
+        voices: {
+          bass: 'F2 - - - - - - - C3 - - - - - - - | D2 - - - - - - - A2 - - - - - - - | Bb1 - - - - - - - F2 - - - - - - - | C2 - - - - - - - G2 - - - - - - - | F2 - - - - - - - C3 - - - - - - - | D2 - - - - - - - A2 - - - - - - - | G2 - - - - - - - D3 - - - - - - - | C2 - - - - - - - G2 - - - - - - -',
+          pad: 'A3 - - - C4 - - - F4 - - - C4 - - - | F3 - - - A3 - - - D4 - - - A3 - - - | F3 - - - Bb3 - - - D4 - - - Bb3 - - - | E3 - - - G3 - - - C4 - - - G3 - - - | A3 - - - C4 - - - F4 - - - C4 - - - | F3 - - - A3 - - - D4 - - - A3 - - - | G3 - - - Bb3 - - - D4 - - - Bb3 - - - | E3 - - - G3 - - - C4 - - - G3 - - -',
+          piano: '. . C5 . . . A4 . . . F4 . . . G4 . | . . A4 . . . F4 . . . D4 . . . E4 . | . . D5 . . . C5 . . . Bb4 . . . A4 . | . . G4 . . . C5 . . . E4 . . . G4 . | . . F5 . . . E5 . . . C5 . . . A4 . | . . D5 . . . C5 . . . A4 . . . F4 . | . . Bb4 . . . A4 . . . G4 . . . F4 . | . . E4 - - - G4 - - - C5 - - - . .',
+        },
+      },
+    ],
+  },
 };

@@ -8,6 +8,13 @@
     ],
     "cleanUrls": true,
     "trailingSlash": false,
+    "redirects": [
+      {
+        "source": "/shachiku-mortgage",
+        "destination": "/mortgage-life",
+        "type": 301
+      }
+    ],
     "headers": [
       {
         "source": "**",

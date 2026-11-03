@@ -21,7 +21,7 @@ import {
 } from '../src/lib/mortgage-logic';
 import { MortgageSetupConfig } from '../src/types/mortgage';
 
-console.log('=== Verifying 1in8b-style Mortgage Survival Simulation (/shachiku-mortgage) ===');
+console.log('=== Verifying 1in8b-style Mortgage Survival Simulation (/mortgage-life) ===');
 
 // 1. Verify Data Catalogs
 assert.ok(ARCHETYPES.length >= 6, 'Should have at least 6 household archetypes');
@@ -203,7 +203,7 @@ const filesToCheck = [
   'src/types/mortgage.ts',
   'src/lib/mortgage-logic.ts',
   'src/components/mortgage/MortgageGame.tsx',
-  'src/app/shachiku-mortgage/page.tsx',
+  'src/app/mortgage-life/page.tsx',
 ];
 const emojiRegex = /\p{Extended_Pictographic}/u;
 for (const file of filesToCheck) {

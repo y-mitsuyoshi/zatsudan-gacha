@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="50%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <g stroke="#334155" stroke-width="1" opacity="0.4">
+    <line x1="100" y1="120" x2="1100" y2="120" />
+    <line x1="100" y1="240" x2="1100" y2="240" />
+    <line x1="100" y1="360" x2="1100" y2="360" />
+    <line x1="100" y1="480" x2="1100" y2="480" />
+  </g>
+  <!-- Property Value vs Remaining Debt Documentary Chart -->
+  <polyline fill="none" stroke="#ef4444" stroke-width="6" points="140,180 320,215 500,260 680,320 860,400 1040,490" />
+  <polyline fill="none" stroke="#10b981" stroke-width="6" points="140,220 320,240 500,250 680,245 860,235 1040,225" />
+  <polyline fill="none" stroke="#38bdf8" stroke-width="5" stroke-dasharray="10,8" points="140,460 320,430 500,390 680,310 860,210 1040,150" />
+  <rect x="90" y="70" width="380" height="44" rx="22" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b" stroke-width="2" />
+  <text x="280" y="99" text-anchor="middle" fill="#fde047" font-family="monospace" font-size="20" font-weight="900">1 IN 13,000,000 HOUSEHOLDS</text>
+  <text x="90" y="195" fill="#ffffff" font-family="sans-serif" font-size="56" font-weight="900">1,300万世帯分の1</text>
+  <text x="90" y="275" fill="url(#gold)" font-family="sans-serif" font-size="64" font-weight="900">住宅ローン破産サバイバル</text>
+  <text x="90" y="340" fill="#cbd5e1" font-family="sans-serif" font-size="26" font-weight="700">銀行審査・タワマンvs戸建て・ペアローン・35年/50年・団信・住宅ローン控除・日銀利上げ</text>
+</svg>

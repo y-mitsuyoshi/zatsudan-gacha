@@ -353,12 +353,12 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
     ],
   },
   mortgage: {
-    slug: '/shachiku-mortgage',
+    slug: '/mortgage-life',
     name: '1,300万世帯分の1：住宅ローン破産サバイバル',
     h1: '1,300万世帯分の1：住宅ローン破産サバイバル｜35年・50年ローン完済を目指すリアル人生シミュレーションゲーム',
     description:
       '統計データに基づき日本の住宅ローン保有世帯の1人としてマイホームを購入し、35年・50年の完済まで破産せず生き残れるかを検証する無料ドキュメンタリー人生シミュレーションゲーム。タワマン・一戸建て・中古物件、単独・ペアローン、変動・固定金利、元利・元金均等、団信、住宅ローン控除、日銀利上げや世界情勢まで徹底再現。',
-    image: '/shachiku-sugoroku-ogp.png',
+    image: '/assets/mortgage_cover.svg',
     genre: ['人生シミュレーション', '経営・資産防衛', 'ドキュメンタリー'],
     features: [
       { title: '統計確率による「運命の世帯ガチャ」＆フルカスタム設計', text: '日本の住宅市場統計をもとに、都心パワーカップルや地方公務員、20代50年ローン世帯などリアルな境遇でスポーン。年収・頭金・条件を自由にカスタマイズして銀行本審査へ挑むことも可能です。' },
@@ -381,10 +381,10 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: '途中で破産しそうになったらどうすればいいですか？', a: '手元資金があるうちに「一部繰上返済」や「借り換え」を行うか、資金ショート寸前なら銀行への「条件変更（3年間の元金据置リスケ）」または「マイホームの任意売却」で自己破産を回避できます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全10タイトルの社畜ゲームをまとめて探す' },
-      { href: '/shachiku-sugoroku', label: '社畜すごろく：社畜ライフロード', description: 'ルーレットで進む3Dジオラマ人生ボードゲーム' },
-      { href: '/shachiku-jinro', label: '社畜人狼', description: 'AI社員と議論するオフィス心理戦ソロ人狼' },
-      { href: '/barricade-defense', label: '社畜通勤サバイバー', description: '満員ラッシュを突破する3Dゲートシューティング' },
+      { href: '/games', label: '無料ブラウザゲーム・シミュレーション一覧', description: '人生シミュレーションやミニゲームをまとめて探す' },
+      { href: '/tools', label: '無料診断・メーカーツール一覧', description: 'プロフィールメーカーやステータス診断で遊ぶ' },
+      { href: '/themes', label: '雑談テーマ一覧（全25カテゴリ）', description: '住まいやライフプランの話題も探せるテーマ集' },
+      { href: '/guides', label: '会話・コミュニケーションガイド', description: '日常や職場で使える話題作りガイド' },
     ],
   },
 };

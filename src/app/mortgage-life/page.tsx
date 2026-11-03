@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ShachikuMortgagePage() {
+export default function MortgageLifePage() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       <div className="mx-auto max-w-7xl px-3 py-5 sm:px-6">

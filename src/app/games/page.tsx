@@ -117,8 +117,8 @@ const games = [
   },
   {
     name: '1,300万世帯分の1：住宅ローン破産サバイバル',
-    href: '/shachiku-mortgage',
-    image: '/shachiku-sugoroku-ogp.png',
+    href: '/mortgage-life',
+    image: '/assets/mortgage_cover.svg',
     genre: '住宅ローン完済ドキュメンタリー',
     tagline: '35年・50年ローンを破産せず返せるか',
     description:

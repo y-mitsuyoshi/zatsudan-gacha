@@ -220,9 +220,9 @@ export const MortgageGame: React.FC = () => {
   useBgm(
     gameState
       ? gameState.status === 'playing'
-        ? 'sugoroku-board'
+        ? 'mortgage-life'
         : 'sugoroku-result'
-      : 'shachiku-menu',
+      : 'mortgage-life',
     false,
   );
 
