@@ -19,10 +19,8 @@ import {
   SALARY_CURVE_SPECS,
   SCHOLARSHIP_SPECS,
   SPOUSE_WORK_SPECS,
-  ShareTextStyle,
   advanceOneYear,
   analyzeOutcomeFactors,
-  buildShareChallengeUrl,
   calcAnnualHealthRiskProbabilities,
   calcDynamicFamilyComposition,
   createMortgageGame,
@@ -542,7 +540,6 @@ export function MortgageGame() {
   const [mobileTab, setMobileTab] = useState<'main' | 'charts' | 'status' | 'all'>('main');
 
   // X（旧Twitter）シェア機能用ステート
-  const [shareStyle, setShareStyle] = useState<ShareTextStyle>('standard');
   const [shareCardDataUrl, setShareCardDataUrl] = useState<string>('');
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const [sharedChallengeBanner, setSharedChallengeBanner] = useState<string | null>(null);
@@ -3517,34 +3514,9 @@ export function MortgageGame() {
               </div>
             </div>
 
-            {/* 4. X（旧Twitter）バズ共有スタジオ：3つの投稿スタイル × 公式最終精算認定証カード画像 × 同じ条件で挑戦URL */}
+            {/* 4. X（旧Twitter）結果シェア：公式最終精算認定証カード画像 × 同じ条件で挑戦URL */}
             {(() => {
-              const currentShare = generateViralXShareText(gameState, shareStyle);
-              const styleTabs: Array<{
-                id: ShareTextStyle;
-                label: string;
-                badge: string;
-                desc: string;
-              }> = [
-                {
-                  id: 'standard',
-                  label: '王道・最終判定＆純資産公開',
-                  badge: '定番バズ',
-                  desc: '購入条件・最終ランク・最終純資産・銀行利息・転機を凝縮した王道フォーマット',
-                },
-                {
-                  id: 'shock',
-                  label: '衝撃金額・総支払額のリアル明細',
-                  badge: '引用RT誘発',
-                  desc: '「物件価格〇〇万円なのに銀行利息＋管理修繕＋固定資産税で生涯〇〇万円払った」ギャップを公開',
-                },
-                {
-                  id: 'drama',
-                  label: '波乱万丈・人生の転機ドラマ',
-                  badge: '共感・物語',
-                  desc: '結婚・出産・受験・住み替え・団信・60歳定年後の選択など、この家族だけの年代記をシェア',
-                },
-              ];
+              const currentShare = generateViralXShareText(gameState, 'standard');
 
               return (
                 <div className="mt-6 rounded-[4px] border-2 border-[#13212A] bg-[#F0F4F2] p-5 shadow-md dark:border-[#4CC0AF] dark:bg-[#1A2428]">
@@ -3569,47 +3541,8 @@ export function MortgageGame() {
                       className="inline-flex items-center gap-2 rounded-[4px] bg-[#13212A] px-5 py-3 text-sm font-bold text-white shadow transition hover:opacity-90 dark:bg-[#E1E9E6] dark:text-[#0D1316]"
                     >
                       <XLogoIcon className="h-4 w-4" />
-                      <span>この内容でXにポストする →</span>
+                      <span>結果をXにポストする →</span>
                     </button>
-                  </div>
-
-                  {/* 投稿文面スタイル3種切り替えタブ */}
-                  <div className="mt-4">
-                    <span className="block font-mono text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
-                      STEP 1 · Xでバズる投稿文面モードを選択（3パターン）
-                    </span>
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      {styleTabs.map((tab) => {
-                        const active = shareStyle === tab.id;
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => {
-                              audioManager.playSe('click');
-                              setShareStyle(tab.id);
-                            }}
-                            className={`rounded-[4px] border p-3 text-left transition ${
-                              active
-                                ? 'border-[#8C1D3C] bg-[#F3E3E8]/80 ring-1 ring-[#8C1D3C] dark:border-[#E2678A] dark:bg-[#3A1C26]/60'
-                                : 'border-[#C7D2CE] bg-[#F7FAF8] hover:border-[#5F6E72] dark:border-[#2A383D] dark:bg-[#141D21]'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-xs font-bold text-[#13212A] dark:text-[#E1E9E6]">
-                                {tab.label}
-                              </span>
-                              <span className="rounded bg-[#13212A] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white dark:bg-[#E1E9E6] dark:text-[#0D1316]">
-                                {tab.badge}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-[11px] leading-snug text-[#4A5A61] dark:text-[#A3B2AF]">
-                              {tab.desc}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
                   </div>
 
                   {/* プレビュー2カラム：左＝投稿テキスト＆アクションボタン / 右＝1200×630公式精算認定証カード画像 */}
@@ -3661,10 +3594,10 @@ export function MortgageGame() {
                       <div>
                         <div className="flex items-center justify-between border-b border-[#DCE4E1] pb-2 dark:border-[#1D282C]">
                           <span className="font-mono text-xs font-bold text-[#4A5A61] dark:text-[#A3B2AF]">
-                            STEP 2 · 公式最終精算認定証カード画像（1200×630）
+                            公式最終精算認定証カード画像（1200×630）
                           </span>
                           <span className="font-mono text-[10px] font-bold text-[#8C1D3C] dark:text-[#E2678A]">
-                            画像添付でインプレッション大幅UP
+                            コピーしてX投稿欄に貼付可能
                           </span>
                         </div>
 
