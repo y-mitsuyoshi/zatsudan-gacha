@@ -19,8 +19,10 @@ import {
   SALARY_CURVE_SPECS,
   SCHOLARSHIP_SPECS,
   SPOUSE_WORK_SPECS,
+  ShareTextStyle,
   advanceOneYear,
   analyzeOutcomeFactors,
+  buildShareChallengeUrl,
   calcAnnualHealthRiskProbabilities,
   calcDynamicFamilyComposition,
   createMortgageGame,
@@ -32,9 +34,12 @@ import {
   executeSellProperty,
   formatConsistentHouseholdTitle,
   formatSetupProfileSummary,
+  generateCertShareText,
   generateRandomHouseholdSetup,
+  generateViralXShareText,
   getChildIndependenceAge,
   getDefaultRetirementAllowanceMan,
+  parseShareChallengeParams,
   randomizeBankLoanParams,
   randomizeHouseholdParams,
   randomizePropertyParams,
@@ -113,6 +118,392 @@ const REPAYMENT_LABELS: Record<RepaymentMethod, string> = {
   'equal-principal': '元金均等返済（元金を定額返済・総利息が少ない）',
 };
 
+function XLogoIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function drawRoundedBox(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function clipCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let s = text;
+  while (s.length > 1 && ctx.measureText(`${s}…`).width > maxWidth) {
+    s = s.slice(0, -1);
+  }
+  return `${s}…`;
+}
+
+function renderMortgageResultShareCardDataUrl(state: MortgageGameState): string {
+  if (typeof document === 'undefined' || !state.ending) return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 630;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const prop = resolveEffectiveProperty(state.config);
+  const bank = resolveEffectiveBank(state.config);
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(state.config);
+  const famComp = calcDynamicFamilyComposition(state);
+  const ending = state.ending;
+
+  const netWorthMan = Math.round(
+    state.liquidSavingsMan +
+      (state.status === 'sold-escaped' ? 0 : state.propertyValueMan) -
+      state.remainingBalanceMan -
+      state.unpaidInterestMan,
+  );
+  const netWorthSign = netWorthMan >= 0 ? '+' : '';
+  const pPaid = Math.round(state.totalPrincipalPaidMan);
+  const iPaid = Math.round(state.totalInterestPaidMan);
+  const rPaid = Math.round(state.totalRunningCostPaidMan);
+  const taxBack = Math.round(state.totalTaxCreditReceivedMan);
+  const totalOutflow = pPaid + iPaid + rPaid;
+  const extraOverPrice = iPaid + rPaid;
+  const initialGross = state.config.mainIncomeMan + careerEdu.initialSubIncomeMan;
+
+  // 背景紙面 (#F7FAF8)
+  ctx.fillStyle = '#F7FAF8';
+  ctx.fillRect(0, 0, 1200, 630);
+
+  // 外枠二重線（公文書・精算書風）
+  ctx.strokeStyle = '#C7D2CE';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(12, 12, 1176, 606);
+
+  // 1. ヘッダー帯 (#13212A)
+  ctx.fillStyle = '#13212A';
+  ctx.fillRect(12, 12, 1176, 48);
+
+  ctx.fillStyle = '#D9AF59';
+  ctx.font = 'bold 14px monospace, sans-serif';
+  ctx.fillText(
+    'LIFE & MORTGAGE OFFICIAL SETTLEMENT CARD  ·  マイホーム完済記 公式最終精算認定証',
+    32,
+    41,
+  );
+
+  ctx.fillStyle = '#E1E9E6';
+  ctx.textAlign = 'right';
+  ctx.font = '13px monospace, sans-serif';
+  ctx.fillText(
+    `証書 JP-${state.config.age}0${state.config.termYears}-${state.underwriting.loanPrincipalMan}  |  zatsudan-gacha.app/mortgage-life`,
+    1168,
+    41,
+  );
+  ctx.textAlign = 'left';
+
+  // アクセントライン
+  ctx.fillStyle = ending.rank === 'BANKRUPT' ? '#B0362B' : '#0F6E68';
+  ctx.fillRect(12, 60, 1176, 4);
+
+  // 2. ヒーロー判定セクション (y: 78..226)
+  const isBankrupt = ending.rank === 'BANKRUPT';
+  const stampX = 32;
+  const stampY = 78;
+  const stampW = 142;
+  const stampH = 142;
+
+  drawRoundedBox(ctx, stampX, stampY, stampW, stampH, 6);
+  ctx.fillStyle = isBankrupt ? '#F9E8E6' : '#DCEDEA';
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = isBankrupt ? '#B0362B' : '#0F6E68';
+  ctx.stroke();
+
+  drawRoundedBox(ctx, stampX + 6, stampY + 6, stampW - 12, stampH - 12, 4);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = isBankrupt ? '#B0362B' : '#0F6E68';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px monospace, sans-serif';
+  ctx.fillText('最終判定 RANK', stampX + stampW / 2, stampY + 28);
+
+  ctx.font = isBankrupt ? '900 38px sans-serif' : '900 58px monospace, sans-serif';
+  ctx.fillText(isBankrupt ? '破綻' : ending.rank, stampX + stampW / 2, stampY + 88);
+
+  ctx.font = 'bold 12px monospace, sans-serif';
+  ctx.fillText(
+    `${state.age}歳到達 (${state.yearIndex}年)`,
+    stampX + stampW / 2,
+    stampY + 122,
+  );
+  ctx.textAlign = 'left';
+
+  // 中央：世帯・物件タグ＆結末タイトル
+  const midX = 192;
+  const bTypeLabel =
+    prop.buildingType === 'tower'
+      ? 'タワマン'
+      : prop.buildingType === 'mansion'
+        ? 'マンション'
+        : '一戸建て';
+  const newUsed = prop.isNew ? '新築' : `中古築${prop.builtAge}年`;
+  const rateShort =
+    bank.rateType === 'variable'
+      ? '変動'
+      : bank.rateType === 'fixed-10'
+        ? '10年固定'
+        : bank.rateType === 'flat-35'
+          ? '全期間固定'
+          : `ミックス(固定${state.config.mixFixedRatioPercent ?? 50}%)`;
+
+  ctx.fillStyle = '#0F6E68';
+  ctx.font = 'bold 14px sans-serif';
+  const profileLine = `${state.config.age}歳購入・世帯年収${initialGross.toLocaleString()}万（貯蓄${state.config.initialSavingsMan.toLocaleString()}万） / ${newUsed}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円`;
+  ctx.fillText(clipCanvasText(ctx, profileLine, 610), midX, 98);
+
+  ctx.fillStyle = '#13212A';
+  ctx.font = 'bold 28px serif, sans-serif';
+  ctx.fillText(clipCanvasText(ctx, ending.title, 610), midX, 136);
+
+  ctx.fillStyle = '#8C1D3C';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillText(clipCanvasText(ctx, ending.subtitle, 610), midX, 164);
+
+  ctx.fillStyle = '#4A5A61';
+  ctx.font = '13px sans-serif';
+  ctx.fillText(clipCanvasText(ctx, ending.epilogue, 610), midX, 190);
+
+  ctx.fillStyle = '#5F6E72';
+  ctx.font = 'bold 12px monospace, sans-serif';
+  const loanSpecLine = `借入 ${state.underwriting.loanPrincipalMan.toLocaleString()}万 (${state.config.termYears}年・${rateShort}・現在金利${state.appliedInterestRate.toFixed(2)}%)  |  家族：${famComp.compositionLabel}`;
+  ctx.fillText(clipCanvasText(ctx, loanSpecLine, 610), midX, 214);
+
+  // 右：最終純資産ボックス (x: 820..1168, y: 78..220)
+  drawRoundedBox(ctx, 820, 78, 348, 142, 6);
+  ctx.fillStyle = '#F0F4F2';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = netWorthMan >= 0 ? '#0F6E68' : '#B0362B';
+  ctx.stroke();
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#5F6E72';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText('最終純資産（手元資金＋自宅時価−残債）', 1150, 104);
+
+  ctx.fillStyle = netWorthMan >= 0 ? '#0F6E68' : '#B0362B';
+  ctx.font = '900 40px monospace, sans-serif';
+  ctx.fillText(`${netWorthSign}${netWorthMan.toLocaleString()}万円`, 1150, 152);
+
+  ctx.fillStyle = '#13212A';
+  ctx.font = 'bold 13px monospace, sans-serif';
+  ctx.fillText(
+    `手元資金 ${Math.round(state.liquidSavingsMan).toLocaleString()}万 / 自宅時価 ${state.status === 'sold-escaped' ? 0 : Math.round(state.propertyValueMan).toLocaleString()}万`,
+    1150,
+    182,
+  );
+  ctx.fillStyle = '#8C1D3C';
+  ctx.fillText(
+    `最終残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円（団信：${state.danshinTriggered ? '発動免除済' : '未発動'}）`,
+    1150,
+    204,
+  );
+  ctx.textAlign = 'left';
+
+  // 3. 4ボックス精算グリッド (y: 236..356)
+  const boxes = [
+    {
+      label: '① 物件購入価格 / 借入元本',
+      main: `${prop.priceMan.toLocaleString()}万円`,
+      sub: `借入 ${state.underwriting.loanPrincipalMan.toLocaleString()}万 / 頭金 ${state.config.downPaymentMan.toLocaleString()}万`,
+      color: '#13212A',
+    },
+    {
+      label: '② 銀行へ支払った総利息',
+      main: `${iPaid.toLocaleString()}万円`,
+      sub: `元金返済累計 ${pPaid.toLocaleString()}万円`,
+      color: '#B0362B',
+    },
+    {
+      label: '③ 管理修繕・固定資産税・保険累計',
+      main: `${rPaid.toLocaleString()}万円`,
+      sub: `住宅ローン控除還付 +${taxBack.toLocaleString()}万円`,
+      color: '#A8730F',
+    },
+    {
+      label: '④ 住居に払った生涯総額（①+②+③）',
+      main: `${totalOutflow.toLocaleString()}万円`,
+      sub: `物件価格＋利息・維持費税金 ${extraOverPrice.toLocaleString()}万円`,
+      color: '#8C1D3C',
+    },
+  ];
+
+  boxes.forEach((b, idx) => {
+    const bx = 32 + idx * 286;
+    const by = 236;
+    const bw = 274;
+    const bh = 112;
+    drawRoundedBox(ctx, bx, by, bw, bh, 5);
+    ctx.fillStyle = '#EBF0ED';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#C7D2CE';
+    ctx.stroke();
+
+    ctx.fillStyle = '#4A5A61';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(b.label, bx + 14, by + 26);
+
+    ctx.fillStyle = b.color;
+    ctx.font = '900 28px monospace, sans-serif';
+    ctx.fillText(b.main, bx + 14, by + 66);
+
+    ctx.fillStyle = '#5F6E72';
+    ctx.font = 'bold 12px monospace, sans-serif';
+    ctx.fillText(clipCanvasText(ctx, b.sub, bw - 24), bx + 14, by + 94);
+  });
+
+  // 4. 生涯住居コスト比率スタックバー (y: 364..414)
+  const barX = 32;
+  const barY = 366;
+  const barW = 1136;
+  const barH = 22;
+  const safeTotal = Math.max(1, totalOutflow);
+  const pW = Math.round((pPaid / safeTotal) * barW);
+  const iW = Math.round((iPaid / safeTotal) * barW);
+  const rW = Math.max(0, barW - pW - iW);
+
+  ctx.fillStyle = '#2B7A4E';
+  ctx.fillRect(barX, barY, pW, barH);
+  ctx.fillStyle = '#B0362B';
+  ctx.fillRect(barX + pW, barY, iW, barH);
+  ctx.fillStyle = '#A8730F';
+  ctx.fillRect(barX + pW + iW, barY, rW, barH);
+
+  ctx.font = 'bold 12px monospace, sans-serif';
+  ctx.fillStyle = '#2B7A4E';
+  ctx.fillText(
+    `■ 元金返済 ${pPaid.toLocaleString()}万 (${Math.round((pPaid / safeTotal) * 100)}%)`,
+    32,
+    408,
+  );
+  ctx.fillStyle = '#B0362B';
+  ctx.fillText(
+    `■ 銀行支払利息 ${iPaid.toLocaleString()}万 (${Math.round((iPaid / safeTotal) * 100)}%)`,
+    410,
+    408,
+  );
+  ctx.fillStyle = '#A8730F';
+  ctx.fillText(
+    `■ 管理修繕・固定資産税・保険 ${rPaid.toLocaleString()}万 (${Math.round((rPaid / safeTotal) * 100)}%)`,
+    800,
+    408,
+  );
+
+  // 5. 下段2カラム：人生の転機ハイライト ＆ 勝因・敗因診断 (y: 424..566)
+  drawRoundedBox(ctx, 32, 424, 616, 142, 5);
+  ctx.fillStyle = '#F0F4F2';
+  ctx.fill();
+  ctx.strokeStyle = '#C7D2CE';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#13212A';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText('■ この返済人生の主な転機・年代記ハイライト', 48, 448);
+
+  const highlights = state.chronicle
+    .filter(
+      (c) =>
+        c.yearIndex > 0 &&
+        (c.category === 'action' ||
+          c.category === 'danshin' ||
+          c.category === 'milestone' ||
+          c.category === 'crisis'),
+    )
+    .slice(0, 3);
+
+  if (highlights.length === 0) {
+    ctx.fillStyle = '#4A5A61';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(
+      `・${state.config.age}歳から${state.age}歳まで${state.yearIndex}年間、マイホームと家計を守り抜いた記録`,
+      48,
+      478,
+    );
+  } else {
+    highlights.forEach((h, idx) => {
+      const hy = 476 + idx * 28;
+      ctx.fillStyle = h.tone === 'bad' ? '#B0362B' : '#0F6E68';
+      ctx.font = 'bold 12px monospace, sans-serif';
+      ctx.fillText(`${h.age}歳(${h.yearIndex}年目)`, 48, hy);
+
+      ctx.fillStyle = '#13212A';
+      ctx.font = 'bold 13px sans-serif';
+      const cleanTitle = h.title.replace(/^【決断】/, '');
+      ctx.fillText(clipCanvasText(ctx, cleanTitle, 500), 152, hy);
+    });
+  }
+
+  // 右下：勝因・敗因の自動分析
+  drawRoundedBox(ctx, 664, 424, 504, 142, 5);
+  ctx.fillStyle = '#F0F4F2';
+  ctx.fill();
+  ctx.strokeStyle = '#C7D2CE';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#13212A';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText('■ 勝因・敗因の自動分析レポート', 680, 448);
+
+  const factors = analyzeOutcomeFactors(state).slice(0, 3);
+  factors.forEach((f, idx) => {
+    const fy = 476 + idx * 28;
+    ctx.fillStyle = f.type === 'positive' ? '#2B7A4E' : '#B0362B';
+    ctx.font = 'bold 13px sans-serif';
+    const prefix = f.type === 'positive' ? '◎' : '▲';
+    ctx.fillText(
+      clipCanvasText(ctx, `${prefix} ${f.title}（${f.impactLabel}）`, 472),
+      680,
+      fy,
+    );
+  });
+
+  // 6. フッター帯 (y: 576..618)
+  ctx.fillStyle = '#EBF0ED';
+  ctx.fillRect(14, 576, 1172, 40);
+  ctx.fillStyle = '#0F6E68';
+  ctx.font = 'bold 13px monospace, sans-serif';
+  ctx.fillText(
+    '#マイホーム完済記  #住宅ローンシミュレーション  — 35年・50年ローンの家計と暮らし',
+    32,
+    601,
+  );
+  ctx.fillStyle = '#8C1D3C';
+  ctx.textAlign = 'right';
+  ctx.fillText('同じ世帯・物件条件での挑戦は zatsudan-gacha.app/mortgage-life', 1168, 601);
+  ctx.textAlign = 'left';
+
+  return canvas.toDataURL('image/png');
+}
+
 export function MortgageGame() {
   const [setupConfig, setSetupConfig] = useState<MortgageSetupConfig>(() => ({
     archetypeId: ARCHETYPES[0].id,
@@ -149,6 +540,125 @@ export function MortgageGame() {
   const [rollingStep, setRollingStep] = useState<number>(0);
   const [introSecondTick, setIntroSecondTick] = useState<number>(0);
   const [mobileTab, setMobileTab] = useState<'main' | 'charts' | 'status' | 'all'>('main');
+
+  // X（旧Twitter）シェア機能用ステート
+  const [shareStyle, setShareStyle] = useState<ShareTextStyle>('standard');
+  const [shareCardDataUrl, setShareCardDataUrl] = useState<string>('');
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  const [sharedChallengeBanner, setSharedChallengeBanner] = useState<string | null>(null);
+
+  // URLクエリパラメータから「同じ条件で挑戦する」設定を自動復元
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const parsed = parseShareChallengeParams(window.location.search, setupConfig);
+    if (parsed) {
+      setSetupConfig(parsed);
+      setSpawnMode('custom');
+      setSharedChallengeBanner(formatSetupProfileSummary(parsed));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 結末到達時に1200×630の公式精算認定証カード画像を自動生成
+  useEffect(() => {
+    if (gameState && gameState.status !== 'playing' && gameState.ending) {
+      const dataUrl = renderMortgageResultShareCardDataUrl(gameState);
+      setShareCardDataUrl(dataUrl);
+    }
+  }, [gameState]);
+
+  const showTempShareFeedback = useCallback((msg: string) => {
+    setShareFeedback(msg);
+    window.setTimeout(() => {
+      setShareFeedback((cur) => (cur === msg ? null : cur));
+    }, 3200);
+  }, []);
+
+  const handleOpenXIntent = useCallback((intentUrl: string) => {
+    audioManager.playSe('click');
+    if (typeof window !== 'undefined') {
+      window.open(intentUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, []);
+
+  const handleCopyShareText = useCallback(
+    async (fullText: string, label = 'シェア文面と挑戦URLをコピーしました！') => {
+      audioManager.playSe('click');
+      try {
+        await navigator.clipboard.writeText(fullText);
+        showTempShareFeedback(label);
+      } catch {
+        showTempShareFeedback('クリップボードへのコピーに失敗しました');
+      }
+    },
+    [showTempShareFeedback],
+  );
+
+  const handleDownloadShareCard = useCallback(() => {
+    if (!shareCardDataUrl || !gameState) return;
+    audioManager.playSe('stamp');
+    const a = document.createElement('a');
+    a.href = shareCardDataUrl;
+    a.download = `myhome-kansai-${gameState.age}yo-${gameState.ending?.rank ?? 'result'}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showTempShareFeedback('結果認定証カード画像（PNG）を保存しました！X投稿に添付できます');
+  }, [shareCardDataUrl, gameState, showTempShareFeedback]);
+
+  const handleCopyShareCardImage = useCallback(async () => {
+    if (!shareCardDataUrl) return;
+    audioManager.playSe('stamp');
+    try {
+      const res = await fetch(shareCardDataUrl);
+      const blob = await res.blob();
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showTempShareFeedback(
+          '認定証画像をクリップボードにコピーしました！Xの投稿画面で貼り付け（ペースト）できます',
+        );
+      } else {
+        handleDownloadShareCard();
+      }
+    } catch {
+      handleDownloadShareCard();
+    }
+  }, [shareCardDataUrl, handleDownloadShareCard, showTempShareFeedback]);
+
+  const handleNativeShareWithImage = useCallback(
+    async (text: string, url: string) => {
+      audioManager.playSe('click');
+      if (typeof navigator === 'undefined' || !navigator.share) {
+        const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+        handleOpenXIntent(intentUrl);
+        return;
+      }
+      try {
+        if (shareCardDataUrl && navigator.canShare) {
+          const res = await fetch(shareCardDataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], 'myhome-kansai-result.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: 'マイホーム完済記｜住宅ローン返済シミュレーション結果',
+              text: `${text}\n${url}`,
+              files: [file],
+            });
+            showTempShareFeedback('画像付きでシェアシートを開きました！');
+            return;
+          }
+        }
+        await navigator.share({
+          title: 'マイホーム完済記｜住宅ローン返済シミュレーション結果',
+          text,
+          url,
+        });
+      } catch {
+        // ユーザーがキャンセルした場合などは何もしない
+      }
+    },
+    [shareCardDataUrl, handleOpenXIntent, showTempShareFeedback],
+  );
 
   useBgm(
     viewStage === 'life' && gameState
@@ -434,6 +944,30 @@ export function MortgageGame() {
 
     return (
       <div className="text-[#13212A] dark:text-[#E1E9E6]">
+        {sharedChallengeBanner && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[4px] border-2 border-[#0F6E68] bg-[#DCEDEA] p-4 shadow-sm dark:border-[#4CC0AF] dark:bg-[#12302D]">
+            <div>
+              <div className="flex items-center gap-2 font-mono text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                <XLogoIcon className="h-3.5 w-3.5" />
+                <span>X（旧Twitter）のシェアリンクから「同じ世帯・物件・ローン条件」を読み込みました！</span>
+              </div>
+              <p className="mt-1 font-mono text-xs font-bold text-[#13212A] dark:text-[#E1E9E6]">
+                挑戦条件：{sharedChallengeBanner}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                audioManager.playSe('stamp');
+                setViewStage('cert');
+              }}
+              className="shrink-0 rounded-[4px] bg-[#8C1D3C] px-4 py-2.5 text-xs font-bold text-white shadow transition hover:brightness-110 dark:bg-[#E2678A] dark:text-[#1B0910]"
+            >
+              このシェア条件で今すぐ挑戦する →
+            </button>
+          </div>
+        )}
+
         {/* ヒーロー2カラム */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start">
           {/* 左：タイトル・リード文・リアルタイムカウンター */}
@@ -2546,6 +3080,17 @@ export function MortgageGame() {
               >
                 年齢・物件・金利・期間を細かく設計し直す
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const certShare = generateCertShareText(setupConfig);
+                  handleOpenXIntent(certShare.intentUrl);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-[4px] border border-[#13212A] bg-[#13212A] px-3.5 py-2.5 text-xs font-bold text-white transition hover:opacity-90 dark:border-[#E1E9E6] dark:bg-[#E1E9E6] dark:text-[#0D1316]"
+              >
+                <XLogoIcon className="h-3.5 w-3.5" />
+                <span>本審査通過証書をXでシェア</span>
+              </button>
             </div>
             <button
               type="button"
@@ -2708,6 +3253,19 @@ export function MortgageGame() {
                 title="決断イベントを自動選択して見守ります"
               >
                 おまかせ {autoResolveDecisions ? 'ON' : 'OFF'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const liveShare = generateViralXShareText(gameState, 'standard');
+                  handleOpenXIntent(liveShare.intentUrl);
+                }}
+                className="inline-flex items-center gap-1 rounded-[4px] border border-[#13212A] bg-[#13212A] px-2.5 py-1.5 text-xs font-bold text-white transition hover:opacity-90 dark:border-[#E1E9E6] dark:bg-[#E1E9E6] dark:text-[#0D1316]"
+                title="現在の年齢・残債・手元資金をXで実況ポストします"
+              >
+                <XLogoIcon className="h-3 w-3" />
+                <span>Xで実況</span>
               </button>
 
               <button
@@ -2958,6 +3516,210 @@ export function MortgageGame() {
                 </div>
               </div>
             </div>
+
+            {/* 4. X（旧Twitter）バズ共有スタジオ：3つの投稿スタイル × 公式最終精算認定証カード画像 × 同じ条件で挑戦URL */}
+            {(() => {
+              const currentShare = generateViralXShareText(gameState, shareStyle);
+              const styleTabs: Array<{
+                id: ShareTextStyle;
+                label: string;
+                badge: string;
+                desc: string;
+              }> = [
+                {
+                  id: 'standard',
+                  label: '王道・最終判定＆純資産公開',
+                  badge: '定番バズ',
+                  desc: '購入条件・最終ランク・最終純資産・銀行利息・転機を凝縮した王道フォーマット',
+                },
+                {
+                  id: 'shock',
+                  label: '衝撃金額・総支払額のリアル明細',
+                  badge: '引用RT誘発',
+                  desc: '「物件価格〇〇万円なのに銀行利息＋管理修繕＋固定資産税で生涯〇〇万円払った」ギャップを公開',
+                },
+                {
+                  id: 'drama',
+                  label: '波乱万丈・人生の転機ドラマ',
+                  badge: '共感・物語',
+                  desc: '結婚・出産・受験・住み替え・団信・60歳定年後の選択など、この家族だけの年代記をシェア',
+                },
+              ];
+
+              return (
+                <div className="mt-6 rounded-[4px] border-2 border-[#13212A] bg-[#F0F4F2] p-5 shadow-md dark:border-[#4CC0AF] dark:bg-[#1A2428]">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C7D2CE] pb-3.5 dark:border-[#2A383D]">
+                    <div className="flex items-center gap-2.5">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-[4px] bg-[#13212A] text-white dark:bg-[#E1E9E6] dark:text-[#0D1316]">
+                        <XLogoIcon className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <h3 className="font-editorial text-lg font-bold">
+                          X（旧Twitter）で返済人生の結果をシェアする
+                        </h3>
+                        <p className="text-xs text-[#4A5A61] dark:text-[#A3B2AF]">
+                          シェアURLには「同じ世帯・物件・ローン条件で挑戦できる引き継ぎパラメータ」が自動付与されます
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenXIntent(currentShare.intentUrl)}
+                      className="inline-flex items-center gap-2 rounded-[4px] bg-[#13212A] px-5 py-3 text-sm font-bold text-white shadow transition hover:opacity-90 dark:bg-[#E1E9E6] dark:text-[#0D1316]"
+                    >
+                      <XLogoIcon className="h-4 w-4" />
+                      <span>この内容でXにポストする →</span>
+                    </button>
+                  </div>
+
+                  {/* 投稿文面スタイル3種切り替えタブ */}
+                  <div className="mt-4">
+                    <span className="block font-mono text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                      STEP 1 · Xでバズる投稿文面モードを選択（3パターン）
+                    </span>
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      {styleTabs.map((tab) => {
+                        const active = shareStyle === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              audioManager.playSe('click');
+                              setShareStyle(tab.id);
+                            }}
+                            className={`rounded-[4px] border p-3 text-left transition ${
+                              active
+                                ? 'border-[#8C1D3C] bg-[#F3E3E8]/80 ring-1 ring-[#8C1D3C] dark:border-[#E2678A] dark:bg-[#3A1C26]/60'
+                                : 'border-[#C7D2CE] bg-[#F7FAF8] hover:border-[#5F6E72] dark:border-[#2A383D] dark:bg-[#141D21]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-bold text-[#13212A] dark:text-[#E1E9E6]">
+                                {tab.label}
+                              </span>
+                              <span className="rounded bg-[#13212A] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white dark:bg-[#E1E9E6] dark:text-[#0D1316]">
+                                {tab.badge}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] leading-snug text-[#4A5A61] dark:text-[#A3B2AF]">
+                              {tab.desc}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* プレビュー2カラム：左＝投稿テキスト＆アクションボタン / 右＝1200×630公式精算認定証カード画像 */}
+                  <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+                    <div className="flex flex-col justify-between rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-4 lg:col-span-6 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <div>
+                        <div className="flex items-center justify-between border-b border-[#DCE4E1] pb-2 dark:border-[#1D282C]">
+                          <span className="font-mono text-xs font-bold text-[#4A5A61] dark:text-[#A3B2AF]">
+                            ポスト文面プレビュー（同じ条件での挑戦リンク付）
+                          </span>
+                          <span className="font-mono text-[11px] text-[#0F6E68] dark:text-[#4CC0AF]">
+                            {currentShare.text.length}文字
+                          </span>
+                        </div>
+                        <pre className="mt-2.5 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[#13212A] dark:text-[#E1E9E6]">
+                          {currentShare.text}
+                        </pre>
+                        <div className="mt-2 break-all rounded bg-[#EBF0ED] px-2.5 py-1.5 font-mono text-[10px] text-[#0F6E68] dark:bg-[#0D1316] dark:text-[#4CC0AF]">
+                          挑戦URL: {currentShare.url}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2 border-t border-[#DCE4E1] pt-3 dark:border-[#1D282C]">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenXIntent(currentShare.intentUrl)}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-[4px] bg-[#8C1D3C] px-4 py-2.5 text-xs font-bold text-white shadow transition hover:brightness-110 dark:bg-[#E2678A] dark:text-[#1B0910]"
+                        >
+                          <XLogoIcon className="h-3.5 w-3.5" />
+                          <span>X（旧Twitter）でポストする</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyShareText(
+                              `${currentShare.text}\n${currentShare.url}`,
+                              '投稿文面と「同じ条件で挑戦するURL」をコピーしました！',
+                            )
+                          }
+                          className="rounded-[4px] border border-[#0F6E68] bg-[#DCEDEA] px-3.5 py-2.5 text-xs font-bold text-[#0F6E68] transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+                        >
+                          文面＋挑戦URLをコピー
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 右：1200×630 公式最終精算認定証カード画像プレビュー＆ワンクリックコピー・保存 */}
+                    <div className="flex flex-col justify-between rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] p-4 lg:col-span-6 dark:border-[#2A383D] dark:bg-[#141D21]">
+                      <div>
+                        <div className="flex items-center justify-between border-b border-[#DCE4E1] pb-2 dark:border-[#1D282C]">
+                          <span className="font-mono text-xs font-bold text-[#4A5A61] dark:text-[#A3B2AF]">
+                            STEP 2 · 公式最終精算認定証カード画像（1200×630）
+                          </span>
+                          <span className="font-mono text-[10px] font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                            画像添付でインプレッション大幅UP
+                          </span>
+                        </div>
+
+                        {shareCardDataUrl ? (
+                          <div className="mt-2.5 overflow-hidden rounded border border-[#C7D2CE] bg-[#13212A] shadow-sm dark:border-[#2A383D]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={shareCardDataUrl}
+                              alt="マイホーム完済記 公式最終精算認定証カード"
+                              className="h-auto w-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="mt-2.5 flex h-44 items-center justify-center rounded border border-dashed border-[#C7D2CE] font-mono text-xs text-[#5F6E72]">
+                            認定証カード画像を生成中...
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2 border-t border-[#DCE4E1] pt-3 dark:border-[#1D282C]">
+                        <button
+                          type="button"
+                          onClick={handleCopyShareCardImage}
+                          className="flex-1 rounded-[4px] border border-[#13212A] bg-[#13212A] px-3 py-2.5 text-xs font-bold text-white transition hover:opacity-90 dark:border-[#E1E9E6] dark:bg-[#E1E9E6] dark:text-[#0D1316]"
+                        >
+                          認定証画像をコピー（X投稿欄にそのまま貼付可）
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDownloadShareCard}
+                          className="rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-3 py-2.5 text-xs font-bold text-[#13212A] transition hover:border-[#5F6E72] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#E1E9E6]"
+                        >
+                          PNG画像を保存
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleNativeShareWithImage(currentShare.text, currentShare.url)
+                          }
+                          className="rounded-[4px] border border-[#0F6E68] bg-[#DCEDEA] px-3 py-2.5 text-xs font-bold text-[#0F6E68] transition hover:brightness-95 dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]"
+                        >
+                          スマホで画像付きシェア
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {shareFeedback && (
+                    <div className="mt-3 rounded border border-[#0F6E68] bg-[#DCEDEA] px-3.5 py-2 text-center font-mono text-xs font-bold text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]">
+                      {shareFeedback}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </section>
       )}
@@ -2971,10 +3733,23 @@ export function MortgageGame() {
             <span className="font-mono text-xs font-bold text-[#8C1D3C] dark:text-[#E2678A]">
               人生の転機 · 決断が待っています（{gameState.age}歳 · 返済{gameState.yearIndex}年目）
             </span>
-            <span className="font-mono text-xs text-[#5F6E72] dark:text-[#8A9A96]">
-              手元資金：{Math.round(gameState.liquidSavingsMan).toLocaleString()}万円 / 残債：
-              {Math.round(gameState.remainingBalanceMan).toLocaleString()}万円
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-xs text-[#5F6E72] dark:text-[#8A9A96]">
+                手元資金：{Math.round(gameState.liquidSavingsMan).toLocaleString()}万円 / 残債：
+                {Math.round(gameState.remainingBalanceMan).toLocaleString()}万円
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const decisionShare = generateViralXShareText(gameState, 'standard');
+                  handleOpenXIntent(decisionShare.intentUrl);
+                }}
+                className="inline-flex items-center gap-1 rounded border border-[#13212A] bg-[#13212A] px-2.5 py-1 text-[11px] font-bold text-white transition hover:opacity-90 dark:border-[#E1E9E6] dark:bg-[#E1E9E6] dark:text-[#0D1316]"
+              >
+                <XLogoIcon className="h-3 w-3" />
+                <span>この転機をXで実況</span>
+              </button>
+            </div>
           </div>
 
           <h3 className="font-editorial mt-3 text-xl font-bold sm:text-2xl">

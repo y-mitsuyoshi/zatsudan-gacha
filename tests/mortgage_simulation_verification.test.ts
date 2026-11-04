@@ -40,6 +40,10 @@ import {
   resolveEffectiveBank,
   resolveEffectiveHouseholdCareerAndEdu,
   resolveEffectiveProperty,
+  buildShareChallengeUrl,
+  parseShareChallengeParams,
+  generateCertShareText,
+  generateViralXShareText,
 } from '../src/lib/mortgage-logic';
 import { MortgageSetupConfig } from '../src/types/mortgage';
 
@@ -1072,6 +1076,63 @@ seniorWorkGame = setPostRetirementWorkThisYear(seniorWorkGame, 'part-time-arubai
 assert.equal(seniorWorkGame.mainIncomeMan, 140, 'Choosing arubaito at 61 must set main income to 140万');
 seniorWorkGame = setPostRetirementWorkThisYear(seniorWorkGame, 'retire-now');
 assert.equal(seniorWorkGame.mainIncomeMan, 0, 'Choosing to stop working and retire at 61 must set main income to 0');
+
+// 8.7 Verify Viral X Share Text Generation & Challenge URL Round-Trip
+const shareCfg: MortgageSetupConfig = {
+  ...baseSetup,
+  age: 34,
+  mainIncomeMan: 680,
+  subIncomeMan: 320,
+  initialSavingsMan: 1200,
+  downPaymentMan: 400,
+  customPropertyPriceMan: 6480,
+  bankId: 'neo-mix-bank',
+  customRateType: 'mix',
+  mixFixedRatioPercent: 70,
+  termYears: 40,
+};
+const challengeUrl = buildShareChallengeUrl(shareCfg);
+assert.ok(
+  challengeUrl.startsWith('https://zatsudan-gacha.app/mortgage-life?'),
+  'Challenge URL must start with https://zatsudan-gacha.app/mortgage-life?'
+);
+const queryPart = challengeUrl.split('?')[1] ?? '';
+const restoredCfg = parseShareChallengeParams(`?${queryPart}`, baseSetup);
+assert.ok(restoredCfg, 'parseShareChallengeParams must restore valid challenge query parameters');
+assert.equal(restoredCfg.age, 34, 'Restored config age must match');
+assert.equal(restoredCfg.customPropertyPriceMan, 6480, 'Restored config property price must match');
+assert.equal(restoredCfg.termYears, 40, 'Restored config termYears must match');
+assert.equal(restoredCfg.mixFixedRatioPercent, 70, 'Restored config mixFixedRatioPercent must match');
+
+const certShare = generateCertShareText(shareCfg);
+assert.ok(certShare.text.includes('6,480万円'), 'Certificate share text must include property price');
+assert.ok(certShare.intentUrl.includes('twitter.com/intent/tweet'), 'Certificate share must produce valid X intent URL');
+
+const livePlayShare = generateViralXShareText(createMortgageGame(shareCfg), 'standard');
+assert.ok(livePlayShare.text.includes('実況'), 'Playing state share text must include live commentary header');
+
+const finishedGameForShare = {
+  ...createMortgageGame(shareCfg),
+  status: 'cleared' as const,
+  age: 74,
+  yearIndex: 40,
+  liquidSavingsMan: 3250,
+  propertyValueMan: 4120,
+  remainingBalanceMan: 0,
+  totalPrincipalPaidMan: 6220,
+  totalInterestPaidMan: 2480,
+  totalRunningCostPaidMan: 2190,
+  totalTaxCreditReceivedMan: 360,
+};
+finishedGameForShare.ending = evaluateEnding(finishedGameForShare, 'paid-off').ending;
+
+const stdShare = generateViralXShareText(finishedGameForShare, 'standard');
+const shockShare = generateViralXShareText(finishedGameForShare, 'shock');
+const dramaShare = generateViralXShareText(finishedGameForShare, 'drama');
+
+assert.ok(stdShare.text.includes('最終判定：'), 'Standard share text must include final verdict');
+assert.ok(shockShare.text.includes('住居に払った生涯総額：'), 'Shock share text must highlight total housing outflow vs property price');
+assert.ok(dramaShare.text.includes('家族の軌跡：'), 'Drama share text must include family trajectory');
 
 // 9. Verify Zero Emojis, Zero Personal Surnames, Zero Copycat Title, and Zero Truncation in Mortgage files
 const filesToCheck = [

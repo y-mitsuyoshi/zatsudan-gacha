@@ -8317,3 +8317,323 @@ export function executeMidTermRateHike(
     ],
   };
 }
+
+export type ShareTextStyle = 'standard' | 'shock' | 'drama';
+
+/**
+ * シェアした世帯・物件・ローン条件を他のプレイヤーがワンクリックで追体験できる挑戦URLを生成する
+ */
+export function buildShareChallengeUrl(
+  config: MortgageSetupConfig,
+  baseUrl = 'https://zatsudan-gacha.app/mortgage-life',
+): string {
+  const prop = resolveEffectiveProperty(config);
+  const bank = resolveEffectiveBank(config);
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(config);
+
+  const params = new URLSearchParams();
+  params.set('a', String(config.age));
+  params.set('emp', config.employment);
+  params.set('inc', String(config.mainIncomeMan));
+  params.set('sub', String(careerEdu.initialSubIncomeMan));
+  params.set('sav', String(config.initialSavingsMan));
+  params.set('dp', String(config.downPaymentMan));
+  params.set('ct', config.contractType);
+  params.set('fam', config.familyPlan);
+  params.set('pid', config.propertyId);
+  params.set('pr', String(prop.priceMan));
+  params.set('bt', prop.buildingType);
+  params.set('new', prop.isNew ? '1' : '0');
+  params.set('bid', config.bankId);
+  params.set('rt', bank.rateType);
+  params.set('br', bank.baseRate.toFixed(2));
+  params.set('ty', String(config.termYears));
+  params.set('rm', config.repaymentMethod);
+  params.set('ds', config.danshin);
+  params.set('mc', config.macroRegime);
+  if (bank.rateType === 'mix' && config.mixFixedRatioPercent !== undefined) {
+    params.set('mx', String(config.mixFixedRatioPercent));
+  }
+  return `${baseUrl}?${params.toString()}`;
+}
+
+/**
+ * URLクエリパラメータからシェアされた世帯・物件・ローン条件を復元する
+ */
+export function parseShareChallengeParams(
+  search: string,
+  fallbackConfig: MortgageSetupConfig,
+): MortgageSetupConfig | null {
+  if (!search || !search.includes('a=') || !search.includes('pr=')) {
+    return null;
+  }
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const rawAge = Number(params.get('a'));
+  const rawPrice = Number(params.get('pr'));
+  if (!Number.isFinite(rawAge) || rawAge < 20 || rawAge > 65 || !Number.isFinite(rawPrice) || rawPrice < 1000) {
+    return null;
+  }
+
+  const emp = params.get('emp') as EmploymentType | null;
+  const validEmp: EmploymentType =
+    emp && emp in EMPLOYMENT_LABELS ? emp : fallbackConfig.employment;
+
+  const pid = params.get('pid') as PropertyCategory | null;
+  const validPid: PropertyCategory =
+    pid && pid in PROPERTIES ? pid : fallbackConfig.propertyId;
+
+  const bid = params.get('bid') as BankId | null;
+  const validBid: BankId = bid && bid in BANKS ? bid : fallbackConfig.bankId;
+
+  const ct = params.get('ct') as ContractType | null;
+  const validCt: ContractType =
+    ct === 'single' || ct === 'pair' || ct === 'income-merge' ? ct : fallbackConfig.contractType;
+
+  const fam = params.get('fam') as FamilyPlanType | null;
+  const validFam: FamilyPlanType =
+    fam && fam in FAMILY_PLANS ? fam : fallbackConfig.familyPlan;
+
+  const rt = params.get('rt') as RateType | null;
+  const validRt: RateType | undefined =
+    rt === 'variable' || rt === 'fixed-10' || rt === 'flat-35' || rt === 'mix' ? rt : undefined;
+
+  const rm = params.get('rm') as RepaymentMethod | null;
+  const validRm: RepaymentMethod =
+    rm === 'equal-payment' || rm === 'equal-principal' ? rm : fallbackConfig.repaymentMethod;
+
+  const ds = params.get('ds') as DanshinType | null;
+  const validDs: DanshinType =
+    ds && ds in DANSHIN_PLANS ? ds : fallbackConfig.danshin;
+
+  const mc = params.get('mc') as MacroRegimeId | null;
+  const validMc: MacroRegimeId =
+    mc && mc in MACRO_REGIMES ? mc : fallbackConfig.macroRegime;
+
+  const bt = params.get('bt');
+  const validBt: 'tower' | 'mansion' | 'detached' | undefined =
+    bt === 'tower' || bt === 'mansion' || bt === 'detached' ? bt : undefined;
+
+  const subVal = Math.max(0, Math.min(1200, Number(params.get('sub') ?? fallbackConfig.subIncomeMan)));
+  const mxVal = params.get('mx') ? Math.max(10, Math.min(90, Number(params.get('mx')))) : undefined;
+
+  const nextCfg: MortgageSetupConfig = {
+    ...fallbackConfig,
+    age: Math.round(rawAge),
+    employment: validEmp,
+    mainIncomeMan: Math.max(200, Math.min(2500, Number(params.get('inc') ?? fallbackConfig.mainIncomeMan))),
+    subIncomeMan: subVal,
+    spouseWorkPattern:
+      subVal === 0
+        ? validCt === 'single'
+          ? 'homemaker'
+          : 'fulltime-keep'
+        : subVal <= 165
+          ? 'part-time'
+          : 'fulltime-keep',
+    initialSavingsMan: Math.max(100, Math.min(8000, Number(params.get('sav') ?? fallbackConfig.initialSavingsMan))),
+    downPaymentMan: Math.max(0, Math.min(6000, Number(params.get('dp') ?? fallbackConfig.downPaymentMan))),
+    contractType: validCt,
+    familyPlan: validFam,
+    propertyId: validPid,
+    customPropertyPriceMan: Math.round(rawPrice),
+    customBuildingType: validBt,
+    customIsNew: params.get('new') === '0' ? false : params.get('new') === '1' ? true : undefined,
+    bankId: validBid,
+    customRateType: validRt,
+    customBaseRate: params.get('br') ? Math.max(0.3, Math.min(5.0, Number(params.get('br')))) : undefined,
+    mixFixedRatioPercent: mxVal,
+    termYears: Math.max(10, Math.min(50, Number(params.get('ty') ?? fallbackConfig.termYears))),
+    repaymentMethod: validRm,
+    danshin: validDs,
+    macroRegime: validMc,
+  };
+
+  return {
+    ...nextCfg,
+    randomRollSummary: formatSetupProfileSummary(nextCfg),
+  };
+}
+
+/**
+ * 本審査証書ステージ用のX（旧Twitter）シェア文面＆Intent URLを生成する
+ */
+export function generateCertShareText(
+  config: MortgageSetupConfig,
+): { text: string; url: string; intentUrl: string } {
+  const prop = resolveEffectiveProperty(config);
+  const bank = resolveEffectiveBank(config);
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(config);
+  const uw = runBankUnderwriting(config);
+  const url = buildShareChallengeUrl(config);
+
+  const bTypeLabel =
+    prop.buildingType === 'tower'
+      ? 'タワマン'
+      : prop.buildingType === 'mansion'
+        ? 'マンション'
+        : '一戸建て';
+  const newUsed = prop.isNew ? '新築' : `中古築${prop.builtAge}年`;
+  const rateShort =
+    bank.rateType === 'variable'
+      ? '変動'
+      : bank.rateType === 'fixed-10'
+        ? '10年固定'
+        : bank.rateType === 'flat-35'
+          ? '全期間固定'
+          : `ミックス(固定${config.mixFixedRatioPercent ?? 50}%)`;
+  const grossIncome = config.mainIncomeMan + careerEdu.initialSubIncomeMan;
+
+  const lines = [
+    `【マイホーム完済記｜住宅ローン本審査通過】`,
+    `${config.age}歳・世帯年収${grossIncome.toLocaleString()}万円で「${newUsed}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円」を購入！`,
+    `━━━━━━━━━━━━━━`,
+    `■ 借入元本：${uw.loanPrincipalMan.toLocaleString()}万円（${config.termYears}年・${uw.maturityAge}歳完済予定）`,
+    `■ 金利条件：${bank.shortName}・${rateShort} ${uw.effectiveInitialRate.toFixed(2)}%`,
+    `■ 初年度支払：月${uw.initialMonthlyPaymentMan}万円（管理修繕・固定資産税込み実質 月${uw.initialTotalMonthlyOutflowMan}万円）`,
+    `■ 購入後の手元資金：${uw.cashRemainingAfterPurchaseMan.toLocaleString()}万円`,
+    `━━━━━━━━━━━━━━`,
+    `この条件で完済できるか挑戦 →`,
+    `#マイホーム完済記 #住宅ローンシミュレーション`,
+  ];
+
+  const text = lines.join('\n');
+  const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  return { text, url, intentUrl };
+}
+
+/**
+ * 結末到達時（およびプレイ途中の実況時）にX（旧Twitter）でバズりやすいシェア文面＆Intent URLを生成する
+ * - 'standard': 王道・最終判定＆純資産＆総利息公開モード
+ * - 'shock': 衝撃金額・「物件価格〇〇万円に対し銀行利息＋維持費税金で総額〇〇万円払った」リアル明細モード
+ * - 'drama': 波乱万丈・結婚/出産/受験/住み替え/団信/定年引退など人生ハイライトモード
+ */
+export function generateViralXShareText(
+  state: MortgageGameState,
+  style: ShareTextStyle = 'standard',
+): { text: string; url: string; hashtags: string[]; intentUrl: string } {
+  const prop = resolveEffectiveProperty(state.config);
+  const bank = resolveEffectiveBank(state.config);
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(state.config);
+  const url = buildShareChallengeUrl(state.config);
+  const hashtags = ['マイホーム完済記', '住宅ローンシミュレーション'];
+
+  const bTypeLabel =
+    prop.buildingType === 'tower'
+      ? 'タワマン'
+      : prop.buildingType === 'mansion'
+        ? 'マンション'
+        : '一戸建て';
+  const newUsed = prop.isNew ? '新築' : `中古築${prop.builtAge}年`;
+  const rateShort =
+    bank.rateType === 'variable'
+      ? '変動'
+      : bank.rateType === 'fixed-10'
+        ? '10年固定'
+        : bank.rateType === 'flat-35'
+          ? '全期間固定'
+          : `ミックス`;
+  const initialGross = state.config.mainIncomeMan + careerEdu.initialSubIncomeMan;
+
+  // プレイ途中（実況シェア）の場合
+  if (state.status === 'playing' || !state.ending) {
+    const decisionTitle = state.pendingDecision
+      ? `現在「${state.pendingDecision.title}」の決断に直面中…！`
+      : `現在${state.age}歳（返済${state.yearIndex}年目）、適用金利${state.appliedInterestRate.toFixed(2)}%で奮闘中！`;
+    const lines = [
+      `【マイホーム完済記｜返済${state.yearIndex}年目の実況】`,
+      `${state.config.age}歳・世帯年収${initialGross.toLocaleString()}万で${newUsed}${bTypeLabel}（${prop.priceMan.toLocaleString()}万円・${state.config.termYears}年${rateShort}）を購入して現在${state.age}歳！`,
+      `━━━━━━━━━━━━━━`,
+      `■ 現在のローン残債：${Math.round(state.remainingBalanceMan).toLocaleString()}万円`,
+      `■ 手元金融資産：${Math.round(state.liquidSavingsMan).toLocaleString()}万円 / 自宅時価：${Math.round(state.propertyValueMan).toLocaleString()}万円`,
+      `◆ ${decisionTitle}`,
+      `━━━━━━━━━━━━━━`,
+      `#${hashtags.join(' #')}`,
+    ];
+    const text = lines.join('\n');
+    return {
+      text,
+      url,
+      hashtags,
+      intentUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+    };
+  }
+
+  // 結末到達時（3つのバズ文面モード）
+  const ending = state.ending;
+  const netWorthMan = Math.round(
+    state.liquidSavingsMan +
+      (state.status === 'sold-escaped' ? 0 : state.propertyValueMan) -
+      state.remainingBalanceMan -
+      state.unpaidInterestMan,
+  );
+  const netWorthSign = netWorthMan >= 0 ? '+' : '';
+  const pPaid = Math.round(state.totalPrincipalPaidMan);
+  const iPaid = Math.round(state.totalInterestPaidMan);
+  const rPaid = Math.round(state.totalRunningCostPaidMan);
+  const taxBack = Math.round(state.totalTaxCreditReceivedMan);
+  const totalOutflowMan = pPaid + iPaid + rPaid;
+  const extraOverPriceMan = iPaid + rPaid;
+
+  // ドラマチックな転機ログを抽出（初期引渡しを除く）
+  const highlightTitles = state.chronicle
+    .filter((c) => c.yearIndex > 0 && (c.category === 'action' || c.category === 'danshin' || c.category === 'milestone' || c.category === 'crisis'))
+    .slice(0, 3)
+    .map((c) =>
+      c.title
+        .replace(/^【決断】/, '')
+        .replace(/→.*$/, '')
+        .replace(/^【|】$/g, '')
+        .slice(0, 28),
+    );
+  const highlightLine =
+    highlightTitles.length > 0
+      ? highlightTitles.join(' / ')
+      : `${state.age}歳まで${state.yearIndex}年間の返済サバイバル`;
+
+  let lines: string[];
+
+  if (style === 'shock') {
+    lines = [
+      `【マイホーム完済記】物件価格${prop.priceMan.toLocaleString()}万円の${newUsed}${bTypeLabel}を${state.config.termYears}年ローン（${rateShort}）で買ったリアルな総支払額がこちら…`,
+      `━━━━━━━━━━━━━━`,
+      `■ 物件価格：${prop.priceMan.toLocaleString()}万円（借入${state.underwriting.loanPrincipalMan.toLocaleString()}万円）`,
+      `▲ 銀行へ払った利息総額：${iPaid.toLocaleString()}万円`,
+      `▲ 管理修繕・固定資産税・保険総額：${rPaid.toLocaleString()}万円`,
+      `◎ 住宅ローン控除還付：+${taxBack.toLocaleString()}万円`,
+      `◆ 住居に払った生涯総額：${totalOutflowMan.toLocaleString()}万円（物件価格＋${extraOverPriceMan.toLocaleString()}万円！）`,
+      `◆ 最終判定：${ending.title}（${state.age}歳・最終純資産 ${netWorthSign}${netWorthMan.toLocaleString()}万円）`,
+      `━━━━━━━━━━━━━━`,
+      `#${hashtags.join(' #')}`,
+    ];
+  } else if (style === 'drama') {
+    const famComp = calcDynamicFamilyComposition(state);
+    lines = [
+      `【マイホーム完済記】${state.config.age}歳（世帯年収${initialGross.toLocaleString()}万）で${newUsed}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円を買った家族の${state.yearIndex}年間ドラマ`,
+      `━━━━━━━━━━━━━━`,
+      `■ 結末：${ending.title}（${state.age}歳到達）`,
+      `■ 家族の軌跡：${famComp.compositionLabel} / ${state.currentJobLabel ?? ''}`,
+      `■ 人生の転機：${highlightLine}`,
+      `■ 最終資産：純資産 ${netWorthSign}${netWorthMan.toLocaleString()}万円（手元資金${Math.round(state.liquidSavingsMan).toLocaleString()}万・残債${Math.round(state.remainingBalanceMan).toLocaleString()}万）`,
+      `━━━━━━━━━━━━━━`,
+      `同じ条件であなたが生き抜けるか挑戦 →`,
+      `#${hashtags.join(' #')}`,
+    ];
+  } else {
+    // standard
+    lines = [
+      `【マイホーム完済記】${state.config.age}歳・世帯年収${initialGross.toLocaleString()}万で「${newUsed}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円（${state.config.termYears}年・${rateShort}）」を購入した結果…`,
+      `━━━━━━━━━━━━━━`,
+      `■ 最終判定：${ending.title}（${state.age}歳・返済${state.yearIndex}年）`,
+      `■ 最終純資産：${netWorthSign}${netWorthMan.toLocaleString()}万円（手元資金${Math.round(state.liquidSavingsMan).toLocaleString()}万 / 自宅時価${Math.round(state.propertyValueMan).toLocaleString()}万）`,
+      `■ 銀行に払った利息：${iPaid.toLocaleString()}万円 / 維持費・税金：${rPaid.toLocaleString()}万円`,
+      `■ 転機：${highlightLine}`,
+      `━━━━━━━━━━━━━━`,
+      `同じ世帯条件で完済できるか挑戦 →`,
+      `#${hashtags.join(' #')}`,
+    ];
+  }
+
+  const text = lines.join('\n');
+  const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  return { text, url, hashtags, intentUrl };
+}
