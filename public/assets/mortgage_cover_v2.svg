@@ -106,8 +106,8 @@
         <rect x="66" y="176" width="18" height="10" />
         <rect x="90" y="176" width="14" height="10" />
       </g>
-      <rect x="6" y="212" width="104" height="26" rx="3" fill="#8C1D3C" />
-      <text x="58" y="229" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="12" font-weight="700">
+      <rect x="2" y="212" width="112" height="26" rx="3" fill="#8C1D3C" />
+      <text x="58" y="229" text-anchor="middle" fill="#FFFFFF" font-family="'Noto Sans CJK JP', sans-serif" font-size="11" font-weight="700">
         タワマン・マンション
       </text>
     </g>
@@ -193,38 +193,38 @@
     <line x1="0" y1="176" x2="548" y2="176" stroke="#13212A" stroke-width="2" />
 
     <!-- Feature Pills Grid (2 columns x 4 rows) -->
-    <g transform="translate(0, 196)" font-family="sans-serif" font-size="16" font-weight="700">
-      <rect x="0" y="0" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+    <g transform="translate(0, 196)" font-family="'Noto Sans CJK JP', sans-serif" font-size="14.5" font-weight="700">
+      <rect x="0" y="0" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
       <rect x="0" y="0" width="8" height="48" rx="2" fill="#0F6E68" />
-      <text x="20" y="30" fill="#13212A">タワマン・マンション vs 戸建て</text>
+      <text x="18" y="30" fill="#13212A">タワマン・マンション vs 戸建て</text>
 
-      <rect x="282" y="0" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
-      <rect x="282" y="0" width="8" height="48" rx="2" fill="#8C1D3C" />
-      <text x="302" y="30" fill="#13212A">変動金利・5年/125%・未払利息</text>
+      <rect x="280" y="0" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="280" y="0" width="8" height="48" rx="2" fill="#8C1D3C" />
+      <text x="298" y="30" fill="#13212A">変動・固定・ミックス金利選択</text>
 
-      <rect x="0" y="60" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="60" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
       <rect x="0" y="60" width="8" height="48" rx="2" fill="#0F6E68" />
-      <text x="20" y="90" fill="#13212A">固定資産税・火災保険・地震保険</text>
+      <text x="18" y="90" fill="#13212A">固定資産税・火災保険・地震保険</text>
 
-      <rect x="282" y="60" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
-      <rect x="282" y="60" width="8" height="48" rx="2" fill="#8C1D3C" />
-      <text x="302" y="90" fill="#13212A">定期リフォーム・修繕積立金高騰</text>
+      <rect x="280" y="60" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="280" y="60" width="8" height="48" rx="2" fill="#8C1D3C" />
+      <text x="298" y="90" fill="#13212A">定期リフォーム・修繕積立金高騰</text>
 
-      <rect x="0" y="120" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="120" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
       <rect x="0" y="120" width="8" height="48" rx="2" fill="#2B7A4E" />
-      <text x="20" y="150" fill="#13212A">中学受験・大学/専門・学資保険</text>
+      <text x="18" y="150" fill="#13212A">中学受験・大学/専門・入塾・奨学金</text>
 
-      <rect x="282" y="120" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
-      <rect x="282" y="120" width="8" height="48" rx="2" fill="#9C7020" />
-      <text x="302" y="150" fill="#13212A">昇給カーブ・退職金・定年後バイト</text>
+      <rect x="280" y="120" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="280" y="120" width="8" height="48" rx="2" fill="#9C7020" />
+      <text x="298" y="150" fill="#13212A">昇給・退職金・定年後/配偶者働き方</text>
 
-      <rect x="0" y="180" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="0" y="180" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
       <rect x="0" y="180" width="8" height="48" rx="2" fill="#2B7A4E" />
-      <text x="20" y="210" fill="#13212A">年齢別がん確率・団信免除審判</text>
+      <text x="18" y="210" fill="#13212A">年齢別がん確率・団信免除審判</text>
 
-      <rect x="282" y="180" width="266" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
-      <rect x="282" y="180" width="8" height="48" rx="2" fill="#9C7020" />
-      <text x="302" y="210" fill="#13212A">単独/ペアローン・子ども誕生転機</text>
+      <rect x="280" y="180" width="268" height="48" rx="4" fill="#FFFFFF" stroke="#C7D2CE" stroke-width="1.5" />
+      <rect x="280" y="180" width="8" height="48" rx="2" fill="#9C7020" />
+      <text x="298" y="210" fill="#13212A">独身結婚・住み替え・物価上昇対応</text>
     </g>
 
     <!-- Bottom Banner & Hanko Stamp -->

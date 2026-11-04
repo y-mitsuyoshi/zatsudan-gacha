@@ -32,13 +32,29 @@ export const metadata: Metadata = {
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
     type: 'website',
-    images: [{ url: `${APP_URL}${game.image}`, width: 1200, height: 630, alt: game.name }],
+    images: [
+      {
+        url: `${APP_URL}${game.image}`,
+        width: 1200,
+        height: 630,
+        type: 'image/png',
+        alt: game.name,
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
+    site: '@zatsudan_gacha',
     title: `${game.name}｜35年・50年ローン完済を目指すリアル人生シミュレーション`,
     description: game.description,
-    images: [`${APP_URL}${game.image}`],
+    images: [
+      {
+        url: `${APP_URL}${game.image}`,
+        width: 1200,
+        height: 630,
+        alt: game.name,
+      },
+    ],
   },
 };
 

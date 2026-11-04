@@ -1170,4 +1170,15 @@ assert.equal(
   'Mortgage UI components must not use CSS truncate class that clips Japanese text'
 );
 
+// 10. Verify OGP / X (Twitter) Card Image is a raster PNG (X crawler rejects .svg in og:image / twitter:image)
+const seoDataContent = fs.readFileSync('src/lib/gameSeoData.ts', 'utf-8');
+assert.ok(
+  seoDataContent.includes("image: '/assets/mortgage_cover_v2.png'"),
+  'GAME_SEO_DATA.mortgage.image must use raster PNG (/assets/mortgage_cover_v2.png) for X card compatibility'
+);
+assert.ok(
+  fs.existsSync('public/assets/mortgage_cover_v2.png'),
+  'public/assets/mortgage_cover_v2.png must exist for X / OpenGraph card preview'
+);
+
 console.log('ALL MORTGAGE SIMULATION VERIFICATION TESTS PASSED!');

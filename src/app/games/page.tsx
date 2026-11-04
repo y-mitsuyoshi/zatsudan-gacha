@@ -118,7 +118,7 @@ const games = [
   {
     name: 'マイホーム完済記：35年・50年ローンの家計と暮らし',
     href: '/mortgage-life',
-    image: '/assets/mortgage_cover_v2.svg',
+    image: '/assets/mortgage_cover_v2.png',
     genre: '住宅ローン完済ドキュメンタリー',
     tagline: '35年・50年ローンを破産せず返せるか',
     description:
