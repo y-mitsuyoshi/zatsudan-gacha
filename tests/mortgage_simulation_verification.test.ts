@@ -18,18 +18,26 @@ import {
   executePrepayment,
   executePropertySpecificAction,
   executeRefinance,
+  executeRelocateProperty,
   executeSellProperty,
+  evaluateEnding,
   setFocusMode,
+  setPostRetirementWorkThisYear,
+  setSpouseWorkStyleThisYear,
   analyzeOutcomeFactors,
   calcAnnualHealthRiskProbabilities,
   calcDetailedChildAnnualEduCostMan,
+  calcDynamicFamilyComposition,
   calcEffectiveAnnualPropertyTaxMan,
+  executeMidTermRateHike,
   formatConsistentHouseholdTitle,
   getChildIndependenceAge,
   getDefaultRetirementAllowanceMan,
   CRAM_SCHOOL_SPECS,
   INSURANCE_PLAN_SPECS,
   LEISURE_STYLE_SPECS,
+  RELOCATION_PLAN_SPECS,
+  resolveEffectiveBank,
   resolveEffectiveHouseholdCareerAndEdu,
   resolveEffectiveProperty,
 } from '../src/lib/mortgage-logic';
@@ -457,6 +465,141 @@ assert.equal(
   'retirement-lump-sum-60',
   '1800万 retirement allowance at age 60 must trigger retirement-lump-sum-60',
 );
+assert.ok(
+  retireZeroArubaito.pendingDecision?.choices.some((c) => c.id === 'senior-no-work-full-retire'),
+  'no-retirement-60-survival must include an explicit choice not to work after retirement (senior-no-work-full-retire)',
+);
+assert.ok(
+  retireFullAllowance.pendingDecision?.choices.some((c) => c.id === 'retire-60-no-work-life'),
+  'retirement-lump-sum-60 must include an explicit choice not to work after retirement (retire-60-no-work-life)',
+);
+
+// Verify retire-65-pension-only (work until 64, then do not work at all from age 65) & age 65 retirement-65-work-or-not decision
+let retire65Game = createMortgageGame({
+  ...baseSetup,
+  age: 58,
+  termYears: 25,
+  retirementAllowanceMan: 1200,
+  postRetirementWork: 'retire-65-pension-only',
+});
+while (retire65Game.age < 65 && retire65Game.status === 'playing') {
+  retire65Game = advanceOneYear(retire65Game, () => 0.99);
+  if (retire65Game.pendingDecision && retire65Game.age < 65) {
+    retire65Game = resolveMortgageDecision(
+      retire65Game,
+      retire65Game.pendingDecision.choices[1]?.id ?? retire65Game.pendingDecision.choices[0].id,
+    );
+  }
+}
+assert.equal(
+  retire65Game.mainIncomeMan,
+  250,
+  'retire-65-pension-only must set mainIncomeMan to pension-only (250万 for listed-corp) at age 65 with zero silver work',
+);
+assert.equal(
+  retire65Game.pendingDecision?.id,
+  'retirement-65-work-or-not',
+  'Age 65 with remaining balance must trigger retirement-65-work-or-not decision',
+);
+assert.ok(
+  retire65Game.pendingDecision?.choices.some((c) => c.id === 'retire-65-no-work-pension'),
+  'retirement-65-work-or-not must include choice retire-65-no-work-pension (do not work after 65)',
+);
+
+// Verify Single -> Marriage & Marriage Relocation (single-marriage-crossroad) + Subsequent Childbirth
+let singleGame = createMortgageGame({
+  ...baseSetup,
+  archetypeId: 'single-solo-compact',
+  age: 31,
+  contractType: 'single',
+  familyPlan: 'dinks',
+  subIncomeMan: 0,
+  spouseWorkPattern: 'no-spouse',
+  propertyId: 'compact-mansion-new',
+});
+assert.equal(
+  resolveEffectiveHouseholdCareerAndEdu(singleGame.config).hasSpouse,
+  false,
+  'Single starter must begin with hasSpouse = false',
+);
+while (singleGame.yearIndex < 4 && singleGame.status === 'playing') {
+  singleGame = advanceOneYear(singleGame, () => 0.99);
+  if (singleGame.pendingDecision && singleGame.yearIndex < 4) {
+    singleGame = resolveMortgageDecision(singleGame, singleGame.pendingDecision.choices[0].id);
+  }
+}
+assert.equal(
+  singleGame.pendingDecision?.id,
+  'single-marriage-crossroad',
+  'Single household at year 4 must trigger single-marriage-crossroad',
+);
+assert.ok(
+  singleGame.pendingDecision?.choices.some((c) => c.id === 'single-marry-and-relocate'),
+  'single-marriage-crossroad must include marriage + relocation choice (single-marry-and-relocate)',
+);
+singleGame = resolveMortgageDecision(singleGame, 'single-marry-and-relocate');
+assert.equal(
+  resolveEffectiveHouseholdCareerAndEdu(singleGame.config).hasSpouse,
+  true,
+  'Choosing single-marry-and-relocate must transition single player to married household',
+);
+assert.equal(
+  singleGame.subIncomeMan,
+  280,
+  'Marriage + relocation must add spouse dual-income (280万)',
+);
+assert.equal(
+  singleGame.relocationCount,
+  1,
+  'Marriage + relocation must increment relocationCount to 1',
+);
+
+// Verify Anytime Home Relocation (executeRelocateProperty) for Any Household
+assert.equal(Object.keys(RELOCATION_PLAN_SPECS).length, 3, 'Must define 3 relocation plan specs');
+const familyBeforeReloc = createMortgageGame(baseSetup);
+const upgradedReloc = executeRelocateProperty(familyBeforeReloc, 'upgrade-wider');
+assert.ok(
+  upgradedReloc.propertyValueMan > familyBeforeReloc.propertyValueMan,
+  'upgrade-wider relocation must increase propertyValueMan',
+);
+assert.equal(upgradedReloc.relocationCount, 1, 'Relocation must increment relocationCount');
+
+const downsizedReloc = executeRelocateProperty(familyBeforeReloc, 'downsize-compact');
+assert.ok(
+  downsizedReloc.remainingBalanceMan < familyBeforeReloc.remainingBalanceMan - 700,
+  'downsize-compact relocation must significantly compress remaining mortgage balance',
+);
+
+// Verify Diverse Ending Patterns (20+ distinct ending IDs reachable in evaluateEnding)
+const endingSet = new Set<string>();
+endingSet.add(evaluateEnding(familyBeforeReloc, 'bankrupt').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, unpaidInterestMan: 80 }, 'bankrupt').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, appliedInterestRate: 2.6, currentRateType: 'variable' }, 'bankrupt').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, childrenAges: [17] }, 'bankrupt').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, age: 64 }, 'bankrupt').ending.id);
+endingSet.add(evaluateEnding(familyBeforeReloc, 'divorce-deadlock').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, liquidSavingsMan: 3500 }, 'sold').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, age: 63, liquidSavingsMan: 1400 }, 'sold').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, liquidSavingsMan: 1800 }, 'sold').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, liquidSavingsMan: 700 }, 'sold').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, liquidSavingsMan: 200 }, 'sold').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, liquidSavingsMan: 40 }, 'sold').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, danshinTriggered: true }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, age: 46, totalPrepaymentMan: 1200, liquidSavingsMan: 1500 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...singleGame, liquidSavingsMan: 1500 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...upgradedReloc, liquidSavingsMan: 1600 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, config: { ...baseSetup, postRetirementWork: 'full-retire-60' }, liquidSavingsMan: 2000 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, config: { ...baseSetup, propertyId: 'tower-mansion-new' }, propertyValueMan: 6500, liquidSavingsMan: 2200, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, config: { ...baseSetup, propertyId: 'detached-custom-new' }, propertyValueMan: 4500, buildingValueMan: 1200, liquidSavingsMan: 2000, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, config: { ...baseSetup, propertyId: 'station-mansion-new' }, propertyValueMan: 5500, liquidSavingsMan: 3500, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, childrenAges: [24, 21], liquidSavingsMan: 1700, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, config: { ...baseSetup, contractType: 'single', spouseWorkPattern: 'no-spouse' }, childrenAges: [], liquidSavingsMan: 1500, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, mentalScore: 92, liquidSavingsMan: 1200, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, age: 65, liquidSavingsMan: 1450, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, config: { ...baseSetup, postRetirementWork: 'full-retire-60' }, liquidSavingsMan: 600, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, age: 78, liquidSavingsMan: 400, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+endingSet.add(evaluateEnding({ ...familyBeforeReloc, age: 68, liquidSavingsMan: 300, remainingBalanceMan: 0 }, 'paid-off').ending.id);
+assert.equal(endingSet.size, 27, `All 27 distinct endings in evaluateEnding must be uniquely reachable (got ${endingSet.size})`);
 
 // Verify Spouse homemaker-to-part transition & Gakushi Hoken +200万 maturity at child age 18
 let gakushiSpouseGame = createMortgageGame({
@@ -748,8 +891,8 @@ for (let i = 0; i < 100; i++) {
     }
   }
 
-  const effCareerEdu = resolveEffectiveHouseholdCareerAndEdu(randomSetup);
-  // Single household must never get spouse/pair events
+  const effCareerEdu = resolveEffectiveHouseholdCareerAndEdu(state.config);
+  // Single household (that remained unmarried throughout life) must never get spouse/pair events
   if (effCareerEdu.spouseWorkPattern === 'no-spouse') {
     for (const spId of SPOUSE_ONLY_EVENT_IDS) {
       assert.equal(
@@ -812,7 +955,125 @@ assert.ok(
   `Major health/cancer event rate (${majorHealthTriggeredCount}%) must be statistically realistic (10-55%, never 100%!)`,
 );
 
-// 8. Verify Zero Emojis, Zero Personal Surnames, Zero Copycat Title, and Zero Truncation in Mortgage files
+// 8. Verify Mix Rate Ratio Selection, Dynamic Family Composition Expenses, Yearly Spouse Work Selector, and Yearly Post-60 Work/Retire Selector
+const mix20Bank = resolveEffectiveBank({
+  ...baseSetup,
+  bankId: 'neo-mix-bank',
+  customRateType: 'mix',
+  mixFixedRatioPercent: 20,
+});
+const mix80Bank = resolveEffectiveBank({
+  ...baseSetup,
+  bankId: 'neo-mix-bank',
+  customRateType: 'mix',
+  mixFixedRatioPercent: 80,
+});
+assert.ok(
+  mix20Bank.baseRate < mix80Bank.baseRate,
+  `20% Fixed / 80% Variable mix initial rate (${mix20Bank.baseRate}%) must be lower than 80% Fixed / 20% Variable (${mix80Bank.baseRate}%)`,
+);
+const mix20Game = executeMidTermRateHike(
+  createMortgageGame({
+    ...baseSetup,
+    bankId: 'neo-mix-bank',
+    customRateType: 'mix',
+    mixFixedRatioPercent: 20,
+  }),
+  1.0,
+);
+const mix80Game = executeMidTermRateHike(
+  createMortgageGame({
+    ...baseSetup,
+    bankId: 'neo-mix-bank',
+    customRateType: 'mix',
+    mixFixedRatioPercent: 80,
+  }),
+  1.0,
+);
+const mix20Jump = mix20Game.appliedInterestRate - mix20Bank.baseRate;
+const mix80Jump = mix80Game.appliedInterestRate - mix80Bank.baseRate;
+assert.ok(
+  mix20Jump > mix80Jump,
+  `20% Fixed / 80% Variable mix must experience a larger rate jump on BOJ hike (${mix20Jump.toFixed(2)}%) than 80% Fixed / 20% Variable (${mix80Jump.toFixed(2)}%)`,
+);
+
+// Dynamic family composition living cost test
+const singleFamGame = createMortgageGame({
+  ...baseSetup,
+  contractType: 'single',
+  spouseWorkPattern: 'no-spouse',
+  subIncomeMan: 0,
+  familyPlan: 'dinks',
+});
+const singleComp = calcDynamicFamilyComposition(singleFamGame);
+assert.equal(singleComp.totalHouseholdMembers, 1, 'Single household must have 1 member');
+const coupleFamGame = createMortgageGame({
+  ...baseSetup,
+  contractType: 'pair',
+  spouseWorkPattern: 'fulltime-keep',
+  subIncomeMan: 350,
+  familyPlan: 'dinks',
+});
+const coupleComp = calcDynamicFamilyComposition(coupleFamGame);
+assert.equal(coupleComp.totalHouseholdMembers, 2, 'Couple household must have 2 members');
+assert.ok(
+  coupleComp.annualBaseLivingCostMan > singleComp.annualBaseLivingCostMan,
+  'Couple living cost must exceed single living cost',
+);
+const teenFamGame = {
+  ...coupleFamGame,
+  childrenAges: [16, 13],
+};
+const teenComp = calcDynamicFamilyComposition(teenFamGame);
+assert.equal(teenComp.totalHouseholdMembers, 4, 'Couple + 2 teen children must have 4 members');
+assert.ok(
+  teenComp.annualBaseLivingCostMan > coupleComp.annualBaseLivingCostMan + 70,
+  'Teenage children must significantly increase household living expenses',
+);
+const emptyNestGame = {
+  ...coupleFamGame,
+  childrenAges: [24, 22],
+};
+const emptyNestComp = calcDynamicFamilyComposition(emptyNestGame);
+assert.equal(
+  emptyNestComp.totalHouseholdMembers,
+  2,
+  'Once children reach independenceAge (22+), cohabiting household members must return to 2',
+);
+assert.equal(
+  emptyNestComp.annualBaseLivingCostMan,
+  coupleComp.annualBaseLivingCostMan,
+  'Empty-nest household base living cost must drop back to couple level',
+);
+
+// Yearly spouse work selector test (homemaker -> fulltime return -> part-time -> homemaker)
+let spouseTestGame = createMortgageGame({
+  ...baseSetup,
+  contractType: 'single',
+  spouseWorkPattern: 'homemaker',
+  subIncomeMan: 0,
+});
+assert.equal(spouseTestGame.subIncomeMan, 0, 'Initial homemaker subIncomeMan must be 0');
+spouseTestGame = setSpouseWorkStyleThisYear(spouseTestGame, 'fulltime');
+assert.ok(spouseTestGame.subIncomeMan >= 240, 'Returning to fulltime work must set spouse income >= 240万');
+spouseTestGame = setSpouseWorkStyleThisYear(spouseTestGame, 'part-time');
+assert.equal(spouseTestGame.subIncomeMan, 115, 'Switching to part-time work must set spouse income to 115万');
+spouseTestGame = setSpouseWorkStyleThisYear(spouseTestGame, 'homemaker');
+assert.equal(spouseTestGame.subIncomeMan, 0, 'Choosing not to work this year must set spouse income to 0');
+
+// Yearly post-60 work style & "when to retire" selector test
+let seniorWorkGame = {
+  ...createMortgageGame(baseSetup),
+  age: 61,
+};
+seniorWorkGame = setPostRetirementWorkThisYear(seniorWorkGame, 'reemploy-light-job');
+assert.equal(seniorWorkGame.mainIncomeMan, 250, 'Choosing light job at 61 must set main income to 250万');
+seniorWorkGame = setPostRetirementWorkThisYear(seniorWorkGame, 'part-time-arubaito');
+assert.equal(seniorWorkGame.mainIncomeMan, 140, 'Choosing arubaito at 61 must set main income to 140万');
+seniorWorkGame = setPostRetirementWorkThisYear(seniorWorkGame, 'retire-now');
+assert.equal(seniorWorkGame.mainIncomeMan, 0, 'Choosing to stop working and retire at 61 must set main income to 0');
+
+// 9. Verify Zero Emojis, Zero Personal Surnames, Zero Copycat Title, and Zero Truncation in Mortgage files
 const filesToCheck = [
   'src/types/mortgage.ts',
   'src/lib/mortgage-logic.ts',

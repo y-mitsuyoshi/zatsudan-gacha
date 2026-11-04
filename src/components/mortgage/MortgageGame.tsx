@@ -22,11 +22,13 @@ import {
   advanceOneYear,
   analyzeOutcomeFactors,
   calcAnnualHealthRiskProbabilities,
+  calcDynamicFamilyComposition,
   createMortgageGame,
   executeMidTermRateHike,
   executePrepayment,
   executePropertySpecificAction,
   executeRefinance,
+  executeRelocateProperty,
   executeSellProperty,
   formatConsistentHouseholdTitle,
   formatSetupProfileSummary,
@@ -43,6 +45,8 @@ import {
   resolveMortgageDecision,
   runBankUnderwriting,
   setFocusMode,
+  setPostRetirementWorkThisYear,
+  setSpouseWorkStyleThisYear,
 } from '@/lib/mortgage-logic';
 import {
   BankId,
@@ -1167,223 +1171,120 @@ export function MortgageGame() {
                           </div>
                         </div>
 
-                        {/* 定年後の働き方・職種 */}
-                        <div>
+                        {/* 購入時点の配偶者（奥さん・パートナー）の働き方（※途中の職場復帰・パート転換や毎年の就労選択はプレイ中に自由変更可） */}
+                        <div className="sm:col-span-2">
                           <span className="block text-xs font-semibold">
-                            60歳定年後の働き方・職種（再雇用 / 別職種 / バイト / 引退）
+                            購入時点の配偶者（奥さん・パートナー）の就労状況（※職場復帰・パート転換・毎年働くかどうかは途中で選択可）
                           </span>
-                          <select
-                            value={effectiveCareerAndEdu.postRetirementWork}
-                            onChange={(e) => {
-                              setSpawnMode('custom');
-                              setSetupConfig((p) => ({
-                                ...p,
-                                postRetirementWork: e.target.value as PostRetirementWorkType,
-                              }));
-                            }}
-                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#1A2428]"
-                          >
-                            {Object.values(POST_RETIREMENT_SPECS).map((pr) => (
-                              <option key={pr.id} value={pr.id}>
-                                {pr.label}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                            {POST_RETIREMENT_SPECS[effectiveCareerAndEdu.postRetirementWork].description}
-                          </p>
-                        </div>
-
-                        {/* 配偶者（奥さん・パートナー）の働き方・バイト */}
-                        <div>
-                          <span className="block text-xs font-semibold">
-                            配偶者（奥さん・パートナー）の働き方・パート/バイト転換
-                          </span>
-                          <select
-                            value={effectiveCareerAndEdu.spouseWorkPattern}
-                            onChange={(e) => {
-                              setSpawnMode('custom');
-                              const nextSw = e.target.value as SpouseWorkPatternType;
-                              setSetupConfig((p) => {
-                                let nextSub = p.subIncomeMan;
-                                if (nextSw === 'no-spouse' || nextSw === 'homemaker' || nextSw === 'homemaker-to-part') {
-                                  nextSub = 0;
-                                } else if (nextSw === 'part-time' && nextSub > 180) {
-                                  nextSub = 115;
-                                } else if ((nextSw === 'fulltime-keep' || nextSw === 'shift-to-part') && nextSub < 200) {
-                                  nextSub = 360;
-                                }
-                                return {
-                                  ...p,
-                                  spouseWorkPattern: nextSw,
-                                  subIncomeMan: nextSub,
-                                  contractType: nextSub === 0 ? 'single' : p.contractType,
-                                };
-                              });
-                            }}
-                            className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F0F4F2] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#1A2428]"
-                          >
-                            {Object.values(SPOUSE_WORK_SPECS).map((sw) => (
-                              <option key={sw.id} value={sw.id}>
-                                {sw.label}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                            {SPOUSE_WORK_SPECS[effectiveCareerAndEdu.spouseWorkPattern].description}
+                          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                            {(
+                              [
+                                {
+                                  id: 'fulltime-keep' as SpouseWorkPatternType,
+                                  label: '正社員・フルタイム共働き',
+                                  sub: '購入時：正社員勤務',
+                                },
+                                {
+                                  id: 'part-time' as SpouseWorkPatternType,
+                                  label: 'パート・アルバイト勤務',
+                                  sub: '購入時：パート勤務',
+                                },
+                                {
+                                  id: 'homemaker' as SpouseWorkPatternType,
+                                  label: '専業主婦（夫）（0円）',
+                                  sub: '途中で職場復帰・パート可',
+                                },
+                                {
+                                  id: 'no-spouse' as SpouseWorkPatternType,
+                                  label: '独身（配偶者なし）',
+                                  sub: '途中で結婚イベントあり',
+                                },
+                              ] as const
+                            ).map((sw) => {
+                              const currentNorm =
+                                effectiveCareerAndEdu.spouseWorkPattern === 'shift-to-part'
+                                  ? 'fulltime-keep'
+                                  : effectiveCareerAndEdu.spouseWorkPattern === 'homemaker-to-part'
+                                    ? 'homemaker'
+                                    : effectiveCareerAndEdu.spouseWorkPattern;
+                              const isAct = currentNorm === sw.id;
+                              return (
+                                <button
+                                  key={sw.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSpawnMode('custom');
+                                    setSetupConfig((p) => {
+                                      let nextSub = p.subIncomeMan;
+                                      if (sw.id === 'no-spouse' || sw.id === 'homemaker') {
+                                        nextSub = 0;
+                                      } else if (sw.id === 'part-time' && (nextSub > 180 || nextSub === 0)) {
+                                        nextSub = 115;
+                                      } else if (sw.id === 'fulltime-keep' && nextSub < 200) {
+                                        nextSub = 360;
+                                      }
+                                      return {
+                                        ...p,
+                                        spouseWorkPattern: sw.id,
+                                        subIncomeMan: nextSub,
+                                        contractType: nextSub === 0 ? 'single' : p.contractType,
+                                      };
+                                    });
+                                  }}
+                                  className={`rounded-[4px] border p-2 text-left text-xs transition ${
+                                    isAct
+                                      ? 'border-[#0F6E68] bg-[#DCEDEA] font-bold text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                                      : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                                  }`}
+                                >
+                                  <div>{sw.label}</div>
+                                  <div className="mt-0.5 text-[10px] opacity-80">{sw.sub}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-1.5 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
+                            ※ 初めから将来の働き方を固定する必要はありません。専業主婦（夫）からの職場復帰・パート開始や、正社員からパートへの転換、60歳定年後の働き方（再雇用 / 別職種 / バイト / 引退・いつまで働くか）は、返済途中の選択肢および毎年の画面で自由に選べます。
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* 子どもの教育費・進路詳細（子どもがいるプランのときのみ表示） */}
+                    {/* 子どもの購入時設定（学資保険の有無のみ。将来の受験・進学・塾・奨学金は成長時のイベントで選択！） */}
                     {FAMILY_PLANS[setupConfig.familyPlan].childrenCount > 0 && (
                       <div className="mt-4 rounded-[4px] border border-[#0F6E68]/50 bg-[#DCEDEA]/35 p-3.5 dark:border-[#4CC0AF]/40 dark:bg-[#12302D]/35">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#0F6E68]/25 pb-2">
                           <span className="text-xs font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
-                            子どもの教育費・進路設計（中学受験 / 国公立・私立大・専門・高卒 / 学資保険 / 奨学金）
+                            子どもの出生時・購入時設定（学資保険の加入有無）
                           </span>
                           <span className="font-mono text-[11px] text-[#4A5A61] dark:text-[#A3B2AF]">
-                            子ども {FAMILY_PLANS[setupConfig.familyPlan].childrenCount}人 · 独立年齢{' '}
-                            {getChildIndependenceAge(effectiveCareerAndEdu.higherEdPath)}歳
+                            購入時の子ども {FAMILY_PLANS[setupConfig.familyPlan].childrenCount}人
                           </span>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {/* 中学受験 */}
-                          <div>
-                            <span className="block text-xs font-semibold">
-                              中学進路（公立中学 vs 中学受験・私立中高一貫）
-                            </span>
-                            <select
-                              value={effectiveCareerAndEdu.juniorHighPath}
-                              onChange={(e) => {
-                                setSpawnMode('custom');
-                                setSetupConfig((p) => ({
-                                  ...p,
-                                  juniorHighPath: e.target.value as JuniorHighPathType,
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
-                            >
-                              {Object.values(JUNIOR_HIGH_SPECS).map((jh) => (
-                                <option key={jh.id} value={jh.id}>
-                                  {jh.label}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                              {JUNIOR_HIGH_SPECS[effectiveCareerAndEdu.juniorHighPath].description}
-                            </p>
-                          </div>
-
-                          {/* 高校卒業後の進路 */}
-                          <div>
-                            <span className="block text-xs font-semibold">
-                              高校卒業後の進路（国公立大 / 私立文系 / 私立理系 / 専門学校 / 高卒就職）
-                            </span>
-                            <select
-                              value={effectiveCareerAndEdu.higherEdPath}
-                              onChange={(e) => {
-                                setSpawnMode('custom');
-                                setSetupConfig((p) => ({
-                                  ...p,
-                                  higherEdPath: e.target.value as HigherEdPathType,
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
-                            >
-                              {Object.values(HIGHER_ED_SPECS).map((he) => (
-                                <option key={he.id} value={he.id}>
-                                  {he.label}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                              {HIGHER_ED_SPECS[effectiveCareerAndEdu.higherEdPath].description}
-                            </p>
-                          </div>
-
-                          {/* 学資保険 */}
-                          <div>
-                            <span className="block text-xs font-semibold">
-                              学資保険の加入有無（18歳満期・1人あたり200万円受取）
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSpawnMode('custom');
-                                setSetupConfig((p) => ({
-                                  ...p,
-                                  hasGakushiHoken: !effectiveCareerAndEdu.hasGakushiHoken,
-                                }));
-                              }}
-                              className={`mt-1 w-full rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
-                                effectiveCareerAndEdu.hasGakushiHoken
-                                  ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
-                                  : 'border-[#C7D2CE] bg-[#F7FAF8] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#141D21] dark:text-[#A3B2AF]'
-                              }`}
-                            >
-                              {effectiveCareerAndEdu.hasGakushiHoken
-                                ? '学資保険 あり（0〜17歳まで年11万積立 → 18歳時に満期200万円受取）'
-                                : '学資保険 なし（手元貯蓄・毎年の家計から教育費を捻出）'}
-                            </button>
-                          </div>
-
-                          {/* 奨学金 */}
-                          <div>
-                            <span className="block text-xs font-semibold">
-                              大学・専門進学時の奨学金・アルバイト方針
-                            </span>
-                            <select
-                              value={effectiveCareerAndEdu.scholarshipType}
-                              disabled={effectiveCareerAndEdu.higherEdPath === 'high-school-job'}
-                              onChange={(e) => {
-                                setSpawnMode('custom');
-                                setSetupConfig((p) => ({
-                                  ...p,
-                                  scholarshipType: e.target.value as ScholarshipType,
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs disabled:opacity-50 dark:border-[#2A383D] dark:bg-[#141D21]"
-                            >
-                              {Object.values(SCHOLARSHIP_SPECS).map((sc) => (
-                                <option key={sc.id} value={sc.id}>
-                                  {sc.label}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                              {SCHOLARSHIP_SPECS[effectiveCareerAndEdu.scholarshipType].description}
-                            </p>
-                          </div>
-
-                          {/* 入塾・夏期講習・大学受験予備校方針 */}
-                          <div className="sm:col-span-2">
-                            <span className="block text-xs font-semibold">
-                              子どもの入塾・夏期講習・大学受験予備校方針
-                            </span>
-                            <select
-                              value={effectiveCareerAndEdu.cramSchoolPolicy}
-                              onChange={(e) => {
-                                setSpawnMode('custom');
-                                setSetupConfig((p) => ({
-                                  ...p,
-                                  cramSchoolPolicy: e.target.value as CramSchoolPolicyType,
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-[4px] border border-[#C7D2CE] bg-[#F7FAF8] px-2.5 py-2 text-xs dark:border-[#2A383D] dark:bg-[#141D21]"
-                            >
-                              {Object.values(CRAM_SCHOOL_SPECS).map((cr) => (
-                                <option key={cr.id} value={cr.id}>
-                                  {cr.label}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="mt-1 text-[11px] text-[#5F6E72] dark:text-[#8A9A96]">
-                              {CRAM_SCHOOL_SPECS[effectiveCareerAndEdu.cramSchoolPolicy].description}
-                            </p>
-                          </div>
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSpawnMode('custom');
+                              setSetupConfig((p) => ({
+                                ...p,
+                                hasGakushiHoken: !effectiveCareerAndEdu.hasGakushiHoken,
+                              }));
+                            }}
+                            className={`w-full rounded-[4px] border px-3 py-2 text-left text-xs font-semibold transition ${
+                              effectiveCareerAndEdu.hasGakushiHoken
+                                ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                                : 'border-[#C7D2CE] bg-[#F7FAF8] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#141D21] dark:text-[#A3B2AF]'
+                            }`}
+                          >
+                            {effectiveCareerAndEdu.hasGakushiHoken
+                              ? '学資保険 あり（0〜17歳まで年11万積立 → 18歳進学時に満期金200万円受取）'
+                              : '学資保険 なし（手元貯蓄・毎年の家計から教育費を捻出）'}
+                          </button>
+                          <p className="mt-1.5 text-[11px] text-[#5F6E68] dark:text-[#8A9A96]">
+                            ※ 子どもの入塾（7歳・13歳）、中学受験か公立中か（10歳）、大学・専門・高卒就職の進路（16歳）、予備校や奨学金の利用（17歳）は、初めから決めずに子どもの成長に合わせた途中の選択肢でその都度選べます。また子どもの成長・独立に伴い毎年の家族構成と生活費も動的に変化します。
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1925,10 +1826,19 @@ export function MortgageGame() {
                             onChange={(e) => {
                               setSpawnMode('custom');
                               const rt = e.target.value as RateType;
-                              setSetupConfig((p) => ({
-                                ...p,
-                                customRateType: rt,
-                              }));
+                              setSetupConfig((p) => {
+                                const ratio = p.mixFixedRatioPercent ?? 50;
+                                const nextBase =
+                                  rt === 'mix'
+                                    ? Math.round(((2.18 * ratio + 0.82 * (100 - ratio)) / 100) * 100) / 100
+                                    : p.customBaseRate;
+                                return {
+                                  ...p,
+                                  customRateType: rt,
+                                  mixFixedRatioPercent: rt === 'mix' ? ratio : p.mixFixedRatioPercent,
+                                  customBaseRate: nextBase,
+                                };
+                              });
                             }}
                             className="mt-1 w-full rounded border border-[#C7D2CE] bg-[#EBF0ED] px-2.5 py-2 text-xs font-semibold dark:border-[#2A383D] dark:bg-[#1A2428]"
                           >
@@ -1938,6 +1848,66 @@ export function MortgageGame() {
                               </option>
                             ))}
                           </select>
+                          {selectedBank.rateType === 'mix' && (
+                            <div className="mt-2 rounded border border-[#0F6E68]/50 bg-[#DCEDEA]/40 p-2.5 dark:border-[#4CC0AF]/40 dark:bg-[#12302D]/40">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                                <span>ミックス金利の「固定：変動」割合選択</span>
+                                <span className="font-mono">
+                                  固定 {setupConfig.mixFixedRatioPercent ?? 50}% ： 変動{' '}
+                                  {100 - (setupConfig.mixFixedRatioPercent ?? 50)}%
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={10}
+                                max={90}
+                                step={10}
+                                value={setupConfig.mixFixedRatioPercent ?? 50}
+                                onChange={(e) => {
+                                  const ratio = Number(e.target.value);
+                                  const calcMixBase =
+                                    Math.round(((2.18 * ratio + 0.82 * (100 - ratio)) / 100) * 100) / 100;
+                                  setSpawnMode('custom');
+                                  setSetupConfig((p) => ({
+                                    ...p,
+                                    customRateType: 'mix',
+                                    mixFixedRatioPercent: ratio,
+                                    customBaseRate: calcMixBase,
+                                  }));
+                                }}
+                                className="mt-1.5 w-full accent-[#0F6E68]"
+                              />
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {[20, 30, 50, 70, 80].map((pct) => {
+                                  const activeRatio = (setupConfig.mixFixedRatioPercent ?? 50) === pct;
+                                  return (
+                                    <button
+                                      key={pct}
+                                      type="button"
+                                      onClick={() => {
+                                        const calcMixBase =
+                                          Math.round(((2.18 * pct + 0.82 * (100 - pct)) / 100) * 100) / 100;
+                                        setSpawnMode('custom');
+                                        setSetupConfig((p) => ({
+                                          ...p,
+                                          customRateType: 'mix',
+                                          mixFixedRatioPercent: pct,
+                                          customBaseRate: calcMixBase,
+                                        }));
+                                      }}
+                                      className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold transition ${
+                                        activeRatio
+                                          ? 'border-[#0F6E68] bg-[#0F6E68] text-white'
+                                          : 'border-[#C7D2CE] bg-[#F7FAF8] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#141D21] dark:text-[#A3B2AF]'
+                                      }`}
+                                    >
+                                      固定{pct}%:変動{100 - pct}%
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                           {selectedBank.rateType !== 'flat-35' && (
                             <button
                               type="button"
@@ -3182,8 +3152,21 @@ export function MortgageGame() {
               const careerEdu = resolveEffectiveHouseholdCareerAndEdu(gameState.config);
               const indepAge = getChildIndependenceAge(careerEdu.higherEdPath);
               const healthProbs = calcAnnualHealthRiskProbabilities(gameState.age);
+              const dynamicFam = calcDynamicFamilyComposition(gameState);
               return (
                 <>
+                  <div className="mt-2.5 rounded border border-[#0F6E68]/40 bg-[#DCEDEA]/50 px-2.5 py-2 text-xs dark:border-[#4CC0AF]/40 dark:bg-[#12302D]/50">
+                    <div className="flex items-center justify-between font-bold text-[#0F6E68] dark:text-[#4CC0AF]">
+                      <span>現在の家族構成（年とともに変化）</span>
+                      <span className="font-mono">{dynamicFam.totalHouseholdMembers}人同居</span>
+                    </div>
+                    <div className="mt-0.5 font-semibold text-[#13212A] dark:text-[#E1E9E6]">
+                      {dynamicFam.compositionLabel}
+                    </div>
+                    <div className="mt-0.5 font-mono text-[10px] text-[#4A5A61] dark:text-[#A3B2AF]">
+                      家族構成に応じた今年の基礎生活費：年{dynamicFam.annualBaseLivingCostMan}万円（結婚・出産・子の成長・独立で変動）
+                    </div>
+                  </div>
                   <ul className="mt-2.5 space-y-2 text-xs">
                     <li className="rounded bg-[#F0F4F2] p-2 dark:bg-[#1A2428]">
                       <div className="flex justify-between">
@@ -3350,6 +3333,183 @@ export function MortgageGame() {
                 {FOCUS_MODES[currentFocus].effectHint}
               </p>
 
+              {/* 配偶者（奥さん・パートナー）が今年働くかどうかの毎年選択（配偶者あり・65歳未満の世帯で毎年いつでも選択可能） */}
+              {resolveEffectiveHouseholdCareerAndEdu(gameState.config).hasSpouse &&
+                !gameState.isDivorced &&
+                gameState.age < 65 && (
+                  <div className="mt-3.5 border-t border-[#DCE4E1] pt-3 dark:border-[#1D282C]">
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                      <span className="text-xs font-bold">
+                        配偶者（奥さん・パートナー）の今年の働き方（毎年選択可能）
+                      </span>
+                      <span className="font-mono text-[10px] text-[#0F6E68] dark:text-[#4CC0AF]">
+                        現在：{gameState.currentSpouseJobLabel}（年収{gameState.subIncomeMan}万円）
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.playSe('click');
+                          triggerVisualBadge('配偶者：正社員・職場復帰へ変更');
+                          setGameState((prev) =>
+                            prev ? setSpouseWorkStyleThisYear(prev, 'fulltime') : prev,
+                          );
+                        }}
+                        className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                          gameState.subIncomeMan >= 180
+                            ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                            : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                        }`}
+                      >
+                        <div>正社員・フルタイム（職場復帰）</div>
+                        <small className="block text-[10px] opacity-80">
+                          専業・パートからの正社員復帰も可
+                        </small>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.playSe('click');
+                          triggerVisualBadge('配偶者：パート・アルバイト勤務へ変更');
+                          setGameState((prev) =>
+                            prev ? setSpouseWorkStyleThisYear(prev, 'part-time') : prev,
+                          );
+                        }}
+                        className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                          gameState.subIncomeMan > 0 && gameState.subIncomeMan < 180
+                            ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                            : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                        }`}
+                      >
+                        <div>パート・アルバイト勤務（年115万）</div>
+                        <small className="block text-[10px] opacity-80">
+                          正社員からパート転換・専業から開始
+                        </small>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.playSe('click');
+                          triggerVisualBadge('配偶者：今年は働かない（専業主婦・夫）');
+                          setGameState((prev) =>
+                            prev ? setSpouseWorkStyleThisYear(prev, 'homemaker') : prev,
+                          );
+                        }}
+                        className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                          gameState.subIncomeMan === 0
+                            ? 'border-[#8C1D3C] bg-[#F3E3E8]/70 text-[#8C1D3C] dark:border-[#E2678A] dark:bg-[#3A1C26]/50 dark:text-[#E2678A]'
+                            : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                        }`}
+                      >
+                        <div>今年は働かない（専業・年収0円）</div>
+                        <small className="block text-[10px] opacity-80">
+                          家庭・育児・健康に専念する
+                        </small>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              {/* 60歳定年後の今年の働き方・職種・「いつまで働くか」の毎年選択（60歳以降、毎年いつでも選択可能） */}
+              {gameState.age >= 60 && (
+                <div className="mt-3.5 border-t border-[#DCE4E1] pt-3 dark:border-[#1D282C]">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-[#8C1D3C] dark:text-[#E2678A]">
+                      60歳以降の今年の働き方・いつまで働くか（毎年選択・いつでも引退可）
+                    </span>
+                    <span className="font-mono text-[10px] text-[#4A5A61] dark:text-[#A3B2AF]">
+                      現在：{gameState.currentJobLabel}（年収{gameState.mainIncomeMan}万円）
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audioManager.playSe('click');
+                        triggerVisualBadge('60歳以降：嘱託再雇用・現職継続');
+                        setGameState((prev) =>
+                          prev ? setPostRetirementWorkThisYear(prev, 'reemploy-same') : prev,
+                        );
+                      }}
+                      className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                        gameState.config.postRetirementWork === 'reemploy-same'
+                          ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                          : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                      }`}
+                    >
+                      <div>今年も嘱託再雇用・現職で働く</div>
+                      <small className="block text-[10px] opacity-80">
+                        これまでのキャリアを活かしてしっかり稼ぐ
+                      </small>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audioManager.playSe('click');
+                        triggerVisualBadge('60歳以降：別職種（管理・事務・実務職）');
+                        setGameState((prev) =>
+                          prev ? setPostRetirementWorkThisYear(prev, 'reemploy-light-job') : prev,
+                        );
+                      }}
+                      className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                        gameState.config.postRetirementWork === 'reemploy-light-job'
+                          ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                          : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                      }`}
+                    >
+                      <div>今年は別職種（管理・事務等）で働く</div>
+                      <small className="block text-[10px] opacity-80">
+                        責任の軽いシニア実務職へシフト
+                      </small>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audioManager.playSe('click');
+                        triggerVisualBadge('60歳以降：週3〜4日アルバイト勤務');
+                        setGameState((prev) =>
+                          prev ? setPostRetirementWorkThisYear(prev, 'part-time-arubaito') : prev,
+                        );
+                      }}
+                      className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                        gameState.config.postRetirementWork === 'part-time-arubaito'
+                          ? 'border-[#0F6E68] bg-[#DCEDEA] text-[#0F6E68] dark:border-[#4CC0AF] dark:bg-[#12302D] dark:text-[#4CC0AF]'
+                          : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                      }`}
+                    >
+                      <div>今年は週3〜4日アルバイトで働く</div>
+                      <small className="block text-[10px] opacity-80">
+                        体力を守りながら短時間バイトで収入確保
+                      </small>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audioManager.playSe('stamp');
+                        triggerVisualBadge(`${gameState.age}歳で仕事を辞めて完全引退！`);
+                        setGameState((prev) =>
+                          prev ? setPostRetirementWorkThisYear(prev, 'retire-now') : prev,
+                        );
+                      }}
+                      className={`rounded-[4px] border px-2.5 py-2 text-left text-xs font-semibold transition ${
+                        gameState.config.postRetirementWork === 'full-retire-60' ||
+                        gameState.config.postRetirementWork === 'retire-65-pension-only'
+                          ? 'border-[#8C1D3C] bg-[#F3E3E8] text-[#8C1D3C] dark:border-[#E2678A] dark:bg-[#3A1C26] dark:text-[#E2678A]'
+                          : 'border-[#C7D2CE] bg-[#F0F4F2] text-[#4A5A61] dark:border-[#2A383D] dark:bg-[#1A2428] dark:text-[#A3B2AF]'
+                      }`}
+                    >
+                      <div>今年で仕事を辞めて完全引退（働かない）</div>
+                      <small className="block text-[10px] opacity-80">
+                        {gameState.age >= 65
+                          ? '今年からアルバイトも辞めて公的年金のみで暮らす'
+                          : '今年から無職・完全リタイアして貯蓄で暮らす'}
+                      </small>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* マンション・タワマン vs 一戸建て で異なる物件固有の選択アクション */}
               <div className="mt-3.5 border-t border-[#DCE4E1] pt-3 dark:border-[#1D282C]">
                 <div className="mb-1.5 flex items-center justify-between">
@@ -3475,9 +3635,18 @@ export function MortgageGame() {
                 )}
               </div>
 
-              {/* いつでも実行できる繰上返済・借換・売却ボタン */}
+              {/* いつでも実行できる繰上返済・借換・住み替え・売却ボタン */}
               <div className="mt-3.5 border-t border-[#DCE4E1] pt-3 dark:border-[#1D282C]">
-                <div className="mb-2 text-xs font-bold">お金を使う · 住宅ローン防衛手続き</div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-bold">
+                    お金を使う · 住宅ローン防衛＆マイホーム住み替え手続き
+                  </span>
+                  {gameState.currentHomeLabel && (
+                    <span className="rounded bg-[#DCEDEA] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#0F6E68] dark:bg-[#12302D] dark:text-[#4CC0AF]">
+                      現在：{gameState.currentHomeLabel}
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <button
                     type="button"
@@ -3511,6 +3680,46 @@ export function MortgageGame() {
                   </button>
                   <button
                     type="button"
+                    disabled={(gameState.relocationCount ?? 0) >= 2 || gameState.remainingBalanceMan <= 0}
+                    onClick={() => {
+                      audioManager.playSe('stamp');
+                      triggerVisualBadge('ステップアップ住み替え：広い新居へ買い替え');
+                      setGameState((prev) =>
+                        prev ? executeRelocateProperty(prev, 'upgrade-wider') : prev,
+                      );
+                    }}
+                    className="rounded-[4px] border border-[#0F6E68]/80 bg-[#F0F4F2] px-2.5 py-2 text-left text-xs font-semibold transition hover:border-[#0F6E68] disabled:opacity-40 dark:border-[#4CC0AF]/60 dark:bg-[#1A2428]"
+                  >
+                    <div>
+                      広い新居へステップアップ住み替え
+                      {(gameState.relocationCount ?? 0) >= 2 ? '（上限）' : ''}
+                    </div>
+                    <small className="block text-[10px] text-[#5F6E72] dark:text-[#8A9A96]">
+                      現居を売却し上位物件へ買い替え（物件価値+1,150万・幸福度+12）
+                    </small>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={(gameState.relocationCount ?? 0) >= 2 || gameState.remainingBalanceMan <= 0}
+                    onClick={() => {
+                      audioManager.playSe('stamp');
+                      triggerVisualBadge('コンパクト住み替え：売却差益で残債大幅圧縮！');
+                      setGameState((prev) =>
+                        prev ? executeRelocateProperty(prev, 'downsize-compact') : prev,
+                      );
+                    }}
+                    className="rounded-[4px] border border-[#0F6E68]/80 bg-[#F0F4F2] px-2.5 py-2 text-left text-xs font-semibold transition hover:border-[#0F6E68] disabled:opacity-40 dark:border-[#4CC0AF]/60 dark:bg-[#1A2428]"
+                  >
+                    <div>
+                      コンパクト住み替え（残債＆維持費圧縮）
+                      {(gameState.relocationCount ?? 0) >= 2 ? '（上限）' : ''}
+                    </div>
+                    <small className="block text-[10px] text-[#5F6E72] dark:text-[#8A9A96]">
+                      現居売却→手頃な新居へ買い替え、差益で残債を約900万円削減！
+                    </small>
+                  </button>
+                  <button
+                    type="button"
                     disabled={
                       gameState.currentRateType === 'flat-35' ||
                       gameState.liquidSavingsMan < 180 ||
@@ -3534,7 +3743,7 @@ export function MortgageGame() {
                     }}
                     className="rounded-[4px] border border-[#8C1D3C]/60 bg-[#F3E3E8]/40 px-2.5 py-2 text-left text-xs font-semibold text-[#8C1D3C] transition hover:bg-[#F3E3E8] dark:border-[#E2678A]/60 dark:bg-[#3A1C26]/40 dark:text-[#E2678A]"
                   >
-                    <div>自宅を時価（{gameState.propertyValueMan}万）で売却精算</div>
+                    <div>自宅を時価（{gameState.propertyValueMan}万）で売却して終了</div>
                     <small className="block text-[10px] opacity-80">ローンを一括精算し賃貸へ移る</small>
                   </button>
                   <button

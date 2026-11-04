@@ -39,9 +39,10 @@ export type SalaryCurveType =
 
 export type PostRetirementWorkType =
   | 'reemploy-same' // 60歳定年後も嘱託再雇用・現職継続（現役時の約6割収入）
-  | 'reemploy-light-job' // 60歳定年後は別職種へ転身（管理員・事務・軽作業等・年収260万）
-  | 'part-time-arubaito' // 60歳定年後はアルバイト・パート勤務（週3〜4日・年収130万）
-  | 'full-retire-60'; // 60歳で完全リタイア・定年後は働かない（65歳年金まで勤労収入0円）
+  | 'reemploy-light-job' // 60歳定年後は別職種へ転身（管理員・事務・軽作業等・年収250万）
+  | 'part-time-arubaito' // 60歳定年後はアルバイト・パート勤務（週3〜4日・年収140万）
+  | 'retire-65-pension-only' // 60〜64歳は再雇用で働くが、65歳定年後は一切働かない（完全引退・年金と貯蓄のみ）
+  | 'full-retire-60'; // 60歳定年後は一切働かない・完全リタイア（60歳以降無職・勤労収入0円）
 
 export type SpouseWorkPatternType =
   | 'fulltime-keep' // 正社員フルタイム継続（定年後も再雇用/パート継続）
@@ -81,6 +82,11 @@ export type LeisureStyleType =
   | 'active-travel' // 旅行・レジャー積極派（毎年の家族旅行・温泉・テーマパーク・趣味を満喫）
   | 'moderate-leisure' // 標準バランス派（年1回の国内旅行・週末の外食・レジャー）
   | 'frugal-staycation'; // 節約・近場派（旅行や外食を控え、近場レジャー・おうち娯楽で貯蓄優先）
+
+export type RelocationPlanType =
+  | 'upgrade-wider' // 手狭解消・広いファミリー向け／上位グレード物件へステップアップ住み替え
+  | 'downsize-compact' // 残債＆維持費圧縮・駅近コンパクト／手頃な住まいへダウンサイジング住み替え
+  | 'suburban-shift'; // 資産組み替え・郊外／準都心のゆとり戸建て・マンションへ住み替え
 
 export interface HouseholdArchetype {
   id: string;
@@ -174,6 +180,7 @@ export interface MortgageSetupConfig {
   customRateType?: RateType;
   customBaseRate?: number;
   customHas5Year125Rule?: boolean;
+  mixFixedRatioPercent?: number; // ミックスローン時の固定金利割合 (10%〜90%, デフォルト50%)
   termYears: LoanTermYears;
   repaymentMethod: RepaymentMethod;
   bonusRepaymentRatio: number; // 0 (ボーナス払いなし) 〜 0.4 (40%ボーナス併用)
@@ -286,8 +293,12 @@ export interface DecisionChoice {
   newInsurancePlan?: FireEarthquakeInsuranceType;
   newCramSchoolPolicy?: CramSchoolPolicyType;
   newLeisureStyle?: LeisureStyleType;
+  newPostRetirementWork?: PostRetirementWorkType;
+  newSpouseWorkPattern?: SpouseWorkPatternType;
   addNewbornChild?: boolean;
   newHasGakushiHoken?: boolean;
+  marrySpouse?: 'dual-income' | 'part-time';
+  relocatePlan?: RelocationPlanType;
 }
 
 export interface MortgageDecisionEvent {
@@ -373,6 +384,8 @@ export interface MortgageGameState {
   subIncomeMan: number;
   currentJobLabel?: string;
   currentSpouseJobLabel?: string;
+  currentHomeLabel?: string;
+  relocationCount?: number;
   currentMgmtAndRepairMonthlyMan: number;
   annualPropertyTaxCurrentMan?: number;
   cumulativePriceIndex?: number; // 契約時=100.0 とした累積物価指数（生活コスト上昇反映）

@@ -26,6 +26,7 @@ import {
   PropertyCategory,
   PropertySpec,
   RateType,
+  RelocationPlanType,
   RepaymentMethod,
   SalaryCurveType,
   ScholarshipType,
@@ -95,12 +96,21 @@ export const POST_RETIREMENT_SPECS: Record<
     jobTitle: 'シニアアルバイト・パート勤務',
     description: '定年後はフルタイムを退き、健康維持を兼ねて週3〜4日のアルバイト・パート（年約140万円）で働く。',
   },
+  'retire-65-pension-only': {
+    id: 'retire-65-pension-only',
+    label: '65歳定年後は働かない（60〜64歳は再雇用 → 65歳から完全引退・年金のみ）',
+    shortLabel: '65歳から働かない（年金のみ）',
+    jobTitle: '60〜64歳再雇用 → 65歳完全引退',
+    description:
+      '60〜64歳までは再雇用で働くが、65歳以降はアルバイト等も一切せず完全リタイアし、公的年金と貯蓄のみで悠々自適に暮らす。',
+  },
   'full-retire-60': {
     id: 'full-retire-60',
-    label: '60歳で完全リタイア・働かない（65歳年金まで勤労収入0円）',
-    shortLabel: '60歳完全リタイア',
-    jobTitle: '完全リタイア（無職・悠々自適）',
-    description: '60歳定年で仕事を完全に辞める。65歳の公的年金受給開始までは退職金と貯蓄を取り崩して生活する。',
+    label: '60歳定年後は一切働かない（60歳で完全リタイア・無職 / 貯蓄と年金のみ）',
+    shortLabel: '60歳から働かない（完全引退）',
+    jobTitle: '完全リタイア（定年後働かない・無職）',
+    description:
+      '60歳定年で仕事を完全に辞め、定年後は一切働かない（勤労収入0円）。65歳の年金開始までは退職金と貯蓄を取り崩し、65歳以降も年金のみで暮らす。',
   },
 };
 
@@ -466,6 +476,54 @@ export const FOCUS_MODES: Record<
     id: 'family-health',
     label: '家族と健康を最優先',
     effectHint: '人間ドックや家族の時間を大切にし、心身の健康と家族の幸福度を毎年回復します（年20万円）。',
+  },
+};
+
+export const RELOCATION_PLAN_SPECS: Record<
+  RelocationPlanType,
+  {
+    id: RelocationPlanType;
+    label: string;
+    shortLabel: string;
+    priceDeltaMan: number;
+    maintDeltaMonthlyMan: number;
+    mentalBonus: number;
+    homeLabel: string;
+    description: string;
+  }
+> = {
+  'upgrade-wider': {
+    id: 'upgrade-wider',
+    label: '広いファミリー向け・上位グレード新居へステップアップ住み替え（物件価値 +1,150万円）',
+    shortLabel: '広い新居へステップアップ住み替え',
+    priceDeltaMan: 1150,
+    maintDeltaMonthlyMan: 0.4,
+    mentalBonus: 12,
+    homeLabel: '住み替え新居（広々ファミリー邸宅）',
+    description:
+      '現在の家を時価売却し、仲介手数料・登記諸費用を精算した上で、部屋数が多く快適な上位物件へ買い替えます。',
+  },
+  'downsize-compact': {
+    id: 'downsize-compact',
+    label: '駅近コンパクト・手頃な住まいへダウンサイジング住み替え（差益でローン残債を約900万円圧縮！）',
+    shortLabel: 'コンパクト住み替え（残債・維持費圧縮）',
+    priceDeltaMan: -1080,
+    maintDeltaMonthlyMan: -0.7,
+    mentalBonus: 6,
+    homeLabel: '住み替え新居（駅近コンパクト住戸）',
+    description:
+      '現在の家を売却し、価格と維持費が抑えられたコンパクト住戸へ買い替えます。売却差額でローン残債と毎月の固定費を一気に減らせます。',
+  },
+  'suburban-shift': {
+    id: 'suburban-shift',
+    label: '郊外・準都心のゆとり住環境へ資産組み替え住み替え（差益でローン残債を約460万円圧縮）',
+    shortLabel: '郊外ゆとり住み替え（広さと残債軽減を両立）',
+    priceDeltaMan: -620,
+    maintDeltaMonthlyMan: -0.4,
+    mentalBonus: 9,
+    homeLabel: '住み替え新居（郊外ゆとり邸宅）',
+    description:
+      '価格が高いエリアの自宅を売却し、広さと自然環境を確保しつつ価格が手頃な準都心・郊外エリアへ住み替えます。',
   },
 };
 
@@ -1525,7 +1583,15 @@ export function formatConsistentHouseholdTitle(config: MortgageSetupConfig): str
 export function resolveEffectiveBank(config: MortgageSetupConfig): BankSpec {
   const base = BANKS[config.bankId] ?? BANKS['mega-bank'];
   const rateType = config.customRateType ?? base.rateType;
-  const baseRate = config.customBaseRate ?? base.baseRate;
+  const fixedRatioPct = Math.max(10, Math.min(90, Math.round(config.mixFixedRatioPercent ?? 50)));
+  const varRatioPct = 100 - fixedRatioPct;
+  const defaultMixBaseRate =
+    Math.round(((2.18 * fixedRatioPct + 0.82 * varRatioPct) / 100) * 100) / 100;
+  const baseRate =
+    config.customBaseRate ??
+    (rateType === 'mix' && config.mixFixedRatioPercent !== undefined
+      ? defaultMixBaseRate
+      : base.baseRate);
   const has5Year125Rule =
     config.customHas5Year125Rule !== undefined
       ? config.customHas5Year125Rule
@@ -1542,12 +1608,13 @@ export function resolveEffectiveBank(config: MortgageSetupConfig): BankSpec {
         ? '当初10年固定金利'
         : rateType === 'flat-35'
           ? '全期間固定金利'
-          : '50:50ミックス金利';
+          : `ミックス金利（固定${fixedRatioPct}%：変動${varRatioPct}%）`;
 
   const hasCustom =
     config.customRateType !== undefined ||
     config.customBaseRate !== undefined ||
-    config.customHas5Year125Rule !== undefined;
+    config.customHas5Year125Rule !== undefined ||
+    config.mixFixedRatioPercent !== undefined;
 
   return {
     ...base,
@@ -2008,11 +2075,12 @@ export function randomizeHouseholdParams(
               ? 0
               : 300 + Math.floor(rng() * 6) * 100;
 
-  // 定年後の働き方（嘱託再雇用 / 別職種転身 / アルバイト・パート / 完全リタイア）
+  // 定年後の働き方（嘱託再雇用 / 別職種転身 / アルバイト・パート / 65歳から働かない / 60歳から働かない）
   const postRetireChoices: PostRetirementWorkType[] = [
     'reemploy-same',
     'reemploy-light-job',
     'part-time-arubaito',
+    'retire-65-pension-only',
     'full-retire-60',
   ];
   const postRetirementWork: PostRetirementWorkType =
@@ -2268,9 +2336,19 @@ export function randomizeBankLoanParams(
   const baseBank = BANKS[bankId];
 
   const customRateType = baseBank.rateType;
-  const rateJitter = (rng() - 0.35) * 0.36;
+  const rawRateRoll = rng();
+  const mixRatioCandidates = [20, 30, 40, 50, 50, 60, 70, 80];
+  const mixFixedRatioPercent =
+    customRateType === 'mix'
+      ? (mixRatioCandidates[Math.floor(rawRateRoll * mixRatioCandidates.length)] ?? 50)
+      : undefined;
+  const rateJitter = (rawRateRoll - 0.35) * 0.36;
+  const mixWeightedBase =
+    mixFixedRatioPercent !== undefined
+      ? (2.18 * mixFixedRatioPercent + 0.82 * (100 - mixFixedRatioPercent)) / 100
+      : baseBank.baseRate;
   const customBaseRate =
-    Math.round(Math.max(0.5, Math.min(3.8, baseBank.baseRate + rateJitter)) * 100) / 100;
+    Math.round(Math.max(0.5, Math.min(3.8, mixWeightedBase + rateJitter)) * 100) / 100;
   const customHas5Year125Rule =
     customRateType === 'variable' ? (rng() < 0.7 ? baseBank.has5Year125Rule : !baseBank.has5Year125Rule) : false;
 
@@ -2297,6 +2375,7 @@ export function randomizeBankLoanParams(
     customRateType,
     customBaseRate,
     customHas5Year125Rule,
+    mixFixedRatioPercent,
     termYears,
     repaymentMethod,
     bonusRepaymentRatio,
@@ -2306,7 +2385,7 @@ export function randomizeBankLoanParams(
 }
 
 /**
- * 抽選プロファイルおよび現在の契約条件サマリー文字列（年齢・世帯年収・退職金・給与カーブ・定年後・配偶者・教育方針・自己資金・頭金・購入後の手元資金・物件・借入額・期間・金利・団信・毎月支払額）を生成する
+ * 抽選プロファイルおよび現在の契約条件サマリー文字列（年齢・世帯年収・退職金・給与カーブ・配偶者・家族構成・自己資金・頭金・購入後の手元資金・物件・借入額・期間・金利・団信・毎月支払額）を生成する
  */
 export function formatSetupProfileSummary(config: MortgageSetupConfig): string {
   const prop = resolveEffectiveProperty(config);
@@ -2330,6 +2409,7 @@ export function formatSetupProfileSummary(config: MortgageSetupConfig): string {
       : config.contractType === 'income-merge'
         ? '収入合算'
         : '単独ローン';
+  const fixedRatioPct = Math.max(10, Math.min(90, Math.round(config.mixFixedRatioPercent ?? 50)));
   const rateTypeShort =
     bank.rateType === 'variable'
       ? '変動'
@@ -2337,19 +2417,15 @@ export function formatSetupProfileSummary(config: MortgageSetupConfig): string {
         ? '10年固定'
         : bank.rateType === 'flat-35'
           ? '全期間固定'
-          : 'ミックス';
+          : `ミックス(固定${fixedRatioPct}%:変動${100 - fixedRatioPct}%)`;
   const methodShort = config.repaymentMethod === 'equal-principal' ? '元金均等' : '元利均等';
   const retireLabel =
     careerEdu.retirementAllowanceMan > 0
       ? `退職金見込${careerEdu.retirementAllowanceMan.toLocaleString()}万円`
       : '退職金制度なし(0円)';
-  const eduSummary =
-    family.childrenCount > 0
-      ? ` / 教育：${JUNIOR_HIGH_SPECS[careerEdu.juniorHighPath].shortLabel}→${HIGHER_ED_SPECS[careerEdu.higherEdPath].shortLabel}（${CRAM_SCHOOL_SPECS[careerEdu.cramSchoolPolicy].shortLabel}・${careerEdu.hasGakushiHoken ? '学資保険あり' : '学資保険なし'}・${SCHOLARSHIP_SPECS[careerEdu.scholarshipType].shortLabel}）`
-      : '';
   const insSummary = `${INSURANCE_PLAN_SPECS[careerEdu.insurancePlan].shortLabel}・固定資産税 年${prop.annualPropertyTaxMan}万・${LEISURE_STYLE_SPECS[careerEdu.leisureStyle].shortLabel}`;
 
-  return `${config.age}歳・世帯年収${householdGross.toLocaleString()}万円（${EMPLOYMENT_LABELS[config.employment]}・${SALARY_CURVE_SPECS[careerEdu.salaryCurve].shortLabel}・${retireLabel}・${POST_RETIREMENT_SPECS[careerEdu.postRetirementWork].shortLabel}・${SPOUSE_WORK_SPECS[careerEdu.spouseWorkPattern].shortLabel}・${contractLabel}・${family.name}）${eduSummary} / 自己資金${config.initialSavingsMan.toLocaleString()}万円（頭金${config.downPaymentMan.toLocaleString()}万・諸費用${uw.closingCostsMan.toLocaleString()}万 → 購入後の手元資金${uw.cashRemainingAfterPurchaseMan.toLocaleString()}万円） / ${newUsedLabel}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円（借入元本${uw.loanPrincipalMan.toLocaleString()}万円・${insSummary}） / ${config.termYears}年ローン・${uw.maturityAge}歳完済（${rateTypeShort} 金利${uw.effectiveInitialRate.toFixed(2)}%・${methodShort}・${danshin.shortName}） / 初年度 毎月返済${uw.initialMonthlyPaymentMan}万円（維持費・税込 実質月${uw.initialTotalMonthlyOutflowMan}万円）`;
+  return `${config.age}歳・世帯年収${householdGross.toLocaleString()}万円（${EMPLOYMENT_LABELS[config.employment]}・${SALARY_CURVE_SPECS[careerEdu.salaryCurve].shortLabel}・${retireLabel}・${SPOUSE_WORK_SPECS[careerEdu.spouseWorkPattern].shortLabel}・${contractLabel}・購入時：${family.name}） / 自己資金${config.initialSavingsMan.toLocaleString()}万円（頭金${config.downPaymentMan.toLocaleString()}万・諸費用${uw.closingCostsMan.toLocaleString()}万 → 購入後の手元資金${uw.cashRemainingAfterPurchaseMan.toLocaleString()}万円） / ${newUsedLabel}${bTypeLabel} ${prop.priceMan.toLocaleString()}万円（借入元本${uw.loanPrincipalMan.toLocaleString()}万円・${insSummary}） / ${config.termYears}年ローン・${uw.maturityAge}歳完済（${rateTypeShort} 金利${uw.effectiveInitialRate.toFixed(2)}%・${methodShort}・${danshin.shortName}） / 初年度 毎月返済${uw.initialMonthlyPaymentMan}万円（維持費・税込 実質月${uw.initialTotalMonthlyOutflowMan}万円）`;
 }
 
 /**
@@ -2622,6 +2698,75 @@ export function getChildIndependenceAge(configOrPath: MortgageSetupConfig | High
 }
 
 /**
+ * 年齢とともに動的に変化する家族構成（単身→結婚→出産→子どもの成長段階→子どもの独立・エンプティネスト→シニア夫婦）と、
+ * 現在の家族構成・同居人数・子どもの年齢に応じた年間基礎生活費（食費・水道光熱費・通信費・日用品・被服・小遣い等、教育費とは別枠）を算出する
+ */
+export function calcDynamicFamilyComposition(state: MortgageGameState): {
+  adultCount: number;
+  cohabitingChildrenAges: number[];
+  independentChildrenAges: number[];
+  totalHouseholdMembers: number;
+  compositionLabel: string;
+  annualBaseLivingCostMan: number;
+} {
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(state.config);
+  const hasPartner = careerEdu.hasSpouse && !state.isDivorced;
+  const adultCount = hasPartner ? 2 : 1;
+  const independenceAge = getChildIndependenceAge(state.config);
+  const cohabitingChildrenAges = state.childrenAges.filter((a) => a < independenceAge);
+  const independentChildrenAges = state.childrenAges.filter((a) => a >= independenceAge);
+  const totalHouseholdMembers = adultCount + cohabitingChildrenAges.length;
+
+  let compositionLabel: string;
+  if (cohabitingChildrenAges.length === 0) {
+    if (independentChildrenAges.length > 0) {
+      compositionLabel = hasPartner
+        ? `夫婦2人世帯（子ども${independentChildrenAges.length}人独立・巣立ち済）`
+        : `単身1人世帯（子ども${independentChildrenAges.length}人独立・巣立ち済）`;
+    } else {
+      compositionLabel = hasPartner
+        ? '夫婦2人世帯（2人暮らし）'
+        : state.isDivorced
+          ? '単身1人世帯（離別）'
+          : '独身1人世帯（単身暮らし）';
+    }
+  } else {
+    const indepSuffix =
+      independentChildrenAges.length > 0 ? `・独立済${independentChildrenAges.length}人` : '';
+    compositionLabel = hasPartner
+      ? `${totalHouseholdMembers}人家族（夫婦＋同居子${cohabitingChildrenAges.length}人${indepSuffix}）`
+      : `${totalHouseholdMembers}人家族（ひとり親＋同居子${cohabitingChildrenAges.length}人${indepSuffix}）`;
+  }
+
+  // 大人基礎生活費（単身1人 vs 現役夫婦2人 vs 65歳以上シニア夫婦2人）
+  const baseAdultLiving =
+    adultCount === 1 ? 150 : state.age >= 65 ? 194 : 206;
+
+  // 同居中の子どもの年齢段階に応じた生活費加算（乳幼児→小学生→食べ盛り中高生→大学生、独立後は0円！）
+  const childrenLivingAdditionMan = cohabitingChildrenAges.reduce((sum, cAge) => {
+    if (cAge < 6) return sum + 22; // 乳幼児・未就学児
+    if (cAge < 12) return sum + 30; // 小学生
+    if (cAge < 15) return sum + 40; // 中学生（食費・スマホ通信費・部活費増）
+    if (cAge < 18) return sum + 48; // 高校生（食費ピーク・被服・通信・小遣い）
+    return sum + 44; // 大学生・専門学生（独立前の同居・仕送り生活費）
+  }, 0);
+
+  const priceMult = Math.max(0.92, (state.cumulativePriceIndex ?? 100) / 100);
+  const annualBaseLivingCostMan = Math.round(
+    (baseAdultLiving + childrenLivingAdditionMan) * Math.pow(priceMult, 0.62),
+  );
+
+  return {
+    adultCount,
+    cohabitingChildrenAges,
+    independentChildrenAges,
+    totalHouseholdMembers,
+    compositionLabel,
+    annualBaseLivingCostMan,
+  };
+}
+
+/**
  * 国立がん研究センター「がん統計」・厚生労働省「患者調査」に基づく5歳階級別・年間疾病発症確率の算出
  * - がん（悪性新生物）：20代は年0.04%、30代前半0.08%、30代後半0.15%、40代前半0.28%、40代後半0.46%、50代前半0.75%、50代後半1.18%、60代前半1.68%、60代後半2.20%、70代2.68〜3.15%
  * - 心筋梗塞・脳卒中（3大疾病の血管疾患）：20代0.02%、30代0.05%、40代0.18%、50代0.42%、60代0.75%
@@ -2689,7 +2834,7 @@ export function calcAnnualHealthRiskProbabilities(
 }
 
 /**
- * 結末・エンディング判定とスコア計算
+ * 結末・エンディング判定とスコア計算（27種類の多彩なライフストーリー結末パターン）
  */
 export function evaluateEnding(
   state: MortgageGameState,
@@ -2698,23 +2843,11 @@ export function evaluateEnding(
   const netEquity = Math.round(
     state.liquidSavingsMan + state.propertyValueMan - state.remainingBalanceMan - state.unpaidInterestMan,
   );
+  const property = resolveEffectiveProperty(state.config);
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(state.config);
+  const relocations = state.relocationCount ?? 0;
 
-  if (reason === 'bankrupt') {
-    return {
-      ending: {
-        id: 'foreclosure-bankruptcy',
-        rank: 'BANKRUPT',
-        title: '【住宅ローン破産】期限の利益喪失・競売＆自己破産',
-        subtitle: `${state.age}歳（返済${state.yearIndex}年目）で資金ショート・代位弁済`,
-        epilogue:
-          '度重なる金利上昇、修繕積立金・教育費の重圧、そして手元キャッシュの枯渇により6ヶ月間の延滞が発生。保証会社による代位弁済が行われ、マイホームは競売にかけられた。売却代金でも残債を消しきれず、苦渋の自己破産手続きへと進んだ。',
-        statisticComparison:
-          '日本の住宅ローン利用者のうち、条件変更（リスケ）や任意売却・代位弁済に至るケースは景気変動期に年間数万件規模で発生する。',
-      },
-      score: Math.max(100, state.yearIndex * 35),
-    };
-  }
-
+  // === 1. 離婚デッドロック破綻 ===
   if (reason === 'divorce-deadlock') {
     return {
       ending: {
@@ -2731,7 +2864,121 @@ export function evaluateEnding(
     };
   }
 
+  // === 2. 破産・代位弁済・競売系（原因別に5パターンに分岐） ===
+  if (reason === 'bankrupt') {
+    if (state.unpaidInterestMan >= 30 || state.termRemainingYears === 0) {
+      return {
+        ending: {
+          id: 'unpaid-interest-balloon-bankruptcy',
+          rank: 'BANKRUPT',
+          title: '【未払利息・満期一括請求破産】5年ルールの罠と最終回精算の悲劇',
+          subtitle: `${state.age}歳（返済${state.yearIndex}年目）で未払利息・残債の一括請求により破綻`,
+          epilogue:
+            '5年ルール・125%ルールで毎月の引き落とし額が抑えられていた裏で、急騰した金利の未払利息と先送り元金が蓄積。最後に一括精算を請求され、手元資金が完全にショートして競売・破産へと至った。',
+          statisticComparison:
+            '変動金利の5年ルールは「支払額を5年間据え置く」だけで利息は免除されないため、高金利が続くと満期時に巨額の一括返済が発生する。',
+        },
+        score: Math.max(140, state.yearIndex * 38),
+      };
+    }
+
+    if (state.appliedInterestRate >= 2.25 && state.currentRateType === 'variable') {
+      return {
+        ending: {
+          id: 'variable-rate-spike-bankruptcy',
+          rank: 'BANKRUPT',
+          title: '【変動金利急騰破産】日銀利上げの直撃で毎月返済額が限界突破',
+          subtitle: `${state.age}歳（適用金利 ${state.appliedInterestRate.toFixed(2)}%）でキャッシュフロー崩壊`,
+          epilogue:
+            '購入時の低金利が永続すると見込んで変動金利を選んだものの、段階的な利上げにより適用金利が2%台後半へ急騰。膨れ上がった毎月返済額と物価高のダブルパンチに耐えきれず、期限の利益を喪失した。',
+          statisticComparison:
+            '借入額が大きい世帯ほど、金利1.5〜2.0%の上昇で年間返済額が60万〜120万円増加し、家計の安全余裕度を直撃する。',
+        },
+        score: Math.max(120, state.yearIndex * 36),
+      };
+    }
+
+    if (state.childrenAges.some((a) => a >= 14 && a <= 22)) {
+      return {
+        ending: {
+          id: 'education-and-loan-double-crush',
+          rank: 'BANKRUPT',
+          title: '【教育費＆ローン二重苦破産】進学・塾代ピークと住宅ローンの挟み撃ち',
+          subtitle: `${state.age}歳（子どもの進学ピーク期）に手元資金が枯渇し代位弁済`,
+          epilogue:
+            '子どもの進学塾・予備校・大学学費のピークと、住宅ローン返済・修繕費の値上げが同じ時期に重なり、年間収支が大赤字に転落。教育費を優先するあまり住宅ローンの引き落とし口座が底を突いた。',
+          statisticComparison:
+            '40代後半〜50代前半は「大学費用ピーク」「マンション修繕積立金増額」「役職定年」の3つが同時に重なる家計最大の危険地帯である。',
+        },
+        score: Math.max(130, state.yearIndex * 37),
+      };
+    }
+
+    if (state.age >= 60) {
+      return {
+        ending: {
+          id: 'post-retirement-60s-bankruptcy',
+          rank: 'BANKRUPT',
+          title: '【老後・定年後ローン破産】60代以降の収入激減と残債の重圧で老後破綻',
+          subtitle: `${state.age}歳（定年後の返済継続中）に老後キャッシュが完全枯渇`,
+          epilogue:
+            '現役時代はなんとか回っていた返済も、60歳定年・65歳年金生活に入ってからの収入減少に耐えきれなかった。老後資金をすべてローン返済と維持費に吸い尽くされ、高齢期での自宅競売という過酷な結末を迎えた。',
+          statisticComparison:
+            '完済年齢を75〜85歳に設定したローンの最大のリスクは、60歳以降の収入減と医療・修繕費の増加による「老後住宅ローン破綻」である。',
+        },
+        score: Math.max(160, state.yearIndex * 40),
+      };
+    }
+
+    return {
+      ending: {
+        id: 'foreclosure-bankruptcy',
+        rank: 'BANKRUPT',
+        title: '【住宅ローン破産】期限の利益喪失・競売＆自己破産',
+        subtitle: `${state.age}歳（返済${state.yearIndex}年目）で資金ショート・代位弁済`,
+        epilogue:
+          '度重なる金利上昇、修繕積立金・生活コストの重圧、そして手元キャッシュの枯渇により6ヶ月間の延滞が発生。保証会社による代位弁済が行われ、マイホームは競売にかけられた。売却代金でも残債を消しきれず、苦渋の自己破産手続きへと進んだ。',
+        statisticComparison:
+          '日本の住宅ローン利用者のうち、条件変更（リスケ）や任意売却・代位弁済に至るケースは景気変動期に年間数万件規模で発生する。',
+      },
+      score: Math.max(100, state.yearIndex * 35),
+    };
+  }
+
+  // === 3. 自宅売却・住み替え精算系（6パターンに分岐） ===
   if (reason === 'sold') {
+    if (state.liquidSavingsMan >= 3000) {
+      return {
+        ending: {
+          id: 'wealthy-fire-early-exit',
+          rank: 'S',
+          title: '【資産形成大成功・売却FIRE】含み益確定＆金融資産3,000万円超で完全自由へ！',
+          subtitle: `${state.age}歳でマイホームを高値売却・最終手元キャッシュ ${state.liquidSavingsMan.toLocaleString()}万円`,
+          epilogue:
+            '資産価値の高い立地選びと堅実な元金返済が結実！マイホームを絶好のタイミングで売却し、ローン残債を一括完済した上で3,000万円を超える莫大な純キャッシュを獲得。住む場所も働き方も自由に選べる最高のセカンドライフへ旅立った！',
+          statisticComparison:
+            '不動産の含み益と住宅ローン控除をフル活用し、売却益で一気に金融資産を築く「不動産キャピタルゲイン完勝」の上位5%モデル。',
+        },
+        score: 3650 + Math.round(state.liquidSavingsMan * 0.35) + state.mentalScore * 11,
+      };
+    }
+
+    if (state.age >= 60 && state.liquidSavingsMan >= 1200) {
+      return {
+        ending: {
+          id: 'senior-happy-downsize-exit',
+          rank: 'A',
+          title: '【老後の賢い住み替え・悠々自適売却】維持費と管理から解放され安心のシニアライフへ',
+          subtitle: `${state.age}歳で自宅を売却精算・手元老後資金 ${state.liquidSavingsMan.toLocaleString()}万円を確保`,
+          epilogue:
+            '子育てや現役生活を終えたタイミングで、広すぎる自宅や重くなる修繕費・固定資産税を手放す「老後のダウンサイジング売却」を決断。残債を完済してまとまった老後キャッシュを手元に残し、身軽で安心なシニアライフへ移行した。',
+          statisticComparison:
+            '60代以降にマイホームを売却してコンパクトな住まいや高齢者向け住宅へ移る「資産整理型住み替え」は老後資金防衛の有力な選択肢となっている。',
+        },
+        score: 2650 + Math.round(state.liquidSavingsMan * 0.35) + state.mentalScore * 10,
+      };
+    }
+
     if (state.liquidSavingsMan >= 1500) {
       return {
         ending: {
@@ -2747,38 +2994,195 @@ export function evaluateEnding(
         score: 2600 + Math.round(state.liquidSavingsMan * 0.4) + state.mentalScore * 10,
       };
     }
+
+    if (state.liquidSavingsMan >= 500) {
+      return {
+        ending: {
+          id: 'family-lifestyle-pivot-sale',
+          rank: 'B',
+          title: '【ライフスタイル転換売却】ローンを綺麗サッパリ精算し、新たな暮らしへ再出発',
+          subtitle: `${state.age}歳で自宅を売却・手元資金 ${state.liquidSavingsMan.toLocaleString()}万円を持って新生活へ`,
+          epilogue:
+            '働き方や家族のライフステージの変化に合わせ、マイホームに固執せず売却してローンをゼロにする道を選択。手元に500万円以上の生活防衛資金を残して綺麗に精算し、肩の荷を下ろして新しい暮らしをスタートさせた。',
+          statisticComparison:
+            '「家は一生に一度の買い物」という固定観念にとらわれず、収支が悪化する前に売却・住み替えを行うことで家計の健全性を維持できる。',
+        },
+        score: 1950 + Math.round(state.liquidSavingsMan * 0.35) + state.mentalScore * 9,
+      };
+    }
+
+    if (state.liquidSavingsMan >= 100) {
+      return {
+        ending: {
+          id: 'narrow-escape-sale',
+          rank: 'C',
+          title: '【任意売却・ソフトランディング】競売寸前でマイホームを手放し生還',
+          subtitle: `${state.age}歳で自宅を売却精算・手元資金 ${state.liquidSavingsMan.toLocaleString()}万円で再出発`,
+          epilogue:
+            'このまま返済を続ければ破産するという瀬戸際で、プライドを捨てて自宅の売却を決断。自己資金の持ち出しで残債を完済し、賃貸住宅へ移り住むことで最悪の自己破産を回避した。',
+          statisticComparison:
+            '競売（市場価格の6〜7割で強制処分）になる前に任意売却・住み替えを決断できた世帯は、その後の生活再建率が大幅に高い。',
+        },
+        score: 1550 + Math.round(state.liquidSavingsMan * 0.3) + state.mentalScore * 8,
+      };
+    }
+
     return {
       ending: {
-        id: 'narrow-escape-sale',
-        rank: 'B',
-        title: '【任意売却・ソフトランディング】競売寸前でマイホームを手放し生還',
-        subtitle: `${state.age}歳で自宅を売却精算・手元資金 ${state.liquidSavingsMan.toLocaleString()}万円で再出発`,
+        id: 'bare-zero-scratch-escape',
+        rank: 'D',
+        title: '【薄氷のゼロ精算脱出】貯蓄のすべてを差し出して残債を消し去った背水の売却',
+        subtitle: `${state.age}歳で自宅売却＆貯蓄全額投入により残債精算（最終手元資金 ${state.liquidSavingsMan.toLocaleString()}万円）`,
         epilogue:
-          'このまま返済を続ければ破産するという瀬戸際で、プライドを捨てて自宅の売却を決断。自己資金の持ち出しで残債を完済し、賃貸住宅へ移り住むことで最悪の自己破産を回避した。',
+          'オーバーローン状態の自宅を売却するため、長年貯めた手元キャッシュをほぼすべて補填に充てて辛うじて抵当権を抹消。貯蓄はほぼゼロになったものの、借金ゼロの状態で人生をやり直す権利を守り抜いた。',
         statisticComparison:
-          '競売（市場価格の6〜7割で強制処分）になる前に任意売却・住み替えを決断できた世帯は、その後の生活再建率が大幅に高い。',
+          '頭金なしのオーバーローン購入では、売却時に自己資金数百万円の持ち出しが必要になるケースが多く、手元流動性の重要性を物語る。',
       },
-      score: 1650 + Math.round(state.liquidSavingsMan * 0.3) + state.mentalScore * 8,
+      score: 1200 + Math.max(0, Math.round(state.liquidSavingsMan * 0.2)) + state.mentalScore * 6,
     };
   }
 
-  // 完済到達 (paid-off)
-  if (state.danshinTriggered && netEquity >= 4500) {
+  // === 4. 完済到達系（paid-off：15種類の多彩なライフストーリー結末パターン！） ===
+
+  // (4-1) 団信発動による奇跡の完済
+  if (state.danshinTriggered) {
     return {
       ending: {
         id: 'danshin-miracle-payoff',
-        rank: 'A',
+        rank: netEquity >= 5500 ? 'S' : 'A',
         title: '【団信発動・残債ゼロの奇跡】手厚い保障が家族と資産を守り抜いた',
-        subtitle: `団信により残債免除完済・最終純資産 ${netEquity.toLocaleString()}万円`,
+        subtitle: `団信により残債免除完済・最終純資産 ${netEquity.toLocaleString()}万円（手元資金 ${state.liquidSavingsMan.toLocaleString()}万円）`,
         epilogue:
           '人生の途中で大病に見舞われたものの、契約時に選んでいた団体信用生命保険（団信）が発動し、数千万円のローン残債が一瞬でゼロに！住居費負担が消滅したことで治療と家族の生活に専念でき、豊かな老後資産を築き上げた。',
         statisticComparison:
           '住宅ローン返済期間（35〜50年）の間にがんや3大疾病に罹患する確率は40代後半以降で急上昇し、特約団信が家計の命綱となるケースは多い。',
       },
-      score: 3100 + Math.round(netEquity * 0.25) + state.mentalScore * 10,
+      score: 3150 + Math.round(netEquity * 0.25) + state.mentalScore * 10,
     };
   }
 
+  // (4-2) 40代での超速・早期繰上完済王
+  if (state.age <= 49 && state.totalPrepaymentMan >= 800 && state.liquidSavingsMan >= 1000) {
+    return {
+      ending: {
+        id: 'early-40s-speed-prepay-king',
+        rank: 'S',
+        title: '【驚異の40代・超速繰上完済王】利息を最小限に封じ込め、人生後半を完全無借金で謳歌！',
+        subtitle: `${state.age}歳でスピード完済・累計繰上返済 ${Math.round(state.totalPrepaymentMan).toLocaleString()}万円 / 最終純資産 ${netEquity.toLocaleString()}万円`,
+        epilogue:
+          '周囲がまだ何十年もローンを抱えるなか、圧倒的な貯蓄規律と機動的な一部繰上返済を積み重ねて40代のうちに完全完済を達成！日銀の利上げリスクを完全に過去のものとし、50代以降の収入をすべて資産形成と人生の楽しみに使える最強状態へ突入した！',
+        statisticComparison:
+          '住宅ローン控除期間終了後に集中的な期間短縮型繰上返済を行い、40代で完済に到達するのは全借入世帯の上位約4.2%の超優良家計。',
+      },
+      score: 4000 + Math.round(netEquity * 0.3) + state.mentalScore * 12,
+    };
+  }
+
+  // (4-3) 独身購入から結婚・住み替えや家族誕生を経て完済
+  if (
+    state.triggeredEventIds.includes('single-marriage-crossroad') &&
+    careerEdu.hasSpouse &&
+    !state.isDivorced &&
+    state.liquidSavingsMan >= 1200
+  ) {
+    return {
+      ending: {
+        id: 'single-to-married-dream-home',
+        rank: netEquity >= 6000 ? 'S' : 'A',
+        title:
+          relocations > 0
+            ? '【独身購入から結婚＆住み替え完済】1人で始めた資産形成が、最高の家族の城へ結実！'
+            : '【独身購入から結婚・家族の城へ完済】おひとり様で買った家が、かけがえのない家族の宝物に！',
+        subtitle: `${state.age}歳で完済達成・最終純資産 ${netEquity.toLocaleString()}万円（手元資金 ${state.liquidSavingsMan.toLocaleString()}万円）`,
+        epilogue:
+          relocations > 0
+            ? '独身時代に決断したマイホーム購入がすべての始まりだった。その後パートナーとの結婚を機に最初の家を売却して広い新居へステップアップ住み替えを果たし、2馬力で協力しながらついに完全完済！独身時代の先見の明が家族全員の幸せを作った。'
+            : '独身時代に一人で契約したマイホームに、人生の途中で出会ったパートナーを迎え入れ、力を合わせて完済まで走り抜いた！1人分の資産形成として始まった家が、温かい家庭の終の棲家となった感動物語。',
+        statisticComparison:
+          '20〜30代の独身期に購入したマンション・住宅を「結婚後の共働き拠点」または「住み替えの種銭（含み益）」として活用する世帯は資産形成速度が非常に速い。',
+      },
+      score: 3450 + Math.round(netEquity * 0.28) + state.mentalScore * 11,
+    };
+  }
+
+  // (4-4) 住み替え（ヤドカリ・ステップアップ／コンパクト住み替え）を活用して完済
+  if (relocations >= 1 && state.liquidSavingsMan >= 1300) {
+    return {
+      ending: {
+        id: 'relocation-stepup-master',
+        rank: netEquity >= 6200 ? 'S' : 'A',
+        title: '【住み替えわらしべ長者・完全完済】ライフステージに合わせた買い替えで理想の住まいと資産を両立！',
+        subtitle: `${state.age}歳で完済（住み替え${relocations}回実践）・最終純資産 ${netEquity.toLocaleString()}万円`,
+        epilogue:
+          '「一度買った家に無理して縛られ続けない」という柔軟な発想で、家族構成や年齢の変化に合わせて住み替え（買い替え）を実践！最初の家で築いた純資産を活かして新居のローンも完全に返しきり、今の自分たちに最もフィットする無借金の我が家を手に入れた！',
+        statisticComparison:
+          '欧米だけでなく日本でも、子育て期と老後期で住まいを買い替える「ライフステージ別住み替え（ヤドカリ戦略）」は住居満足度と資産効率を高める王道戦略。',
+      },
+      score: 3400 + Math.round(netEquity * 0.28) + state.mentalScore * 11,
+    };
+  }
+
+  // (4-5) 60歳定年後は一切働かない（完全リタイア）を貫いて完済＆老後資金確保
+  if (
+    (careerEdu.postRetirementWork === 'full-retire-60' ||
+      state.currentJobLabel?.includes('定年後働かない')) &&
+    state.liquidSavingsMan >= 1600
+  ) {
+    return {
+      ending: {
+        id: 'retired-60-no-work-paradise',
+        rank: 'S',
+        title: '【定年後は働かない！完全リタイア＆余裕の完済】60歳で仕事から完全卒業し悠々自適の黄金老後！',
+        subtitle: `${state.age}歳で完済・定年後は勤労ゼロで手元資金 ${state.liquidSavingsMan.toLocaleString()}万円＆無借金マイホーム確保`,
+        epilogue:
+          '「定年後はもう一切働かない！」という夢を実現するため、現役時代のうちに計画的な貯蓄と残債圧縮を完遂。60歳でスパッと仕事から引退し、再雇用やアルバイトに追われることなく、趣味と旅行を楽しみながら住宅ローンも完全完済した憧れのゴール！',
+        statisticComparison:
+          '60歳定年後に再雇用やアルバイトをせず「完全リタイア」しながら住宅ローンを完済し老後資金1,600万円以上を残せるのは極めて計画性の高い上位世帯のみ。',
+      },
+      score: 3850 + Math.round(netEquity * 0.28) + state.mentalScore * 12,
+    };
+  }
+
+  // (4-6) 都心タワマン・資産価値覇者
+  if (property.buildingType === 'tower' && netEquity >= 7200 && state.liquidSavingsMan >= 2000) {
+    return {
+      ending: {
+        id: 'tower-mansion-sky-winner',
+        rank: 'S',
+        title: '【都心タワマン・資産価値覇者】高騰する維持費を制し、圧倒的含み益の空中要塞を完全完済！',
+        subtitle: `${state.age}歳でタワマン完済・自宅時価 ${state.propertyValueMan.toLocaleString()}万円 / 最終純資産 ${netEquity.toLocaleString()}万円`,
+        epilogue:
+          '段階的に跳ね上がるタワマンの修繕積立金や大規模修繕の荒波を、高い世帯収入と管理組合改革で乗りこなした！ローンがゼロになった今、手元には2,000万円超の金融資産と、いつでも高値で売却・賃貸化できる都心タワーマンションが丸ごと残った。',
+        statisticComparison:
+          'タワーマンションは維持費・修繕費負担が重い一方、都心一等地の立地価値が維持されれば完済時の純資産規模で圧倒的なリターンを生む。',
+      },
+      score: 3900 + Math.round(netEquity * 0.3) + state.mentalScore * 12,
+    };
+  }
+
+  // (4-7) 一戸建て・大地主マイスター完済
+  if (
+    property.buildingType === 'detached' &&
+    state.liquidSavingsMan >= 1800 &&
+    state.buildingValueMan >= 850 &&
+    netEquity >= 5500
+  ) {
+    return {
+      ending: {
+        id: 'detached-craftsman-castle-owner',
+        rank: 'S',
+        title: '【一戸建て・優良資産マイスター完済】定期修繕と省エネ化で我が家を守り抜いた城主！',
+        subtitle: `${state.age}歳で一戸建て完済・土地＋建物時価 ${state.propertyValueMan.toLocaleString()}万円 / 手元資金 ${state.liquidSavingsMan.toLocaleString()}万円`,
+        epilogue:
+          '「一戸建てはメンテナンス次第で寿命が決まる」という鉄則通り、外壁塗装・屋根改修・防蟻・太陽光断熱を適切なタイミングで実施！管理費0円の強みを活かして1,800万円超の老後キャッシュを蓄え、築年数を重ねても快適で資産価値の高い理想の邸宅を無借金化した！',
+        statisticComparison:
+          '適切な周期で外装・水回り・断熱改修を行った一戸建ては、老後の住居費（管理費・駐車場代ゼロ）の安さにおいて最強の終の棲家となる。',
+      },
+      score: 3700 + Math.round(netEquity * 0.28) + state.mentalScore * 12,
+    };
+  }
+
+  // (4-8) 伝説の住宅ローン勝者（純資産7,500万超＋金融資産3,000万超）
   if (netEquity >= 7500 && state.liquidSavingsMan >= 3000) {
     return {
       ending: {
@@ -2795,7 +3199,59 @@ export function evaluateEnding(
     };
   }
 
-  if (state.liquidSavingsMan >= 1500 && state.age <= 72) {
+  // (4-9) 教育費＆マイホーム二刀流完覇（子ども2人以上を独立させ老後資金も確保）
+  if (state.childrenAges.length >= 2 && state.liquidSavingsMan >= 1500) {
+    return {
+      ending: {
+        id: 'education-all-clear-champion',
+        rank: 'A',
+        title: '【教育費＆マイホーム二刀流完覇】子どもたちを立派に巣立たせ、住宅ローンも完全完済！',
+        subtitle: `${state.age}歳で完済（子ども${state.childrenAges.length}人独立）・最終手元資金 ${state.liquidSavingsMan.toLocaleString()}万円`,
+        epilogue:
+          '複数人の子どもの進学塾・高校・大学費用という人生最大の山場を乗り越え、全員を社会人として送り出した上で住宅ローンも完済！さらに夫婦の老後資金もしっかり1,500万円以上残すという、親としてこれ以上ない大勝利を収めた！',
+        statisticComparison:
+          '子ども2人以上の教育費（1人あたり1,500万〜2,800万円）と住宅ローン完済・老後資金2,000万円問題の「人生3大資金」をすべてクリアした模範世帯。',
+      },
+      score: 3250 + Math.round(netEquity * 0.26) + state.mentalScore * 11,
+    };
+  }
+
+  // (4-10) おひとり様貴族・終の棲家完済（独身を貫いて完済）
+  if (!careerEdu.hasSpouse && state.childrenAges.length === 0 && state.liquidSavingsMan >= 1200) {
+    return {
+      ending: {
+        id: 'solo-aristocrat-fortress',
+        rank: netEquity >= 5500 ? 'S' : 'A',
+        title: '【おひとり様貴族・終の棲家完済】誰にも縛られない無借金の城と潤沢な老後資金を確立！',
+        subtitle: `${state.age}歳で単独完済・最終純資産 ${netEquity.toLocaleString()}万円（手元資金 ${state.liquidSavingsMan.toLocaleString()}万円）`,
+        epilogue:
+          '1馬力の責任を背負いながらも、自分のペースでキャリアと資産運用を積み上げ、ついに完全無借金のマイホームを手に入れた！老後の家賃不安はゼロ、手元には十分な金融資産があり、趣味も旅も自由自在のおひとり様黄金ライフが幕を開ける。',
+        statisticComparison:
+          '単身世帯にとって「高齢期の賃貸入居審査リスク」と「家賃負担」をゼロにする持ち家完済は、老後の安心感を劇的に高める資産防衛策となる。',
+      },
+      score: 3100 + Math.round(netEquity * 0.26) + state.mentalScore * 11,
+    };
+  }
+
+  // (4-11) 家族の思い出＆幸福度MAX完済（旅行やレジャーも妥協せず幸福度85以上）
+  if (state.mentalScore >= 85 && state.liquidSavingsMan >= 1000) {
+    return {
+      ending: {
+        id: 'happiness-first-memories-payoff',
+        rank: 'A',
+        title: '【家族の思い出＆幸福度MAX完済】旅行も暮らしも全力で楽しみながら辿り着いた最高のゴール！',
+        subtitle: `${state.age}歳で完済・家族幸福度 ${state.mentalScore}/100・手元資金 ${state.liquidSavingsMan.toLocaleString()}万円`,
+        epilogue:
+          '「返済のために今の幸せを犠牲にしすぎない」をモットーに、毎年の家族旅行や住まいの快適アップデートも楽しみながら見事に完済！お金だけでなく、リビングに飾られた数え切れないほどの家族写真と思い出こそが最大の財産となった。',
+        statisticComparison:
+          '過度な節約で家族関係や健康を損なう「返済ノイローゼ」に陥ることなく、QOL（生活の質）と完済を高次元で両立させた理想的なライフプラン。',
+      },
+      score: 3050 + Math.round(netEquity * 0.25) + state.mentalScore * 14,
+    };
+  }
+
+  // (4-12) 堅実マイホーム完済（標準ハッピーエンド）
+  if (state.liquidSavingsMan >= 1400 && state.age <= 73) {
     return {
       ending: {
         id: 'steady-happy-payoff',
@@ -2803,38 +3259,61 @@ export function evaluateEnding(
         title: '【堅実マイホーム完済】嵐を乗り越え、安心の我が家と老後資金を確保',
         subtitle: `${state.age}歳で完済・最終純資産 ${netEquity.toLocaleString()}万円（手元資金 ${state.liquidSavingsMan.toLocaleString()}万円）`,
         epilogue:
-          '日銀の利上げや教育費の波に揺られながらも、堅実な繰上返済と家計防衛でついに「抵当権抹消登記」の日を迎えた。ここからは家賃もローンもいらない自分の城で、穏やかなセカンドライフが始まる。',
+          '日銀の利上げや物価高、教育費や修繕の波に揺られながらも、堅実な繰上返済と家計防衛でついに「抵当権抹消登記」の日を迎えた。ここからは家賃もローンもいらない自分の城で、穏やかなセカンドライフが始まる。',
         statisticComparison:
-          '日本の住宅ローン利用者の理想モデル。定年前後に完済し老後資金1,500万円以上を残せた世帯は老後破産リスクが極めて低い。',
+          '日本の住宅ローン利用者の理想モデル。定年前後に完済し老後資金1,400万円以上を残せた世帯は老後破産リスクが極めて低い。',
       },
       score: 2800 + Math.round(netEquity * 0.25) + state.mentalScore * 10,
     };
   }
 
-  if (state.age >= 76 || state.config.termYears === 50) {
+  // (4-13) 定年後働かない・貯蓄取り崩し完済（働かない選択を貫き、貯蓄を使って完済）
+  if (
+    (careerEdu.postRetirementWork === 'full-retire-60' ||
+      careerEdu.postRetirementWork === 'retire-65-pension-only') &&
+    state.liquidSavingsMan < 1400
+  ) {
+    return {
+      ending: {
+        id: 'no-work-retirement-tight-payoff',
+        rank: 'B',
+        title: '【定年後働かない・貯蓄取り崩し完済】労働からは完全解放されたが、老後資金は倹約モード',
+        subtitle: `${state.age}歳で完済（定年後就労なし）・手元老後資金 ${state.liquidSavingsMan.toLocaleString()}万円`,
+        epilogue:
+          '定年後は働かない選択を貫き、自由な時間を手に入れた一方で、年金と貯蓄の取り崩しで住宅ローンを返済したため手元キャッシュは大きく減少した。それでもローンは完済したため、これからは年金の範囲内で穏やかに暮らしていける。',
+        statisticComparison:
+          '定年後に勤労収入なしで住宅ローン返済を続ける場合、60〜65歳の無収入期間と年金生活期の貯蓄取り崩しスピードの管理が鍵となる。',
+      },
+      score: 2200 + Math.round(netEquity * 0.22) + state.mentalScore * 9,
+    };
+  }
+
+  // (4-14) 75歳〜80代の超長期ローン執念完済
+  if (state.age >= 75 || state.config.termYears >= 45) {
     return {
       ending: {
         id: 'ultra-long-80s-survivor',
         rank: 'C',
-        title: '【80歳前後の執念完済】超長期ローンの果てに辿り着いた抵当権抹消',
+        title: '【75〜80代・超長期ローンの執念完済】年金とシニア就労で繋ぎ、ついに辿り着いた抵当権抹消',
         subtitle: `${state.age}歳で完済・手元老後資金 ${state.liquidSavingsMan.toLocaleString()}万円`,
         epilogue:
-          '年金生活に入ってからも毎月続いた住宅ローン引き落とし。退職金の大半を注ぎ込み、シルバー人材として働き続けながら、ついに70代後半〜80代で完済を果たした。家は守ったが、老後の現預金はギリギリの戦いに。',
+          '年金生活に入ってからも毎月続いた住宅ローン引き落とし。退職金や老後資金を注ぎ込み、シニア期も粘り強く家計をやりくりしながら、ついに70代後半〜80代で完済を果たした。家は守ったが、老後の現預金はギリギリの戦いに。',
         statisticComparison:
-          '近年急増している50年ローンや30代後半以降の35年ローンでは、65歳定年後の15年間をどう生き抜くかが最大の課題となる。',
+          '近年急増している40〜50年ローンや30代後半以降の35年ローンでは、65歳定年後の10〜20年間をどう生き抜くかが最大の課題となる。',
       },
       score: 1850 + Math.round(netEquity * 0.2) + state.mentalScore * 8,
     };
   }
 
+  // (4-15) ギリギリ完済・ハウスプア生還
   return {
     ending: {
       id: 'barely-paid-off-house-poor',
-      rank: 'B',
-      title: '【ギリギリ完済・ハウスプア生還】退職金を投入し、なんとか我が死守',
+      rank: state.liquidSavingsMan >= 500 ? 'B' : 'C',
+      title: '【ギリギリ完済・ハウスプア生還】預貯金は削られたが、最後まで我が家を死守！',
       subtitle: `${state.age}歳で完済・手元資金 ${state.liquidSavingsMan.toLocaleString()}万円 / 自宅時価 ${state.propertyValueMan.toLocaleString()}万円`,
       epilogue:
-        '長年にわたる利息と維持費の支払いで手元の預貯金は大きく削られたものの、延滞破産することなく最後までローンを返しきった。必要であれば今後リバースモーゲージや住み替えで老後資金を補える状態だ。',
+        '長年にわたる利息と維持費・物価高の支払いで手元の預貯金は大きく削られたものの、延滞破産することなく最後までローンを返しきった。必要であれば今後リバースモーゲージやコンパクト住み替えで老後資金を補える状態だ。',
       statisticComparison:
         '日本のマイホーム世帯でよく見られる「資産は家だけ（ハウスプア）」状態だが、無借金の住居があることは老後の大きなセーフティネットとなる。',
     },
@@ -2989,9 +3468,12 @@ export function advanceOneYear(
     );
     state.appliedInterestRate = targetVarRate;
   } else if (state.currentRateType === 'mix') {
+    const fixedRatioPct = Math.max(10, Math.min(90, Math.round(state.config.mixFixedRatioPercent ?? 50)));
+    const varShare = (100 - fixedRatioPct) / 100;
     const targetMixRate = Math.max(
-      1.1,
-      Math.round((bank.baseRate + danshin.spreadRate + (state.bojPolicyRate - 0.75) * 0.48) * 1000) / 1000,
+      0.75,
+      Math.round((bank.baseRate + danshin.spreadRate + (state.bojPolicyRate - 0.75) * 0.96 * varShare) * 1000) /
+        1000,
     );
     state.appliedInterestRate = targetMixRate;
   } else if (state.currentRateType === 'fixed-10' && y === 11) {
@@ -3138,9 +3620,15 @@ export function advanceOneYear(
     const totalRetireLumpMan = retirementAllowanceMan + spouseRetirementMan;
     state.liquidSavingsMan += totalRetireLumpMan;
 
-    if (careerEdu.postRetirementWork === 'reemploy-same') {
+    if (
+      careerEdu.postRetirementWork === 'reemploy-same' ||
+      careerEdu.postRetirementWork === 'retire-65-pension-only'
+    ) {
       state.mainIncomeMan = Math.max(210, Math.round(state.mainIncomeMan * 0.62));
-      state.currentJobLabel = '60代・嘱託再雇用（現職継続）';
+      state.currentJobLabel =
+        careerEdu.postRetirementWork === 'retire-65-pension-only'
+          ? '60〜64歳・嘱託再雇用（65歳以降は完全引退予定）'
+          : '60代・嘱託再雇用（現職継続）';
     } else if (careerEdu.postRetirementWork === 'reemploy-light-job') {
       state.mainIncomeMan = 250;
       state.currentJobLabel = '60代・別職種転身（ビル管理・施設事務）';
@@ -3150,7 +3638,7 @@ export function advanceOneYear(
     } else {
       // full-retire-60
       state.mainIncomeMan = 0;
-      state.currentJobLabel = '60歳完全リタイア（無職・年金待機）';
+      state.currentJobLabel = '60歳完全リタイア（定年後働かない・無職）';
     }
 
     if (totalRetireLumpMan > 0) {
@@ -3173,7 +3661,7 @@ export function advanceOneYear(
       );
     }
   } else if (age === 65) {
-    // 65歳：公的年金受給開始（残債があり働く意向がある場合はシルバー短時間アルバイト併用）
+    // 65歳：公的年金受給開始（定年後働かない設定の場合はシルバーアルバイトも一切せず完全リタイア・年金のみ）
     const basePensionMan =
       state.config.employment === 'freelance'
         ? 150
@@ -3181,11 +3669,13 @@ export function advanceOneYear(
           ? 250
           : 220;
     const doSilverArubaito =
-      state.remainingBalanceMan > 300 && careerEdu.postRetirementWork !== 'full-retire-60';
+      state.remainingBalanceMan > 300 &&
+      careerEdu.postRetirementWork !== 'full-retire-60' &&
+      careerEdu.postRetirementWork !== 'retire-65-pension-only';
     state.mainIncomeMan = basePensionMan + (doSilverArubaito ? 72 : 0);
     state.currentJobLabel = doSilverArubaito
       ? '公的年金受給 ＋ シルバー短時間アルバイト'
-      : '公的年金受給生活（完全リタイア）';
+      : '公的年金受給のみ（定年後働かない・完全リタイア）';
 
     if (careerEdu.hasSpouse && !state.isDivorced) {
       state.subIncomeMan =
@@ -3209,67 +3699,23 @@ export function advanceOneYear(
     state.currentJobLabel = '公的年金受給生活（完全引退）';
   }
 
-  // 配偶者（奥さん・パートナー）の働き方・パート/バイト転換の年次更新（65歳未満）
+  // 配偶者（奥さん・パートナー）の働き方の年次更新（65歳未満：途中の選択肢イベントまたは毎年の働き方変更で選択された状態を維持）
   if (age < 65) {
     if (!careerEdu.hasSpouse || state.isDivorced) {
       state.subIncomeMan = 0;
       state.currentSpouseJobLabel = state.isDivorced ? '離別（単身世帯）' : '単身世帯（配偶者なし）';
-    } else if (careerEdu.spouseWorkPattern === 'homemaker') {
-      // 専業主婦(夫)継続（もし決断イベントでパートを始めていなければ0円）
-      if (state.subIncomeMan > 0) {
-        state.currentSpouseJobLabel = 'パート・アルバイト勤務';
-      } else {
-        state.currentSpouseJobLabel = '専業主婦（夫）';
-      }
-    } else if (careerEdu.spouseWorkPattern === 'homemaker-to-part') {
-      // 子育て後に専業主婦(夫)からパート・アルバイト勤務へ復帰
-      const youngestChildAge =
-        state.childrenAges.length > 0 ? Math.min(...state.childrenAges) : 99;
-      if (
-        state.subIncomeMan === 0 &&
-        (y === 5 || (state.childrenAges.length > 0 && youngestChildAge === 6)) &&
-        !state.triggeredEventIds.includes('auto-spouse-part-start')
-      ) {
-        state.triggeredEventIds.push('auto-spouse-part-start');
-        state.subIncomeMan = 108;
-        state.currentSpouseJobLabel = 'パート・アルバイト勤務（週4日・接客/事務）';
-        pushEntry(
-          'life',
-          'good',
-          `【配偶者がパート・アルバイト勤務を開始！】年間 +108万円の世帯収入アップ`,
-          '子育てが一段落したのを機に、配偶者が近隣でのパート・アルバイト勤務（週4日）をスタート！年間108万円の収入が加わり、教育費と住宅ローン返済の心強い支えとなった。',
-          undefined,
-          '配偶者収入 +108万/年',
-        );
-      }
-    } else if (careerEdu.spouseWorkPattern === 'shift-to-part') {
-      // 正社員から途中でパート・アルバイトへシフト
-      if (y === 6 && state.subIncomeMan > 150 && !state.triggeredEventIds.includes('auto-spouse-shift-part')) {
-        state.triggeredEventIds.push('auto-spouse-shift-part');
-        const prevSub = state.subIncomeMan;
-        state.subIncomeMan = 120;
-        state.currentSpouseJobLabel = 'パート・アルバイト勤務（社員から転換）';
-        pushEntry(
-          'life',
-          'mixed',
-          `【配偶者の働き方転換】正社員（${prevSub}万）→ パート・アルバイト勤務（年収120万円）へシフト`,
-          '家庭・育児と健康のバランスを優先し、配偶者がフルタイム社員を退職して週3〜4日のパート・アルバイト勤務へ転換した。家族のゆとりは増えたが世帯年収は減少した。',
-          undefined,
-          `配偶者収入 ${120 - prevSub}万`,
-        );
-      } else if (age === 60 && state.subIncomeMan > 100) {
-        state.subIncomeMan = 96;
-        state.currentSpouseJobLabel = 'シニアパート・アルバイト勤務';
-      }
-    } else if (careerEdu.spouseWorkPattern === 'part-time') {
-      // パート・アルバイト継続
+    } else if (state.subIncomeMan === 0) {
+      state.currentSpouseJobLabel = '専業主婦（夫）';
+    } else if (state.subIncomeMan <= 165) {
+      // パート・アルバイト勤務中
       if (age === 60) {
         state.subIncomeMan = Math.min(state.subIncomeMan, 96);
         state.currentSpouseJobLabel = 'シニアパート・アルバイト勤務';
       } else if (y % 4 === 0 && state.subIncomeMan > 0 && state.subIncomeMan < 155) {
         state.subIncomeMan += 4; // 最低賃金・時給改定による微増
       }
-    } else if (careerEdu.spouseWorkPattern === 'fulltime-keep') {
+    } else {
+      // 正社員・フルタイム勤務中
       if (age < 55) {
         state.subIncomeMan = Math.round(state.subIncomeMan * (1 + Math.max(0, wageGrowthRate * 0.8)));
       } else if (age === 60) {
@@ -3505,8 +3951,10 @@ export function advanceOneYear(
     );
   }
 
-  // 子どもの就職・社会人独立マイルストーン（高卒就職18歳 / 専門学校20歳 / 大学22歳）
+  // 子どもの就職・社会人独立マイルストーン（高卒就職18歳 / 専門学校20歳 / 大学22歳）＆家族構成変化
   const independenceAge = getChildIndependenceAge(state.config);
+  const dynamicFamily = calcDynamicFamilyComposition(state);
+  const dependentChildrenCount = dynamicFamily.cohabitingChildrenAges.length;
   const kidsGraduatingCount = state.childrenAges.filter((a) => a === independenceAge).length;
   if (kidsGraduatingCount > 0) {
     const gradPathLabel =
@@ -3515,68 +3963,28 @@ export function advanceOneYear(
         : careerEdu.higherEdPath === 'vocational-2yr'
           ? '専門学校卒業・就職'
           : '大学卒業・就職';
+    const isAllIndependentNow = dependentChildrenCount === 0;
     pushEntry(
       'milestone',
       'good',
-      `【祝・子どもの${gradPathLabel}＆社会人独立！】（${independenceAge}歳）教育費負担が終了！`,
-      `子どもが無事に${gradPathLabel}を果たし社会人として独立！今年から1人分の学費・生活費負担がなくなり、住宅ローン返済と老後資金形成のペースが一気に上がる！`,
+      isAllIndependentNow
+        ? `【祝・子ども全員が${gradPathLabel}＆独立！家族構成が「${dynamicFamily.compositionLabel}」へ】`
+        : `【祝・子どもの${gradPathLabel}＆社会人独立！】（${independenceAge}歳）同居家族が${dynamicFamily.totalHouseholdMembers}人へ変化！`,
+      isAllIndependentNow
+        ? `子ども全員が社会人として巣立ち、今年から家族構成が「${dynamicFamily.compositionLabel}」へ移行！教育費だけでなく食費・水道光熱費・通信費などの生活費も大きくスリム化され、完済と老後資金形成のペースが一気に上がる！`
+        : `子どもが無事に${gradPathLabel}を果たし社会人として独立！今年から1人分の学費・同居生活費負担がなくなり（現在の家族構成：${dynamicFamily.compositionLabel}）、家計の貯蓄余力が大きく改善する！`,
       undefined,
-      '教育費負担減',
+      '家族構成変化・支出減',
     );
   }
 
-  // 教育費（中学受験・入塾/夏期講習/予備校・進路・学資保険料・奨学金軽減・物価連動をすべて反映）＋基本生活費＋旅行・レジャー娯楽費
+  // 教育費（中学受験・入塾/夏期講習/予備校・進路・学資保険料・奨学金軽減・物価連動をすべて反映）＋家族構成＆子ども年齢に応じた動的基礎生活費＋旅行・レジャー娯楽費
   const childrenEduCostMan = state.childrenAges.reduce(
     (sum, cAge) => sum + calcDetailedChildAnnualEduCostMan(cAge, state.config, state.cumulativePriceIndex ?? 100),
     0,
   );
-  const baseAdultLiving = careerEdu.hasSpouse && !state.isDivorced ? 204 : 152;
-  const dependentChildrenCount = state.childrenAges.filter((a) => a < independenceAge).length;
-  // 物価上昇（累積物価指数）に応じた生活コスト（食費・日用品・水道光熱費等）の上昇を反映
-  const baseLivingCostMan = Math.round(
-    (baseAdultLiving + dependentChildrenCount * 30) * Math.pow(priceMult, 0.62),
-  );
-
-  // 家族旅行・レジャー・外食・娯楽費（スタイル選択＋物価連動＋資金余裕度補正）
-  const leisureSpec = LEISURE_STYLE_SPECS[careerEdu.leisureStyle];
-  const baseLeisureMan =
-    (careerEdu.hasSpouse && !state.isDivorced
-      ? leisureSpec.baseAnnualCostCoupleMan
-      : leisureSpec.baseAnnualCostSingleMan) +
-    dependentChildrenCount * leisureSpec.perChildExtraMan;
-  const leisureAffordabilityMult = state.liquidSavingsMan < 220 ? 0.55 : age >= 65 ? 0.8 : 1.0;
-  const annualTravelLeisureCostMan = Math.round(
-    baseLeisureMan * Math.pow(priceMult, 0.78) * leisureAffordabilityMult,
-  );
-  state.mentalScore = Math.max(
-    10,
-    Math.min(100, state.mentalScore + leisureSpec.annualMentalDelta),
-  );
-
-  const annualLivingAndEduCostMan =
-    baseLivingCostMan + childrenEduCostMan + annualTravelLeisureCostMan;
-
-  // 住宅ローン控除（年0.7%）
-  const taxInfo = calcAnnualTaxDeductionMan(
-    state.remainingBalanceMan,
-    y,
-    property,
-    state.config.contractType,
-    family.childrenCount > 0,
-    state.mainIncomeMan,
-    state.subIncomeMan,
-  );
-  const annualTaxCreditMan = taxInfo.creditMan;
-
-  if (y === taxInfo.maxYears + 1 && taxInfo.maxYears > 0) {
-    pushEntry(
-      'life',
-      'bad',
-      `【住宅ローン控除（${taxInfo.maxYears}年間）終了クリフ】今年から毎年最大35万円規模の還付金がゼロに！`,
-      `入居から${taxInfo.maxYears}年間家計を助けてくれた住宅ローン減税期間が満了。今年から実質的な手取りキャッシュフローがその分減少する。`,
-      '11年目・14年目に突然家計が苦しくなる「控除終了の崖」。',
-    );
-  }
+  // 年とともに変わる家族構成（単身1人 / 夫婦2人 / 子ども年齢別加算 / 独立後の減少）と累積物価指数を反映した基礎生活費
+  const baseLivingCostMan = dynamicFamily.annualBaseLivingCostMan;
 
   // 今年の重点方針（focusMode）による家計・メンタル・健康補正
   const focus = state.focusMode ?? 'balanced';
@@ -3598,6 +4006,92 @@ export function advanceOneYear(
     state.healthScore = Math.max(25, (state.healthScore ?? 85) - (age >= 50 ? 1 : 0));
   }
 
+  // 所得水準・手元キャッシュ余裕度に応じたリアルな生活水準上昇（ライフスタイルクリープ・交際費・被服・外食・所得制限による負担増）
+  // 手元にキャッシュがたくさんある世帯（800万円超）や高所得世帯ほど、日常の生活水準・買い物グレード・交際費・親族支援が自然に膨張する現実を反映
+  const incomeLifestyleExtraMan =
+    netHouseholdIncomeMan > 880
+      ? Math.round((netHouseholdIncomeMan - 880) * (focus === 'frugal-prepay' ? 0.16 : 0.28))
+      : 0;
+  const cashComfortCreepMan =
+    state.liquidSavingsMan > 800
+      ? Math.min(
+          160,
+          Math.round((state.liquidSavingsMan - 800) * (focus === 'frugal-prepay' ? 0.02 : 0.042)),
+        )
+      : 0;
+
+  // 9年周期の大型耐久消費財・家電一斉寿命・マイカー/給湯空調設備の更新費用
+  let durableReplacementCostMan = 0;
+  if (y > 0 && y % 9 === 0) {
+    durableReplacementCostMan = Math.round(
+      (property.buildingType === 'detached' ? 54 : 38) * Math.pow(priceMult, 0.7),
+    );
+    pushEntry(
+      'life',
+      'bad',
+      `【大型家電・空調・耐久財の一斉更新期（${y}年目）】エアコン・冷蔵庫・洗濯機・生活設備の買い替え（-${durableReplacementCostMan}万円）`,
+      `入居から${y}年が経過し、毎日酷使してきた複数台のルームエアコン・大型冷蔵庫・ドラム式洗濯乾燥機・給湯/生活機器が寿命を迎え、物価上昇後の価格で一斉買い替え（-${durableReplacementCostMan}万円）が必要となった。`,
+      '耐久消費財（白物家電・空調・車両等）は8〜10年周期でまとまった更新費用が発生し、長期家計の見落とされがちなキャッシュアウトとなる。',
+      `耐久財更新 -${durableReplacementCostMan}万`,
+    );
+  }
+
+  // 家族旅行・レジャー・外食・娯楽費（スタイル選択＋物価連動＋資金余裕度補正）
+  const leisureSpec = LEISURE_STYLE_SPECS[careerEdu.leisureStyle];
+  const baseLeisureMan =
+    (careerEdu.hasSpouse && !state.isDivorced
+      ? leisureSpec.baseAnnualCostCoupleMan
+      : leisureSpec.baseAnnualCostSingleMan) +
+    dependentChildrenCount * leisureSpec.perChildExtraMan;
+  const leisureAffordabilityMult =
+    state.liquidSavingsMan < 220
+      ? 0.55
+      : state.liquidSavingsMan >= 1500 && careerEdu.leisureStyle !== 'frugal-staycation'
+        ? 1.25
+        : age >= 65
+          ? 0.8
+          : 1.0;
+  const annualTravelLeisureCostMan = Math.round(
+    baseLeisureMan * Math.pow(priceMult, 0.78) * leisureAffordabilityMult,
+  );
+  state.mentalScore = Math.max(
+    10,
+    Math.min(100, state.mentalScore + leisureSpec.annualMentalDelta),
+  );
+
+  const annualLivingAndEduCostMan =
+    baseLivingCostMan +
+    incomeLifestyleExtraMan +
+    cashComfortCreepMan +
+    durableReplacementCostMan +
+    childrenEduCostMan +
+    annualTravelLeisureCostMan;
+
+  // 住宅ローン控除（年0.7%・合計所得2,000万円超の年は対象外）
+  const taxInfo =
+    state.mainIncomeMan > 2000
+      ? { creditMan: 0, maxYears: property.isNew ? 13 : 10, borrowingCapMan: 0 }
+      : calcAnnualTaxDeductionMan(
+          state.remainingBalanceMan,
+          y,
+          property,
+          state.config.contractType,
+          family.childrenCount > 0 || state.childrenAges.length > 0,
+          state.mainIncomeMan,
+          state.subIncomeMan,
+        );
+  const annualTaxCreditMan = taxInfo.creditMan;
+
+  if (y === taxInfo.maxYears + 1 && taxInfo.maxYears > 0) {
+    pushEntry(
+      'life',
+      'bad',
+      `【住宅ローン控除（${taxInfo.maxYears}年間）終了クリフ】今年から毎年最大35万円規模の還付金がゼロに！`,
+      `入居から${taxInfo.maxYears}年間家計を助けてくれた住宅ローン減税期間が満了。今年から実質的な手取りキャッシュフローがその分減少する。`,
+      '11年目・14年目に突然家計が苦しくなる「控除終了の崖」。',
+    );
+  }
+
   const annualCashFlowMan =
     Math.round(
       (netHouseholdIncomeMan +
@@ -3609,9 +4103,32 @@ export function advanceOneYear(
         10,
     ) / 10;
 
-  // 手元金融資産の運用利回り（黒字貯蓄分の一部を新NISA等で運用）
-  const investmentReturnMan =
-    state.liquidSavingsMan > 300 ? Math.round((state.liquidSavingsMan - 200) * focusInvestBonusRate) : 0;
+  // 手元金融資産の運用利回り（生活防衛預金450万円を除いた投資枠のみ＋新NISA生涯非課税枠1,800万円上限＋特定口座20.315%課税＋株式市場の下落相場リスクをリアルに反映）
+  let investmentReturnMan = 0;
+  if (state.liquidSavingsMan > 450) {
+    const investableSurplusMan = state.liquidSavingsMan - 450;
+    const riskAssetRatio = focus === 'nisa-invest' ? 0.68 : focus === 'frugal-prepay' ? 0.35 : 0.42;
+    const investedPrincipalMan = investableSurplusMan * riskAssetRatio;
+    const bankDepositMan = investableSurplusMan - investedPrincipalMan;
+    const depositInterestMan = bankDepositMan * 0.002;
+
+    // 株式・投信市場の年次リターン（約23%の確率で世界株安・円高調整によるマイナス評価損が発生）
+    const marketRoll = rng();
+    let effectiveMarketRate = focusInvestBonusRate;
+    if (marketRoll < 0.23) {
+      effectiveMarketRate = focus === 'nisa-invest' ? -0.055 : -0.032;
+    }
+
+    const rawRiskReturnMan = investedPrincipalMan * effectiveMarketRate;
+    // 新NISA非課税保有限度額（1,800万円）を超える運用益には20.315%の分離課税がかかる
+    const nisaTaxFreeRatio = Math.min(1.0, 1800 / Math.max(1, investedPrincipalMan));
+    const afterTaxRiskReturnMan =
+      rawRiskReturnMan > 0
+        ? rawRiskReturnMan * (nisaTaxFreeRatio + (1 - nisaTaxFreeRatio) * (1 - 0.20315))
+        : rawRiskReturnMan;
+
+    investmentReturnMan = Math.round((depositInterestMan + afterTaxRiskReturnMan) * 10) / 10;
+  }
 
   state.liquidSavingsMan = Math.round((state.liquidSavingsMan + annualCashFlowMan + investmentReturnMan) * 10) / 10;
   state.totalPrincipalPaidMan = Math.round((state.totalPrincipalPaidMan + annualPrincipalPaidMan) * 10) / 10;
@@ -3997,13 +4514,311 @@ export function advanceOneYear(
   }
 
   // === 8. 人生とローンの重大決断イベント発火判定（世帯・雇用・配偶者・子ども・物件条件に完全一致するものだけを発火） ===
-  // (C0-1) 子どもがいない夫婦（DINKs・配偶者あり・41歳以下）の「第1子誕生・ライフプラン大転換」イベント（3年目）
+  // (D4-1) 60歳定年退職時（退職金制度ありの世帯）：定年後の働き方・職種（嘱託再雇用 / 別職種 / アルバイト / 定年後働かない）と退職金の使い道をその時の選択肢で決める！
+  if (
+    age === 60 &&
+    careerEdu.retirementAllowanceMan >= 400 &&
+    !state.triggeredEventIds.includes('retirement-lump-sum-60')
+  ) {
+    state.triggeredEventIds.push('retirement-lump-sum-60');
+    const payoffTarget = Math.min(
+      Math.round(state.remainingBalanceMan),
+      Math.max(0, Math.min(1400, Math.round(state.liquidSavingsMan - 350))),
+    );
+    const sameReemployIncome = Math.max(220, state.mainIncomeMan > 0 ? state.mainIncomeMan : 280);
+    state.pendingDecision = {
+      id: 'retirement-lump-sum-60',
+      yearIndex: y,
+      age,
+      category: 'retirement',
+      title: `【60歳定年・今後の働き方＆退職金（+${careerEdu.retirementAllowanceMan.toLocaleString()}万円）の選択】60代をどう生きるか？`,
+      description: `60歳定年を迎え退職金 ${careerEdu.retirementAllowanceMan.toLocaleString()}万円を受け取った（残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円）。60歳以降の働き方・職種（現職で嘱託再雇用 / 別職種へ転身 / 週3〜4日アルバイト / 定年後は一切働かない）と退職金の使い道をここで選択できる！（※60歳以降も毎年「今年の働き方・いつまで働くか」を自由に変更可能）`,
+      statisticalContext:
+        '60歳定年時の「働き方・職種選択（再雇用・別職種・バイト・完全引退）」と「退職金で繰上返済するか手元資金として残すか」は老後キャッシュフロー最大の分岐点。',
+      choices: [
+        {
+          id: 'retire-major-prepay',
+          label:
+            payoffTarget >= 200
+              ? `【嘱託再雇用＋繰上返済】同じ職場で嘱託再雇用（年収${sameReemployIncome}万円）として働き、退職金から ${payoffTarget.toLocaleString()}万円を繰上返済する`
+              : `【嘱託再雇用で現職継続】慣れた職場で嘱託再雇用（年収${sameReemployIncome}万円）として60代も働き続ける`,
+          subLabel:
+            payoffTarget >= 200
+              ? `本人年収 ${sameReemployIncome}万円（嘱託再雇用） / 手元資金 -${payoffTarget}万 → 残債 -${payoffTarget}万円圧縮`
+              : `本人年収 ${sameReemployIncome}万円（嘱託再雇用） / 安定収入で着実に返済継続`,
+          outcomeSummary:
+            payoffTarget >= 200
+              ? `現職での嘱託再雇用を選びつつ、退職金から${payoffTarget.toLocaleString()}万円を繰上返済に充当！残債を大幅に減らし、安定収入で60代をスタートした。`
+              : '慣れた職場での嘱託再雇用を選択し、60代も安定した勤労収入を確保した。',
+          newPostRetirementWork:
+            careerEdu.postRetirementWork === 'retire-65-pension-only'
+              ? 'retire-65-pension-only'
+              : 'reemploy-same',
+          newMainIncomeAbsoluteMan: sameReemployIncome,
+          newJobLabel: '60代・嘱託再雇用（現職継続）',
+          cashDeltaMan: payoffTarget >= 200 ? -payoffTarget : 0,
+          principalDeltaMan: payoffTarget >= 200 ? -payoffTarget : 0,
+          mentalDelta: 8,
+        },
+        {
+          id: 'retire-keep-cash-nisa',
+          label: '【嘱託再雇用＋退職金温存】現職の再雇用で働きつつ、退職金は手元資金・配当運用として温存する',
+          subLabel: '手元キャッシュ温存（流動性確保） / 60代も再雇用収入で毎月返済を継続',
+          outcomeSummary:
+            '「現金が手元にあればいつでも返せる」と判断し、退職金を老後キャッシュとして温存。再雇用収入と運用益を得ながら計画的に返済を続ける道を選んだ。',
+          mentalDelta: 3,
+        },
+        {
+          id: 'retire-light-job-shift',
+          label: '【別職種へ転身】責任の軽い別職種（施設管理・事務・実務職：年収250万円）へ移り、退職金は温存する',
+          subLabel: '本人年収 250万円（別職種フルタイム） / プレッシャーを減らして安定稼働',
+          outcomeSummary:
+            '定年を機にプレッシャーの少ない別職種（年収250万円）へ転身し、心身の余裕を保ちながら返済を続ける道を選んだ。',
+          newPostRetirementWork: 'reemploy-light-job',
+          newMainIncomeAbsoluteMan: 250,
+          newJobLabel: '60代・別職種転身（ビル管理・施設事務）',
+          mentalDelta: 6,
+        },
+        {
+          id: 'retire-60-arubaito-work',
+          label: '【週3〜4日アルバイト勤務】体力を最優先して短時間アルバイト（清掃・受付・軽作業等：年収140万円）で無理なく働く',
+          subLabel: '本人年収 140万円（短時間アルバイト） / 自分のペースで健康と自由時間を両立・幸福度 +9',
+          outcomeSummary:
+            'フルタイムのストレスから離れ、週3〜4日の短時間アルバイト（年収140万円）を選択！健康とプライベートの時間を大切にしながら穏やかに働く60代をスタートした。',
+          newPostRetirementWork: 'part-time-arubaito',
+          newMainIncomeAbsoluteMan: 140,
+          newJobLabel: '60代・週3〜4日アルバイト/パート勤務',
+          mentalDelta: 9,
+        },
+        {
+          id: 'retire-60-no-work-life',
+          label: '【定年後は一切働かない！】60歳で完全リタイア（無職・勤労収入0円）し、退職金と貯蓄で悠々自適の生活へ入る',
+          subLabel: '60歳以降は勤労収入 0円（完全引退） / 65歳の年金開始まで退職金と貯蓄を取り崩して暮らす',
+          outcomeSummary:
+            '「60歳まで懸命に働いたのだから、定年後はもう働かない！」と決断。再雇用やアルバイトを一切せず完全リタイアし、退職金と手元貯蓄で悠々自適のセカンドライフへ入った！',
+          newPostRetirementWork: 'full-retire-60',
+          newMainIncomeAbsoluteMan: 0,
+          newJobLabel: '60歳完全リタイア（定年後働かない・無職）',
+          mentalDelta: 14,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D4-2) 60歳到来時（退職金制度なし・0円〜少額の世帯専用！）：60歳以降の働き方・職種（継続雇用 / 別職種 / アルバイト / 定年後働かない）をその時の選択肢で決める！
+  if (
+    age === 60 &&
+    careerEdu.retirementAllowanceMan < 400 &&
+    !state.triggeredEventIds.includes('no-retirement-60-survival')
+  ) {
+    state.triggeredEventIds.push('no-retirement-60-survival');
+    const sameContinueIncome = Math.max(230, state.mainIncomeMan > 0 ? state.mainIncomeMan : 280);
+    const canPrepay250 = state.liquidSavingsMan >= 450 && state.remainingBalanceMan >= 250;
+    state.pendingDecision = {
+      id: 'no-retirement-60-survival',
+      yearIndex: y,
+      age,
+      category: 'retirement',
+      title: `【60歳・今後の働き方＆職種選択】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円を60代でどう乗り切るか？`,
+      description:
+        '60歳を迎えたが、退職金一時金がない（または少額の）キャリアのため一括返済の原資がない！60歳以降の働き方・職種（現職継続 / 別職種へ転職 / 週3〜4日アルバイト / 定年後は一切働かない）をどう選ぶか？（※60歳以降も毎年「今年の働き方・いつまで働くか」を自由に変更可能）',
+      statisticalContext:
+        '厚生労働省「就労条件総合調査」：日本企業の約25%（中小企業やベンチャー・外資では3〜7割）には退職金制度がなく、60代以降の働き方選択または現役時の貯蓄が完済の分岐点となる。',
+      choices: [
+        {
+          id: 'senior-reemploy-same-job',
+          label: `【現職で継続雇用】これまでの専門スキルを活かし、現在の職場・取引先で継続稼働する（年収${sameContinueIncome}万円）`,
+          subLabel: `本人年収 ${sameContinueIncome}万円確保 / 慣れた仕事で60代も安定収入を維持`,
+          outcomeSummary: `60歳以降も現職・取引先での継続稼働（年収${sameContinueIncome}万円）を選択し、安定したキャッシュフローを守り抜いた！`,
+          newPostRetirementWork:
+            careerEdu.postRetirementWork === 'retire-65-pension-only'
+              ? 'retire-65-pension-only'
+              : 'reemploy-same',
+          newMainIncomeAbsoluteMan: sameContinueIncome,
+          newJobLabel: '60代・継続雇用（現職稼働）',
+          mentalDelta: 4,
+        },
+        {
+          id: 'senior-fulltime-change-job',
+          label: '【別職種へフルタイム転身】定年がない別職種（ビル設備管理・施設事務・ドライバー・介護事務等：年収260万円）へ転職して稼ぐ',
+          subLabel: '本人年収 260万円確保 / 70歳まで安定して働ける実務職種へシフト',
+          outcomeSummary:
+            'プライドを捨ててシニア需要の高い実務職種へフルタイム転身！年間260万円の安定収入を確保し、退職金なしでも毎月返済を継続できる体制を整えた！',
+          newPostRetirementWork: 'reemploy-light-job',
+          newMainIncomeAbsoluteMan: 260,
+          newJobLabel: '60代・別職種フルタイム（管理・設備実務職）',
+          mentalDelta: 4,
+        },
+        {
+          id: 'senior-arubaito-plus-prepay',
+          label: canPrepay250
+            ? '【週4日アルバイト＋貯蓄繰上返済】シニアアルバイト（年収150万円）で無理なく働きつつ、手元貯蓄から250万円を繰上返済する'
+            : '【週3〜4日アルバイト勤務】体を壊さないようシニアアルバイト（清掃・受付・軽作業等：年収150万円）で無理なく働く',
+          subLabel: canPrepay250
+            ? '本人年収 150万円 / 手元資金 -250万 → ローン残債 -250万円圧縮'
+            : '本人年収 150万円 / 体力を守りながら自分のペースで就労継続',
+          outcomeSummary: canPrepay250
+            ? '体を壊さないよう週4日のアルバイト勤務を選び、これまで貯めた自己資金から250万円を繰上返済して毎月の負担を引き下げた。'
+            : '体を壊さないよう週3〜4日のアルバイト勤務（年収150万円）を選び、健康第一で60代をスタートした。',
+          newPostRetirementWork: 'part-time-arubaito',
+          newMainIncomeAbsoluteMan: 150,
+          newJobLabel: '60代・週4日アルバイト勤務',
+          cashDeltaMan: canPrepay250 ? -250 : 0,
+          principalDeltaMan: canPrepay250 ? -250 : 0,
+          mentalDelta: 6,
+        },
+        {
+          id: 'senior-no-work-full-retire',
+          label: '【定年後は一切働かない！】完全リタイア（無職・勤労収入0円）を選び、手元貯蓄を取り崩して悠々自適に暮らす',
+          subLabel: '本人勤労収入 0円（完全引退） / 65歳の年金開始まで手元資金を取り崩して返済・生活を維持',
+          outcomeSummary:
+            '「60歳からは仕事に縛られず自由に生きる！」と定年後の完全リタイア（無職）を選択。勤労収入は0円となるが、これまでの蓄えを切り崩しながら自由な時間を手に入れた。',
+          newPostRetirementWork: 'full-retire-60',
+          newMainIncomeAbsoluteMan: 0,
+          newJobLabel: '60歳完全リタイア（定年後働かない・無職）',
+          mentalDelta: 12,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D4-3) 65歳公的年金開始時：65歳以降は一切働かない（完全引退・年金のみ）か、シルバーアルバイトをするか
+  if (
+    age === 65 &&
+    state.remainingBalanceMan >= 200 &&
+    !state.triggeredEventIds.includes('retirement-65-work-or-not')
+  ) {
+    state.triggeredEventIds.push('retirement-65-work-or-not');
+    const basePensionMan =
+      state.config.employment === 'freelance'
+        ? 150
+        : state.config.employment === 'civil-servant' || state.config.employment === 'listed-corp'
+          ? 250
+          : 220;
+    state.pendingDecision = {
+      id: 'retirement-65-work-or-not',
+      yearIndex: y,
+      age,
+      category: 'retirement',
+      title: `【65歳・年金受給開始と完全引退の分岐点】65歳以降は一切働かないか？残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円への向き合い方`,
+      description: `65歳を迎え公的年金（年約${basePensionMan}万円）の受給がスタート！しかし住宅ローン残債はまだ ${Math.round(state.remainingBalanceMan).toLocaleString()}万円残っている。ここからは一切働かず年金と貯蓄だけで悠々自適に暮らすか、それともシルバーアルバイトで収入を補うか？`,
+      statisticalContext:
+        '内閣府「高齢社会白書」：65〜69歳の就業率は約52%に達する一方、半数近くは65歳を機に完全引退し公的年金と貯蓄の取り崩しによるセカンドライフへ移行している。',
+      choices: [
+        {
+          id: 'retire-65-no-work-pension',
+          label: `「65歳定年後は一切働かない！」アルバイト等もせず完全引退し、公的年金（年${basePensionMan}万円）と貯蓄だけで暮らす`,
+          subLabel: `65歳以降の勤労収入 0円（年金年${basePensionMan}万円のみ） / 自由な老後時間を最大化`,
+          outcomeSummary:
+            '「65歳からは一切働かず、自分の時間を楽しむ！」と完全引退を決断。公的年金とこれまでの貯蓄で住宅ローンを返済していく悠々自適な年金生活へ移行した。',
+          newPostRetirementWork: 'retire-65-pension-only',
+          newMainIncomeAbsoluteMan: basePensionMan,
+          newJobLabel: '公的年金受給のみ（定年後働かない・完全リタイア）',
+          mentalDelta: 12,
+        },
+        {
+          id: 'retire-65-no-work-and-prepay',
+          label: `「定年後は働かない＋貯蓄で繰上返済！」完全引退しつつ、手元資金から300万円を繰上返済して年金生活の負担を減らす`,
+          subLabel: `勤労収入 0円（年金年${basePensionMan}万円のみ） / 手元資金 -300万円 → ローン残債 -300万円`,
+          outcomeSummary:
+            '65歳で完全引退して働かない道を選ぶと同時に、手元貯蓄から300万円を繰上返済に充当！年金だけでも無理なく返せるよう残債を圧縮した。',
+          newPostRetirementWork: 'retire-65-pension-only',
+          newMainIncomeAbsoluteMan: basePensionMan,
+          newJobLabel: '公的年金受給のみ（定年後働かない・完全リタイア）',
+          cashDeltaMan: -300,
+          principalDeltaMan: -300,
+          mentalDelta: 10,
+        },
+        {
+          id: 'retire-65-light-silver-work',
+          label: `健康維持と返済の足しを兼ねて、週3日のシルバー短時間アルバイト（年金＋年72万円）を無理なく続ける`,
+          subLabel: `本人収入 年${basePensionMan + 72}万円（年金${basePensionMan}万＋バイト72万） / 貯蓄の目減りを抑制`,
+          outcomeSummary:
+            '社会とのつながりと家計のゆとりを保つため、週3日の短時間シルバーアルバイトを継続。年金＋月6万円の副収入で貯蓄を守りながら返済を続ける。',
+          newPostRetirementWork: 'part-time-arubaito',
+          newMainIncomeAbsoluteMan: basePensionMan + 72,
+          newJobLabel: '公的年金受給 ＋ シルバー短時間アルバイト',
+          mentalDelta: 4,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (C0-0) 独身（単身）スタート世帯の「結婚の転機・同居か結婚住み替えかおひとり様継続か」イベント（3〜6年目・48歳以下）
+  if (
+    !careerEdu.hasSpouse &&
+    !state.isDivorced &&
+    age <= 48 &&
+    y >= 3 &&
+    (y === 4 || (y <= 7 && rng() < 0.35)) &&
+    !state.triggeredEventIds.includes('single-marriage-crossroad')
+  ) {
+    state.triggeredEventIds.push('single-marriage-crossroad');
+    state.pendingDecision = {
+      id: 'single-marriage-crossroad',
+      yearIndex: y,
+      age,
+      category: 'life',
+      title: '【独身オーナーの大きな転機】パートナーとの結婚・同居か、ファミリー物件への結婚住み替えか、独身貴族を貫くか？',
+      description:
+        '独身（おひとり様）で購入したマイホームで暮らすなか、将来を共にしたいパートナーとの結婚話が具体化した！今の家に2人で住んで共働きで一気に資産を築くか、結婚を機に今の家を売却して広い新居へ「結婚住み替え」するか、それとも独身ライフを貫くか？',
+      statisticalContext:
+        '国土交通省調査・不動産流通統計：20〜30代の単身マンション購入者の約4割が数年以内に結婚等を機に「同居」または「売却してファミリー物件への住み替え」を行っている。',
+      choices: [
+        {
+          id: 'single-marry-stay-dual',
+          label: 'パートナーと結婚し、今のマイホームに2人で住んで「正社員共働き（配偶者年収+260万円）」を始める！',
+          subLabel: '結婚成立（2馬力化：世帯年収+260万/年） / 挙式・新生活準備 -95万円・幸福度 +15',
+          outcomeSummary:
+            'パートナーと結婚し、独身時代に買ったマイホームで新婚生活をスタート！住居費はそのままで配偶者の正社員収入（+260万円/年）が加わり、家計の貯蓄力と幸福度が一気に跳ね上がった！',
+          marrySpouse: 'dual-income',
+          cashDeltaMan: -95,
+          mentalDelta: 15,
+        },
+        {
+          id: 'single-marry-and-relocate',
+          label: '結婚を機に今の家を売却し、2人で広いファミリー向け新居へ「結婚ステップアップ住み替え」する！',
+          subLabel: '結婚成立（配偶者年収+280万/年）＋広い新居へ買い替え（物件価値+1,150万） / 幸福度 +18',
+          outcomeSummary:
+            '結婚と同時に独身時代のマイホームを売却し、将来の家族計画も見据えた広いファミリー向け新居へ華麗に住み替え！2馬力の収入で新居のローンに挑む新たなステージが始まった！',
+          marrySpouse: 'dual-income',
+          relocatePlan: 'upgrade-wider',
+          mentalDelta: 18,
+        },
+        {
+          id: 'single-marry-parttime',
+          label: 'パートナーと結婚し、家庭ゆとり重視の「パートタイム共働き（配偶者年収+115万円）」で今の家に暮らす',
+          subLabel: '結婚成立（配偶者パート年収+115万/年） / 新生活準備 -65万円・幸福度 +13',
+          outcomeSummary:
+            'パートナーと結婚し、仕事と家事のバランスを大切にした穏やかな新婚生活を今のマイホームでスタートさせた！',
+          marrySpouse: 'part-time',
+          cashDeltaMan: -65,
+          mentalDelta: 13,
+        },
+        {
+          id: 'single-stay-solo-life',
+          label: '結婚はせず（おひとり様・事実婚別居等）、誰にも縛られない独身マイホーム貴族を貫く',
+          subLabel: '独身継続（1馬力） / 自分のキャリアと趣味・資産運用に集中（+30万円・幸福度+5）',
+          outcomeSummary:
+            '自分のペースで生きる「おひとり様オーナー」の道を選択！誰に気兼ねすることもなく、自分の城とキャリア・資産形成を極める決意を固めた。',
+          cashDeltaMan: 30,
+          mentalDelta: 5,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (C0-1) 子どもがいない夫婦（DINKsまたは独身から結婚した夫婦・41歳以下）の「第1子誕生・ライフプラン大転換」イベント
   if (
     careerEdu.hasSpouse &&
     !state.isDivorced &&
     state.childrenAges.length === 0 &&
     age <= 41 &&
-    y === 3 &&
+    (y === 3 || (y >= 6 && y <= 8 && state.triggeredEventIds.includes('single-marriage-crossroad'))) &&
     !state.triggeredEventIds.includes('dinks-unexpected-childbirth')
   ) {
     state.triggeredEventIds.push('dinks-unexpected-childbirth');
@@ -4154,53 +4969,58 @@ export function advanceOneYear(
     return state;
   }
 
-  // (C2) 配偶者（奥さん・パートナー）の働き方・アルバイト/パート転換イベント（配偶者あり・非ペアローン世帯のみ）
+  // (C2) 配偶者（奥さん・パートナー）の働き方選択イベント（専業主婦からの職場復帰・パート開始 / パートから正社員登用 / 正社員からパート・専業への転換を途中の選択肢で選べる！）
   if (
     careerEdu.hasSpouse &&
     !state.isDivorced &&
-    state.config.contractType !== 'pair' &&
-    (careerEdu.spouseWorkPattern === 'homemaker-to-part' ? y === 9 : y === 4) &&
+    age < 62 &&
+    (state.config.contractType === 'pair' ? y === 9 : y === 4) &&
     !state.triggeredEventIds.includes('spouse-work-turning-point')
   ) {
-    state.triggeredEventIds.push('spouse-work-turning-point');
+    const evId = 'spouse-work-turning-point';
+    state.triggeredEventIds.push(evId);
     if (state.subIncomeMan === 0) {
       state.pendingDecision = {
-        id: 'spouse-work-turning-point',
+        id: evId,
         yearIndex: y,
         age,
         category: 'life',
-        title: '【配偶者の働き方転機】物価高と教育・老後資金に備え、パート・アルバイトを始めるか？',
+        title: '【配偶者の働き方選択】専業主婦（夫）から正社員へ職場復帰するか、パート勤務を始めるか、家庭に専念するか？',
         description:
-          '現在、配偶者は専業主婦（夫）として家庭を支えているが、近年の物価上昇と今後の住宅ローン返済・教育費を見据え、「近所でパート・アルバイトを始めるか、正社員・契約社員として働くか」の相談があった。',
+          '現在、配偶者は専業主婦（夫）として家庭を支えているが、今後の住宅ローン返済・教育費・物価上昇を見据え、「正社員・フルタイムとして職場復帰するか、週3〜4日のパート・アルバイト勤務を始めるか、このまま家庭に専念するか」を家族で話し合う時期が来た。（※毎年の画面からも配偶者が今年働くかどうかをいつでも変更できます）',
         statisticalContext:
-          '総務省「労働力調査」：住宅ローン返済世帯では、専業主婦（夫）がパート・アルバイト（年100〜130万円）に出るだけで30年間の累計手取りが2,500万円以上改善する。',
+          '総務省「労働力調査」：専業主婦（夫）世帯でも子育て等の節目にパート勤務（年100〜130万円）や正社員への職場復帰（年240万円〜）を選択することで、生涯の返済余力が大きく変わる。',
         choices: [
           {
             id: 'spouse-start-arubaito',
-            label: '無理のない範囲で週3〜4日のパート・アルバイト（接客・事務・軽作業：年収108万円）を始める',
+            label: '無理のない範囲で週3〜4日のパート・アルバイト勤務（接客・事務・軽作業：年収108万円）を始める',
             subLabel: '配偶者年収 +108万円/年 / 家庭と両立しながら毎年100万円超の安定収入確保',
             outcomeSummary:
-              '近隣の職場で週3〜4日のパート・アルバイトを開始！家庭のペースを守りながら年間108万円の副収入が加わり、家計の安心感が一気に高まった！',
+              '近隣の職場で週3〜4日のパート・アルバイトを開始！家庭のペースを守りながら年間108万円の収入が加わり、家計の安心感が一気に高まった！',
+            newSpouseWorkPattern: 'part-time',
             newSubIncomeAbsoluteMan: 108,
             newSpouseJobLabel: 'パート・アルバイト勤務（週3〜4日）',
             mentalDelta: 4,
           },
           {
             id: 'spouse-start-fulltime',
-            label: 'キャリア・資格を活かし、契約・正社員フルタイム（年収240万円）として再就職する',
-            subLabel: '配偶者年収 +240万円/年 / 家事分担は増えるが貯蓄ペースが劇的アップ！',
+            label: 'これまでの経験・資格を活かし、正社員・フルタイム（年収250万円）として職場復帰する',
+            subLabel: '配偶者年収 +250万円/年（職場復帰） / 家事分担は増えるが貯蓄・繰上返済ペースが劇的アップ！',
             outcomeSummary:
-              'フルタイムでの再就職に成功！世帯年収が240万円一気に底上げされ、繰上返済と教育資金準備が盤石になった！',
-            newSubIncomeAbsoluteMan: 240,
-            newSpouseJobLabel: '正社員・フルタイム再就職',
+              '正社員・フルタイムでの職場復帰に成功！世帯年収が250万円一気に底上げされ、繰上返済と教育・老後資金準備が盤石になった！',
+            newSpouseWorkPattern: 'fulltime-keep',
+            newSubIncomeAbsoluteMan: 250,
+            newSpouseJobLabel: '正社員・フルタイム（職場復帰）',
             mentalDelta: 2,
           },
           {
             id: 'spouse-keep-homemaker',
-            label: '外には働きに出ず、このまま専業主婦（夫）として家事・育児に専念する',
+            label: '今は働きに出ず、このまま専業主婦（夫）として家事・育児に専念する',
             subLabel: '配偶者収入 0円継続 / 家庭のゆとりと幸福度 +6',
             outcomeSummary:
-              '本人の収入1馬力で返済を続け、配偶者は家庭と子育てに専念する方針を維持した。',
+              '本人の収入1馬力で返済を続け、配偶者は家庭と暮らしのサポートに専念する方針を選択した。',
+            newSpouseWorkPattern: 'homemaker',
+            newSubIncomeAbsoluteMan: 0,
             newSpouseJobLabel: '専業主婦（夫）',
             mentalDelta: 6,
           },
@@ -4208,74 +5028,90 @@ export function advanceOneYear(
       };
     } else if (state.subIncomeMan <= 165) {
       state.pendingDecision = {
-        id: 'spouse-work-turning-point',
+        id: evId,
         yearIndex: y,
         age,
         category: 'life',
-        title: '【配偶者のパート・バイト転機】「扶養の壁」を超えて社員登用か、現状バイト継続か？',
-        description: `現在、配偶者はパート・アルバイト勤務（年収${state.subIncomeMan}万円）で家計を支えている。勤務先から「社会保険に加入してフルタイム・契約社員（年収240万円）にならないか」と打診された一方、体力面から短時間バイトに絞る選択肢もある。`,
+        title: '【配偶者の働き方選択】パート勤務から正社員へ職場復帰・登用か、パート継続か、家庭専念か？',
+        description: `現在、配偶者はパート・アルバイト勤務（年収${state.subIncomeMan}万円）で家計を支えている。勤務先から「正社員・フルタイム（年収250万円）へステップアップしないか」と声がかかった一方、今のパートを続けるか、いったん仕事を辞めて専業主婦（夫）になる選択肢もある。`,
         statisticalContext:
-          '「106万円・130万円の壁」を超えて厚生年金に加入して働くと、現役時の手取りだけでなく将来の公的年金受給額も生涯で数百万円増加する。',
+          '「106万円・130万円の壁」を超えて厚生年金に加入してフルタイムで働くと、現役時の手取りだけでなく将来の公的年金受給額も生涯で数百万円増加する。',
         choices: [
           {
             id: 'part-to-regular-up',
-            label: '壁を超えて勤務時間を拡大し、契約・正社員登用（年収240万円）へステップアップする',
-            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 240万円へ増加！ / 将来の厚生年金も増額`,
+            label: '正社員・フルタイム登用（年収250万円）へステップアップ・本格職場復帰する',
+            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 250万円へ増加！ / 将来の厚生年金も増額`,
             outcomeSummary:
-              '思い切ってパートから社員登用を選択！世帯収入が大きく伸び、住宅ローンの返済余力が一段と高まった！',
-            newSubIncomeAbsoluteMan: 240,
-            newSpouseJobLabel: '正社員・契約社員（パートから登用）',
+              'パートから正社員・フルタイムへのステップアップを選択！世帯収入が大きく伸び、住宅ローンの返済余力が一段と高まった！',
+            newSpouseWorkPattern: 'fulltime-keep',
+            newSubIncomeAbsoluteMan: 250,
+            newSpouseJobLabel: '正社員・フルタイム（パートから登用）',
             mentalDelta: 3,
           },
           {
             id: 'keep-current-part',
-            label: `現在のパート・アルバイト勤務（年収${state.subIncomeMan}万円）を無理なくキープする`,
+            label: `現在のパート・アルバイト勤務（年収${state.subIncomeMan}万円）を無理なく継続する`,
             subLabel: '仕事と家庭のバランスを維持・幸福度 +4',
             outcomeSummary:
               '今のパート・アルバイトのペースを維持し、家事と仕事のベストバランスを守った。',
+            newSpouseWorkPattern: 'part-time',
             mentalDelta: 4,
           },
           {
             id: 'reduce-to-light-arubaito',
-            label: '家庭・体調を最優先し、週2日の短時間アルバイト（年収78万円）へセーブする',
-            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 78万円 / ゆとり回復で幸福度 +7`,
+            label: 'いったんパートを辞め、専業主婦（夫）（年収0円）として家庭と健康を最優先する',
+            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 0円 / 家庭のゆとり回復で幸福度 +7`,
             outcomeSummary:
-              'シフトを減らして週2日の短時間アルバイトへ変更。収入は少し減ったが家庭に笑顔と余裕が戻った。',
-            newSubIncomeAbsoluteMan: 78,
-            newSpouseJobLabel: '短時間アルバイト（週2日）',
+              'パート勤務に区切りをつけ、しばらく家庭と健康を最優先する専業主婦（夫）の暮らしを選んだ。',
+            newSpouseWorkPattern: 'homemaker',
+            newSubIncomeAbsoluteMan: 0,
+            newSpouseJobLabel: '専業主婦（夫）',
             mentalDelta: 7,
           },
         ],
       };
     } else {
       state.pendingDecision = {
-        id: 'spouse-work-turning-point',
+        id: evId,
         yearIndex: y,
         age,
         category: 'life',
-        title: '【共働き配偶者の転機】正社員継続か、パート・アルバイトへの働き方転換か？',
-        description: `配偶者がフルタイム勤務（年収${state.subIncomeMan}万円）と家庭の両立に悩んでいる。「このまま正社員を続けるか、一度退職して近所のパート・アルバイト（年120万円）に切り替えたい」との相談を受けた。`,
+        title: '【共働き配偶者の働き方選択】正社員継続か、パート勤務への転換か、専業主婦（夫）へ休職・退職か？',
+        description: `配偶者が正社員フルタイム勤務（年収${state.subIncomeMan}万円）と家庭・育児の両立に悩んでいる。「このまま正社員を続けるか、正社員を辞めてパート勤務（年120万円）に切り替えるか、あるいはいったん専業主婦（夫）になりたい」との相談を受けた。`,
         statisticalContext:
-          '単独ローンまたは収入合算世帯でも、配偶者が正社員からパート・アルバイトへ転換すると生涯収入は大きく変わるため、固定費や教育費との兼ね合いが重要となる。',
+          '共働き世帯でも、ライフステージの変化に伴い正社員からパート・アルバイトへ転換したり一時的に離職するケースは多く、その後の再復帰も含めた柔軟な選択が求められる。',
         choices: [
           {
             id: 'keep-spouse-fulltime-support',
-            label: '家事分担と時短家電（-40万円）で負担を減らし、正社員フルタイムを継続してもらう',
+            label: '家事分担と時短家電（-40万円）で負担を減らし、正社員フルタイムを継続する',
             subLabel: '手元資金 -40万円 / 配偶者の正社員収入と将来の退職金・厚生年金を維持！',
             outcomeSummary:
               '家事の徹底分担と時短設備導入で配偶者の負担を解消！正社員としてのキャリアと高い世帯収入を守り抜いた。',
+            newSpouseWorkPattern: 'fulltime-keep',
             cashDeltaMan: -40,
             mentalDelta: 6,
           },
           {
             id: 'switch-spouse-to-arubaito',
-            label: '正社員退職を尊重し、近所のパート・アルバイト勤務（年収120万円）へ転換する',
+            label: '正社員から週3〜4日のパート・アルバイト勤務（年収120万円）へ転換する',
             subLabel: `配偶者年収 ${state.subIncomeMan}万 → 120万円に減少 / 家庭のゆとり・幸福度 +8`,
             outcomeSummary:
               '配偶者が正社員を卒業し、無理のないパート・アルバイト勤務へシフト。世帯収入は減ったが、穏やかな暮らしを手に入れた。',
+            newSpouseWorkPattern: 'part-time',
             newSubIncomeAbsoluteMan: 120,
-            newSpouseJobLabel: 'パート・アルバイト勤務（社員から転換）',
+            newSpouseJobLabel: 'パート・アルバイト勤務（正社員から転換）',
             mentalDelta: 8,
+          },
+          {
+            id: 'switch-spouse-to-homemaker',
+            label: 'いったん退職し、専業主婦（夫）（年収0円）として家庭・育児・健康を最優先する',
+            subLabel: `配偶者年収 ${state.subIncomeMan}万 → 0円 / 1馬力になるが家族のゆとり +10`,
+            outcomeSummary:
+              '配偶者が正社員を退職して専業主婦（夫）へ。本人の1馬力収入でローンを返すことになるが、心身の健康と家族の時間を守った。',
+            newSpouseWorkPattern: 'homemaker',
+            newSubIncomeAbsoluteMan: 0,
+            newSpouseJobLabel: '専業主婦（夫）（正社員から退職）',
+            mentalDelta: 10,
           },
         ],
       };
@@ -5162,97 +5998,6 @@ export function advanceOneYear(
             '実家を売却して得た420万円をそのまま手元資金に組み入れ、55歳役職定年後のキャッシュフロー防衛力を高めた。',
           cashDeltaMan: 420,
           mentalDelta: 4,
-        },
-      ],
-    };
-    return state;
-  }
-
-  // (D4-1) 60歳定年退職時（退職金制度ありの世帯のみ！）：退職金で一括・大幅繰上返済するか温存するか
-  if (
-    age === 60 &&
-    careerEdu.retirementAllowanceMan >= 400 &&
-    state.remainingBalanceMan >= 500 &&
-    state.liquidSavingsMan >= 750 &&
-    !state.triggeredEventIds.includes('retirement-lump-sum-60')
-  ) {
-    state.triggeredEventIds.push('retirement-lump-sum-60');
-    const payoffTarget = Math.min(
-      Math.round(state.remainingBalanceMan),
-      Math.max(400, Math.min(1400, Math.round(state.liquidSavingsMan - 450))),
-    );
-    state.pendingDecision = {
-      id: 'retirement-lump-sum-60',
-      yearIndex: y,
-      age,
-      category: 'retirement',
-      title: `【60歳定年・退職金（+${careerEdu.retirementAllowanceMan.toLocaleString()}万円）の決断】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円に投入するか？`,
-      description: `60歳定年を迎え退職金 ${careerEdu.retirementAllowanceMan.toLocaleString()}万円を受け取ったが、まだ住宅ローン残債が残っている。退職金を使って残債を大きく減らすか、それとも老後の生活防衛資金として手元に現金を残すか、60代最大の決断！`,
-      statisticalContext:
-        '60歳定年時に退職金で住宅ローンを一括返済した結果、手元の老後資金が枯渇してしまう「退職金一括返済の罠」と「老後毎月返済の重圧」のどちらを取るかが問われる。',
-      choices: [
-        {
-          id: 'retire-major-prepay',
-          label: `退職金から ${payoffTarget.toLocaleString()}万円を投入し、住宅ローン残債を一気に削る`,
-          subLabel: `手元資金 -${payoffTarget}万円 / ローン残債 -${payoffTarget}万円（老後の毎月返済を大幅軽減）`,
-          outcomeSummary: `退職金から${payoffTarget.toLocaleString()}万円を繰上返済に充当！年金生活に入る前に残債を大幅に圧縮し、老後の固定費を引き下げた。`,
-          cashDeltaMan: -payoffTarget,
-          principalDeltaMan: -payoffTarget,
-          mentalDelta: 8,
-        },
-        {
-          id: 'retire-keep-cash-nisa',
-          label: '退職金は手元資金・配当運用として温存し、毎月返済をこのまま継続する',
-          subLabel: '手元キャッシュ温存（流動性確保） / 60代以降も毎月返済は継続',
-          outcomeSummary:
-            '「現金が手元にあればいつでも返せる」と判断し、退職金を老後キャッシュとして温存。運用益を得ながら計画的に返済を続ける道を選んだ。',
-          mentalDelta: 3,
-        },
-      ],
-    };
-    return state;
-  }
-
-  // (D4-2) 60歳到来時（退職金制度なし・0円〜少額の世帯専用！）：退職金なしで残った住宅ローンを60代でどう返すか
-  if (
-    age === 60 &&
-    careerEdu.retirementAllowanceMan < 400 &&
-    state.remainingBalanceMan >= 450 &&
-    !state.triggeredEventIds.includes('no-retirement-60-survival')
-  ) {
-    state.triggeredEventIds.push('no-retirement-60-survival');
-    state.pendingDecision = {
-      id: 'no-retirement-60-survival',
-      yearIndex: y,
-      age,
-      category: 'retirement',
-      title: `【60歳・退職金なし世帯の正念場】残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円を60代の就労でどう乗り切るか？`,
-      description:
-        '60歳を迎えたが、退職金一時金がない（または少額の）キャリアのため一括返済の原資がない！65歳の年金開始、さらにその先の完済に向けて、60代の仕事・職種・アルバイトをどう組み立てるか？',
-      statisticalContext:
-        '厚生労働省「就労条件総合調査」：日本企業の約25%（中小企業やベンチャー・外資では3〜7割）には退職金制度がなく、60代以降の就労継続と現役時の貯蓄が完済の生命線となる。',
-      choices: [
-        {
-          id: 'senior-fulltime-change-job',
-          label: '定年がない別職種（ビル設備管理・施設事務・ドライバー・介護事務等：年収260万円）へフルタイム転職して稼ぐ',
-          subLabel: '本人年収 260万円確保 / 70歳まで安定して働ける実務職種へシフト',
-          outcomeSummary:
-            'プライドを捨ててシニア需要の高い実務職種へフルタイム転身！年間260万円の安定収入を確保し、退職金なしでも毎月返済を継続できる体制を整えた！',
-          newMainIncomeAbsoluteMan: 260,
-          newJobLabel: '60代・別職種フルタイム（管理・設備実務職）',
-          mentalDelta: 4,
-        },
-        {
-          id: 'senior-arubaito-plus-prepay',
-          label: '週4日のシニアアルバイト（年収150万円）で無理なく働きつつ、手元貯蓄から250万円を繰上返済する',
-          subLabel: '本人年収 150万円 / 手元資金 -250万 → ローン残債 -250万円圧縮',
-          outcomeSummary:
-            '体を壊さないよう週4日のアルバイト勤務を選び、これまで貯めた自己資金から250万円を繰上返済して毎月の負担を引き下げた。',
-          newMainIncomeAbsoluteMan: 150,
-          newJobLabel: '60代・週4日アルバイト勤務',
-          cashDeltaMan: -250,
-          principalDeltaMan: -250,
-          mentalDelta: 5,
         },
       ],
     };
@@ -6487,6 +7232,151 @@ export function advanceOneYear(
     }
   }
 
+  // (D6) どんな家庭でも発生する「ライフステージ変化とマイホーム住み替え（買い替え）」の岐路（11年目または9〜15年目）
+  if (
+    y === 11 &&
+    state.remainingBalanceMan >= 600 &&
+    !state.triggeredEventIds.includes('household-relocation-crossroad')
+  ) {
+    state.triggeredEventIds.push('household-relocation-crossroad');
+    const isUnderLoan = state.propertyValueMan >= state.remainingBalanceMan;
+    state.pendingDecision = {
+      id: 'household-relocation-crossroad',
+      yearIndex: y,
+      age,
+      category: 'life',
+      title: `【マイホーム住み替え（買い替え）の岐路】現在の自宅時価 ${state.propertyValueMan.toLocaleString()}万円 / 残債 ${Math.round(state.remainingBalanceMan).toLocaleString()}万円`,
+      description: `入居から11年が経過し、家族の成長・働き方・周囲の住環境の変化とともに「今の家にこのまま住み続けるか、それとも売却して新しい家へ住み替えるか」を検討するタイミングが訪れた！現在、自宅の推定時価は ${state.propertyValueMan.toLocaleString()}万円（${isUnderLoan ? `売却すれば残債を消して含み益が出るアンダーローン状態` : `残債が時価を上回る状態`}）。どう決断する？`,
+      statisticalContext:
+        '住宅金融支援機構・不動産流通推進センター調査：マイホーム購入者の約3割が10〜15年目を機に「より広い家へのステップアップ住み替え」または「住居費を抑える住み替え」を検討している。',
+      choices: [
+        {
+          id: 'relocate-choice-upgrade',
+          label: '今の家を売却し、より広く快適な上位グレード物件へ「ステップアップ住み替え」する！',
+          subLabel: '新居へ買い替え（物件価値 +1,150万円・差額と諸費用を新ローンに組入） / 家族の満足度・幸福度 +12',
+          outcomeSummary:
+            '現在のマイホームを売却し、部屋数と設備がグレードアップした新居へ住み替え完了！家族全員の暮らしやすさと資産価値が一段階レベルアップした！',
+          relocatePlan: 'upgrade-wider',
+        },
+        {
+          id: 'relocate-choice-downsize',
+          label: '今の家を売却し、価格と維持費が抑えられた住まいへ「コンパクト住み替え」してローン残債を一気に減らす！',
+          subLabel: '新居へ買い替え（売却差益でローン残債 約-900万円圧縮・毎月維持費も軽減） / 幸福度 +6',
+          outcomeSummary:
+            '今の家を高値で売却し、駅近で維持費の安いコンパクトな住まいへ賢く住み替え！売却差額でローン残債を大幅に削り、家計の安全余裕度を劇的に高めた！',
+          relocatePlan: 'downsize-compact',
+        },
+        {
+          id: 'relocate-choice-stay',
+          label: '住み替えの仲介手数料や引越費用がもったいないので、今の我が家を模様替え（-18万円）して大切に住み続ける',
+          subLabel: '住み替えせず現居継続 / 手元資金 -18万円・愛着ある我が家で幸福度 +5',
+          outcomeSummary:
+            '住み替えに伴う数百万単位の仲介手数料・登記費用を節約し、18万円のインテリア模様替えで今の我が家の快適さをリフレッシュして住み続ける道を選んだ。',
+          cashDeltaMan: -18,
+          mentalDelta: 5,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D7) 手元キャッシュ潤沢世帯（1,200万円以上）に忍び寄る「余剰キャッシュの罠・投資勧誘・親族介護分担・繰上返済の決断」
+  if (
+    state.liquidSavingsMan >= 1200 &&
+    state.remainingBalanceMan >= 900 &&
+    y >= 5 &&
+    !state.triggeredEventIds.includes('excess-cash-temptation-trap')
+  ) {
+    state.triggeredEventIds.push('excess-cash-temptation-trap');
+    state.pendingDecision = {
+      id: 'excess-cash-temptation-trap',
+      yearIndex: y,
+      age,
+      category: 'life',
+      title: `【手元資金 ${Math.round(state.liquidSavingsMan).toLocaleString()}万円の誘惑と罠】潤沢なキャッシュを狙う営業勧誘・親族支援・生活膨張`,
+      description: `口座に ${Math.round(state.liquidSavingsMan).toLocaleString()}万円という潤沢な手元資金があることで、銀行や不動産業者から「節税ワンルームマンション投資・高利回り仕組債」の甘い勧誘が届き、同時に親族からは「一番余裕があるから」と親の介護施設一時金や冠婚葬祭の分担増を頼まれ、家族からも高級車・ハイグレード家電への買い替え要望が噴出している！`,
+      statisticalContext:
+        '金融広報中央委員会・家計行動調査：手元に多額の現預金を置いたまま住宅ローンを残している世帯は、生活水準の緩み（ライフスタイル・クリープ）や不適切な投資勧誘で資産を失うリスクが高い。',
+      choices: [
+        {
+          id: 'excess-cash-smart-prepay',
+          label: '「余剰現金があるから誘惑される！」投資勧誘を断り、手元資金から450万円を住宅ローンの元金繰上返済に投入する',
+          subLabel: '手元資金 -450万円 → ローン残債 -450万円直接削減！（将来利息の大幅カット＆財布の紐引き締め）',
+          outcomeSummary:
+            '甘い投資話や贅沢の誘惑をきっぱり断ち切り、450万円を住宅ローンの元金繰上返済へ充当！確実な負債圧縮で将来の利息を消し去り、家計の規律を取り戻した！',
+          cashDeltaMan: -450,
+          principalDeltaMan: -450,
+          mentalDelta: 7,
+        },
+        {
+          id: 'excess-cash-parent-care-and-index',
+          label: '親の介護・施設支援と家電更新（-185万円）を堅実に引き受け、残りは低コストインデックス積立で厳格管理する',
+          subLabel: '手元資金 -185万円 / 家族・親族の安心確保で幸福度 +6',
+          outcomeSummary:
+            '怪しい投資営業は門前払いしつつ、親孝行と必要な生活設備更新に185万円を有意義に使い、残りの資産はロックして守りを固めた。',
+          cashDeltaMan: -185,
+          mentalDelta: 6,
+        },
+        {
+          id: 'excess-cash-luxury-and-pitch',
+          label: '「これだけ現金があるなら余裕！」と節税ワンルーム投資の頭金＆ハイグレード車・高級家電購入に踏み切る（-390万円）',
+          subLabel: '手元資金 -390万円 / サブリース手数料と維持費でキャッシュ流出・メンタル -4',
+          outcomeSummary:
+            '手元キャッシュの余裕から財布の紐が緩み、営業マンお勧めの投資物件頭金と高級車買い替えに390万円を支出。しかし想定外の諸費用と空室損で手元資金が大きく目減りしてしまった。',
+          cashDeltaMan: -390,
+          mentalDelta: -4,
+        },
+      ],
+    };
+    return state;
+  }
+
+  // (D8) 58歳時点（老後を見据えた「終の棲家への住み替え vs 今の家死守」の岐路：どんな家庭でも選択可能）
+  if (
+    age === 58 &&
+    state.remainingBalanceMan >= 400 &&
+    !state.triggeredEventIds.includes('senior-compact-relocation-58')
+  ) {
+    state.triggeredEventIds.push('senior-compact-relocation-58');
+    state.pendingDecision = {
+      id: 'senior-compact-relocation-58',
+      yearIndex: y,
+      age,
+      category: 'retirement',
+      title: `【58歳・老後の住まいと住み替え決断】定年前に「コンパクト住み替え」で残債を減らすか、今の家を終の棲家にするか？`,
+      description: `60歳定年まであと2年！現在まだ住宅ローン残債が ${Math.round(state.remainingBalanceMan).toLocaleString()}万円残っている。老後の階段の上り下りや維持管理・修繕費を見据えて、今のうちに病院・スーパーが近い駅近コンパクト住戸や郊外平屋へ「老後住み替え」して残債を圧縮するか、それとも愛着ある今の家に最後まで住み続けるか？`,
+      statisticalContext:
+        '高齢期の住み替え調査：50代後半〜60代前半のまだ体力と判断力があるうちに住み替え（ダウンサイジング）を行うことで、老後のローン残債と固定資産税・修繕費を大幅に軽減できる。',
+      choices: [
+        {
+          id: 'senior-relocate-compact',
+          label: '今の家を売却し、病院・商業施設が近い「駅近バリアフリー・コンパクト住戸」へ住み替えて残債を大幅圧縮する！',
+          subLabel: 'コンパクト住み替え実行（売却差益でローン残債 約-900万円圧縮・毎月の維持費も軽減）',
+          outcomeSummary:
+            '定年前のベストタイミングで駅近コンパクト住戸への住み替えを断行！売却差益でローン残債を一気に圧縮し、老後の医療・買い物アクセスも万全な終の棲家を確保した！',
+          relocatePlan: 'downsize-compact',
+        },
+        {
+          id: 'senior-relocate-suburban',
+          label: '今の家を売却し、価格が手頃で穏やかな「郊外・準都心のゆとり平屋/低層住戸」へ住み替えて残債を減らす',
+          subLabel: '郊外ゆとり住み替え実行（売却差益でローン残債 約-460万円圧縮・幸福度 +9）',
+          outcomeSummary:
+            '落ち着いた環境のゆとり住戸へ住み替え！売却差額でローン残債を減らしつつ、家庭菜園や趣味を楽しめる穏やかな老後の拠点を作った。',
+          relocatePlan: 'suburban-shift',
+        },
+        {
+          id: 'senior-stay-beloved-home',
+          label: '住み替えはせず、長年家族の歴史を刻んできた今のマイホームを「終の棲家」として守り抜く',
+          subLabel: '現居継続 / 住み慣れた地域と我が家で幸福度 +6',
+          outcomeSummary:
+            '「やっぱりこの家が大好きだ」と住み替えを見送り、長年暮らした我が家を最後まで守り抜いて完済を目指す決意を新たにした。',
+          mentalDelta: 6,
+        },
+      ],
+    };
+    return state;
+  }
+
   // (E) 手元資金ショート寸前の緊急警告イベント（残キャッシュが100万円未満に転落した時）
   if (
     state.liquidSavingsMan < 80 &&
@@ -6614,11 +7504,29 @@ export function resolveMortgageDecision(
   if (choice.newLeisureStyle) {
     state.config.leisureStyle = choice.newLeisureStyle;
   }
+  if (choice.newPostRetirementWork) {
+    state.config.postRetirementWork = choice.newPostRetirementWork;
+  }
+  if (choice.newSpouseWorkPattern) {
+    state.config.spouseWorkPattern = choice.newSpouseWorkPattern;
+  }
   if (typeof choice.newHasGakushiHoken === 'boolean') {
     state.config.hasGakushiHoken = choice.newHasGakushiHoken;
   }
   if (choice.addNewbornChild) {
     state.childrenAges = [...state.childrenAges, 0];
+  }
+  if (choice.marrySpouse) {
+    state.isDivorced = false;
+    if (choice.marrySpouse === 'dual-income') {
+      state.config.spouseWorkPattern = 'fulltime-keep';
+      state.subIncomeMan = choice.relocatePlan ? 280 : 260;
+      state.currentSpouseJobLabel = '結婚パートナー（正社員・共働き）';
+    } else {
+      state.config.spouseWorkPattern = 'part-time';
+      state.subIncomeMan = 115;
+      state.currentSpouseJobLabel = '結婚パートナー（パート・アルバイト勤務）';
+    }
   }
   if (typeof choice.mentalDelta === 'number') {
     state.mentalScore = Math.max(5, Math.min(100, state.mentalScore + choice.mentalDelta));
@@ -6649,6 +7557,9 @@ export function resolveMortgageDecision(
       Math.max(1, state.termRemainingYears),
     );
   }
+  if (choice.relocatePlan) {
+    state = executeRelocateProperty(state, choice.relocatePlan);
+  }
 
   const nextId = (state.chronicle[0]?.id ?? 1) + 1;
   state.chronicle.unshift({
@@ -6662,8 +7573,8 @@ export function resolveMortgageDecision(
     body: choice.outcomeSummary,
   });
 
-  // 団信100%発動で残債0になった場合は即座に完済クリア判定
-  if (state.remainingBalanceMan <= 0 && state.unpaidInterestMan <= 0) {
+  // 団信100%発動または住み替え差益で残債0になった場合は即座に完済クリア判定
+  if (state.status === 'playing' && state.remainingBalanceMan <= 0 && state.unpaidInterestMan <= 0) {
     state.status = 'cleared';
     const res = evaluateEnding(state, 'paid-off');
     state.ending = res.ending;
@@ -6671,6 +7582,111 @@ export function resolveMortgageDecision(
   }
 
   return state;
+}
+
+/**
+ * どんな家庭でも実行可能な任意アクション＆イベント処理：マイホームの住み替え（買い替え）
+ * 現在の自宅を売却し、売却益・仲介手数料・新居購入諸費用を精算して新居へ住み替える
+ */
+export function executeRelocateProperty(
+  currentState: MortgageGameState,
+  planType: RelocationPlanType,
+): MortgageGameState {
+  if (currentState.status !== 'playing') return currentState;
+  const spec = RELOCATION_PLAN_SPECS[planType];
+  const property = resolveEffectiveProperty(currentState.config);
+
+  const oldPriceMan = currentState.propertyValueMan;
+  const effectivePriceDeltaMan =
+    planType === 'upgrade-wider'
+      ? Math.max(1150, Math.round(oldPriceMan * 0.24))
+      : planType === 'downsize-compact'
+        ? -Math.max(1250, Math.round(oldPriceMan * 0.28))
+        : -Math.max(750, Math.round(oldPriceMan * 0.18));
+  const saleBrokerageFeeMan = Math.round(oldPriceMan * 0.033);
+  const targetNewPriceMan = Math.max(1280, Math.round(oldPriceMan + effectivePriceDeltaMan));
+  const purchaseClosingFeeMan = Math.round(targetNewPriceMan * 0.035);
+  const totalTransactionFeeMan = saleBrokerageFeeMan + purchaseClosingFeeMan;
+
+  // 新居の評価額（土地・建物）を設定
+  const nextLandMan = Math.max(450, Math.round(targetNewPriceMan * property.landRatio));
+  const nextBuildingMan = Math.max(250, Math.round((targetNewPriceMan - nextLandMan) * 0.94));
+  const nextPropertyValueMan = nextLandMan + nextBuildingMan;
+
+  // 旧居売却と新居購入の差額＋諸費用をローン残債または手元資金に反映
+  const rawBalanceDeltaMan = effectivePriceDeltaMan + totalTransactionFeeMan;
+  let nextSavingsMan = currentState.liquidSavingsMan;
+  let nextBalanceMan = currentState.remainingBalanceMan + currentState.unpaidInterestMan + rawBalanceDeltaMan;
+
+  // ステップアップ住み替え時は手元資金に余裕があれば諸費用分（最大250万円）を自己資金から充当
+  if (planType === 'upgrade-wider' && nextSavingsMan >= 500) {
+    const cashPutMan = Math.min(250, totalTransactionFeeMan);
+    nextSavingsMan = Math.round((nextSavingsMan - cashPutMan) * 10) / 10;
+    nextBalanceMan -= cashPutMan;
+  }
+
+  // コンパクト住み替え等で売却差益が残債を上回った場合は残債0円＋余剰キャッシュが口座へ入る
+  if (nextBalanceMan < 0) {
+    nextSavingsMan = Math.round((nextSavingsMan + Math.abs(nextBalanceMan)) * 10) / 10;
+    nextBalanceMan = 0;
+  } else {
+    nextBalanceMan = Math.round(nextBalanceMan * 10) / 10;
+  }
+
+  const nextMgmtMonthly =
+    property.buildingType === 'detached'
+      ? Math.max(0, Math.round((currentState.currentMgmtAndRepairMonthlyMan + spec.maintDeltaMonthlyMan * 0.3) * 10) / 10)
+      : Math.max(1.2, Math.round((currentState.currentMgmtAndRepairMonthlyMan + spec.maintDeltaMonthlyMan) * 10) / 10);
+
+  const nextMonthlyPayment =
+    nextBalanceMan > 0
+      ? calcEqualPaymentMonthlyMan(
+          nextBalanceMan,
+          currentState.appliedInterestRate,
+          Math.max(1, currentState.termRemainingYears),
+        )
+      : 0;
+
+  const nextId = (currentState.chronicle[0]?.id ?? 1) + 1;
+  const balanceDiffMan = Math.round(nextBalanceMan - currentState.remainingBalanceMan);
+
+  const nextState: MortgageGameState = {
+    ...currentState,
+    liquidSavingsMan: nextSavingsMan,
+    remainingBalanceMan: nextBalanceMan,
+    unpaidInterestMan: 0,
+    landValueMan: nextLandMan,
+    buildingValueMan: nextBuildingMan,
+    propertyValueMan: nextPropertyValueMan,
+    currentMgmtAndRepairMonthlyMan: nextMgmtMonthly,
+    last5YearRulePaymentMan: nextMonthlyPayment,
+    currentHomeLabel: spec.homeLabel,
+    relocationCount: (currentState.relocationCount ?? 0) + 1,
+    mentalScore: Math.min(100, currentState.mentalScore + spec.mentalBonus),
+    chronicle: [
+      {
+        id: nextId,
+        yearIndex: currentState.yearIndex,
+        calendarYear: currentState.calendarYear,
+        age: currentState.age,
+        category: 'milestone',
+        tone: 'good',
+        title: `【マイホーム住み替え実行！】「${spec.shortLabel}」完了（新居時価 ${nextPropertyValueMan.toLocaleString()}万円 / 新ローン残債 ${nextBalanceMan.toLocaleString()}万円）`,
+        body: `これまでの自宅を時価 ${oldPriceMan.toLocaleString()}万円で売却し、売買諸費用（${totalTransactionFeeMan}万円）を精算して「${spec.homeLabel}」へ住み替え完了！ローン残債は ${balanceDiffMan >= 0 ? `+${balanceDiffMan.toLocaleString()}` : `${balanceDiffMan.toLocaleString()}`}万円の ${nextBalanceMan.toLocaleString()}万円となった。`,
+        financialDeltaLabel: `新残債 ${nextBalanceMan.toLocaleString()}万`,
+      },
+      ...currentState.chronicle,
+    ],
+  };
+
+  if (nextState.remainingBalanceMan <= 0) {
+    nextState.status = 'cleared';
+    const res = evaluateEnding(nextState, 'paid-off');
+    nextState.ending = res.ending;
+    nextState.score = res.score;
+  }
+
+  return nextState;
 }
 
 /**
@@ -6855,6 +7871,157 @@ export function setFocusMode(
   return {
     ...currentState,
     focusMode: mode,
+  };
+}
+
+/**
+ * 配偶者（奥さん・パートナー）が「今年働くかどうか（正社員・職場復帰 / パート・アルバイト / 専業主婦（夫）・働かない）」を毎年いつでも選択・変更できるアクション
+ */
+export function setSpouseWorkStyleThisYear(
+  currentState: MortgageGameState,
+  style: 'fulltime' | 'part-time' | 'homemaker',
+): MortgageGameState {
+  if (currentState.status !== 'playing') return currentState;
+  const careerEdu = resolveEffectiveHouseholdCareerAndEdu(currentState.config);
+  if (!careerEdu.hasSpouse || currentState.isDivorced || currentState.age >= 65) {
+    return currentState;
+  }
+
+  let nextSubIncome = currentState.subIncomeMan;
+  let nextSpouseLabel = currentState.currentSpouseJobLabel ?? '配偶者';
+  let nextPattern: SpouseWorkPatternType = currentState.config.spouseWorkPattern ?? 'fulltime-keep';
+  let actionSummary = '';
+
+  if (style === 'fulltime') {
+    nextPattern = 'fulltime-keep';
+    nextSubIncome = currentState.subIncomeMan >= 180 ? currentState.subIncomeMan : 260;
+    nextSpouseLabel =
+      currentState.subIncomeMan === 0
+        ? '正社員・フルタイム（専業から職場復帰）'
+        : currentState.subIncomeMan < 180
+          ? '正社員・フルタイム（パートから転換）'
+          : '正社員・フルタイム（共働き）';
+    actionSummary = `今年から配偶者が正社員・フルタイム勤務（年収${nextSubIncome}万円）として稼働！世帯の手取りと貯蓄・返済余力が大きく向上した。`;
+  } else if (style === 'part-time') {
+    nextPattern = 'part-time';
+    nextSubIncome = currentState.subIncomeMan >= 85 && currentState.subIncomeMan <= 160 ? currentState.subIncomeMan : 115;
+    nextSpouseLabel =
+      currentState.subIncomeMan >= 180
+        ? 'パート・アルバイト勤務（正社員から転換）'
+        : 'パート・アルバイト勤務（週3〜4日）';
+    actionSummary = `今年から配偶者が週3〜4日のパート・アルバイト勤務（年収${nextSubIncome}万円）へ変更。家庭のゆとりと副収入を両立する体制に整えた。`;
+  } else {
+    nextPattern = 'homemaker';
+    nextSubIncome = 0;
+    nextSpouseLabel = '専業主婦（夫）（働かない・家庭専念）';
+    actionSummary = '今年から配偶者は外で働かず専業主婦（夫）（年収0円）として家庭・育児・暮らしに専念する選択をした。';
+  }
+
+  const nextId = (currentState.chronicle[0]?.id ?? 1) + 1;
+  return {
+    ...currentState,
+    config: {
+      ...currentState.config,
+      spouseWorkPattern: nextPattern,
+    },
+    subIncomeMan: nextSubIncome,
+    currentSpouseJobLabel: nextSpouseLabel,
+    chronicle: [
+      {
+        id: nextId,
+        yearIndex: currentState.yearIndex,
+        calendarYear: currentState.calendarYear,
+        age: currentState.age,
+        category: 'life',
+        tone: style === 'fulltime' ? 'good' : 'neutral',
+        title: `【配偶者の今年の働き方変更】「${nextSpouseLabel}（年収${nextSubIncome}万円）」を選択`,
+        body: actionSummary,
+        financialDeltaLabel: `配偶者年収 ${nextSubIncome}万`,
+      },
+      ...currentState.chronicle,
+    ],
+  };
+}
+
+/**
+ * 60歳定年後の働き方・職種（嘱託再雇用 / 別職種 / アルバイト / 今年で引退・働かない）や「いつまで働くか」を60歳以降毎年いつでも選択・変更できるアクション
+ */
+export function setPostRetirementWorkThisYear(
+  currentState: MortgageGameState,
+  workStyle: 'reemploy-same' | 'reemploy-light-job' | 'part-time-arubaito' | 'retire-now',
+): MortgageGameState {
+  if (currentState.status !== 'playing' || currentState.age < 60) {
+    return currentState;
+  }
+
+  const isPensionAge = currentState.age >= 65;
+  const basePensionMan = isPensionAge
+    ? currentState.config.employment === 'freelance'
+      ? 150
+      : currentState.config.employment === 'civil-servant' || currentState.config.employment === 'listed-corp'
+        ? 250
+        : 220
+    : 0;
+
+  let nextMainIncome = currentState.mainIncomeMan;
+  let nextJobLabel = currentState.currentJobLabel ?? '';
+  let nextPostRetireConfig: PostRetirementWorkType = 'reemploy-same';
+  let summaryBody = '';
+
+  if (workStyle === 'reemploy-same') {
+    nextPostRetireConfig = 'reemploy-same';
+    nextMainIncome = isPensionAge ? basePensionMan + 180 : Math.max(260, Math.round(currentState.config.mainIncomeMan * 0.62));
+    nextJobLabel = isPensionAge
+      ? '公的年金受給 ＋ 継続嘱託稼働'
+      : '60代・嘱託再雇用（現職継続）';
+    summaryBody = `${currentState.age}歳の今年も嘱託・現職継続でしっかり働くことを選択（本人収入 年${nextMainIncome}万円）。`;
+  } else if (workStyle === 'reemploy-light-job') {
+    nextPostRetireConfig = 'reemploy-light-job';
+    nextMainIncome = isPensionAge ? basePensionMan + 150 : 250;
+    nextJobLabel = isPensionAge
+      ? '公的年金受給 ＋ 別職種シニア実務職'
+      : '60代・別職種転身（ビル管理・施設事務）';
+    summaryBody = `${currentState.age}歳の今年は責任の軽い別職種（管理・事務・実務職）で働くことを選択（本人収入 年${nextMainIncome}万円）。`;
+  } else if (workStyle === 'part-time-arubaito') {
+    nextPostRetireConfig = 'part-time-arubaito';
+    nextMainIncome = isPensionAge ? basePensionMan + 78 : 140;
+    nextJobLabel = isPensionAge
+      ? '公的年金受給 ＋ シルバー短時間アルバイト'
+      : '60代・週3〜4日アルバイト/パート勤務';
+    summaryBody = `${currentState.age}歳の今年は体力を優先し、週3〜4日の短時間アルバイト勤務を選択（本人収入 年${nextMainIncome}万円）。`;
+  } else {
+    // retire-now: 今年で仕事を辞めて完全引退・働かない
+    nextPostRetireConfig = isPensionAge ? 'retire-65-pension-only' : 'full-retire-60';
+    nextMainIncome = basePensionMan;
+    nextJobLabel = isPensionAge
+      ? '公的年金受給のみ（定年後働かない・完全引退）'
+      : `${currentState.age}歳で完全リタイア（定年後働かない・無職）`;
+    summaryBody = `${currentState.age}歳をもって仕事から完全引退し「これ以降は働かない」ことを選択！（本人収入 年${nextMainIncome}万円${isPensionAge ? '：公的年金のみ' : '：65歳まで勤労収入0円'}）`;
+  }
+
+  const nextId = (currentState.chronicle[0]?.id ?? 1) + 1;
+  return {
+    ...currentState,
+    config: {
+      ...currentState.config,
+      postRetirementWork: nextPostRetireConfig,
+    },
+    mainIncomeMan: nextMainIncome,
+    currentJobLabel: nextJobLabel,
+    chronicle: [
+      {
+        id: nextId,
+        yearIndex: currentState.yearIndex,
+        calendarYear: currentState.calendarYear,
+        age: currentState.age,
+        category: 'milestone',
+        tone: workStyle === 'retire-now' ? 'mixed' : 'good',
+        title: `【${currentState.age}歳・今年の働き方選択】「${nextJobLabel}（年収${nextMainIncome}万円）」へ変更`,
+        body: summaryBody,
+        financialDeltaLabel: `本人年収 ${nextMainIncome}万`,
+      },
+      ...currentState.chronicle,
+    ],
   };
 }
 
@@ -7098,9 +8265,14 @@ export function executeMidTermRateHike(
       Math.round((bank.baseRate + danshin.spreadRate + (nextBoj - 0.75) * 0.95) * 100) / 100,
     );
   } else if (currentState.currentRateType === 'mix') {
+    const fixedRatioPct = Math.max(
+      10,
+      Math.min(90, Math.round(currentState.config.mixFixedRatioPercent ?? 50)),
+    );
+    const varShare = (100 - fixedRatioPct) / 100;
     nextApplied = Math.max(
-      1.1,
-      Math.round((bank.baseRate + danshin.spreadRate + (nextBoj - 0.75) * 0.48) * 100) / 100,
+      0.75,
+      Math.round((bank.baseRate + danshin.spreadRate + (nextBoj - 0.75) * 0.96 * varShare) * 100) / 100,
     );
   } else if (currentState.currentRateType === 'fixed-10' && currentState.yearIndex >= 10) {
     nextApplied = Math.round((prevApplied + hikeDelta * 0.75) * 100) / 100;
