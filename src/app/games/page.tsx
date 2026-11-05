@@ -8,16 +8,16 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+  title: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
   description:
-    '社畜通勤サバイバー、社畜サバイバー、社畜スパイラル、社畜シューティングNEO、社畜すごろくNEO、社畜人狼、定時退社カタパルト、社畜ワイヤー疾走、社畜グラグラ決済タワーの全9作品を完全無料で公開中。スマホ・PC対応、インストール・登録不要。',
+    '社畜ゲーム10作品と、オンサイト・オフサイトで遊べるパーティーゲーム6作品を完全無料で公開中。少数派ワード、以心伝心、NGワード会議、禁句トーク、ランキング予想、連想リレーなど、スマホ・PC対応、インストール・登録不要。',
   alternates: {
     canonical: '/games',
   },
   openGraph: {
-    title: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+    title: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
     description:
-      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクション、ワイヤースイング、ビル建設など無料で遊べるブラウザゲーム全9作品をまとめて紹介。',
+      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議など、無料で遊べるブラウザゲーム全16作品をまとめて紹介。',
     url: `${APP_URL}/games`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
+    title: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
     description:
-      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクション、ワイヤースイング、ビル建設など無料で遊べるブラウザゲーム全9作品をまとめて紹介。',
+      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議など、無料で遊べるブラウザゲーム全16作品をまとめて紹介。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -126,6 +126,75 @@ const games = [
   },
 ];
 
+const partyGames = [
+  {
+    name: '少数派ワード',
+    href: '/minority-word',
+    mark: 'MINOR',
+    cover: 'bg-[#2f5d57]',
+    genre: '少数派ワード / 会話ゲーム',
+    tagline: '少数派の言葉を見抜け',
+    description:
+      '全員に似た言葉が配られ、ひとりだけ違う言葉を持つ少数派ワード。1台の端末を回して秘密の言葉を確認し、会話と投票で少数派を見抜く、オンサイト・オフサイト向けの会話ゲームです。',
+    party: true,
+  },
+  {
+    name: '以心伝心ゲーム',
+    href: '/ishin-denshin',
+    mark: 'SYNC',
+    cover: 'bg-[#b23a2a]',
+    genre: '以心伝心 / チームビルディング',
+    tagline: '同じ答えを狙って息を合わせろ',
+    description:
+      'お題に対して全員が秘密裏に回答し、同じ答えを選んだ人数がそのまま得点になるチームビルディングゲーム。3〜8人で遊べ、チームの共通言語と阿吽の呼吸を可視化します。',
+    party: true,
+  },
+  {
+    name: 'NGワード会議',
+    href: '/ng-word',
+    mark: 'NG',
+    cover: 'bg-[#7a5a3a]',
+    genre: 'NGワード / 会話ゲーム',
+    tagline: '禁句を言わずに会議を乗り切れ',
+    description:
+      'それぞれに秘密のNGワードが配られた状態で、制限時間内の会議を進行。自分の禁句を言わずに乗り切れるか、それともうっかり口にしてしまうのか。会話の緊張感を楽しむパーティーゲームです。',
+    party: true,
+  },
+  {
+    name: '禁句トーク',
+    href: '/kinku-talk',
+    mark: 'KINKU',
+    cover: 'bg-[#4b5d73]',
+    genre: '禁句 / チーム対戦',
+    tagline: '禁句なしで伝えきれ',
+    description:
+      'お題の言葉を、3つの禁句を使わずにチームメイトへ説明する禁句トーク。60秒の制限時間内に何枚正解できるかを競う、オンサイトでも盛り上がるチーム対戦ゲームです。',
+    party: true,
+  },
+  {
+    name: '社長の頭の中（ランキング予想）',
+    href: '/rank-guess',
+    mark: 'RANK',
+    cover: 'bg-[#2a2a2a]',
+    genre: 'ランキング予想 / チームゲーム',
+    tagline: '社長の頭の中を読み切れ',
+    description:
+      'ラウンドごとに1人が「社長」となり、4つの選択肢を秘密裏にランキング。残りのメンバーがその順位を予想し、的中数を競うチームゲーム。社長の価値観とチームの総意を読み解きます。',
+    party: true,
+  },
+  {
+    name: '連想リレー',
+    href: '/word-chain',
+    mark: 'CHAIN',
+    cover: 'bg-[#7f2d2d]',
+    genre: '連想ゲーム / チームビルディング',
+    tagline: '言葉をつないで高得点を狙え',
+    description:
+      'お題から連想する言葉を全員が秘密裏に回答し、ユニークな答えほど高得点になる連想リレー。みんなの発想の違いと共通点が可視化され、チームの会話が自然に広がります。',
+    party: true,
+  },
+];
+
 const tools = [
   { name: '推し活プロフィールメーカー', href: '/profile-maker', description: '推し紹介カードを無料作成' },
   { name: '異世界転生ステータスカード', href: '/isekai-status', description: '5つの質問で異世界キャラ診断' },
@@ -134,24 +203,26 @@ const tools = [
 ];
 
 const faqs = [
-  { q: '紹介している9つのゲームはすべて無料ですか？', a: 'はい。全9タイトルすべてブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
+  { q: '紹介している16のゲームはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、パーティーゲーム6作品のすべてをブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
   { q: 'スマートフォンでもPCでも遊べますか？', a: 'はい。各ゲームはスマートフォンのタッチ操作と、PCのマウス・キーボード操作の両方に最適化されています。' },
-  { q: '短時間でサクッと遊べるミニゲームはどれですか？', a: '1回1〜3分で遊べる物理ミニゲームなら「定時退社カタパルト」「社畜ワイヤー疾走」「社畜グラグラ決済タワー」がおすすめです。じっくりやりこむなら「社畜サバイバー」や「社畜通勤サバイバー」も人気です。' },
-  { q: 'ゲームの進行状況やハイスコアは保存されますか？', a: 'はい。ハイスコア、獲得した資金、恒久アップグレード、実績、解放状況はお使いのブラウザのlocalStorageに自動保存されます。' },
+  { q: '会社のオンサイト・オフサイトで使えるゲームはどれですか？', a: '「少数派ワード」「以心伝心ゲーム」「NGワード会議」「禁句トーク」「ランキング予想」「連想リレー」がおすすめです。1台の端末を回して遊べるため、懇親会や研修のアイスブレイクにも使えます。' },
+  { q: 'ゲームの進行状況やハイスコアは保存されますか？', a: '社畜ゲームのハイスコアや解放状況はブラウザのlocalStorageに保存される場合があります。パーティーゲームの名前・回答・秘密の言葉は保存せず、ページを閉じると消えます。' },
 ];
+
+const allGames = [...games, ...partyGames];
 
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: '無料ブラウザゲーム一覧｜社畜ゲーム・ミニゲーム全9作品',
-    description: '社畜ゲーム・懐かしの物理アクションミニゲームを中心とした無料ブラウザゲーム全9作品の一覧。',
+    name: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
+    description: '社畜ゲーム10作品と、オンサイト・オフサイト向けパーティーゲーム6作品をまとめた無料ブラウザゲーム一覧。',
     url: `${APP_URL}/games`,
     inLanguage: 'ja-JP',
     mainEntity: {
       '@type': 'ItemList',
-      numberOfItems: games.length,
-      itemListElement: games.map((game, index) => ({
+      numberOfItems: allGames.length,
+      itemListElement: allGames.map((game, index) => ({
         '@type': 'ListItem',
         position: index + 1,
         name: game.name,
@@ -200,27 +271,27 @@ export default function GamesPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Game Archive / 9 Titles</p>
+            <p className="paper-kicker">Game Archive / 16 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
-              無料で遊べる<br className="sm:hidden" />社畜ゲーム一覧
+              無料で遊べる<br className="sm:hidden" />ゲーム一覧
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              通勤ラッシュ、残業サバイバル、人狼、すごろくに加え、定時退社カタパルト・終電ワイヤースイング・限界ビル建設まで全9作品を収録。
+              通勤ラッシュ、残業サバイバル、人狼、すごろくに加え、少数派ワード・以心伝心・NGワード会議など、みんなで遊べるパーティーゲームまで全16作品を収録。
               すべて完全オリジナル制作・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
             <p className="font-label text-[9px] text-[var(--accent)]">Play Note</p>
             <p className="mt-2">
-              1分〜数分のワンボタン爽快プレイならカタパルト・ワイヤー・決済タワー。じっくりビルドや推理を楽しむならサバイバー・スパイラル・すごろく・人狼がおすすめです。
+              1分〜数分のワンタッチゲームから、オンサイトで盛り上がる会話ゲームまで。目的に合わせて選べます。
             </p>
           </div>
         </section>
 
         <section aria-labelledby="game-list-heading">
           <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
-            <h2 id="game-list-heading" className="font-editorial text-2xl">ゲーム一覧（全9作品）</h2>
-            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 09</span>
+            <h2 id="game-list-heading" className="font-editorial text-2xl">社畜ゲーム（10作品）</h2>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 10</span>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {games.map((game, index) => (
@@ -247,6 +318,45 @@ export default function GamesPage() {
                   <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
                   <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
                     Play <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section id="party-games" className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="party-games-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--line)] pb-3">
+            <div>
+              <p className="paper-kicker">Play Together</p>
+              <h2 id="party-games-heading" className="font-editorial mt-2 text-2xl">みんなで遊ぶパーティーゲーム（6作品）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 06</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
+            1台の端末を回して遊ぶ、オンサイト・オフサイト向けの会話ゲーム。懇親会、研修、チームビルディングのアイスブレイクに使えます。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {partyGames.map((game, index) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group flex flex-col border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
+              >
+                <div className={`relative flex aspect-[16/9] items-center justify-center overflow-hidden border-b border-[var(--line)] ${game.cover}`}>
+                  <span className="font-editorial text-4xl tracking-tight text-[#fffaf0] sm:text-5xl">{game.mark}</span>
+                  <span className="font-label absolute left-3 top-3 bg-[#12100d]/70 px-2 py-1 text-[9px] text-[#f2e9d8]">
+                    {String(index + 1).padStart(2, '0')} / PARTY
+                  </span>
+                  <span className="font-label absolute bottom-3 right-3 text-[8px] text-[#fffaf0]/70">1 DEVICE</span>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="font-label text-[9px] text-[var(--accent)]">{game.genre}</p>
+                  <h3 className="font-editorial mt-2 text-xl leading-snug">{game.name}</h3>
+                  <p className="mt-1 text-xs font-bold text-[var(--ink)]">{game.tagline}</p>
+                  <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
+                  <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                    Play together <span aria-hidden="true">→</span>
                   </span>
                 </div>
               </Link>
@@ -283,8 +393,8 @@ export default function GamesPage() {
 
         <SeoContentSection
           eyebrow="GAME GUIDE"
-          title="9つの無料ブラウザゲーム"
-          intro="1分で遊べる爽快物理アクションから、じっくり戦略を練るローグライク・ボードゲームまで。気になるタイトルを選んでください。"
+          title="16の無料ブラウザゲーム"
+          intro="1分で遊べる爽快アクションから、じっくり戦略を練るローグライク、みんなで盛り上がるパーティーゲームまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[
             { href: '/tools', label: '無料ツール一覧', description: 'プロフィール・診断・駅名標' },

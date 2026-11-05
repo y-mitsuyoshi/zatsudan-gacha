@@ -58,7 +58,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: 'ゲームの進行状況は保存されますか？', a: '解放した路線、へそくり、恒久強化、図鑑、実績、自己ベストはブラウザのlocalStorageに保存されます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-survivor', label: '社畜サバイバー', description: '進化グリモワール搭載の10分サバイバル' },
       { href: '/shachiku-spiral', label: '社畜スパイラル', description: 'ナンバー連結セグメントを迎撃する防衛ゲーム' },
       { href: '/shachiku-catapult', label: '社畜ぶっとばし！定時退社カタパルト', description: '定時ダッシュで空へ飛び出す飛距離アクション' },
@@ -94,7 +94,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: '続きから遊べますか？', a: 'ステージクリア時にコンティニュー情報が保存され、タイトル画面から続きを再開できます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/barricade-defense', label: '社畜通勤サバイバー', description: '満員ラッシュを突破する3Dゲートシューティング' },
       { href: '/shachiku-wire', label: '社畜ワイヤー疾走：終電スイングアクション', description: '光回線ワイヤーで夜のビル群を飛ぶ疾走アクション' },
       { href: '/shachiku-spiral', label: '社畜スパイラル', description: '渦巻く業務を迎撃するナンバー防衛ゲーム' },
@@ -130,7 +130,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: 'エンドレスモードはありますか？', a: 'はい。全15ウェーブクリア後にエンドレスモードへ挑戦できます。スコアと自己ベストが保存されます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-survivor', label: '社畜サバイバー', description: '18時まで生き残る10分ホードサバイバル' },
       { href: '/barricade-defense', label: '社畜通勤サバイバー', description: '満員ラッシュを突破する3Dゲートシューティング' },
       { href: '/shachiku-stack', label: '社畜グラグラ決済タワー', description: 'クレーンからフロアを積む高層ビル建設ゲーム' },
@@ -166,7 +166,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: 'やりこみ要素はありますか？', a: '敵図鑑、武器進化図鑑、実績、デイリーミッション、称号、へそくりによる恒久ステータス強化があります。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-spiral', label: '社畜スパイラル', description: 'ナンバー業務列を分断する防衛シューティング' },
       { href: '/barricade-defense', label: '社畜通勤サバイバー', description: '満員ラッシュを突破する3Dゲートシューティング' },
       { href: '/shachiku-catapult', label: '社畜ぶっとばし！定時退社カタパルト', description: '屋上から大空へ飛び出す爽快飛距離アクション' },
@@ -202,7 +202,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: '1プレイの所要時間は？', a: '1ゲームあたり約3〜8分で決着がつくため、休憩時間や移動中の暇つぶしにも最適です。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-sugoroku', label: '社畜すごろくNEO', description: 'ルーレットで進むジオラマ人生ボードゲーム' },
       { href: '/shachiku-stack', label: '社畜グラグラ決済タワー', description: 'クレーンでフロアを積み上げる高層ビル建設ゲーム' },
       { href: '/shachiku-survivor', label: '社畜サバイバー', description: '18時まで生き残る10分ホードサバイバル' },
@@ -238,7 +238,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: '実績や進行状況は保存されますか？', a: '解放した実績やハイスコアはブラウザのlocalStorageに自動保存されます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-jinro', label: '社畜人狼', description: 'AI社員と心理戦を楽しめる会社員人狼ゲーム' },
       { href: '/shachiku-catapult', label: '社畜ぶっとばし！定時退社カタパルト', description: '定時ダッシュで空へ飛び出す飛距離アクション' },
       { href: '/shachiku-stack', label: '社畜グラグラ決済タワー', description: 'クレーンからフロアを積む高層ビル建設ゲーム' },
@@ -274,7 +274,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: 'アップグレードやハイスコアは保存されますか？', a: 'はい。獲得した退職積立金、5種の装備レベル、最高飛距離、実績はブラウザのlocalStorageに自動保存されます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-wire', label: '社畜ワイヤー疾走：終電スイングアクション', description: '光回線ワイヤーで夜のビル群を飛ぶ疾走アクション' },
       { href: '/shachiku-stack', label: '社畜グラグラ決済タワー', description: 'クレーンからフロアを積む高層ビル建設ゲーム' },
       { href: '/barricade-defense', label: '社畜通勤サバイバー', description: '満員ラッシュを突破する3Dゲートシューティング' },
@@ -310,7 +310,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: 'ベストタイムや最高距離は保存されますか？', a: 'はい。各ステージのクリアタイム、最高到達距離、最大コンボ数はブラウザのlocalStorageに自動保存されます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-catapult', label: '社畜ぶっとばし！定時退社カタパルト', description: '屋上から大空へ飛び出す爽快飛距離アクション' },
       { href: '/shachiku-stack', label: '社畜グラグラ決済タワー', description: 'クレーンからフロアを積む高層ビル建設ゲーム' },
       { href: '/shachiku-shooting', label: '社畜シューティングNEO', description: '定時退社を目指す本格弾幕シューティング' },
@@ -346,7 +346,7 @@ export const GAME_SEO_DATA: Record<GameSeoKey, GameSeoData> = {
       { q: '最高階数やスコアは保存されますか？', a: 'はい。各モードの最高到達階数、ハイスコア、最大PERFECTコンボ数はブラウザのlocalStorageに自動保存されます。' },
     ],
     related: [
-      { href: '/games', label: '無料ブラウザゲーム一覧', description: '全9タイトルの社畜ゲームをまとめて探す' },
+      { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームとパーティーゲームをまとめて探す' },
       { href: '/shachiku-catapult', label: '社畜ぶっとばし！定時退社カタパルト', description: '屋上から大空へ飛び出す爽快飛距離アクション' },
       { href: '/shachiku-wire', label: '社畜ワイヤー疾走：終電スイングアクション', description: '光回線ワイヤーで夜のビル群を飛ぶ疾走アクション' },
       { href: '/shachiku-sugoroku', label: '社畜すごろくNEO', description: 'ルーレットで進むジオラマ人生ボードゲーム' },

@@ -19,6 +19,12 @@ const services = [
   { title: 'マイホーム完済記', href: '/mortgage-life', note: '35年・50年ローン家計記' },
   { title: '究極の言い訳ジェネレーター', href: '/excuse-generator', note: '言い逃れ文を作成' },
   { title: '駅名標メーカー', href: '/station-sign-maker', note: 'オリジナル駅名標' },
+  { title: '少数派ワード', href: '/minority-word', note: '少数派の言葉を見抜く' },
+  { title: '以心伝心ゲーム', href: '/ishin-denshin', note: '同じ答えを狙う' },
+  { title: 'NGワード会議', href: '/ng-word', note: '禁句を言わず会議' },
+  { title: '禁句トーク', href: '/kinku-talk', note: '禁句なしで説明' },
+  { title: '社長の頭の中', href: '/rank-guess', note: 'ランキング予想' },
+  { title: '連想リレー', href: '/word-chain', note: '言葉をつなぐ' },
 ];
 
 const siteLinks = [

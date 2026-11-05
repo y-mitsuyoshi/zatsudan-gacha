@@ -87,6 +87,12 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [社畜ワイヤー疾走：終電スイングアクション](${BASE_URL}/shachiku-wire)
 - [社畜グラグラ決済タワー：限界ビル建設](${BASE_URL}/shachiku-stack)
 - [マイホーム完済記：35年・50年ローンの家計と暮らし](${BASE_URL}/mortgage-life)
+- [少数派ワード](${BASE_URL}/minority-word)
+- [以心伝心ゲーム](${BASE_URL}/ishin-denshin)
+- [NGワード会議](${BASE_URL}/ng-word)
+- [禁句トーク](${BASE_URL}/kinku-talk)
+- [社長の頭の中（ランキング予想）](${BASE_URL}/rank-guess)
+- [連想リレー](${BASE_URL}/word-chain)
 `;
 
   return new Response(body, {
