@@ -25,7 +25,7 @@ export function GET() {
 
 ${categorySections}
 
-## 収録ブラウザゲーム一覧（全16作品・無料・登録不要）
+## 収録ブラウザゲーム一覧（全21作品・無料・登録不要）
 
 - 社畜通勤サバイバー (${BASE_URL}/barricade-defense): 満員ラッシュを突破する3Dゲートシューティング
 - 社畜サバイバー (${BASE_URL}/shachiku-survivor): 18時まで生き残る10分ホードサバイバル
@@ -43,6 +43,11 @@ ${categorySections}
 - 禁句トーク (${BASE_URL}/kinku-talk): 禁句なしでお題を説明するチーム対戦ゲーム
 - 社長の頭の中（ランキング予想） (${BASE_URL}/rank-guess): 社長のランキングを予想するチームゲーム
 - 連想リレー (${BASE_URL}/word-chain): 言葉をつないで高得点を狙う連想ゲーム
+- 増殖ボール・カスケード (${BASE_URL}/ball-multiply): ピン衝突で分裂して増えるボールカスケード
+- ドミノ・カスケード (${BASE_URL}/domino-cascade): ドミノ配置と連鎖を楽しむ物理シミュレーション
+- サンド・フロー・シミュレーター (${BASE_URL}/sand-flow): 色砂を注いでゾーンを埋める落下砂シミュレーション
+- バブル・マージ (${BASE_URL}/bubble-merge): 同じサイズの泡を合体させるパズルシミュレーション
+- 重力オービット (${BASE_URL}/gravity-orbit): 重力スリングショットで星を巡る物理シミュレーション
 
 ## 収録Webツール一覧（全49種類・無料・登録不要）
 

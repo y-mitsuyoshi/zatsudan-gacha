@@ -10,6 +10,10 @@ const CANVAS_W = 960;
 const CANVAS_H = 540;
 const FLOOR_H = 34;
 const INITIAL_W = 240;
+const MIN_SUPPORT_W = 18;
+const TORQUE_LIMIT = 1.85;
+const SWAY_PX_PER_FLOOR = 8;
+const CRANE_Y = 145;
 
 type StackMode = 'slice' | 'balance';
 
@@ -28,7 +32,7 @@ const DEFAULT_STACK_SAVE: StackSaveData = {
 };
 
 const DEPT_NAMES = [
-  '1F 総合受付ロビー',
+  '総合受付ロビー',
   '総務・庶務課',
   '第一営業部',
   '第二営業部',
@@ -44,6 +48,12 @@ const DEPT_NAMES = [
   '常務取締役フロア',
   '社長ペントハウス',
 ];
+
+function getDeptLabel(floorNum: number): string {
+  const index = (floorNum - 1) % DEPT_NAMES.length;
+  const cycle = Math.floor((floorNum - 1) / DEPT_NAMES.length);
+  return cycle === 0 ? DEPT_NAMES[index] : `${DEPT_NAMES[index]} 第${cycle + 1}分館`;
+}
 
 interface StackedFloor {
   floorNum: number;
@@ -71,6 +81,15 @@ interface StackBanner {
   id: number;
   text: string;
   sub?: string;
+  color: string;
+  life: number;
+}
+
+interface ScorePopup {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
   color: string;
   life: number;
 }
@@ -167,6 +186,7 @@ export default function ShachikuStackGame() {
     tiltPct: 0,
     skyLabel: '地上街路エリア (1F〜9F)',
     milestone: '目標: 30F 本社ビル完成',
+    assistReady: true,
   });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -182,7 +202,7 @@ export default function ShachikuStackGame() {
     floors: [] as StackedFloor[],
     currentWidth: INITIAL_W,
     craneAngle: 0,
-    craneSpeed: 2.3,
+    craneSpeed: 1.75,
     dropping: null as {
       x: number;
       y: number;
@@ -194,15 +214,45 @@ export default function ShachikuStackGame() {
     } | null,
     debris: [] as SlicedDebris[],
     banners: [] as StackBanner[],
+    scorePops: [] as ScorePopup[],
     score: 0,
     combo: 0,
     maxCombo: 0,
     swayAngle: 0,
     torque: 0,
     stabilizedIndex: 0,
+    assistUsed: false,
+    settled: false,
+    endReason: '',
   });
 
   useBgm(phase === 'playing' ? 'defense-battle' : 'shachiku-menu');
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const dpr = Math.min(2.5, Math.max(1, window.devicePixelRatio || 1));
+      const nextWidth = Math.max(1, Math.round(rect.width * dpr));
+      const nextHeight = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+        canvas.width = nextWidth;
+        canvas.height = nextHeight;
+      }
+    };
+
+    resizeCanvas();
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(canvas);
+    window.addEventListener('resize', resizeCanvas);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -228,6 +278,7 @@ export default function ShachikuStackGame() {
   }, []);
 
   const persistSave = useCallback((next: StackSaveData) => {
+    saveRef.current = next;
     setSave(next);
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -247,8 +298,10 @@ export default function ShachikuStackGame() {
   }, []);
 
   const startGame = useCallback((selectedMode?: StackMode) => {
-    const activeMode = selectedMode ?? modeRef.current;
-    if (selectedMode) setMode(selectedMode);
+    if (selectedMode) {
+      setMode(selectedMode);
+      modeRef.current = selectedMode;
+    }
 
     simRef.current = {
       time: 0,
@@ -257,7 +310,7 @@ export default function ShachikuStackGame() {
           floorNum: 1,
           relX: 0,
           width: INITIAL_W,
-          dept: DEPT_NAMES[0],
+          dept: `1F ${DEPT_NAMES[0]}`,
           isDamper: true,
           isPerfect: true,
           color: '#334155',
@@ -265,18 +318,23 @@ export default function ShachikuStackGame() {
       ],
       currentWidth: INITIAL_W,
       craneAngle: 0,
-      craneSpeed: 2.3,
+      craneSpeed: 1.75,
       dropping: null,
       debris: [],
       banners: [],
+      scorePops: [],
       score: 0,
       combo: 0,
       maxCombo: 0,
       swayAngle: 0,
       torque: 0,
       stabilizedIndex: 0,
+      assistUsed: false,
+      settled: false,
+      endReason: '',
     };
 
+    phaseRef.current = 'playing';
     setHud({
       floors: 1,
       score: 0,
@@ -285,15 +343,23 @@ export default function ShachikuStackGame() {
       tiltPct: 0,
       skyLabel: getSkyPalette(1).label,
       milestone: '目標: 30F 本社ビル完成',
+      assistReady: true,
     });
     setPhase('playing');
   }, []);
 
-  const endGame = useCallback(() => {
+  const endGame = useCallback((reason = 'タワー崩壊') => {
     const sim = simRef.current;
+    if (phaseRef.current !== 'playing' || sim.settled) return;
+
     const curSave = saveRef.current;
     const activeMode = modeRef.current;
     const built = sim.floors.length;
+
+    sim.settled = true;
+    sim.endReason = reason;
+    sim.dropping = null;
+    phaseRef.current = 'gameover';
 
     sfx.playCollapse();
     const nextSave: StackSaveData = {
@@ -309,6 +375,13 @@ export default function ShachikuStackGame() {
       totalFloorsBuilt: curSave.totalFloorsBuilt + Math.max(0, built - 1),
     };
     persistSave(nextSave);
+    setHud((prev) => ({
+      ...prev,
+      floors: built,
+      score: sim.score,
+      combo: sim.combo,
+      tiltPct: Math.min(100, Math.round((Math.abs(sim.torque) / TORQUE_LIMIT) * 100)),
+    }));
     setPhase('gameover');
   }, [persistSave]);
 
@@ -319,16 +392,16 @@ export default function ShachikuStackGame() {
 
     const nextNum = sim.floors.length + 1;
     const isDamper = nextNum % 10 === 0;
-    const swingAmplitude = Math.min(185, 115 + nextNum * 1.2);
+    const swingAmplitude = Math.min(180, 105 + nextNum * 1.1);
     const craneX = Math.sin(sim.craneAngle) * swingAmplitude;
     const colors = ['#1e293b', '#0f172a', '#1e3a8a', '#312e81', '#115e59'];
 
     sim.dropping = {
       x: craneX,
-      y: 95,
-      vy: 420,
+      y: CRANE_Y,
+      vy: 340,
       width: modeRef.current === 'balance' ? INITIAL_W : sim.currentWidth,
-      dept: isDamper ? `${nextNum}F 免震ダンパー基礎` : `${nextNum}F ${DEPT_NAMES[nextNum % DEPT_NAMES.length]}`,
+      dept: isDamper ? `${nextNum}F 免震ダンパー基礎` : `${nextNum}F ${getDeptLabel(nextNum)}`,
       isDamper,
       color: isDamper ? '#b45309' : colors[nextNum % colors.length],
     };
@@ -340,7 +413,7 @@ export default function ShachikuStackGame() {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         if (!e.repeat) {
-          if (phaseRef.current === 'title') {
+          if (phaseRef.current === 'title' || phaseRef.current === 'gameover') {
             startGame();
           } else if (phaseRef.current === 'playing') {
             dropCurrentFloor();
@@ -351,6 +424,26 @@ export default function ShachikuStackGame() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [dropCurrentFloor, startGame]);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      if (e.currentTarget.setPointerCapture) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
+      if (phaseRef.current === 'playing') dropCurrentFloor();
+    },
+    [dropCurrentFloor]
+  );
+
+  const releasePointerCapture = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
 
   // 60fps simulation loop
   useEffect(() => {
@@ -367,20 +460,34 @@ export default function ShachikuStackGame() {
       if (phaseRef.current === 'playing') {
         sim.time += dt;
         const nextNum = sim.floors.length + 1;
-        const speedMult = 1 + Math.min(1.6, nextNum * 0.022);
-        sim.craneAngle += sim.craneSpeed * speedMult * dt;
+        const targetCraneSpeed = 1.75 + Math.min(1.15, nextNum * 0.014);
+        sim.craneSpeed += (targetCraneSpeed - sim.craneSpeed) * Math.min(1, dt * 1.8);
+        sim.craneAngle = (sim.craneAngle + sim.craneSpeed * dt) % (Math.PI * 2);
 
-        // Tower sway in balance mode
         if (activeMode === 'balance') {
+          const anchorRelX = sim.floors[sim.stabilizedIndex]?.relX ?? 0;
           let unstabilizedTorque = 0;
           for (let i = sim.stabilizedIndex + 1; i < sim.floors.length; i++) {
-            unstabilizedTorque += sim.floors[i].relX * 0.012;
+            unstabilizedTorque += (sim.floors[i].relX - anchorRelX) * 0.0045;
           }
           sim.torque = unstabilizedTorque;
-          sim.swayAngle = Math.sin(sim.time * 2.6) * (0.04 + Math.abs(unstabilizedTorque) * 0.14) + unstabilizedTorque * 0.22;
+          sim.swayAngle =
+            Math.sin(sim.time * 2.6) * (0.02 + Math.abs(unstabilizedTorque) * 0.11) +
+            unstabilizedTorque * 0.18;
 
-          if (Math.abs(unstabilizedTorque) > 1.85) {
-            endGame();
+          if (Math.abs(unstabilizedTorque) > TORQUE_LIMIT) {
+            if (!sim.assistUsed) {
+              sim.assistUsed = true;
+              sim.stabilizedIndex = Math.max(0, sim.floors.length - 1);
+              sim.torque = 0;
+              sim.swayAngle = 0;
+              sim.combo = 0;
+              sfx.playDamperLock();
+              addBanner('緊急免震アシスト発動！', '最上階を新基準に傾斜をリセット', '#38bdf8');
+              setHud((prev) => ({ ...prev, combo: 0, tiltPct: 0, assistReady: false }));
+            } else {
+              endGame('重心バランス崩壊');
+            }
           }
         } else {
           sim.torque = 0;
@@ -388,23 +495,25 @@ export default function ShachikuStackGame() {
         }
 
         // Update dropping floor
-        if (sim.dropping) {
+        if (phaseRef.current === 'playing' && sim.dropping) {
           sim.dropping.vy += 980 * dt;
           sim.dropping.y += sim.dropping.vy * dt;
 
           const targetLandingY = 365;
           if (sim.dropping.y >= targetLandingY) {
             const topFloor = sim.floors[sim.floors.length - 1];
-            const swayOffsetPx = activeMode === 'balance' ? Math.sin(sim.swayAngle) * 55 : 0;
+            const topIndex = sim.floors.length - 1;
+            const swayOffsetPx =
+              activeMode === 'balance' && topIndex > sim.stabilizedIndex
+                ? Math.sin(sim.swayAngle) * (topIndex - sim.stabilizedIndex) * SWAY_PX_PER_FLOOR
+                : 0;
             const topCenterX = topFloor.relX + swayOffsetPx;
             const dropCenterX = sim.dropping.x;
             const deltaX = dropCenterX - topCenterX;
             const absDelta = Math.abs(deltaX);
-
             const overlap = (topFloor.width + sim.dropping.width) / 2 - absDelta;
 
-            if (overlap <= 12) {
-              // Missed completely!
+            if (overlap < MIN_SUPPORT_W) {
               sim.debris.push({
                 x: CANVAS_W / 2 + dropCenterX,
                 y: targetLandingY,
@@ -417,9 +526,34 @@ export default function ShachikuStackGame() {
                 color: sim.dropping.color,
               });
               sim.dropping = null;
-              endGame();
+
+              if (!sim.assistUsed) {
+                sim.assistUsed = true;
+                sim.combo = 0;
+                const oldWidth = topFloor.width;
+                const boostedWidth = Math.min(INITIAL_W, oldWidth + 72);
+                const repairPx = Math.round(boostedWidth - oldWidth);
+                topFloor.width = boostedWidth;
+                topFloor.isPerfect = false;
+                sim.currentWidth = boostedWidth;
+                sfx.playDamperLock();
+                addBanner(
+                  '緊急補修アシスト発動！',
+                  repairPx > 0 ? `最上階を鉄骨補強 +${repairPx}px` : '崩壊を食い止めました',
+                  '#38bdf8'
+                );
+                setHud((prev) => ({
+                  ...prev,
+                  widthPx: Math.round(boostedWidth),
+                  combo: 0,
+                  assistReady: false,
+                }));
+              } else {
+                endGame(overlap <= 0 ? 'フロア投下ミス' : '支持幅不足で崩壊');
+              }
             } else {
               const isPerfect = absDelta <= 6;
+              const previousCombo = sim.combo;
               let newWidth = sim.dropping.width;
               let newRelX = topFloor.relX + deltaX;
 
@@ -437,12 +571,17 @@ export default function ShachikuStackGame() {
                   );
                 } else {
                   sim.combo = 0;
-                  newWidth = Math.max(24, overlap);
-                  newRelX = topFloor.relX + deltaX * 0.5;
+                  newWidth = overlap;
+                  const overlapLeft = Math.max(topFloor.relX - topFloor.width / 2, dropCenterX - sim.dropping.width / 2);
+                  newRelX = overlapLeft + newWidth / 2;
                   const slicedW = sim.dropping.width - newWidth;
                   if (slicedW > 2) {
                     sim.debris.push({
-                      x: CANVAS_W / 2 + (deltaX > 0 ? newRelX + newWidth / 2 + slicedW / 2 : newRelX - newWidth / 2 - slicedW / 2),
+                      x:
+                        CANVAS_W / 2 +
+                        (deltaX > 0
+                          ? newRelX + newWidth / 2 + slicedW / 2
+                          : newRelX - newWidth / 2 - slicedW / 2),
                       y: targetLandingY,
                       w: slicedW,
                       h: FLOOR_H,
@@ -454,10 +593,12 @@ export default function ShachikuStackGame() {
                     });
                   }
                   sfx.playStamp(false, 0);
+                  if (previousCombo >= 3) {
+                    addBanner('COMBO BREAK', `${previousCombo} COMBO 途切れ`, '#f97316');
+                  }
                 }
                 sim.currentWidth = newWidth;
               } else {
-                // Pendulum Balance Mode
                 if (isPerfect) {
                   sim.combo += 1;
                   sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
@@ -467,6 +608,9 @@ export default function ShachikuStackGame() {
                 } else {
                   sim.combo = 0;
                   sfx.playStamp(false, 0);
+                  if (previousCombo >= 3) {
+                    addBanner('COMBO BREAK', `${previousCombo} COMBO 途切れ`, '#f97316');
+                  }
                 }
               }
 
@@ -477,6 +621,9 @@ export default function ShachikuStackGame() {
                 if (activeMode === 'slice') {
                   newWidth = Math.min(INITIAL_W, newWidth + 24);
                   sim.currentWidth = newWidth;
+                } else {
+                  sim.torque = 0;
+                  sim.swayAngle = 0;
                 }
                 sfx.playDamperLock();
                 addBanner(
@@ -496,8 +643,21 @@ export default function ShachikuStackGame() {
                 color: sim.dropping.color,
               });
 
-              const pts = (isPerfect ? 350 * Math.max(1, sim.combo) : 120) + (isDamper ? 500 : 0);
+              let pts = (isPerfect ? 300 * Math.max(1, sim.combo) : 100) + (isDamper ? 500 : 0);
+              if (isPerfect && sim.combo > 0 && sim.combo % 5 === 0) {
+                const comboBonus = 150 * sim.combo;
+                pts += comboBonus;
+                addBanner(`${sim.combo} COMBO BONUS!`, `+${comboBonus}点`, '#f472b6');
+              }
               sim.score += pts;
+              sim.scorePops.push({
+                id: Date.now() + Math.random(),
+                x: CANVAS_W / 2 + newRelX,
+                y: targetLandingY - 8,
+                text: `+${pts}`,
+                color: isPerfect ? '#facc15' : isDamper ? '#38bdf8' : '#e2e8f0',
+                life: 0.9,
+              });
               sim.dropping = null;
 
               const milestone =
@@ -514,15 +674,15 @@ export default function ShachikuStackGame() {
                 score: sim.score,
                 combo: sim.combo,
                 widthPx: Math.round(newWidth),
-                tiltPct: Math.min(100, Math.round((Math.abs(sim.torque) / 1.85) * 100)),
+                tiltPct: Math.min(100, Math.round((Math.abs(sim.torque) / TORQUE_LIMIT) * 100)),
                 skyLabel: getSkyPalette(newFloorNum).label,
                 milestone,
+                assistReady: !sim.assistUsed,
               });
             }
           }
         }
 
-        // Update debris & banners
         for (const d of sim.debris) {
           d.vy += 820 * dt;
           d.x += d.vx * dt;
@@ -530,6 +690,12 @@ export default function ShachikuStackGame() {
           d.rot += d.vrot * dt;
         }
         sim.debris = sim.debris.filter((d) => d.y < CANVAS_H + 100);
+
+        for (const p of sim.scorePops) {
+          p.y -= 34 * dt;
+          p.life -= dt;
+        }
+        sim.scorePops = sim.scorePops.filter((p) => p.life > 0);
 
         for (const b of sim.banners) b.life -= dt;
         sim.banners = sim.banners.filter((b) => b.life > 0);
@@ -539,6 +705,9 @@ export default function ShachikuStackGame() {
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          const scaleX = canvas.width / CANVAS_W;
+          const scaleY = canvas.height / CANVAS_H;
+          ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
           renderStackScene(ctx, sim, activeMode);
         }
       }
@@ -551,25 +720,27 @@ export default function ShachikuStackGame() {
   }, [addBanner, endGame]);
 
   return (
-    <div className="min-h-screen bg-[#0c0a09] text-stone-100 select-none">
+    <div className="min-h-screen overflow-x-hidden bg-[#0c0a09] text-stone-100 select-none">
       {/* Header */}
       <header className="border-b border-stone-800 bg-stone-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/games"
-              className="rounded border border-stone-700 bg-stone-900 px-3 py-1.5 text-xs font-bold text-stone-300 transition hover:border-amber-400 hover:text-amber-300"
+              className="shrink-0 whitespace-nowrap rounded border border-stone-700 bg-stone-900 px-2.5 py-1.5 text-[11px] font-bold text-stone-300 transition hover:border-amber-400 hover:text-amber-300 sm:px-3 sm:text-xs"
             >
               ← 無料ゲーム一覧
             </Link>
-            <div>
-              <p className="text-[10px] font-bold tracking-widest text-amber-400">SHACHIKU TOWER STACK / 100F HQ</p>
-              <h2 className="text-sm font-black sm:text-base">社畜グラグラ決済タワー：限界ビル建設</h2>
+            <div className="min-w-0">
+              <p className="truncate text-[9px] font-bold tracking-widest text-amber-400 sm:text-[10px]">
+                SHACHIKU TOWER STACK / 100F HQ
+              </p>
+              <h2 className="break-words text-xs font-black sm:text-base">社畜グラグラ決済タワー：限界ビル建設</h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-1 text-xs">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-2 py-1 text-[10px] sm:px-3 sm:text-xs">
               <span className="text-stone-400">最高到達階数: </span>
               <span className="font-black text-amber-300">
                 {Math.max(save.bestFloor.slice, save.bestFloor.balance)} F
@@ -580,21 +751,18 @@ export default function ShachikuStackGame() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 py-4">
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="mx-auto max-w-6xl px-3 py-3 sm:px-4 sm:py-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px] lg:gap-6">
           {/* Left: Game Viewport */}
-          <div className="flex flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-3">
             <div
-              className="relative overflow-hidden rounded-xl border-2 border-stone-800 bg-stone-950 shadow-2xl"
-              onMouseDown={() => {
-                if (phase === 'playing') dropCurrentFloor();
-              }}
-              onTouchStart={(e) => {
-                if (phase === 'playing') {
-                  e.preventDefault();
-                  dropCurrentFloor();
-                }
-              }}
+              className="relative touch-none overflow-hidden rounded-xl border-2 border-stone-800 bg-stone-950 shadow-2xl"
+              style={{ touchAction: 'none' }}
+              onPointerDown={handlePointerDown}
+              onPointerUp={releasePointerCapture}
+              onPointerCancel={releasePointerCapture}
+              onContextMenu={(e) => e.preventDefault()}
+              onDragStart={(e) => e.preventDefault()}
             >
               <canvas
                 ref={canvasRef}
@@ -605,28 +773,37 @@ export default function ShachikuStackGame() {
 
               {/* HUD */}
               {phase === 'playing' && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-b from-black/80 via-black/35 to-transparent p-3">
-                  <div className="flex items-center gap-4">
+                <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-1.5 bg-gradient-to-b from-black/85 via-black/40 to-transparent p-2 sm:gap-2 sm:p-3">
+                  <div className="flex items-center gap-2.5 sm:gap-4">
                     <div>
-                      <p className="text-[10px] font-bold text-stone-400">FLOOR</p>
-                      <p className="font-mono text-2xl font-black text-amber-300">{hud.floors}F</p>
+                      <p className="text-[9px] font-bold text-stone-400 sm:text-[10px]">FLOOR</p>
+                      <p className="font-mono text-lg font-black leading-tight text-amber-300 sm:text-2xl">{hud.floors}F</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-stone-400">SCORE</p>
-                      <p className="font-mono text-lg font-bold text-white">{hud.score.toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-stone-400 sm:text-[10px]">SCORE</p>
+                      <p className="font-mono text-sm font-bold leading-tight text-white sm:text-lg">
+                        {hud.score.toLocaleString()}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-stone-400">PERFECT COMBO</p>
-                      <p className="font-mono text-lg font-black text-emerald-300">{hud.combo}x</p>
+                      <p className="text-[9px] font-bold text-stone-400 sm:text-[10px]">COMBO</p>
+                      <p className="font-mono text-sm font-black leading-tight text-emerald-300 sm:text-lg">{hud.combo}x</p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end">
-                    <span className="rounded border border-amber-500/30 bg-stone-900/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-300">
+                  <div className="flex min-w-0 max-w-[48%] flex-col items-end sm:max-w-none">
+                    <span className="hidden max-w-full truncate rounded border border-amber-500/30 bg-stone-900/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-300 sm:inline-block">
                       {hud.skyLabel}
                     </span>
-                    <span className="mt-1 text-[11px] font-bold text-sky-300">
-                      {mode === 'slice' ? `現在フロア幅: ${hud.widthPx}px` : `ビル傾斜危険度: ${hud.tiltPct}%`} ・ {hud.milestone}
+                    <span className="max-w-full truncate text-[9px] font-bold text-sky-300 sm:mt-1 sm:text-[11px]">
+                      {mode === 'slice' ? `幅: ${hud.widthPx}px` : `傾斜: ${hud.tiltPct}%`} ・ {hud.milestone}
+                    </span>
+                    <span
+                      className={`max-w-full truncate text-[9px] font-bold sm:text-[10px] ${
+                        hud.assistReady ? 'text-emerald-300' : 'text-stone-500'
+                      }`}
+                    >
+                      緊急アシスト: {hud.assistReady ? '待機' : '使用済み'}
                     </span>
                   </div>
                 </div>
@@ -634,38 +811,41 @@ export default function ShachikuStackGame() {
 
               {/* Bottom Instruction */}
               {phase === 'playing' && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-                  <div className="rounded-lg border border-stone-700 bg-black/75 px-4 py-1.5 text-xs text-stone-200">
-                    画面クリック / タップ / Spaceキー: <span className="font-bold text-amber-300">オフィスフロア投下</span>（誤差±6px以内で{' '}
-                    <span className="font-bold text-emerald-300">PERFECT STAMP!</span>）
+                <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2 sm:bottom-3 sm:px-4">
+                  <div className="hidden rounded-lg border border-stone-700 bg-black/75 px-4 py-1.5 text-xs text-stone-200 sm:block">
+                    画面クリック / タップ / Spaceキー: <span className="font-bold text-amber-300">オフィスフロア投下</span>
+                    （誤差±6px以内で <span className="font-bold text-emerald-300">PERFECT STAMP!</span>）
+                  </div>
+                  <div className="rounded-md border border-stone-700 bg-black/75 px-2.5 py-1 text-[10px] text-stone-200 sm:hidden">
+                    タップで投下 ・ 誤差±6pxでPERFECT
                   </div>
                 </div>
               )}
 
               {/* Title Overlay */}
               {phase === 'title' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 p-6 text-center backdrop-blur-sm">
-                  <span className="rounded-full border border-amber-400/50 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
+                <div className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto bg-black/80 px-3 py-2 text-center backdrop-blur-sm sm:p-6">
+                  <span className="hidden rounded-full border border-amber-400/50 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300 sm:inline-block">
                     ワンボタン高層ビル建設＆物理バランスアクション
                   </span>
-                  <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-4xl">
+                  <h2 className="mt-1 text-lg font-black leading-tight tracking-tight text-white sm:mt-3 sm:text-4xl">
                     社畜グラグラ決済タワー：限界ビル建設
                   </h2>
-                  <p className="mt-2 max-w-lg text-xs leading-relaxed text-stone-300 sm:text-sm">
-                    揺れるタワークレーンからオフィスフロアをタイミングよく投下！ズレた部分が切断される「精密スライスモード」と、重心の傾きを制御する「物理バランスモード」の2モードで100階の宇宙本社を目指そう。
+                  <p className="mt-1 hidden max-w-lg text-xs leading-relaxed text-stone-300 sm:mt-2 sm:block sm:text-sm">
+                    揺れるタワークレーンからオフィスフロアをタイミングよく投下！ズレた部分が切断される「精密スライスモード」と、重心の傾きを制御する「物理バランスモード」の2モードで100階の宇宙本社を目指そう。一度だけ緊急アシストも発動します。
                   </p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <div className="mt-2 flex w-full max-w-md flex-col gap-2 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
                     <button
                       type="button"
                       onClick={() => startGame('slice')}
-                      className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-sm font-black text-stone-950 shadow-xl transition hover:scale-105"
+                      className="w-full rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-3 py-2 text-xs font-black text-stone-950 shadow-xl transition hover:scale-105 sm:w-auto sm:px-6 sm:py-3 sm:text-sm"
                     >
                       精密スライスモードで着工 [SPACE]
                     </button>
                     <button
                       type="button"
                       onClick={() => startGame('balance')}
-                      className="rounded-xl border-2 border-sky-400 bg-gradient-to-r from-sky-500 to-indigo-600 px-6 py-3 text-sm font-black text-white shadow-xl transition hover:scale-105"
+                      className="w-full rounded-xl border-2 border-sky-400 bg-gradient-to-r from-sky-500 to-indigo-600 px-3 py-2 text-xs font-black text-white shadow-xl transition hover:scale-105 sm:w-auto sm:px-6 sm:py-3 sm:text-sm"
                     >
                       物理バランスモードで着工
                     </button>
@@ -675,22 +855,28 @@ export default function ShachikuStackGame() {
 
               {/* Gameover Overlay */}
               {phase === 'gameover' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 p-6 text-center backdrop-blur-md">
-                  <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-stone-950">
+                <div className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto bg-black/85 px-3 py-2 text-center backdrop-blur-md sm:p-6">
+                  <span className="hidden rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-stone-950 sm:inline-block">
                     竣工検査完了 / TOWER REPORT
                   </span>
-                  <h3 className="mt-2 text-2xl font-black text-white sm:text-3xl">
-                    最終到達階数: {hud.floors}階 / スコア: {hud.score.toLocaleString()}
+                  <h3 className="mt-1 text-base font-black leading-tight text-white sm:mt-2 sm:text-3xl">
+                    <span className="block sm:inline">最終到達階数: {hud.floors}階</span>
+                    <span className="mt-0.5 block text-amber-300 sm:mt-0 sm:inline sm:text-white">
+                      スコア: {hud.score.toLocaleString()}
+                    </span>
                   </h3>
-                  <p className="mt-1 text-xs text-stone-300">
+                  <p className="mt-1 text-[10px] leading-relaxed text-stone-300 sm:text-xs">
                     最大PERFECTコンボ: {simRef.current.maxCombo} COMBO ・ モード:{' '}
                     {mode === 'slice' ? '精密スライスモード' : '物理バランスモード'}
                   </p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <p className="mt-0.5 text-[10px] font-bold text-orange-300 sm:text-xs">
+                    崩壊原因: {simRef.current.endReason}
+                  </p>
+                  <div className="mt-3 flex w-full max-w-xs flex-wrap justify-center gap-3 sm:mt-5 sm:max-w-none">
                     <button
                       type="button"
                       onClick={() => startGame()}
-                      className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-7 py-2.5 text-sm font-black text-stone-950 shadow-lg transition hover:scale-105"
+                      className="w-full rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-xs font-black text-stone-950 shadow-lg transition hover:scale-105 sm:w-auto sm:px-7 sm:py-2.5 sm:text-sm"
                     >
                       もう一度建設する [SPACE]
                     </button>
@@ -701,10 +887,10 @@ export default function ShachikuStackGame() {
           </div>
 
           {/* Right Sidebar: Mode Switch & Records */}
-          <aside className="flex flex-col gap-4 rounded-xl border border-stone-800 bg-stone-900/80 p-4">
+          <aside className="flex min-w-0 flex-col gap-3 rounded-xl border border-stone-800 bg-stone-900/80 p-3 sm:gap-4 sm:p-4">
             <div>
-              <h3 className="border-b border-stone-800 pb-2 text-sm font-black text-amber-300">建設モード選択</h3>
-              <div className="mt-3 space-y-2.5">
+              <h3 className="border-b border-stone-800 pb-2 text-xs font-black text-amber-300 sm:text-sm">建設モード選択</h3>
+              <div className="mt-2.5 space-y-2 sm:mt-3 sm:space-y-2.5">
                 <button
                   type="button"
                   onClick={() => startGame('slice')}
@@ -779,12 +965,16 @@ function renderStackScene(
     } | null;
     debris: SlicedDebris[];
     banners: StackBanner[];
+    scorePops: ScorePopup[];
     swayAngle: number;
+    stabilizedIndex: number;
   },
   mode: StackMode
 ) {
   const count = sim.floors.length;
   const pal = getSkyPalette(count);
+  const cssWidth = ctx.canvas.clientWidth || CANVAS_W;
+  const viewScale = Math.min(2.4, Math.max(1, CANVAS_W / Math.max(1, cssWidth)));
 
   const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
   grad.addColorStop(0, pal.top);
@@ -792,7 +982,6 @@ function renderStackScene(
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  // Stars in high altitude
   if (count >= 25) {
     ctx.fillStyle = 'rgba(255,255,255,0.65)';
     for (let i = 0; i < 36; i++) {
@@ -802,15 +991,19 @@ function renderStackScene(
     }
   }
 
-  // Visible top 7 floors
   const visibleFloors = sim.floors.slice(-7);
   const topIndex = visibleFloors.length - 1;
+  const floorOffset = sim.floors.length - visibleFloors.length;
 
   for (let i = 0; i < visibleFloors.length; i++) {
     const fl = visibleFloors[i];
+    const globalIndex = floorOffset + i;
     const depthFromTop = topIndex - i;
     const y = 365 + depthFromTop * FLOOR_H;
-    const swayPx = mode === 'balance' ? Math.sin(sim.swayAngle) * (7 - depthFromTop) * 8 : 0;
+    const swayPx =
+      mode === 'balance' && globalIndex > sim.stabilizedIndex
+        ? Math.sin(sim.swayAngle) * (globalIndex - sim.stabilizedIndex) * SWAY_PX_PER_FLOOR
+        : 0;
     const cx = CANVAS_W / 2 + fl.relX + swayPx;
     const left = cx - fl.width / 2;
 
@@ -821,31 +1014,27 @@ function renderStackScene(
     ctx.lineWidth = fl.isPerfect ? 2.5 : 1.5;
     ctx.strokeRect(left, y, fl.width, FLOOR_H - 2);
 
-    // Windows
     ctx.fillStyle = 'rgba(254, 240, 138, 0.75)';
     for (let wx = left + 10; wx < left + fl.width - 18; wx += 22) {
       ctx.fillRect(wx, y + 6, 10, 8);
     }
 
-    // Department label
     if (fl.width >= 95) {
       ctx.fillStyle = '#f8fafc';
-      ctx.font = 'bold 10px sans-serif';
+      ctx.font = `bold ${Math.round(10 * Math.min(1.5, viewScale))}px sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(fl.dept, cx, y + 25);
+      ctx.fillText(fl.dept, cx, y + 25, Math.max(12, fl.width - 8));
     }
   }
 
-  // Overhead Crane & Swinging / Dropping Block
   const nextNum = sim.floors.length + 1;
   const isNextDamper = nextNum % 10 === 0;
-  const swingAmplitude = Math.min(185, 115 + nextNum * 1.2);
+  const swingAmplitude = Math.min(180, 105 + nextNum * 1.1);
   const craneOffsetX = sim.dropping ? sim.dropping.x : Math.sin(sim.craneAngle) * swingAmplitude;
   const blockW = sim.dropping ? sim.dropping.width : mode === 'balance' ? INITIAL_W : sim.currentWidth;
-  const blockY = sim.dropping ? sim.dropping.y : 95;
+  const blockY = sim.dropping ? sim.dropping.y : CRANE_Y;
   const blockCenterX = CANVAS_W / 2 + craneOffsetX;
 
-  // Crane cable
   ctx.strokeStyle = '#facc15';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
@@ -853,7 +1042,6 @@ function renderStackScene(
   ctx.lineTo(blockCenterX, blockY);
   ctx.stroke();
 
-  // Active Floor Block
   ctx.fillStyle = isNextDamper ? '#d97706' : '#0284c7';
   ctx.fillRect(blockCenterX - blockW / 2, blockY, blockW, FLOOR_H - 2);
   ctx.strokeStyle = '#fef08a';
@@ -861,11 +1049,10 @@ function renderStackScene(
   ctx.strokeRect(blockCenterX - blockW / 2, blockY, blockW, FLOOR_H - 2);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.font = `bold ${Math.round(11 * Math.min(2, viewScale))}px sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText(`${nextNum}F`, blockCenterX, blockY + 21);
+  ctx.fillText(`${nextNum}F`, blockCenterX, blockY + 21, Math.max(12, blockW - 8));
 
-  // Sliced Debris
   for (const d of sim.debris) {
     ctx.save();
     ctx.translate(d.x, d.y);
@@ -875,21 +1062,30 @@ function renderStackScene(
     ctx.restore();
   }
 
-  // Banners
-  let by = 165;
+  for (const p of sim.scorePops) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, p.life * 1.4);
+    ctx.font = `900 ${Math.round(14 * viewScale)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = p.color;
+    ctx.fillText(p.text, p.x, p.y);
+    ctx.restore();
+  }
+
+  let by = 185;
   for (const b of sim.banners) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, b.life);
-    ctx.font = '900 22px sans-serif';
+    ctx.font = `900 ${Math.round(22 * viewScale)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillStyle = b.color;
-    ctx.fillText(b.text, CANVAS_W / 2, by);
+    ctx.fillText(b.text, CANVAS_W / 2, by, CANVAS_W - 40);
     if (b.sub) {
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = `bold ${Math.round(12 * viewScale)}px sans-serif`;
       ctx.fillStyle = '#f8fafc';
-      ctx.fillText(b.sub, CANVAS_W / 2, by + 18);
+      ctx.fillText(b.sub, CANVAS_W / 2, by + Math.round(18 * viewScale), CANVAS_W - 40);
     }
     ctx.restore();
-    by += 42;
+    by += Math.round(42 * viewScale);
   }
 }

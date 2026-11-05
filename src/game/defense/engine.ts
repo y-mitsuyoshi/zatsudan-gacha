@@ -107,7 +107,7 @@ const LANES = [-3.4, -1.7, 0, 1.7, 3.4];
 const CRATE_HP = 26;
 const CAGE_HP = 40;
 
-const MAX_BOLTS = 250;
+const MAX_BOLTS = 360;
 const MAX_PARTICLES = 320;
 const MAX_RINGS = 24;
 const MAX_FLOATERS = 36;
@@ -264,6 +264,7 @@ export class DefenseEngine {
   private last = 0;
   private running = false;
   private destroyed = false;
+  private contextLost = false;
 
   private course!: CourseDef;
   private diff!: DifficultyDef;
@@ -297,6 +298,8 @@ export class DefenseEngine {
   private victory = false;
   private courseCleared = false;
   private shopOpen = false;
+  private resultSettled = false;
+  private bossGateHeld = false;
   private guardBroke = false;
   private killsByKind: Record<EnemyKind, number> = { runner: 0, walker: 0, brute: 0, shield: 0, kamikaze: 0, boss: 0 };
   private bossKills = 0;
@@ -327,6 +330,8 @@ export class DefenseEngine {
   private bossSpawned = false;
   private bossRef: Foe | null = null;
   private slamAnnounced = false;
+  private checkpoints: number[] = [];
+  private checkpointIdx = 0;
 
   // scene objects
   private hero!: THREE.Group;
@@ -356,6 +361,26 @@ export class DefenseEngine {
   private geoParticle = markShared(new THREE.BoxGeometry(0.18, 0.18, 0.18));
   private boltMats: Record<string, THREE.MeshBasicMaterial> = {};
 
+  private onContextLost = (event: Event): void => {
+    event.preventDefault();
+    this.contextLost = true;
+    cancelAnimationFrame(this.raf);
+    this.cb.onBanner('描画コンテキストが切断されました', '復帰を待っています');
+  };
+
+  private onContextRestored = (): void => {
+    this.contextLost = false;
+    if (typeof this.renderer.resetState === 'function') this.renderer.resetState();
+    this.resize();
+    if (this.running && !this.over && !this.shopOpen) {
+      this.running = true;
+      this.last = performance.now();
+      cancelAnimationFrame(this.raf);
+      this.loop(this.last);
+    }
+    this.cb.onBanner('描画復帰', '通勤を再開します');
+  };
+
   constructor(canvas: HTMLCanvasElement, sound: DefenseSound, cb: EngineCallbacks) {
     this.canvas = canvas;
     this.sound = sound;
@@ -368,6 +393,7 @@ export class DefenseEngine {
     this.course = course;
     this.diff = diff;
     this.length = courseLength(course);
+    this.configureCheckpoints();
     this.shakeEnabled = opts?.shake !== false;
     this.perksDmg = opts?.perksDmg ?? 1;
     this.score = 0;
@@ -392,6 +418,9 @@ export class DefenseEngine {
     this.victory = false;
     this.courseCleared = false;
     this.shopOpen = false;
+    this.resultSettled = false;
+    this.bossGateHeld = false;
+    this.contextLost = false;
     this.guardBroke = false;
     this.killsByKind = { runner: 0, walker: 0, brute: 0, shield: 0, kamikaze: 0, boss: 0 };
     this.bossKills = 0;
@@ -417,6 +446,8 @@ export class DefenseEngine {
     this.destroyed = true;
     this.running = false;
     cancelAnimationFrame(this.raf);
+    this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+    this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
     try {
       disposeObject3D(this.scene);
       this.renderer?.dispose();
@@ -481,11 +512,40 @@ export class DefenseEngine {
   }
 
   nextWave(): void {
+    if (this.resultSettled) return;
     this.shopOpen = false;
-    this.dist = 0;
-    this.buildDirector();
+    this.clearField();
+    this.running = true;
+    this.last = performance.now();
+    cancelAnimationFrame(this.raf);
+    const left = Math.max(0, Math.ceil(this.length - this.dist));
+    const leg = Math.min(this.checkpoints.length + 1, this.checkpointIdx + 1);
+    this.cb.onBanner(`${this.course.name} — 第${leg}区間 出発進行`, `本社まであと${left}m！`);
+    this.loop(this.last);
+  }
 
-    // Clear active field elements and dispose per-entity resources
+  continueEndless(): void {
+    if (this.over || this.resultSettled) return;
+    this.endless++;
+    this.shopOpen = false;
+    this.victory = false;
+    this.bossGateHeld = false;
+    this.length = Math.round(courseLength(this.course) * (1 + Math.min(1.5, this.endless * 0.12)));
+    this.hp = Math.min(this.hpMax, this.hp + 40);
+    this.guard = Math.min(this.guardMax, this.guard + 50);
+    updateBarricadeDurability(this.barricade, this.guard / this.guardMax, this.time);
+    this.clearField();
+    this.dist = 0;
+    this.configureCheckpoints();
+    this.buildDirector();
+    this.running = true;
+    this.last = performance.now();
+    cancelAnimationFrame(this.raf);
+    this.cb.onBanner(`残業${this.endless}日目`, '混雑がさらに激化！会社はまだ遠い…');
+    this.loop(this.last);
+  }
+
+  private clearField(): void {
     for (const f of this.foes) disposeObject3D(f.g);
     for (const c of this.crates) disposeObject3D(c.g);
     for (const c of this.cages) disposeObject3D(c.g);
@@ -499,27 +559,10 @@ export class DefenseEngine {
     this.cages = [];
     this.gateObjs = [];
     this.bossRef = null;
-
-    // Reset pools
     for (const b of this.boltPool) { b.active = false; b.m.visible = false; }
     for (const p of this.particlePool) { p.active = false; p.m.visible = false; }
     for (const r of this.ringPool) { r.active = false; r.m.visible = false; }
     for (const f of this.floaterPool) { f.active = false; f.sprite.visible = false; }
-
-    this.running = true;
-    this.last = performance.now();
-    cancelAnimationFrame(this.raf);
-    this.cb.onBanner(`${this.course.name} — 出発進行`, `会社まであと${this.length}m！`);
-    this.loop(this.last);
-  }
-
-  continueEndless(): void {
-    this.endless++;
-    this.hp = Math.min(this.hpMax, this.hp + 40);
-    this.guard = Math.min(this.guardMax, this.guard + 50);
-    updateBarricadeDurability(this.barricade, this.guard / this.guardMax, this.time);
-    this.nextWave();
-    this.cb.onBanner(`残業${this.endless}日目`, '混雑がさらに激化！会社はまだ遠い…');
   }
 
   snapshotShop(victory: boolean): ShopSnapshot {
@@ -536,7 +579,8 @@ export class DefenseEngine {
   }
 
   completeRun(): void {
-    if (!this.over) this.gameOver(true);
+    if (this.over || this.resultSettled) return;
+    this.gameOver(true);
   }
 
   /* ---------------- scene setup & object pools ---------------- */
@@ -548,6 +592,8 @@ export class DefenseEngine {
   private initScene(): void {
     const canvas = this.canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    canvas.addEventListener('webglcontextlost', this.onContextLost);
+    canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     this.renderer.setPixelRatio(Math.min(2, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1));
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(this.course.sky[0]);
@@ -831,6 +877,16 @@ export class DefenseEngine {
     this.bossAt = L - 80;
     this.bossSpawned = false;
     this.slamAnnounced = false;
+  }
+
+  private configureCheckpoints(): void {
+    const stops = Math.max(1, Math.floor((this.course.waves - 1) / 2));
+    this.checkpoints = [];
+    for (let i = 1; i <= stops; i++) {
+      const at = (this.length * i) / (stops + 1);
+      if (at < this.length - 120) this.checkpoints.push(at);
+    }
+    this.checkpointIdx = 0;
   }
 
   private waveNum(): number {
@@ -1602,7 +1658,7 @@ export class DefenseEngine {
   /* ---------------- main loop & updates ---------------- */
 
   private loop = (now: number): void => {
-    if (this.destroyed || !this.running) return;
+    if (this.destroyed || !this.running || this.contextLost) return;
     this.raf = requestAnimationFrame(this.loop);
     let dt = (now - this.last) / 1000;
     this.last = now;
@@ -1618,6 +1674,7 @@ export class DefenseEngine {
       this.update(effectiveDt);
     }
 
+    this.screenShake.update(dt);
     this.render();
 
     this.hudT += dt;
@@ -1656,6 +1713,7 @@ export class DefenseEngine {
   }
 
   private openShop(victory: boolean): void {
+    if (this.over || this.resultSettled || this.shopOpen) return;
     this.shopOpen = true;
     this.running = false;
     cancelAnimationFrame(this.raf);
@@ -1664,9 +1722,11 @@ export class DefenseEngine {
   }
 
   private gameOver(victory: boolean): void {
-    if (this.over) return;
+    if (this.over || this.resultSettled) return;
+    this.resultSettled = true;
     this.over = true;
     this.victory = victory;
+    this.shopOpen = false;
     this.running = false;
     cancelAnimationFrame(this.raf);
     this.sound.gameOver(victory);
@@ -1738,8 +1798,28 @@ export class DefenseEngine {
     this.updateAmbient(dt);
     this.updateFx(dt);
 
-    // Check course finish
-    if (!this.over && this.dist >= this.length) {
+    if (this.over || this.shopOpen) return;
+
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.burst(hx, 1.2, HERO_Z, 60, 8, '#ef4444');
+      this.screenShake.addTrauma(1.0);
+      this.sound.boom();
+      this.gameOver(false);
+      return;
+    }
+
+    if (this.dist >= this.length) {
+      if (this.bossRef && !this.bossRef.dead && this.bossRef.z > SPAWN_Z + 6) {
+        this.dist = this.length;
+        if (!this.bossGateHeld) {
+          this.bossGateHeld = true;
+          this.screenShake.addTrauma(0.45);
+          this.sound.boom();
+          this.cb.onBanner('満員電車ゲート封鎖', 'ボスを撃破するまで本社改札は開かない！');
+        }
+        return;
+      }
       this.collectRemainingFieldItems();
       const bonus = 500 + this.endless * 200;
       this.score += bonus;
@@ -1748,13 +1828,18 @@ export class DefenseEngine {
       this.victory = true;
       this.courseCleared = true;
       this.openShop(true);
+      return;
     }
-    if (this.hp <= 0 && !this.over) {
-      this.hp = 0;
-      this.burst(hx, 1.2, HERO_Z, 60, 8, '#ef4444');
-      this.screenShake.addTrauma(1.0);
-      this.sound.boom();
-      this.gameOver(false);
+
+    const checkpoint = this.checkpoints[this.checkpointIdx];
+    if (checkpoint !== undefined && this.dist >= checkpoint) {
+      this.checkpointIdx++;
+      this.collectRemainingFieldItems();
+      const bonus = 120 + Math.ceil(this.waveNum()) * 30 + this.endless * 60;
+      this.score += bonus;
+      this.coins += 15;
+      this.sound.waveClear();
+      this.openShop(false);
     }
   }
 
@@ -1819,28 +1904,39 @@ export class DefenseEngine {
     dmg: number, pierce: number, splash: number, slow: number,
     wid: string, isAlly: boolean
   ): void {
+    let slot: PooledBolt | null = null;
     for (const b of this.boltPool) {
-      if (b.active) continue;
-      b.active = true;
-      b.x = x + Math.sin(spread) * 0.4;
-      b.z = z;
-      b.prevX = b.x;
-      b.prevZ = b.z;
-      b.vx = Math.sin(spread) * speed;
-      b.vz = -Math.cos(spread) * speed;
-      b.dmg = dmg;
-      b.pierce = pierce;
-      b.splash = splash;
-      b.slow = slow;
-      b.life = 2.2;
-      b.ally = isAlly;
-
-      b.m.material = isAlly ? this.boltMats.ally : (this.boltMats[wid] ?? this.boltMats.pistol);
-      b.m.scale.set(0.85, 0.85, 2.35);
-      b.m.position.set(b.x, 1.25, b.z);
-      b.m.visible = true;
-      break;
+      if (!b.active) {
+        slot = b;
+        break;
+      }
     }
+    if (!slot && this.boltPool.length > 0) {
+      slot = this.boltPool[0];
+      for (const b of this.boltPool) {
+        if (b.life < slot.life) slot = b;
+      }
+    }
+    if (!slot) return;
+
+    slot.active = true;
+    slot.x = x + Math.sin(spread) * 0.4;
+    slot.z = z;
+    slot.prevX = slot.x;
+    slot.prevZ = slot.z;
+    slot.vx = Math.sin(spread) * speed;
+    slot.vz = -Math.cos(spread) * speed;
+    slot.dmg = dmg;
+    slot.pierce = pierce;
+    slot.splash = splash;
+    slot.slow = slow;
+    slot.life = 2.2;
+    slot.ally = isAlly;
+
+    slot.m.material = isAlly ? this.boltMats.ally : (this.boltMats[wid] ?? this.boltMats.pistol);
+    slot.m.scale.set(0.85, 0.85, 2.35);
+    slot.m.position.set(slot.x, 1.25, slot.z);
+    slot.m.visible = true;
   }
 
   /** Dynamic Crowd Flocking & Formation (Phalanx/Wedge for 1 to 30+ allies) */
@@ -2432,16 +2528,14 @@ export class DefenseEngine {
     this.resize();
     const cam = this.camera;
 
-    // Reset camera baseline
     cam.position.set(0, 8.6, 11.2);
     cam.rotation.set(0, 0, 0);
+    cam.lookAt(this.hero.position.x * 0.35, 1.2, -7.5);
 
-    // Apply trauma non-linear screen shake
     if (this.shakeEnabled) {
       this.screenShake.applyToCamera(cam);
     }
 
-    cam.lookAt(this.hero.position.x * 0.35, 1.2, -7.5);
     this.renderer.render(this.scene, cam);
   }
 }

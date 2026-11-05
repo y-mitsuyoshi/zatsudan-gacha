@@ -25,9 +25,11 @@ export const metadata: Metadata = {
  openGraph: {
  title: `雑談お題のカテゴリ一覧｜${themeCategories.length}カテゴリ・${totalThemeCount}問`,
  description: `会議のアイスブレイクや雑談に使える${totalThemeCount}以上のお題を、${themeCategories.length}カテゴリから選べます。`,
- url: `${APP_URL}/themes`,
- type: 'website',
- images: [
+  url: `${APP_URL}/themes`,
+  siteName: '雑談テーマガチャ',
+  locale: 'ja_JP',
+  type: 'website',
+  images: [
   {
   url: `${APP_URL}/ogp.png`,
   width: 1200,

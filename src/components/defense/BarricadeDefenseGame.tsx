@@ -486,6 +486,8 @@ export default function BarricadeDefenseGame() {
   const soundRef = useRef<DefenseSound | null>(null);
   const aimRef = useRef({ x: 240, y: 200 });
   const bannerTimer = useRef<number | null>(null);
+  const steeringPointer = useRef<number | null>(null);
+  const settledRun = useRef(false);
 
   const [screen, setScreen] = useState<Screen>('title');
   const screenRef = useRef<Screen>('title');
@@ -548,6 +550,8 @@ export default function BarricadeDefenseGame() {
   }, [destroyEngine]);
 
   const finishRun = useCallback((r: RunResult, c: CourseId, d: Difficulty) => {
+    if (settledRun.current) return;
+    settledRun.current = true;
     const cleared = r.victory || r.courseCleared;
     const entry: RecordEntry = {
       score: r.score, course: c, difficulty: d, wave: r.wave, victory: cleared, date: Date.now(),
@@ -587,6 +591,8 @@ export default function BarricadeDefenseGame() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     destroyEngine();
+    settledRun.current = false;
+    steeringPointer.current = null;
     if (!soundRef.current) soundRef.current = new DefenseSound();
     const sound = soundRef.current;
     const st = loadSettings();
@@ -650,6 +656,27 @@ export default function BarricadeDefenseGame() {
     engineRef.current?.setAim(p.x, p.y);
     soundRef.current?.unlock();
   }, [toLogical]);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (screenRef.current !== 'playing') return;
+    if (steeringPointer.current !== null) return;
+    steeringPointer.current = e.pointerId;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    onPointer(e);
+  }, [onPointer]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (steeringPointer.current !== null && e.pointerId !== steeringPointer.current) return;
+    onPointer(e);
+  }, [onPointer]);
+
+  const endPointer = useCallback((e: React.PointerEvent) => {
+    if (steeringPointer.current !== e.pointerId) return;
+    steeringPointer.current = null;
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    }
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -815,14 +842,17 @@ export default function BarricadeDefenseGame() {
         {/* 3D Viewport Stage */}
         <div
           ref={stageRef}
-          className={`relative overflow-hidden rounded-xl border bg-[#0b0e14] transition-shadow ${
+          className={`relative touch-none select-none overflow-hidden rounded-xl border bg-[#0b0e14] transition-shadow ${
             isLowVital
               ? 'border-red-500/80 ring-2 ring-red-500/40 shadow-[0_0_24px_rgba(239,68,68,0.35)]'
               : 'border-slate-700/90 shadow-2xl'
           } cursor-crosshair`}
           style={{ aspectRatio: '3 / 5' }}
-          onPointerDown={onPointer}
-          onPointerMove={onPointer}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPointer}
+          onPointerCancel={endPointer}
+          onLostPointerCapture={endPointer}
         >
           <canvas ref={canvasRef} className="h-full w-full touch-none select-none" width={480} height={800} />
 
@@ -1383,7 +1413,7 @@ function ShopOverlay(props: {
           onClick={onNext}
           className="mt-4 min-h-[48px] w-full rounded-lg border border-emerald-400 bg-emerald-600 py-3 text-sm font-black text-white shadow-lg transition hover:bg-emerald-500"
         >
-          WAVE {shop.endless > 0 ? `${shop.wave} +残業${shop.endless + 1}` : shop.wave + 1} へ出発進行
+          次の区間へ出発進行（WAVE {shop.endless > 0 ? `${shop.wave} +残業${shop.endless + 1}` : shop.wave + 1}）
         </button>
       )}
     </div>

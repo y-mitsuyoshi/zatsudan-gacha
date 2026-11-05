@@ -12,6 +12,7 @@ const gameLinks: FooterLink[] = [
   { label: 'ゲーム一覧', href: '/games', note: `全${SITE_COUNTS.games}作品` },
   { label: '社畜ゲーム', href: '/games#game-list-heading', note: '10作品' },
   { label: 'パーティーゲーム', href: '/games#party-games', note: `${SITE_COUNTS.partyGames}作品` },
+  { label: 'シミュレーションゲーム', href: '/games#simulation-games', note: `${SITE_COUNTS.simulationGames}作品` },
   { label: '定時退社カタパルト', href: '/shachiku-catapult', note: '飛距離アクション' },
   { label: '社畜ワイヤー疾走', href: '/shachiku-wire', note: 'スイングアクション' },
   { label: 'マイホーム完済記', href: '/mortgage-life', note: '家計シミュレーション' },

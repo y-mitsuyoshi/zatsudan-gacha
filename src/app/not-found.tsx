@@ -1,12 +1,37 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+const APP_URL = 'https://zatsudan-gacha.app';
+
 export const metadata: Metadata = {
   title: 'ページが見つかりません',
   description: 'お探しのページは見つかりませんでした。',
   robots: {
     index: false,
     follow: false,
+  },
+  openGraph: {
+    title: 'ページが見つかりません',
+    description: 'お探しのページは見つかりませんでした。',
+    url: `${APP_URL}/404`,
+    siteName: '雑談テーマガチャ',
+    locale: 'ja_JP',
+    type: 'website',
+    images: [
+      {
+        url: `${APP_URL}/ogp.png`,
+        width: 1200,
+        height: 630,
+        alt: 'ページが見つかりません',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@zatsudan_gacha',
+    title: 'ページが見つかりません',
+    description: 'お探しのページは見つかりませんでした。',
+    images: [`${APP_URL}/ogp.png`],
   },
 };
 

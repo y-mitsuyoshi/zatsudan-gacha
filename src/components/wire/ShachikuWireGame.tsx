@@ -12,9 +12,16 @@ const DANGER_Y = 495;
 const START_X = 90;
 const PERFECT_MIN = 10;
 const PERFECT_MAX = 65;
-const MAX_TETHER_TIME = 5;
+const MAX_TETHER_TIME = 6;
+const AUTO_RELEASE_WARN_TIME = 2;
+const MAX_SPEED = 1000;
+const TETHER_SPEED_CAP = 900;
+const MAX_SUBSTEPS = 6;
+const CHECKPOINT_INTERVAL_M = 600;
+const CHECKPOINT_INTERVAL_PX = CHECKPOINT_INTERVAL_M * 6;
+const MAX_SAFETY_NETS = 3;
 
-type CourseId = 'stage1' | 'stage2' | 'endless';
+type CourseId = 'stage1' | 'stage2' | 'stage3' | 'endless';
 
 interface CourseConfig {
   id: CourseId;
@@ -29,21 +36,30 @@ interface CourseConfig {
 const COURSES: CourseConfig[] = [
   {
     id: 'stage1',
-    name: 'Stage 1: 都心オフィス街 (1,200m)',
+    name: 'Stage 1: 都心オフィス街 (1,800m)',
     subtitle: '23:55発 山手最終ライナーへ飛び乗れ',
-    targetDist: 1200,
+    targetDist: 1800,
     skyTop: '#090d1a',
     skyBottom: '#1e1b4b',
     accent: '#22d3ee',
   },
   {
     id: 'stage2',
-    name: 'Stage 2: 湾岸ハイウェイ＆高架橋 (2,500m)',
+    name: 'Stage 2: 湾岸ハイウェイ＆高架橋 (3,600m)',
     subtitle: '00:10発 湾岸深夜エクスプレスを追跡せよ',
-    targetDist: 2500,
+    targetDist: 3600,
     skyTop: '#0c0a1d',
     skyBottom: '#3b0764',
     accent: '#e879f9',
+  },
+  {
+    id: 'stage3',
+    name: 'Stage 3: 臨海副都心・終電タワー (5,400m)',
+    subtitle: '00:24発 成田深夜リミテッドを追い越せ',
+    targetDist: 5400,
+    skyTop: '#0a0616',
+    skyBottom: '#172554',
+    accent: '#fb923c',
   },
   {
     id: 'endless',
@@ -65,8 +81,8 @@ interface WireSaveData {
 }
 
 const DEFAULT_WIRE_SAVE: WireSaveData = {
-  bestDistance: { stage1: 0, stage2: 0, endless: 0 },
-  bestScore: { stage1: 0, stage2: 0, endless: 0 },
+  bestDistance: { stage1: 0, stage2: 0, stage3: 0, endless: 0 },
+  bestScore: { stage1: 0, stage2: 0, stage3: 0, endless: 0 },
   bestCombo: 0,
   clearedCourses: [],
   totalPerfects: 0,
@@ -84,6 +100,12 @@ interface WifiRing {
   x: number;
   y: number;
   radius: number;
+  collected: boolean;
+}
+
+interface CheckpointGate {
+  id: number;
+  x: number;
   collected: boolean;
 }
 
@@ -126,6 +148,23 @@ function findBestAnchor(x: number, y: number, anchors: AnchorPoint[]): AnchorPoi
     }
   }
   return best;
+}
+
+function segmentCircleHit(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  cx: number,
+  cy: number,
+  radius: number
+): boolean {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 0.0001) return Math.hypot(x1 - cx, y1 - cy) <= radius;
+  const t = Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / lenSq));
+  return Math.hypot(x1 + dx * t - cx, y1 + dy * t - cy) <= radius;
 }
 
 function haptic(pattern: number | number[]) {
@@ -213,12 +252,13 @@ const sfx = new WireSoundEngine();
 export default function ShachikuWireGame() {
   const [save, setSave] = useState<WireSaveData>(DEFAULT_WIRE_SAVE);
   const [courseId, setCourseId] = useState<CourseId>('stage1');
-  const [phase, setPhase] = useState<'title' | 'playing' | 'cleared' | 'gameover'>('title');
+  const [phase, setPhase] = useState<'title' | 'playing' | 'paused' | 'cleared' | 'gameover'>('title');
   const [hud, setHud] = useState({
     distanceM: 0,
-    targetM: 1200,
+    targetM: 1800,
     score: 0,
     combo: 0,
+    perfectChain: 0,
     dashCharges: 1,
     swingProgress: 0,
     safetyNets: 1,
@@ -236,6 +276,7 @@ export default function ShachikuWireGame() {
   courseRef.current = COURSES.find((c) => c.id === courseId) ?? COURSES[0];
   const saveRef = useRef(save);
   saveRef.current = save;
+  const runSettledRef = useRef(false);
 
   const simRef = useRef({
     x: 120, // world px (6px = 1m)
@@ -246,6 +287,7 @@ export default function ShachikuWireGame() {
     ropeLen: 150,
     combo: 0,
     maxCombo: 0,
+    perfectChain: 0,
     score: 0,
     swingsCount: 0,
     dashCharges: 1,
@@ -253,16 +295,19 @@ export default function ShachikuWireGame() {
     perfectCount: 0,
     swingTime: 0,
     anchorMissCooldown: 0,
+    autoReleaseWarned: false,
     shake: 0,
     nextAnchorX: 280,
+    nextCheckpointIndex: 1,
     anchors: [] as AnchorPoint[],
     rings: [] as WifiRing[],
+    checkpoints: [] as CheckpointGate[],
     sonicRings: [] as SonicRing[],
     ribbon: [] as RibbonPoint[],
     banners: [] as WireBanner[],
   });
 
-  useBgm(phase === 'playing' ? 'danmaku-stage' : 'shachiku-menu');
+  useBgm(phase === 'playing' || phase === 'paused' ? 'danmaku-stage' : 'shachiku-menu', phase === 'paused');
 
   useEffect(() => {
     try {
@@ -273,15 +318,24 @@ export default function ShachikuWireGame() {
           bestDistance: {
             stage1: p.bestDistance?.stage1 ?? 0,
             stage2: p.bestDistance?.stage2 ?? 0,
+            stage3: p.bestDistance?.stage3 ?? 0,
             endless: p.bestDistance?.endless ?? 0,
           },
           bestScore: {
             stage1: p.bestScore?.stage1 ?? 0,
             stage2: p.bestScore?.stage2 ?? 0,
+            stage3: p.bestScore?.stage3 ?? 0,
             endless: p.bestScore?.endless ?? 0,
           },
           bestCombo: p.bestCombo ?? 0,
-          clearedCourses: Array.isArray(p.clearedCourses) ? p.clearedCourses : [],
+          clearedCourses: Array.isArray(p.clearedCourses)
+            ? p.clearedCourses.filter((id) => {
+                const course = COURSES.find((c) => c.id === id);
+                if (!course) return false;
+                if (!Number.isFinite(course.targetDist)) return true;
+                return (p.bestDistance?.[id] ?? 0) >= course.targetDist;
+              })
+            : [],
           totalPerfects: p.totalPerfects ?? 0,
         });
       }
@@ -322,21 +376,35 @@ export default function ShachikuWireGame() {
         kind: kinds[sim.anchors.length % kinds.length],
       });
 
-      if (Math.random() < 0.58) {
+      if (Math.random() < 0.68) {
         sim.rings.push({
           id: Math.round(ax) + sim.rings.length + 10000,
-          x: ax + 115,
-          y: 165 + Math.random() * 155,
+          x: ax + 105,
+          y: 150 + Math.random() * 175,
           radius: 26,
           collected: false,
         });
       }
 
-      sim.nextAnchorX += 195 + Math.random() * 35;
+      sim.nextAnchorX += 165 + Math.random() * 35;
+    }
+
+    const targetLimit = Number.isFinite(courseRef.current.targetDist)
+      ? START_X + courseRef.current.targetDist * 6 - 260
+      : Number.POSITIVE_INFINITY;
+    const checkpointLimit = Math.min(upToPx, targetLimit);
+    while (START_X + sim.nextCheckpointIndex * CHECKPOINT_INTERVAL_PX < checkpointLimit) {
+      sim.checkpoints.push({
+        id: sim.nextCheckpointIndex,
+        x: START_X + sim.nextCheckpointIndex * CHECKPOINT_INTERVAL_PX,
+        collected: false,
+      });
+      sim.nextCheckpointIndex += 1;
     }
 
     sim.anchors = sim.anchors.filter((a) => a.x > sim.x - 500);
     sim.rings = sim.rings.filter((r) => r.x > sim.x - 500);
+    sim.checkpoints = sim.checkpoints.filter((cp) => cp.x > sim.x - 500);
   }, []);
 
   const startCourse = useCallback(
@@ -344,6 +412,8 @@ export default function ShachikuWireGame() {
       const activeId = targetCourseId ?? courseId;
       if (targetCourseId) setCourseId(targetCourseId);
       const c = COURSES.find((item) => item.id === activeId) ?? COURSES[0];
+      courseRef.current = c;
+      runSettledRef.current = false;
 
       simRef.current = {
         x: START_X,
@@ -354,6 +424,7 @@ export default function ShachikuWireGame() {
         ropeLen: 150,
         combo: 0,
         maxCombo: 0,
+        perfectChain: 0,
         score: 0,
         swingsCount: 0,
         dashCharges: 1,
@@ -361,20 +432,24 @@ export default function ShachikuWireGame() {
         perfectCount: 0,
         swingTime: 0,
         anchorMissCooldown: 0,
+        autoReleaseWarned: false,
         shake: 0,
         nextAnchorX: 250,
+        nextCheckpointIndex: 1,
         anchors: [],
         rings: [],
+        checkpoints: [],
         sonicRings: [],
         ribbon: [],
         banners: [],
       };
-      spawnWorldAhead(2800);
+      spawnWorldAhead(3200);
       setHud({
         distanceM: 0,
         targetM: c.targetDist,
         score: 0,
         combo: 0,
+        perfectChain: 0,
         dashCharges: 1,
         swingProgress: 0,
         safetyNets: 2,
@@ -384,6 +459,7 @@ export default function ShachikuWireGame() {
         anchorReady: true,
         swingTime: 0,
       });
+      phaseRef.current = 'playing';
       setPhase('playing');
     },
     [courseId, spawnWorldAhead]
@@ -408,6 +484,7 @@ export default function ShachikuWireGame() {
     sim.ropeLen = Math.max(85, Math.min(245, Math.hypot(sim.x - best.x, sim.y - best.y)));
     sim.swingsCount += 1;
     sim.swingTime = 0;
+    sim.autoReleaseWarned = false;
     haptic(12);
     if (sim.swingsCount % 3 === 0 && sim.dashCharges < 3) {
       sim.dashCharges += 1;
@@ -423,6 +500,7 @@ export default function ShachikuWireGame() {
 
     sim.tetheredTo = null;
     sim.swingTime = 0;
+    sim.autoReleaseWarned = false;
     // Check upward velocity angle: in screen coords, upward means vy < 0
     const upwardDeg = (Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI;
     const isPerfect = upwardDeg >= PERFECT_MIN && upwardDeg <= PERFECT_MAX && sim.vx > 150;
@@ -431,24 +509,39 @@ export default function ShachikuWireGame() {
       sim.combo += 1;
       sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
       sim.perfectCount += 1;
+      sim.perfectChain += 1;
       sim.vx = Math.min(820, sim.vx * 1.26 + 105);
       sim.vy = Math.min(-280, sim.vy * 1.16 - 80);
       sim.shake = 0.22;
-      const pts = 250 * sim.combo;
+      const chainBonus = sim.perfectChain % 3 === 0 ? 600 * (sim.perfectChain / 3) : 0;
+      const pts = 250 * sim.combo + chainBonus;
       sim.score += pts;
+      if (chainBonus > 0) {
+        if (sim.dashCharges < 3) sim.dashCharges += 1;
+        else if (sim.safetyNets < MAX_SAFETY_NETS) sim.safetyNets += 1;
+      }
       haptic([12, 20, 18]);
 
       sim.sonicRings.push({
         x: sim.x,
         y: sim.y,
         r: 10,
-        maxR: 78,
-        color: '#22d3ee',
+        maxR: chainBonus > 0 ? 105 : 78,
+        color: chainBonus > 0 ? '#f472b6' : '#22d3ee',
         life: 0.45,
       });
       sfx.playRelease(true);
-      addBanner(`PERFECT RELEASE! (${Math.round(upwardDeg)}°)`, `${sim.combo} COMBO / +${pts} PTS`, '#22d3ee');
+      if (chainBonus > 0) {
+        addBanner(
+          `PERFECT CHAIN ${sim.perfectChain}!`,
+          `${sim.combo} COMBO / 報酬 +${pts} PTS`,
+          '#f472b6'
+        );
+      } else {
+        addBanner(`PERFECT RELEASE! (${Math.round(upwardDeg)}°)`, `${sim.combo} COMBO / +${pts} PTS`, '#22d3ee');
+      }
     } else {
+      sim.perfectChain = 0;
       if (upwardDeg < 5) {
         sim.combo = 0;
       }
@@ -464,7 +557,10 @@ export default function ShachikuWireGame() {
 
     sim.dashCharges -= 1;
     sim.tetheredTo = null;
-    sim.vx = Math.max(620, sim.vx + 240);
+    sim.swingTime = 0;
+    sim.autoReleaseWarned = false;
+    sim.perfectChain = 0;
+    sim.vx = Math.min(MAX_SPEED, Math.max(620, sim.vx + 240));
     sim.vy = -210;
     sim.score += 180;
     sim.shake = 0.3;
@@ -483,9 +579,13 @@ export default function ShachikuWireGame() {
 
   const finalizeRun = useCallback(
     (cleared: boolean) => {
+      if (runSettledRef.current) return;
+      runSettledRef.current = true;
       const sim = simRef.current;
       const curCourse = courseRef.current;
       const curSave = saveRef.current;
+      sim.tetheredTo = null;
+      sim.swingTime = 0;
       const traveled = Math.max(0, Math.floor((sim.x - START_X) / 6));
       const distM = Math.min(
         Number.isFinite(curCourse.targetDist) && cleared ? curCourse.targetDist : traveled,
@@ -512,25 +612,73 @@ export default function ShachikuWireGame() {
       };
       persistSave(nextSave);
       sim.shake = 0;
+      setHud({
+        distanceM: finalDist,
+        targetM: curCourse.targetDist,
+        score: finalScore,
+        combo: sim.combo,
+        perfectChain: sim.perfectChain,
+        dashCharges: sim.dashCharges,
+        swingProgress: sim.swingsCount % 3,
+        safetyNets: sim.safetyNets,
+        speedKmh: Math.round(Math.hypot(sim.vx, sim.vy) * 0.18),
+        releaseAngle: 0,
+        tethered: false,
+        anchorReady: false,
+        swingTime: 0,
+      });
 
       if (cleared) sfx.playClear();
       haptic(cleared ? [18, 40, 18] : 80);
+      phaseRef.current = cleared ? 'cleared' : 'gameover';
       setPhase(cleared ? 'cleared' : 'gameover');
     },
     [persistSave]
   );
+
+  const pauseGame = useCallback(() => {
+    if (phaseRef.current !== 'playing') return;
+    simRef.current.shake = 0;
+    phaseRef.current = 'paused';
+    setPhase('paused');
+  }, []);
+
+  const resumeGame = useCallback(() => {
+    if (phaseRef.current !== 'paused') return;
+    phaseRef.current = 'playing';
+    setPhase('playing');
+  }, []);
+
+  const quitToTitle = useCallback(() => {
+    if (phaseRef.current === 'playing' || phaseRef.current === 'paused') {
+      runSettledRef.current = true;
+    }
+    phaseRef.current = 'title';
+    setPhase('title');
+  }, []);
 
   // Keyboard handlers
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
-        if (!e.repeat) {
-          if (phaseRef.current === 'title') {
-            startCourse();
-          } else if (phaseRef.current === 'playing') {
-            attachWire();
-          }
+        if (e.repeat) return;
+        const current = phaseRef.current;
+        if (current === 'title' || current === 'cleared' || current === 'gameover') {
+          startCourse();
+        } else if (current === 'playing') {
+          attachWire();
+        } else if (current === 'paused') {
+          resumeGame();
+        }
+      } else if (e.code === 'KeyP' || e.code === 'Escape') {
+        const current = phaseRef.current;
+        if (current === 'playing') {
+          e.preventDefault();
+          pauseGame();
+        } else if (current === 'paused') {
+          e.preventDefault();
+          resumeGame();
         }
       } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyD') {
         if (phaseRef.current === 'playing') {
@@ -552,7 +700,15 @@ export default function ShachikuWireGame() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [attachWire, releaseWire, startCourse, triggerAirDash]);
+  }, [attachWire, pauseGame, releaseWire, resumeGame, startCourse, triggerAirDash]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden && phaseRef.current === 'playing') pauseGame();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [pauseGame]);
 
   // 60fps simulation loop
   useEffect(() => {
@@ -561,171 +717,233 @@ export default function ShachikuWireGame() {
     let hudTimer = 0;
 
     const step = (now: number) => {
-      const dt = Math.min(0.035, (now - lastTime) / 1000);
+      const dt = Math.min(0.035, Math.max(0, (now - lastTime) / 1000));
       lastTime = now;
 
       const sim = simRef.current;
       const curCourse = courseRef.current;
 
       if (phaseRef.current === 'playing') {
-        const gravity = 640; // px/s^2 downward
+        const gravity = 640;
         sim.shake = Math.max(0, sim.shake - dt * 3.5);
         if (sim.anchorMissCooldown > 0) {
           sim.anchorMissCooldown = Math.max(0, sim.anchorMissCooldown - dt);
         }
 
-        if (sim.tetheredTo) {
-          const anchor = sim.tetheredTo;
-          sim.swingTime += dt;
-          sim.vy += gravity * dt;
-          // Active swing pump boost so swinging feels fast and commercial
-          sim.vx += 260 * dt;
+        spawnWorldAhead(sim.x + 2400);
 
-          sim.x += sim.vx * dt;
-          sim.y += sim.vy * dt;
+        const speedNow = Math.hypot(sim.vx, sim.vy);
+        const substeps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil((speedNow * dt) / 12)));
+        const sdt = dt / substeps;
+        let settled = false;
 
-          const dx = sim.x - anchor.x;
-          const dy = sim.y - anchor.y;
-          const dist = Math.max(1, Math.hypot(dx, dy));
+        for (let s = 0; s < substeps && !settled; s += 1) {
+          const prevX = sim.x;
+          const prevY = sim.y;
 
-          if (dist > sim.ropeLen) {
-            const nx = dx / dist;
-            const ny = dy / dist;
-            sim.x = anchor.x + nx * sim.ropeLen;
-            sim.y = anchor.y + ny * sim.ropeLen;
+          if (sim.tetheredTo) {
+            const anchor = sim.tetheredTo;
+            sim.swingTime += sdt;
+            sim.vy += gravity * sdt;
+            const pumpScale = Math.max(0, 1 - sim.vx / 820);
+            sim.vx += 320 * pumpScale * sdt;
 
-            // Remove radial outward velocity component (pendulum constraint)
-            const radialVel = sim.vx * nx + sim.vy * ny;
-            if (radialVel > 0) {
-              sim.vx -= radialVel * nx;
-              sim.vy -= radialVel * ny;
+            sim.x += sim.vx * sdt;
+            sim.y += sim.vy * sdt;
+
+            const dx = sim.x - anchor.x;
+            const dy = sim.y - anchor.y;
+            const dist = Math.max(1, Math.hypot(dx, dy));
+
+            if (dist > sim.ropeLen) {
+              const nx = dx / dist;
+              const ny = dy / dist;
+              sim.x = anchor.x + nx * sim.ropeLen;
+              sim.y = anchor.y + ny * sim.ropeLen;
+
+              const radialVel = sim.vx * nx + sim.vy * ny;
+              if (radialVel > 0) {
+                sim.vx -= radialVel * nx;
+                sim.vy -= radialVel * ny;
+              }
+              const tx = ny;
+              const ty = -nx;
+              const tangVel = sim.vx * tx + sim.vy * ty;
+              if (tangVel > 0) {
+                const tangBoost = Math.max(0, 1 - Math.hypot(sim.vx, sim.vy) / TETHER_SPEED_CAP) * 140;
+                sim.vx += tx * tangBoost * sdt;
+                sim.vy += ty * tangBoost * sdt;
+              }
             }
-            // Add tangential swing momentum
-            const tx = ny;
-            const ty = -nx;
-            const tangVel = sim.vx * tx + sim.vy * ty;
-            if (tangVel > 0) {
-              sim.vx += tx * 85 * dt;
-              sim.vy += ty * 85 * dt;
+
+            const tetherSpeed = Math.hypot(sim.vx, sim.vy);
+            if (tetherSpeed > TETHER_SPEED_CAP) {
+              const scale = TETHER_SPEED_CAP / tetherSpeed;
+              sim.vx *= scale;
+              sim.vy *= scale;
+            }
+
+            if (!sim.autoReleaseWarned && sim.swingTime > MAX_TETHER_TIME - AUTO_RELEASE_WARN_TIME) {
+              sim.autoReleaseWarned = true;
+              addBanner('ワイヤー限界まで2秒', '緑の扇で早めにリリースして加速を維持', '#f59e0b');
+              haptic(10);
+            }
+
+            if (sim.swingTime >= MAX_TETHER_TIME) {
+              sim.tetheredTo = null;
+              sim.swingTime = 0;
+              sim.autoReleaseWarned = false;
+              sim.vx = Math.max(430, Math.min(sim.vx, 760));
+              sim.vy = Math.min(sim.vy, -240);
+              addBanner('ワイヤー自動解除', '限界到達。次は早めに離して角度ボーナスを狙おう', '#f59e0b');
+              haptic([10, 30, 10]);
+            }
+          } else {
+            sim.vy += gravity * sdt;
+            sim.vx *= Math.pow(0.996, sdt * 60);
+            sim.x += sim.vx * sdt;
+            sim.y += sim.vy * sdt;
+          }
+
+          if (sim.y < 36) {
+            sim.y = 36;
+            sim.vy = Math.max(0, sim.vy);
+          }
+
+          const totalSpeed = Math.hypot(sim.vx, sim.vy);
+          if (totalSpeed > MAX_SPEED) {
+            const scale = MAX_SPEED / totalSpeed;
+            sim.vx *= scale;
+            sim.vy *= scale;
+          }
+
+          for (const r of sim.rings) {
+            if (r.collected) continue;
+            if (segmentCircleHit(prevX, prevY, sim.x, sim.y, r.x, r.y, r.radius + 22)) {
+              r.collected = true;
+              sim.combo += 1;
+              sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
+              sim.vx = Math.min(MAX_SPEED, Math.max(580, sim.vx * 1.2 + 110));
+              sim.vy = Math.min(-140, sim.vy - 95);
+              const ringPts = 300 * Math.max(1, sim.combo);
+              sim.score += ringPts;
+              sim.shake = 0.18;
+              haptic(10);
+              sim.sonicRings.push({
+                x: r.x,
+                y: r.y,
+                r: 12,
+                maxR: 72,
+                color: '#facc15',
+                life: 0.45,
+              });
+              sfx.playWifiRing();
+              addBanner('GOLDEN Wi-Fi BOOST!', `+${ringPts} PTS / 高速通信ターボ`, '#facc15');
             }
           }
 
-          // Safety auto-release: holding forever should not stall the run
-          if (sim.swingTime > MAX_TETHER_TIME) {
-            sim.tetheredTo = null;
-            sim.swingTime = 0;
-            sim.vx = Math.max(360, sim.vx);
-            sim.vy = Math.min(sim.vy, -180);
-            addBanner('ワイヤー自動解除', '長押ししすぎ。上昇角で自分から離そう', '#f59e0b');
-            haptic(15);
-          }
-        } else {
-          sim.vy += gravity * dt;
-          sim.vx *= Math.pow(0.996, dt * 60);
-          sim.x += sim.vx * dt;
-          sim.y += sim.vy * dt;
-        }
-
-        // Ceiling clamp
-        if (sim.y < 36) {
-          sim.y = 36;
-          sim.vy = Math.max(0, sim.vy);
-        }
-
-        // Spawn ahead
-        spawnWorldAhead(sim.x + 2200);
-
-        // Golden Wi-Fi Ring collisions
-        for (const r of sim.rings) {
-          if (r.collected) continue;
-          if (Math.hypot(sim.x - r.x, sim.y - r.y) < r.radius + 22) {
-            r.collected = true;
-            sim.combo += 1;
-            sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
-            sim.vx = Math.max(580, sim.vx * 1.2 + 110);
-            sim.vy = Math.min(-140, sim.vy - 95);
-            const ringPts = 300 * Math.max(1, sim.combo);
-            sim.score += ringPts;
-            sim.shake = 0.18;
-            haptic(10);
+          for (const cp of sim.checkpoints) {
+            if (cp.collected || sim.x < cp.x || prevX >= cp.x) continue;
+            cp.collected = true;
+            const cpDist = Math.round((cp.x - START_X) / 6);
+            sim.score += 800;
+            sim.safetyNets = Math.min(MAX_SAFETY_NETS, sim.safetyNets + 1);
+            sim.dashCharges = Math.min(3, sim.dashCharges + 1);
+            sim.vx = Math.max(sim.vx, 460);
+            sim.shake = 0.16;
+            haptic([8, 18]);
             sim.sonicRings.push({
-              x: r.x,
-              y: r.y,
-              r: 12,
-              maxR: 72,
-              color: '#facc15',
-              life: 0.45,
+              x: cp.x,
+              y: sim.y,
+              r: 14,
+              maxR: 96,
+              color: '#34d399',
+              life: 0.5,
             });
             sfx.playWifiRing();
-            addBanner('GOLDEN Wi-Fi BOOST!', `+${ringPts} PTS / 高速通信ターボ`, '#facc15');
+            addBanner(`CHECKPOINT ${cpDist}m`, '保険・ダッシュ回復 / +800 PTS', '#34d399');
+          }
+
+          if (sim.y >= DANGER_Y) {
+            if (sim.safetyNets > 0) {
+              sim.safetyNets -= 1;
+              sim.tetheredTo = null;
+              sim.swingTime = 0;
+              sim.autoReleaseWarned = false;
+              sim.combo = 0;
+              sim.perfectChain = 0;
+              sim.y = DANGER_Y - 12;
+              sim.vy = -520;
+              sim.vx = Math.max(410, sim.vx);
+              sim.shake = 0.32;
+              haptic(22);
+              sfx.playSafetyTrampoline();
+              addBanner('始末書トランポリン発動！', `緊急復帰成功（残り保険 ${sim.safetyNets}回）`, '#34d399');
+            } else {
+              finalizeRun(false);
+              settled = true;
+              break;
+            }
+          }
+
+          const distM = Math.max(0, Math.floor((sim.x - START_X) / 6));
+          if (Number.isFinite(curCourse.targetDist) && distM >= curCourse.targetDist) {
+            finalizeRun(true);
+            settled = true;
+            break;
           }
         }
 
-        // Safety Net or Danger Line
-        if (sim.y >= DANGER_Y) {
-          if (sim.safetyNets > 0) {
-            sim.safetyNets -= 1;
-            sim.tetheredTo = null;
-            sim.swingTime = 0;
-            sim.y = DANGER_Y - 12;
-            sim.vy = -520;
-            sim.vx = Math.max(410, sim.vx);
-            sim.shake = 0.32;
-            haptic(22);
-            sfx.playSafetyTrampoline();
-            addBanner('始末書トランポリン発動！', `緊急復帰成功（残り保険 ${sim.safetyNets}回）`, '#34d399');
-          } else {
-            finalizeRun(false);
+        if (!settled) {
+          sim.ribbon.push({ x: sim.x, y: sim.y, life: 0.35 });
+          for (const pt of sim.ribbon) pt.life -= dt;
+          sim.ribbon = sim.ribbon.filter((pt) => pt.life > 0);
+
+          for (const sr of sim.sonicRings) {
+            sr.r += (sr.maxR - sr.r) * 8 * dt;
+            sr.life -= dt;
           }
-        }
+          sim.sonicRings = sim.sonicRings.filter((sr) => sr.life > 0);
 
-        // Check Course Goal (Last Train Reached!)
-        const distM = Math.max(0, Math.floor((sim.x - START_X) / 6));
-        if (Number.isFinite(curCourse.targetDist) && distM >= curCourse.targetDist) {
-          finalizeRun(true);
-        }
+          for (const b of sim.banners) b.life -= dt;
+          sim.banners = sim.banners.filter((b) => b.life > 0);
 
-        // Ribbon trail
-        sim.ribbon.push({ x: sim.x, y: sim.y, life: 0.35 });
-        for (const pt of sim.ribbon) pt.life -= dt;
-        sim.ribbon = sim.ribbon.filter((pt) => pt.life > 0);
-
-        // Sonic rings & banners
-        for (const sr of sim.sonicRings) {
-          sr.r += (sr.maxR - sr.r) * 8 * dt;
-          sr.life -= dt;
-        }
-        sim.sonicRings = sim.sonicRings.filter((sr) => sr.life > 0);
-
-        for (const b of sim.banners) b.life -= dt;
-        sim.banners = sim.banners.filter((b) => b.life > 0);
-
-        hudTimer += dt;
-        if (hudTimer >= 0.06) {
-          hudTimer = 0;
-          const bestAnchor = findBestAnchor(sim.x, sim.y, sim.anchors);
-          setHud({
-            distanceM: distM,
-            targetM: curCourse.targetDist,
-            score: Math.round(sim.score + distM * 10),
-            combo: sim.combo,
-            dashCharges: sim.dashCharges,
-            swingProgress: sim.swingsCount % 3,
-            safetyNets: sim.safetyNets,
-            speedKmh: Math.round(Math.hypot(sim.vx, sim.vy) * 0.18),
-            releaseAngle: sim.tetheredTo ? Math.round((Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI) : 0,
-            tethered: Boolean(sim.tetheredTo),
-            anchorReady: Boolean(bestAnchor),
-            swingTime: sim.tetheredTo ? sim.swingTime : 0,
-          });
+          hudTimer += dt;
+          if (hudTimer >= 0.06) {
+            hudTimer = 0;
+            const bestAnchor = findBestAnchor(sim.x, sim.y, sim.anchors);
+            const distM = Math.max(0, Math.floor((sim.x - START_X) / 6));
+            setHud({
+              distanceM: distM,
+              targetM: curCourse.targetDist,
+              score: Math.round(sim.score + distM * 10),
+              combo: sim.combo,
+              perfectChain: sim.perfectChain,
+              dashCharges: sim.dashCharges,
+              swingProgress: sim.swingsCount % 3,
+              safetyNets: sim.safetyNets,
+              speedKmh: Math.round(Math.hypot(sim.vx, sim.vy) * 0.18),
+              releaseAngle: sim.tetheredTo ? Math.round((Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI) : 0,
+              tethered: Boolean(sim.tetheredTo),
+              anchorReady: Boolean(bestAnchor),
+              swingTime: sim.tetheredTo ? sim.swingTime : 0,
+            });
+          }
         }
       }
 
-      // Render Canvas
       const canvas = canvasRef.current;
       if (canvas) {
+        const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+        const targetW = Math.round(CANVAS_W * dpr);
+        const targetH = Math.round(CANVAS_H * dpr);
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+        }
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           renderWireScene(ctx, sim, curCourse);
         }
       }
@@ -735,7 +953,7 @@ export default function ShachikuWireGame() {
 
     rafId = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(rafId);
-  }, [addBanner, finalizeRun, releaseWire, spawnWorldAhead]);
+  }, [addBanner, finalizeRun, spawnWorldAhead]);
 
   const activeCourse = COURSES.find((c) => c.id === courseId) ?? COURSES[0];
 
@@ -838,6 +1056,9 @@ export default function ShachikuWireGame() {
                   </div>
                 </div>
                 <div className="hidden items-center gap-2 sm:flex">
+                  <div className="rounded border border-fuchsia-500/40 bg-fuchsia-950/50 px-2 py-0.5 text-[10px] font-bold text-fuchsia-300">
+                    PERFECT CHAIN: {hud.perfectChain}
+                  </div>
                   <div className="rounded border border-emerald-500/40 bg-emerald-950/50 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                     始末書トランポリン: {hud.safetyNets}回
                   </div>
@@ -867,22 +1088,63 @@ export default function ShachikuWireGame() {
                   <div className="pointer-events-none rounded-lg border border-slate-700 bg-black/75 px-3 py-1.5 text-xs text-slate-200">
                     Space長押しで<span className="font-bold text-cyan-300">接続</span> / 離して<span className="font-bold text-amber-300">リリース</span>（緑の扇でPERFECT）
                   </div>
-                  <button
-                    type="button"
-                    disabled={hud.dashCharges <= 0}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      triggerAirDash();
-                    }}
-                    className={`rounded-xl border-2 px-4 py-2 text-xs font-black shadow-lg transition sm:text-sm ${
-                      hud.dashCharges <= 0
-                        ? 'cursor-not-allowed border-slate-700 bg-slate-900/80 text-slate-500'
-                        : 'border-amber-300 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:scale-105 active:scale-95'
-                    }`}
-                  >
-                    緊急エアダッシュ [Shift] (残 {hud.dashCharges}回)
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={hud.dashCharges <= 0}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        triggerAirDash();
+                      }}
+                      className={`rounded-xl border-2 px-4 py-2 text-xs font-black shadow-lg transition sm:text-sm ${
+                        hud.dashCharges <= 0
+                          ? 'cursor-not-allowed border-slate-700 bg-slate-900/80 text-slate-500'
+                          : 'border-amber-300 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:scale-105 active:scale-95'
+                      }`}
+                    >
+                      緊急エアダッシュ [Shift] (残 {hud.dashCharges}回)
+                    </button>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        pauseGame();
+                      }}
+                      className="rounded-xl border-2 border-slate-600 bg-slate-800 px-3 py-2 text-xs font-black text-slate-200 transition hover:border-slate-400 active:scale-95"
+                    >
+                      一時停止 [P]
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {phase === 'paused' && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/85 p-6 text-center backdrop-blur-md">
+                  <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-3 py-1 text-xs font-black text-amber-300">
+                    SYSTEM PAUSED / 業務一時中断
+                  </span>
+                  <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">ワイヤー中断中</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                    再開するとスイングとコンボがそのまま続きます。
+                  </p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={resumeGame}
+                      className="rounded-xl border-2 border-cyan-300 bg-gradient-to-r from-cyan-400 to-sky-500 px-7 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:scale-105"
+                    >
+                      業務再開 [P / ESC]
+                    </button>
+                    <button
+                      type="button"
+                      onClick={quitToTitle}
+                      className="rounded-xl border-2 border-slate-600 bg-slate-800 px-5 py-2.5 text-sm font-black text-slate-200 transition hover:border-slate-400"
+                    >
+                      コース変更
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -932,6 +1194,13 @@ export default function ShachikuWireGame() {
                     >
                       もう一度スイングする [SPACE]
                     </button>
+                    <button
+                      type="button"
+                      onClick={quitToTitle}
+                      className="rounded-xl border-2 border-slate-600 bg-slate-800 px-5 py-2.5 text-sm font-black text-slate-200 transition hover:border-slate-400"
+                    >
+                      コース変更
+                    </button>
                   </div>
                 </div>
               )}
@@ -959,9 +1228,10 @@ export default function ShachikuWireGame() {
                     />
                   </div>
                   <div className="mt-1 flex items-center justify-between text-[9px] font-bold text-slate-400">
-                    <span>始末書トランポリン {hud.safetyNets}回</span>
+                    <span>保険 {hud.safetyNets}回</span>
                     <span>{hud.speedKmh} km/h</span>
                     <span>コンボ {hud.combo}x</span>
+                    <span>P連 {hud.perfectChain}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -1005,6 +1275,13 @@ export default function ShachikuWireGame() {
                     ダッシュ {hud.dashCharges}
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={pauseGame}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 active:scale-[0.98]"
+                >
+                  一時停止 [P]
+                </button>
               </div>
             )}
 
@@ -1014,7 +1291,9 @@ export default function ShachikuWireGame() {
                   {phase === 'cleared' ? 'LAST TRAIN BOARDED!' : 'MISSED THE TRAIN...'}
                 </p>
                 <h3 className="mt-1 text-xl font-black text-white">到達距離 {hud.distanceM.toLocaleString()} m</h3>
-                <p className="mt-1 text-xs text-slate-300">スコア {hud.score.toLocaleString()} / 最大コンボ {simRef.current.maxCombo}</p>
+                <p className="mt-1 text-xs text-slate-300">
+                  スコア {hud.score.toLocaleString()} / 最大コンボ {simRef.current.maxCombo} / P連 {simRef.current.perfectChain}
+                </p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -1025,7 +1304,7 @@ export default function ShachikuWireGame() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPhase('title')}
+                    onClick={quitToTitle}
                     className="rounded-xl border-2 border-slate-600 bg-slate-800 px-4 py-3 text-sm font-black text-slate-200 active:scale-[0.98]"
                   >
                     コース変更
@@ -1038,7 +1317,7 @@ export default function ShachikuWireGame() {
           {/* Right Sidebar: Course Select & Techniques */}
           <aside className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-900/80 p-4">
             <div className="hidden sm:block">
-              <h3 className="border-b border-slate-800 pb-2 text-sm font-black text-cyan-300">コース選択（全3コース）</h3>
+              <h3 className="border-b border-slate-800 pb-2 text-sm font-black text-cyan-300">コース選択（全4コース）</h3>
               <div className="mt-3 space-y-2.5">
                 {COURSES.map((c) => {
                   const selected = c.id === courseId;
@@ -1077,7 +1356,9 @@ export default function ShachikuWireGame() {
               <h4 className="font-black text-amber-300">ハイスピード攻略ガイド</h4>
               <ul className="mt-2 space-y-1.5 text-[11px] text-slate-400">
                 <li>・振り子の最下点を通過し、斜め上（10°〜65°）へ上がる瞬間に離すとPERFECT RELEASEで超加速します。</li>
+                <li>・PERFECT RELEASEを3回連続で決めるとPERFECT CHAIN報酬でボーナススコアとダッシュ・保険が回復します。</li>
                 <li>・黄金のWi-Fiリングを通過するとスピードとコンボ倍率が即座にアップします。</li>
+                <li>・600mごとのCHECKPOINT通過で保険とダッシュが回復し、+800 PTSを獲得します。</li>
                 <li>・3回スイングするごとに「緊急エアダッシュ」が1回チャージされます。</li>
               </ul>
             </div>
@@ -1098,6 +1379,7 @@ function renderWireScene(
     tetheredTo: AnchorPoint | null;
     anchors: AnchorPoint[];
     rings: WifiRing[];
+    checkpoints: CheckpointGate[];
     sonicRings: SonicRing[];
     ribbon: RibbonPoint[];
     banners: WireBanner[];
@@ -1179,6 +1461,29 @@ function renderWireScene(
       ctx.textAlign = 'center';
       ctx.fillText('終電エクスプレス GOAL', goalPx + 110, 156);
     }
+  }
+
+  for (const cp of sim.checkpoints) {
+    if (cp.collected) continue;
+    const cx = cp.x - camX;
+    if (cx < -80 || cx > CANVAS_W + 80) continue;
+    const cpDist = Math.round((cp.x - START_X) / 6);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.78)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(cx, 62);
+    ctx.lineTo(cx, DANGER_Y - 18);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(52, 211, 153, 0.16)';
+    ctx.fillRect(cx - 16, 62, 32, DANGER_Y - 80);
+    ctx.fillStyle = '#34d399';
+    ctx.font = '900 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`CHECKPOINT ${cpDist}m`, cx, 52);
+    ctx.restore();
   }
 
   // Overhead Anchors
@@ -1318,10 +1623,11 @@ function renderWireScene(
     ctx.textAlign = 'center';
     ctx.fillStyle = inWindow ? '#4ade80' : '#f8fafc';
     ctx.fillText(inWindow ? 'RELEASE!' : `${Math.round(upwardDeg)}°`, px, Math.max(34, py - 76));
-    if (sim.swingTime > MAX_TETHER_TIME - 1.4) {
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillText('ワイヤー限界', px, Math.max(50, py - 58));
+    if (sim.swingTime > MAX_TETHER_TIME - AUTO_RELEASE_WARN_TIME) {
+      const remain = Math.max(0, MAX_TETHER_TIME - sim.swingTime);
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = remain < 0.8 ? '#f43f5e' : '#f59e0b';
+      ctx.fillText(`自動解除まで ${remain.toFixed(1)}s`, px, Math.max(50, py - 58));
     }
     ctx.restore();
   }

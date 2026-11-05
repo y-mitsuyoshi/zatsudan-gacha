@@ -346,6 +346,7 @@ export interface VectorSegmentOptions {
   hitFlash?: number;
   /** >0 when slowed by EMP/Cryo blast */
   slowed?: boolean;
+  weak?: boolean;
 }
 
 /**
@@ -381,6 +382,7 @@ export function drawVectorSegment(
   const stunned = options.stunned ?? false;
   const slowed = options.slowed ?? false;
   const hitFlash = options.hitFlash ?? 0;
+  const weak = options.weak ?? false;
   const t = options.time ?? 0;
 
   // Stun vibration jitter
@@ -434,6 +436,22 @@ export function drawVectorSegment(
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
+
+    if (weak) {
+      const pulse = 0.55 + 0.45 * Math.sin(t * 7);
+      ctx.strokeStyle = `rgba(253, 224, 71, ${pulse})`;
+      ctx.lineWidth = 2.2;
+      if (ctx.setLineDash) ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+      ctx.stroke();
+      if (ctx.setLineDash) ctx.setLineDash([]);
+      ctx.save();
+      ctx.rotate(Math.PI / 4);
+      ctx.strokeStyle = `rgba(251, 191, 36, ${pulse})`;
+      ctx.strokeRect(-r * 0.42, -r * 0.42, r * 0.84, r * 0.84);
+      ctx.restore();
+    }
 
     // Glossy specular crescent highlight (top-left)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';

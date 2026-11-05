@@ -203,6 +203,7 @@ export function applyRunToStats(r: RunResult): SpiralStats {
 /** Apply only the endless-mode delta for a run that was already settled at victory. */
 export function applyRunDeltaToStats(previous: RunResult, next: RunResult): SpiralStats {
   const s = loadStats();
+  if (next.victory && !previous.victory) s.wins += 1;
   s.bestWave = Math.max(s.bestWave, next.wave);
   s.totalSegs += Math.max(0, next.segs - previous.segs);
   s.maxScore = Math.max(s.maxScore, next.score);
@@ -225,7 +226,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'debut', name: '初出勤', icon: 'debut', desc: '1回出勤する', reward: 100, check: (s) => s.runs >= 1 },
   { id: 'wave5', name: '五連勤', icon: 'wave5', desc: 'WAVE5に到達', reward: 150, check: (s) => s.bestWave >= 5 },
   { id: 'wave10', name: '残業突入', icon: 'wave10', desc: 'WAVE10に到達', reward: 250, check: (s) => s.bestWave >= 10 },
-  { id: 'clear', name: '渦の制圧', icon: 'clear', desc: '全15ウェーブを踏破', reward: 500, check: (_s, r) => r.victory },
+  { id: 'clear', name: '渦の制圧', icon: 'clear', desc: '全20ウェーブを踏破', reward: 500, check: (_s, r) => r.victory },
   { id: 'hard', name: 'ブラック制圧', icon: 'hard', desc: 'ブラックで全踏破', reward: 800, check: (_s, r) => r.victory && r.difficulty === 'hard' },
   { id: 'hunter', name: '節断ち職人', icon: 'hunter', desc: '累計2000節を切断', reward: 250, check: (s) => s.totalSegs >= 2000 },
   { id: 'rich', name: '残業代長者', icon: 'rich', desc: '1出勤で300コイン稼ぐ', reward: 200, check: (_s, r) => r.coins >= 300 },
@@ -377,7 +378,7 @@ export const TITLES: TitleDef[] = [
   { id: '新人', name: '新人', icon: 'rookie', desc: '出勤おめでとう', check: () => true },
   { id: '中堅', name: '中堅社員', icon: 'mid', desc: 'WAVE5に到達', check: (s) => s.bestWave >= 5 },
   { id: '皆勤', name: '皆勤賞', icon: 'veteran', desc: '累計10出勤', check: (s) => s.runs >= 10 },
-  { id: '制圧者', name: '渦の制圧者', icon: 'clear', desc: '全15ウェーブ踏破', check: (s) => s.wins >= 1 },
+  { id: '制圧者', name: '渦の制圧者', icon: 'clear', desc: '全20ウェーブ踏破', check: (s) => s.wins >= 1 },
   { id: '残業王', name: '残業王', icon: 'overtime', desc: '累計3000節を切断', check: (s) => s.totalSegs >= 3000 },
   { id: 'スパイラル神', name: 'スパイラル神', icon: 'god', desc: '図鑑コンプ＋全踏破', check: (s) => {
     const c = encyCompletion();

@@ -153,6 +153,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@zatsudan_gacha",
     title: "雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選",
     description: `${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、ボタンひとつで会話のきっかけをランダム提案。会議のアイスブレイク、1on1、リモートワークの雑談に。`,
     images: ["https://zatsudan-gacha.app/ogp.png"],

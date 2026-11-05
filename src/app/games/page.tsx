@@ -8,9 +8,9 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
+  title: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
   description:
-    '社畜ゲーム10作品と、オンサイト・オフサイトで遊べるパーティーゲーム6作品を完全無料で公開中。少数派ワード、以心伝心、NGワード会議、禁句トーク、ランキング予想、連想リレーなど、スマホ・PC対応、インストール・登録不要。',
+    '社畜ゲーム10作品、パーティーゲーム6作品、物理シミュレーション5作品を完全無料で公開中。少数派ワード、以心伝心、NGワード会議、禁句トーク、ボール増殖、ドミノ連鎖など、スマホ・PC対応、インストール・登録不要。',
   keywords: [
     '無料ブラウザゲーム',
     '社畜ゲーム',
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
     canonical: '/games',
   },
   openGraph: {
-    title: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
+    title: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
     description:
-      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議など、無料で遊べるブラウザゲーム全16作品をまとめて紹介。',
+      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議、ボール増殖・ドミノ連鎖などのシミュレーションまで、無料で遊べるブラウザゲーム全21作品をまとめて紹介。',
     url: `${APP_URL}/games`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -37,9 +37,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
+    title: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
     description:
-      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議など、無料で遊べるブラウザゲーム全16作品をまとめて紹介。',
+      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議、ボール増殖・ドミノ連鎖などのシミュレーションまで、無料で遊べるブラウザゲーム全21作品をまとめて紹介。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -206,6 +206,49 @@ const partyGames = [
   },
 ];
 
+const simulationGames = [
+  {
+    name: '増殖ボール・カスケード',
+    href: '/ball-multiply',
+    tagline: 'ピンで分裂して増え続けるボール',
+    description: 'ドラッグで狙いを定めてボールを落とし、ピン衝突で分裂させながら7つの回収ゾーンへ。90秒・14ドロップでスコアとコンボを伸ばす物理シミュレーション。',
+    cover: 'bg-[#072a2c]',
+    genre: '物理シミュレーション / カジュアル',
+  },
+  {
+    name: 'ドミノ・カスケード',
+    href: '/domino-cascade',
+    tagline: 'ドミノを並べて連鎖を起こす',
+    description: 'S字・ループ・ジグザグのコースにドミノを配置し、最初の一枚を倒して連鎖を開始。PERFECT間隔とコンボで高スコアを狙うシミュレーション。',
+    cover: 'bg-[#2b2415]',
+    genre: 'シミュレーション / パズル',
+  },
+  {
+    name: 'サンド・フロー・シミュレーター',
+    href: '/sand-flow',
+    tagline: '色砂を注いで4つのゾーンを埋める',
+    description: '4色の砂をドラッグで注ぎ、落下・堆積・混色をリアルタイムに観察。制限時間内にターゲットゾーンを埋めてスコアを伸ばす落下砂シミュレーション。',
+    cover: 'bg-[#0d2017]',
+    genre: 'シミュレーション / パズル',
+  },
+  {
+    name: 'バブル・マージ',
+    href: '/bubble-merge',
+    tagline: '同じサイズの泡を合体させて大きく',
+    description: '左右に狙いを定めて泡を落とし、同サイズ同士を合体。連鎖コンボとネクストバブルの先読みで、危険ラインを越える前に高得点を目指します。',
+    cover: 'bg-[#0a1a2e]',
+    genre: 'パズル / シミュレーション',
+  },
+  {
+    name: '重力オービット',
+    href: '/gravity-orbit',
+    tagline: '重力スリングショットで星を巡る',
+    description: 'ドラッグで探査機を撃ち出し、惑星の重力で軌道を曲げながら星を回収。全6ラウンドを3機の探査機で巡る物理シミュレーション。',
+    cover: 'bg-[#0a1224]',
+    genre: '物理パズル / シミュレーション',
+  },
+];
+
 const creativeTools = [
   { name: '推し活プロフィールメーカー', href: '/profile-maker', description: '推し紹介カードを無料作成' },
   { name: '異世界転生ステータスカード', href: '/isekai-status', description: '5つの質問で異世界キャラ診断' },
@@ -214,20 +257,20 @@ const creativeTools = [
 ];
 
 const faqs = [
-  { q: '紹介している16のゲームはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、パーティーゲーム6作品のすべてをブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
+  { q: '紹介している21のゲームはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、パーティーゲーム6作品、シミュレーションゲーム5作品のすべてをブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
   { q: 'スマートフォンでもPCでも遊べますか？', a: 'はい。各ゲームはスマートフォンのタッチ操作と、PCのマウス・キーボード操作の両方に最適化されています。' },
   { q: '会社のオンサイト・オフサイトで使えるゲームはどれですか？', a: '「少数派ワード」「以心伝心ゲーム」「NGワード会議」「禁句トーク」「ランキング予想」「連想リレー」がおすすめです。1台の端末を回して遊べるため、懇親会や研修のアイスブレイクにも使えます。' },
   { q: 'ゲームの進行状況やハイスコアは保存されますか？', a: '社畜ゲームのハイスコアや解放状況はブラウザのlocalStorageに保存される場合があります。パーティーゲームの名前・回答・秘密の言葉は保存せず、ページを閉じると消えます。' },
 ];
 
-const allGames = [...games, ...partyGames];
+const allGames = [...games, ...partyGames, ...simulationGames];
 
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: '無料ブラウザゲーム一覧｜社畜ゲーム・パーティーゲーム全16作品',
-    description: '社畜ゲーム10作品と、オンサイト・オフサイト向けパーティーゲーム6作品をまとめた無料ブラウザゲーム一覧。',
+    name: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
+    description: '社畜ゲーム10作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
     url: `${APP_URL}/games`,
     inLanguage: 'ja-JP',
     mainEntity: {
@@ -282,12 +325,12 @@ export default function GamesPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Game Archive / 16 Titles</p>
+            <p className="paper-kicker">Game Archive / 21 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で遊べる<br className="sm:hidden" />ゲーム一覧
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              通勤ラッシュ、残業サバイバル、人狼、すごろくに加え、少数派ワード・以心伝心・NGワード会議など、みんなで遊べるパーティーゲームまで全16作品を収録。
+              通勤ラッシュ、残業サバイバル、人狼、すごろくに加え、少数派ワード・以心伝心・NGワード会議などのパーティーゲーム、ボール増殖・ドミノ連鎖・砂・泡・重力のシミュレーションまで全21作品を収録。
               すべて完全オリジナル制作・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
             </p>
           </div>
@@ -375,6 +418,39 @@ export default function GamesPage() {
           </div>
         </section>
 
+        <section id="simulation-games" className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="simulation-games-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="paper-kicker">PHYSICS &amp; SIMULATION</p>
+              <h2 id="simulation-games-heading" className="font-editorial mt-2 text-2xl">眺めて気持ちいいシミュレーションゲーム（5作品）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 05</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
+            ボールの増殖、ドミノの連鎖、落下する砂、泡の合体、重力軌道まで。短い時間で気軽に遊べる物理シミュレーションを集めました。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {simulationGames.map((game, index) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group overflow-hidden border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
+              >
+                <div className={`relative h-28 ${game.cover} p-4 text-white`}>
+                  <span className="font-label text-[9px] text-white/60">{String(index + 1).padStart(2, '0')} / SIM</span>
+                  <p className="font-editorial absolute bottom-3 left-4 text-xl leading-tight">{game.name}</p>
+                </div>
+                <div className="p-4">
+                  <p className="font-label text-[9px] text-[var(--ink-soft)]">{game.genre}</p>
+                  <p className="mt-1 text-sm font-bold">{game.tagline}</p>
+                  <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
+                  <span className="font-label mt-4 inline-flex text-[9px] text-[var(--accent)]">Play simulation →</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <section className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="tools-heading">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -404,7 +480,7 @@ export default function GamesPage() {
 
         <SeoContentSection
           eyebrow="GAME GUIDE"
-          title="16の無料ブラウザゲーム"
+          title="21の無料ブラウザゲーム"
           intro="1分で遊べる爽快アクションから、じっくり戦略を練るローグライク、みんなで盛り上がるパーティーゲームまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[

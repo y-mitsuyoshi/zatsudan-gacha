@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     description: "10種類のテンプレートで、あなただけの推し紹介カードを簡単に作成！画像保存・テキストコピー・Xシェアに対応。",
     url: "https://zatsudan-gacha.app/profile-maker",
     siteName: "雑談テーマガチャ",
+    locale: "ja_JP",
     images: [
       {
         url: "https://zatsudan-gacha.app/ogp.png",

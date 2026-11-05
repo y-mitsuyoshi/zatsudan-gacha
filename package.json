@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/generate-og-images.mjs",
     "start": "next start",
     "lint": "eslint .",
     "deploy": "npm run build && firebase deploy",
@@ -38,6 +38,7 @@
     "eslint-config-next": "16.4.2",
     "firebase-tools": "^15.34.1",
     "postcss": "^8.5.31",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   },

@@ -9,6 +9,14 @@ const STORAGE_KEY = 'shachiku-catapult-v1';
 const CANVAS_W = 960;
 const CANVAS_H = 540;
 const GROUND_Y = 460;
+const PLAYER_SCREEN_X = CANVAS_W * 0.4;
+const BASE_ZOOM = 6;
+const MIN_ZOOM = 3.9;
+const MAX_LOOKAHEAD = 52;
+const CAMERA_X_RATE = 6.5;
+const CAMERA_Y_RATE = 6;
+const CAMERA_ZOOM_RATE = 2.8;
+const DIVE_BOUNCE_MULT = 1.12;
 
 type UpgradeId = 'tension' | 'bounce' | 'fuel' | 'aero' | 'sponsor';
 
@@ -320,6 +328,8 @@ export default function ShachikuCatapultGame() {
   const saveRef = useRef(save);
   saveRef.current = save;
 
+  const settledRef = useRef(false);
+
   // Physics & simulation mutable state
   const simRef = useRef({
     angleDeg: 45,
@@ -334,6 +344,11 @@ export default function ShachikuCatapultGame() {
     vx: 0,
     vy: 0,
     rotation: 0,
+    camX: 0,
+    camY: 0,
+    camZoom: BASE_ZOOM,
+    camLookahead: 0,
+    bounceFatigue: 0,
     fuel: 100,
     maxFuel: 100,
     jetActive: false,
@@ -497,6 +512,11 @@ export default function ShachikuCatapultGame() {
       vx: 0,
       vy: 0,
       rotation: 0,
+      camX: 0,
+      camY: 0,
+      camZoom: BASE_ZOOM,
+      camLookahead: 0,
+      bounceFatigue: 0,
       fuel: maxFuel,
       maxFuel,
       jetActive: false,
@@ -527,6 +547,7 @@ export default function ShachikuCatapultGame() {
     };
     spawnObjectsUpTo(800, up.sponsor);
     spawnCoinsUpTo(800, up.sponsor);
+    settledRef.current = false;
     setSummary(null);
     setAngleDeg(35);
     setPowerPct(10);
@@ -595,11 +616,14 @@ export default function ShachikuCatapultGame() {
     sim.shake = 0.28;
     sfx.playDiveStamp();
     haptic(16);
-    addBanner('急降下スタンプ！', '着地バウンド 1.35x 強化', '#f43f5e');
+    addBanner('急降下スタンプ！', `着地バウンド ${DIVE_BOUNCE_MULT.toFixed(2)}x 強化`, '#f43f5e');
   }, [addBanner]);
 
   const finishRun = useCallback(() => {
+    if (settledRef.current || phaseRef.current !== 'flying') return;
+    settledRef.current = true;
     const sim = simRef.current;
+    sim.jetActive = false;
     const curSave = saveRef.current;
     const dist = Math.round(sim.x);
     const maxAlt = Math.round(sim.maxAltitude);
@@ -677,7 +701,7 @@ export default function ShachikuCatapultGame() {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         if (!e.repeat) {
-          if (phaseRef.current === 'title') {
+          if (phaseRef.current === 'title' || phaseRef.current === 'result') {
             startLaunchSequence();
           } else {
             handlePrimaryActionDown();
@@ -786,6 +810,7 @@ export default function ShachikuCatapultGame() {
         // Air drag
         const drag = Math.pow(0.992 + (up.aero - 1) * 0.0006, dt * 60);
         sim.vx *= drag;
+        sim.bounceFatigue = Math.max(0, sim.bounceFatigue - dt * (sim.y > 8 ? 0.24 : 0.05));
 
         // Ground-skimming rewards daring low flight
         if (sim.y > 0.6 && sim.y < 6.5 && sim.vy < 8 && sim.vx > 35) {
@@ -856,7 +881,7 @@ export default function ShachikuCatapultGame() {
           const dy = sim.y - (obj.y + obj.h * 0.5);
           if (dx < obj.w * 0.65 && Math.abs(dy) < obj.h * 0.75 + 2.5) {
             obj.used = true;
-            const diveMult = sim.diving ? 1.35 : 1.0;
+            const diveMult = sim.diving ? DIVE_BOUNCE_MULT : 1.0;
             const shatteredBefore = sim.shattered;
 
             if (obj.type === 'van') {
@@ -869,7 +894,7 @@ export default function ShachikuCatapultGame() {
               sim.diving = false;
               sfx.playBounce(true);
               addBanner(
-                diveMult > 1 ? 'STAMP BOUNCE! x1.35' : 'ボーナス支給車バウンド！',
+                diveMult > 1 ? `STAMP BOUNCE! x${DIVE_BOUNCE_MULT.toFixed(2)}` : 'ボーナス支給車バウンド！',
                 '燃料回復 +38% / 臨時賞与獲得',
                 '#facc15'
               );
@@ -940,23 +965,28 @@ export default function ShachikuCatapultGame() {
         // Ground bounce
         if (sim.y <= 0) {
           sim.y = 0;
-          const bounceRestitution = Math.min(0.86, 0.52 + (up.bounce - 1) * 0.036);
-          const diveBoost = sim.diving ? 1.35 : 1.0;
+          const impactSpeed = Math.abs(sim.vy);
+          const wasDiving = sim.diving;
+          const bounceRestitution = Math.min(0.56, 0.36 + (up.bounce - 1) * 0.022);
+          const fatigueFactor = Math.max(0.42, 1 - sim.bounceFatigue * 0.58);
+          const diveBoost = wasDiving ? DIVE_BOUNCE_MULT : 1.0;
           sim.diving = false;
 
-          if (Math.abs(sim.vy) > 9) {
-            sim.vy = Math.abs(sim.vy) * bounceRestitution * diveBoost;
-            sim.vx = sim.vx * (0.86 + (up.bounce - 1) * 0.012) * (diveBoost > 1 ? 1.18 : 1.0);
+          if (impactSpeed > 10) {
+            sim.vy = impactSpeed * bounceRestitution * fatigueFactor * diveBoost;
+            const groundGrip = Math.min(0.82, 0.68 + (up.bounce - 1) * 0.014);
+            sim.vx = Math.max(0, sim.vx * groundGrip - (5 + impactSpeed * 0.12));
+            sim.bounceFatigue = Math.min(1, sim.bounceFatigue + 0.18);
             sim.bounces += 1;
             sim.combo += 1;
             sim.comboTimer = 2.5;
             sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
-            sim.boostMeter = Math.min(100, sim.boostMeter + (diveBoost > 1 ? 10 : 5));
-            sim.shake = Math.max(sim.shake, diveBoost > 1 ? 0.36 : 0.18);
-            sfx.playBounce(diveBoost > 1);
-            if (diveBoost > 1) haptic(20);
-            if (diveBoost > 1) {
-              addBanner('急降下スタンプ着地！', '1.35x ハイパーバウンド', '#f43f5e');
+            sim.boostMeter = Math.min(100, sim.boostMeter + (wasDiving ? 10 : 5));
+            sim.shake = Math.max(sim.shake, wasDiving ? 0.3 : Math.min(0.26, 0.1 + impactSpeed * 0.002));
+            sfx.playBounce(wasDiving || impactSpeed > 45);
+            if (wasDiving) haptic(20);
+            if (wasDiving) {
+              addBanner('急降下スタンプ着地！', `${DIVE_BOUNCE_MULT.toFixed(2)}x バウンド`, '#f43f5e');
             }
             for (let i = 0; i < 10; i++) {
               sim.particles.push({
@@ -972,12 +1002,13 @@ export default function ShachikuCatapultGame() {
             }
           } else {
             sim.vy = 0;
-            sim.vx *= Math.pow(0.88, dt * 60);
+            sim.vx *= Math.pow(0.7, dt * 60);
+            sim.vx = Math.max(0, sim.vx - 20 * dt);
           }
 
           if (sim.vx < 3.2 && sim.vy < 2.0 && (!sim.jetActive || sim.fuel <= 0)) {
             sim.stoppedFrames += 1;
-            if (sim.stoppedFrames > 28) {
+            if (sim.stoppedFrames > 36) {
               finishRun();
             }
           } else {
@@ -1021,11 +1052,33 @@ export default function ShachikuCatapultGame() {
         }
       }
 
+      if (curPhase === 'aim_angle' || curPhase === 'aim_power' || curPhase === 'flying') {
+        const lookaheadTarget = Math.min(MAX_LOOKAHEAD, Math.max(0, sim.vx * 0.45));
+        sim.camLookahead += (lookaheadTarget - sim.camLookahead) * (1 - Math.exp(-CAMERA_X_RATE * dt));
+        const altitudeT = Math.max(0, Math.min(1, (sim.y - 60) / 260));
+        const zoomTarget = BASE_ZOOM - altitudeT * (BASE_ZOOM - MIN_ZOOM);
+        sim.camZoom += (zoomTarget - sim.camZoom) * (1 - Math.exp(-CAMERA_ZOOM_RATE * dt));
+        const verticalLead = Math.max(-1, Math.min(1, sim.vy / 110));
+        const desiredScreenY = CANVAS_H * (0.54 + verticalLead * 0.06);
+        const camYTarget = Math.max(0, sim.y - (GROUND_Y - desiredScreenY) / sim.camZoom + sim.vy / CAMERA_Y_RATE);
+        const camXTarget = sim.x + sim.camLookahead / sim.camZoom + sim.vx / CAMERA_X_RATE;
+        sim.camX += (camXTarget - sim.camX) * (1 - Math.exp(-CAMERA_X_RATE * dt));
+        sim.camY += (camYTarget - sim.camY) * (1 - Math.exp(-CAMERA_Y_RATE * dt));
+      }
+
       // 2. Render Canvas
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          const targetW = Math.round(CANVAS_W * dpr);
+          const targetH = Math.round(CANVAS_H * dpr);
+          if (canvas.width !== targetW || canvas.height !== targetH) {
+            canvas.width = targetW;
+            canvas.height = targetH;
+          }
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           renderScene(ctx, sim, curPhase, 1 + (up.tension - 1) * 0.12);
         }
       }
@@ -1040,19 +1093,20 @@ export default function ShachikuCatapultGame() {
   const handleBuyUpgrade = (id: UpgradeId) => {
     const meta = UPGRADE_LIST.find((u) => u.id === id);
     if (!meta) return;
-    const curLv = save.upgrades[id];
+    const curSave = saveRef.current;
+    const curLv = curSave.upgrades[id];
     if (curLv >= 10) return;
     const cost = getUpgradeCost(meta.baseCost, curLv);
-    if (save.coins < cost) return;
+    if (curSave.coins < cost) return;
 
-    const nextUpgrades = { ...save.upgrades, [id]: curLv + 1 };
-    const nextAchievements = new Set(save.achievements);
+    const nextUpgrades = { ...curSave.upgrades, [id]: curLv + 1 };
+    const nextAchievements = new Set(curSave.achievements);
     if (curLv + 1 >= 10) nextAchievements.add('max_upgrade');
 
     sfx.playUpgrade();
     persistSave({
-      ...save,
-      coins: save.coins - cost,
+      ...curSave,
+      coins: curSave.coins - cost,
       upgrades: nextUpgrades,
       achievements: Array.from(nextAchievements),
     });
@@ -1118,7 +1172,8 @@ export default function ShachikuCatapultGame() {
               className="relative overflow-hidden rounded-xl border-2 border-stone-800 bg-stone-950 shadow-2xl"
               onPointerDown={(e) => {
                 if (e.button !== 0) return;
-                if (phase === 'aim_angle' || phase === 'aim_power' || phase === 'flying') {
+                const currentPhase = phaseRef.current;
+                if (currentPhase === 'aim_angle' || currentPhase === 'aim_power' || currentPhase === 'flying') {
                   e.preventDefault();
                   e.currentTarget.setPointerCapture?.(e.pointerId);
                   handlePrimaryActionDown();
@@ -1130,6 +1185,7 @@ export default function ShachikuCatapultGame() {
               }}
               onPointerCancel={handlePrimaryActionUp}
               onPointerLeave={() => handlePrimaryActionUp()}
+              onLostPointerCapture={handlePrimaryActionUp}
               style={{ touchAction: 'none' }}
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 bg-stone-950/95 px-3 py-2">
@@ -1230,7 +1286,7 @@ export default function ShachikuCatapultGame() {
                   >
                     {hudState.diveCooldown > 0
                       ? `急降下スタンプ (${hudState.diveCooldown}s)`
-                      : '急降下スタンプ [S / ↓] (1.35x バウンド)'}
+                      : `急降下スタンプ [S / ↓] (${DIVE_BOUNCE_MULT.toFixed(2)}x バウンド)`}
                   </button>
                 </div>
               )}
@@ -1358,6 +1414,7 @@ export default function ShachikuCatapultGame() {
                   }}
                   onPointerUp={handlePrimaryActionUp}
                   onPointerCancel={handlePrimaryActionUp}
+                  onLostPointerCapture={handlePrimaryActionUp}
                   className="rounded-xl border-2 border-amber-300 bg-amber-500 px-3 py-3 text-xs font-black text-stone-950 shadow-lg active:scale-95"
                   style={{ touchAction: 'none' }}
                 >
@@ -1521,6 +1578,9 @@ function renderScene(
     vx: number;
     vy: number;
     rotation: number;
+    camX: number;
+    camY: number;
+    camZoom: number;
     jetActive: boolean;
     fuel: number;
     diving: boolean;
@@ -1544,13 +1604,13 @@ function renderScene(
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   // Camera tracking (6px per meter, scales down slightly at very high altitude)
-  const scale = sim.y > 65 ? Math.max(2.6, 6 - (sim.y - 65) * 0.025) : 6;
-  const camX = sim.x;
-  const camY = Math.max(0, sim.y - 32);
+  const scale = sim.camZoom;
+  const camX = sim.camX;
+  const camY = sim.camY;
   const shakeX = sim.shake > 0 ? (Math.random() - 0.5) * sim.shake * 34 : 0;
   const shakeY = sim.shake > 0 ? (Math.random() - 0.5) * sim.shake * 34 : 0;
 
-  const worldToScreenX = (wx: number) => 170 + (wx - camX) * scale + shakeX;
+  const worldToScreenX = (wx: number) => PLAYER_SCREEN_X + (wx - camX) * scale + shakeX;
   const worldToScreenY = (wy: number) => GROUND_Y - (wy - camY) * scale + shakeY;
 
   // Speed lines

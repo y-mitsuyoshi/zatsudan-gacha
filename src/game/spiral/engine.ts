@@ -74,6 +74,7 @@ export interface UpgradeChoice {
   isNew: boolean;
   /** visual rarity tier of the card */
   rarity: UpgradeRarity;
+  category?: 'weapon' | 'tech' | 'core' | 'bonus';
   /** max level of the upgrade (0 for bonus) */
   maxLv: number;
 }
@@ -97,6 +98,7 @@ export interface RunResult {
   timeSec: number;
   chainKills: Record<string, number>;
   upgradeLevels: Record<string, number>;
+  recoverable?: boolean;
 }
 
 export interface StartOpts {
@@ -122,6 +124,7 @@ interface Seg {
   radius: number;
   hitCd: number; orbCd: number;
   flashT?: number;
+  weak?: boolean;
 }
 
 interface BossState {
@@ -185,6 +188,10 @@ const CHEST_AUTO_OPEN_R = 64;
 const CLEAR_INTERLUDE_SEC = 1.15;
 /** Coins granted per unopened chest converted at wave end. */
 const CHEST_CONVERT_COINS = 40;
+const MAX_SIM_STEP = 1 / 60;
+const MAX_SIM_SUBSTEPS = 8;
+const WEAKPOINT_DMG_MUL = 1.75;
+const RECOVERY_IFRAMES = 2.2;
 interface BeamFx { x1?: number; y1?: number; x2: number; y2: number; t: number; color?: string; width?: number }
 interface Ring { x: number; y: number; r: number; maxR: number; t: number; dur: number; color: string }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
@@ -204,9 +211,37 @@ interface Chest {
 
 interface SpawnReq { kind: ChainKind; at: number }
 
+interface SweepHit {
+  t: number;
+  chest?: Chest;
+  chain?: Chain;
+  seg?: Seg;
+  ci: number;
+  si: number;
+}
+
 function rand(a: number, b: number): number { return a + Math.random() * (b - a); }
 function dist2(ax: number, ay: number, bx: number, by: number): number {
   const dx = ax - bx; const dy = ay - by; return dx * dx + dy * dy;
+}
+function sweepCircleT(
+  x0: number, y0: number, x1: number, y1: number,
+  cx: number, cy: number, radius: number
+): number {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const fx = x0 - cx;
+  const fy = y0 - cy;
+  const a = dx * dx + dy * dy;
+  const c = fx * fx + fy * fy - radius * radius;
+  if (c <= 0) return 0;
+  if (a <= 1e-9) return -1;
+  const b = 2 * (fx * dx + fy * dy);
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return -1;
+  const root = Math.sqrt(disc);
+  const t = (-b - root) / (2 * a);
+  return t >= 0 && t <= 1 ? t : -1;
 }
 
 const safeRaf = (cb: FrameRequestCallback): number => {
@@ -238,7 +273,9 @@ export class SpiralEngine {
   private paused = false;
   private phase: 'build' | 'wave' | 'over' = 'build';
   private over = false;
+  private victory = false;
   private endless = false;
+  private recoveryUsed = false;
   private speedScale: 1 | 2 = 1;
 
   private diff = DIFFICULTIES.normal;
@@ -360,10 +397,12 @@ export class SpiralEngine {
     this.chests = []; this.nextChestId = 1;
     this.queue = [];
     this.chainKills = {};
-    this.paused = false; this.over = false; this.endless = false;
+    this.paused = false; this.over = false; this.victory = false; this.endless = false;
+    this.recoveryUsed = false;
     this.phase = 'build';
     this.aimAngle = null;
     this.buildFromChest = false;
+    this.replayWaveOnBuild = false;
     this.currentChoices = [];
     this.clearT = 0; this.waveSpawnTotal = 0;
     this.bossIntroT = 0; this.bossIntroName = '';
@@ -387,7 +426,7 @@ export class SpiralEngine {
     if (gen !== this.activeGen || this.destroyed) return;
     const rawDt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
     this.last = now;
-    const dt = rawDt * this.speedScale;
+    const scaledDt = rawDt * this.speedScale;
 
     // HitStop micro-freeze check
     const { frozen } = this.hitstop.update(rawDt);
@@ -399,18 +438,26 @@ export class SpiralEngine {
       return;
     }
 
-    if (!this.paused && !this.over && this.phase === 'wave') this.update(dt);
-    else if (!this.paused && !this.over && this.phase === 'build') this.updateBuildFx(dt);
-    else if (!this.paused && this.over) this.updateOverFx(dt);
-
+    this.updateScaled(scaledDt);
     this.shake.update(rawDt);
-    this.dmgNumbers.update(dt);
+    this.dmgNumbers.update(scaledDt);
     this.render();
 
     this.hudT += rawDt;
     if (this.hudT >= 0.12) { this.hudT = 0; this.emitHud(); }
     this.raf = safeRaf((n) => this.loop(n, gen));
   };
+
+  private updateScaled(dt: number): void {
+    let remaining = dt;
+    for (let i = 0; i < MAX_SIM_SUBSTEPS && remaining > 1e-6; i++) {
+      const step = Math.min(remaining, MAX_SIM_STEP);
+      if (!this.paused && !this.over && this.phase === 'wave') this.update(step);
+      else if (!this.paused && !this.over && this.phase === 'build') this.updateBuildFx(step);
+      else if (!this.paused && this.over) this.updateOverFx(step);
+      remaining -= step;
+    }
+  }
 
   private registerLoop(): void {
     this.activeGen += 1;
@@ -453,17 +500,55 @@ export class SpiralEngine {
     this.endless = true;
     this.hp = this.maxHp;
     this.shield = Math.max(this.shield, Math.round(this.maxShield / 2));
-    this.iframes = 0;
-    // A finished run must not leak live entities into the overtime build/wave
+    this.iframes = RECOVERY_IFRAMES;
     this.chains = []; this.queue = [];
     this.projs = []; this.bossProjs = [];
     this.coinPs = []; this.chests = [];
+    this.beams = []; this.rings = []; this.parts = [];
     this.clearT = 0; this.bossIntroT = 0; this.clearStampT = 0;
+    this.coreFlashT = 0; this.muzzleFlashT = 0;
+    this.dmgHistory = []; this.peakDps = 0;
+    this.hitstop.reset();
+    this.shake.reset();
+    this.dmgNumbers.clear();
+    this.fireCd = 0; this.blastCd = 0; this.beamCd = 0;
+    this.buildFromChest = false;
+    this.replayWaveOnBuild = false;
+    this.currentChoices = [];
     this.aimAngle = null;
     this.phase = 'build';
     this.emitBuild();
     this.emitHud();
     this.ev.onBanner('残業突入！', '渦は終わらない…どこまで耐えられるか');
+  }
+
+  recoverRun(): boolean {
+    if (!this.over || this.victory || this.recoveryUsed) return false;
+    this.recoveryUsed = true;
+    this.over = false;
+    this.phase = 'build';
+    this.replayWaveOnBuild = true;
+    this.hp = this.maxHp;
+    this.shield = Math.max(Math.round(this.maxShield * 0.5), this.shield);
+    this.iframes = RECOVERY_IFRAMES;
+    this.chains = []; this.queue = [];
+    this.projs = []; this.bossProjs = [];
+    this.coinPs = []; this.chests = [];
+    this.beams = []; this.rings = []; this.parts = [];
+    this.clearT = 0; this.bossIntroT = 0; this.clearStampT = 0;
+    this.coreFlashT = 0; this.muzzleFlashT = 0;
+    this.dmgHistory = []; this.peakDps = 0;
+    this.hitstop.reset();
+    this.shake.reset();
+    this.dmgNumbers.clear();
+    this.fireCd = 0; this.blastCd = 0; this.beamCd = 0;
+    this.buildFromChest = false;
+    this.currentChoices = [];
+    this.aimAngle = null;
+    this.emitBuild();
+    this.emitHud();
+    this.ev.onBanner('再起動 // 立て直し', '同じ波から再開。装備と強化は維持される');
+    return true;
   }
 
   /* ----- build phase ----- */
@@ -485,7 +570,7 @@ export class SpiralEngine {
         pool.push({
           kind: 'upgrade', id, name: def.name, icon: def.icon, desc: def.desc,
           toLv: lv + 1, isNew: lv === 0,
-          rarity: this.rarityOf(id, lv + 1), maxLv: def.maxLv,
+          rarity: this.rarityOf(id, lv + 1), category: def.category ?? 'tech', maxLv: def.maxLv,
         });
       }
     }
@@ -493,16 +578,27 @@ export class SpiralEngine {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    const picks = pool.slice(0, 3);
-    // Chests always offer at least one rare-or-better card (reward feel)
+    const picks: UpgradeChoice[] = [];
+    const usedCategories = new Set<string>();
+    for (const p of pool) {
+      if (picks.length >= 3) break;
+      const category = p.category ?? 'tech';
+      if (usedCategories.has(category)) continue;
+      usedCategories.add(category);
+      picks.push(p);
+    }
+    for (const p of pool) {
+      if (picks.length >= 3) break;
+      if (!picks.includes(p)) picks.push(p);
+    }
     if (fromChest && picks.length > 0 && !picks.some((p) => p.rarity !== 'common')) {
-      const better = pool.slice(3).find((p) => p.rarity !== 'common');
+      const better = pool.find((p) => !picks.includes(p) && p.rarity !== 'common');
       if (better) picks[picks.length - 1] = better;
     }
     while (picks.length < 3) {
       picks.push(picks.length % 2 === 0
-        ? { kind: 'bonus', id: `coins${picks.length}`, name: '臨時ボーナス', icon: 'bonus_coin', desc: '残業手当 +80', toLv: 0, isNew: false, rarity: 'common', maxLv: 0 }
-        : { kind: 'bonus', id: `heal${picks.length}`, name: '栄養ドリンク', icon: 'bonus_heal', desc: 'HPを全回復', toLv: 0, isNew: false, rarity: 'common', maxLv: 0 });
+        ? { kind: 'bonus', id: `coins${picks.length}`, name: '臨時ボーナス', icon: 'bonus_coin', desc: '残業手当 +80', toLv: 0, isNew: false, rarity: 'common', category: 'bonus', maxLv: 0 }
+        : { kind: 'bonus', id: `heal${picks.length}`, name: '栄養ドリンク', icon: 'bonus_heal', desc: 'HPを全回復', toLv: 0, isNew: false, rarity: 'common', category: 'bonus', maxLv: 0 });
     }
     return picks;
   }
@@ -510,12 +606,14 @@ export class SpiralEngine {
   private currentChoices: UpgradeChoice[] = [];
   /** true while the build modal was opened by a chest (resume wave instead of advancing) */
   private buildFromChest = false;
+  private replayWaveOnBuild = false;
 
   private emitBuild(): void {
     this.rerollLeft = 1;
     this.buildFromChest = false;
     this.currentChoices = this.buildChoices();
-    this.ev.onBuild({ wave: this.wave + 1, choices: this.currentChoices, canReroll: true });
+    const displayWave = this.wave + (this.replayWaveOnBuild ? 0 : 1);
+    this.ev.onBuild({ wave: displayWave, choices: this.currentChoices, canReroll: true });
   }
 
   applyUpgrade(choice: UpgradeChoice): void {
@@ -548,7 +646,9 @@ export class SpiralEngine {
       this.emitHud();
       return;
     }
-    this.startWave();
+    const replay = this.replayWaveOnBuild;
+    this.replayWaveOnBuild = false;
+    this.startWave(!replay);
   }
 
   rerollBuild(): void {
@@ -556,13 +656,14 @@ export class SpiralEngine {
     this.rerollLeft -= 1;
     this.currentChoices = this.buildChoices(this.buildFromChest);
     this.sound.upgrade();
-    this.ev.onBuild({ wave: this.buildFromChest ? this.wave : this.wave + 1, choices: this.currentChoices, canReroll: false, fromChest: this.buildFromChest });
+    const displayWave = this.buildFromChest ? this.wave : this.wave + (this.replayWaveOnBuild ? 0 : 1);
+    this.ev.onBuild({ wave: displayWave, choices: this.currentChoices, canReroll: false, fromChest: this.buildFromChest });
   }
 
   /* ----- waves ----- */
 
-  private startWave(): void {
-    this.wave += 1;
+  private startWave(advance = true): void {
+    if (advance) this.wave += 1;
     this.waveTime = 0;
     this.clearT = 0;
     this.queue = [];
@@ -599,13 +700,16 @@ export class SpiralEngine {
     const theta = rand(0, Math.PI * 2);
     const segs: Seg[] = [];
     for (let i = 0; i < def.segs; i++) {
-      // Rebalanced head HP: bosses have 4.5x, regular mobs have 2.8x
-      const headMul = def.boss ? 4.5 : 2.8;
-      const hp = def.segHp * hs * (i === 0 ? headMul : 1);
-      segs.push({ x: 0, y: 0, hp, maxHp: hp, radius: def.segRadius, hitCd: 0, orbCd: 0 });
+      const headMul = def.headHpMul ?? (def.boss ? 4.5 : 2.8);
+      const taper = def.boss && i > 0
+        ? 1 - Math.min(0.38, (i / Math.max(1, def.segs - 1)) * 0.42)
+        : 1;
+      const hp = def.segHp * hs * (i === 0 ? headMul : taper);
+      const weak = def.boss && i > 0 && (def.weakEvery ?? 0) > 0 && i % (def.weakEvery ?? 0) === 0;
+      segs.push({ x: 0, y: 0, hp, maxHp: hp, radius: def.segRadius, hitCd: 0, orbCd: 0, weak });
     }
 
-    const bossBarrierHp = kind === 'president' ? 350 * hs : 0;
+    const bossBarrierHp = kind === 'president' ? 260 * hs : 0;
     const chain: Chain = {
       kind, icon: def.icon, color: def.color, segs,
       r: ARENA_R + 70, theta, dir: Math.random() < 0.5 ? 1 : -1,
@@ -638,11 +742,11 @@ export class SpiralEngine {
       },
     };
 
-    // lay out body along the outward spiral
+    const spacing = def.segRadius * 1.7;
     for (let i = 0; i < segs.length; i++) {
-      const rr = chain.r + i * def.segRadius * 1.7;
-      segs[i].x = CENTER + Math.cos(theta - chain.dir * i * 0.12) * rr;
-      segs[i].y = CENTER + Math.sin(theta - chain.dir * i * 0.12) * rr;
+      const rr = chain.r + i * spacing;
+      segs[i].x = CENTER + Math.cos(theta) * rr;
+      segs[i].y = CENTER + Math.sin(theta) * rr;
     }
     this.chains.push(chain);
 
@@ -653,7 +757,7 @@ export class SpiralEngine {
       this.sound.boss();
       this.shake.addTrauma(0.6);
       this.hitstop.triggerMs(80);
-      this.ev.onBanner(`WARNING — ${def.name}`, '頭部を破壊すると1.5秒スタン！');
+      this.ev.onBanner(`WARNING — ${def.name}`, '頭部破壊で1.5秒スタン。金色の弱点節は1.75倍ダメージ！');
     }
     // Treasure chest in the gap between chain segments (moves with the chain)
     if (this.chests.length < 4 && Math.random() < (kind === 'mail' ? 0.16 : 0.3)) {
@@ -691,9 +795,10 @@ export class SpiralEngine {
     this.runTime += dt;
     this.tickTimers(dt);
 
-    // Player is FIXED at the center core (ad-game style)
-    this.px = CENTER;
-    this.py = CENTER;
+    const mvx = Number.isFinite(this.moveX) ? Math.max(-1, Math.min(1, this.moveX)) : 0;
+    const mvy = Number.isFinite(this.moveY) ? Math.max(-1, Math.min(1, this.moveY)) : 0;
+    this.px = CENTER + mvx * MOVE_R;
+    this.py = CENTER + mvy * MOVE_R;
     if (this.iframes > 0) this.iframes -= dt;
     if (this.regen > 0 && this.hp < this.maxHp) {
       this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
@@ -940,11 +1045,7 @@ export class SpiralEngine {
           s.hitCd = 0.9;
           this.damagePlayer(c.contact);
 
-          // Push the chain slightly outward so contact grinds are escapable;
-          // the player core itself remains fixed at CENTER.
           c.r = Math.min(ARENA_R, c.r + 22);
-          this.px = CENTER;
-          this.py = CENTER;
 
           // If breaching core at extreme proximity, breach segment self-destructs
           if (c.r <= 46 && si === 0) {
@@ -1357,40 +1458,51 @@ export class SpiralEngine {
     for (let i = this.projs.length - 1; i >= 0; i--) {
       const p = this.projs[i];
       p.life -= dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
+      const nx = p.x + p.vx * dt;
+      const ny = p.y + p.vy * dt;
       let dead = p.life <= 0;
 
-      // treasure chests (in gaps between chains)
       if (!dead) {
-        for (let ch = 0; ch < this.chests.length; ch++) {
-          const c = this.chests[ch];
-          if (c.taken) continue;
-          const rr = p.radius + 20;
-          if (dist2(p.x, p.y, c.x, c.y) < rr * rr) {
-            this.openChest(c);
-            dead = true;
-            break;
-          }
+        const events: SweepHit[] = [];
+        for (const ch of this.chests) {
+          if (ch.taken) continue;
+          const t = sweepCircleT(p.x, p.y, nx, ny, ch.x, ch.y, p.radius + 20);
+          if (t >= 0) events.push({ t, chest: ch, ci: -1, si: -1 });
         }
-      }
-
-      if (!dead) {
-        for (let ci = 0; ci < this.chains.length && !dead; ci++) {
+        for (let ci = 0; ci < this.chains.length; ci++) {
           const c = this.chains[ci];
           for (let si = 0; si < c.segs.length; si++) {
             const s = c.segs[si];
             if (p.hit.has(s)) continue;
-            const rr = p.radius + s.radius;
-            if (dist2(p.x, p.y, s.x, s.y) < rr * rr) {
-              p.hit.add(s);
-              this.damageSeg(c, ci, si, p.dmg, 110, p.x - p.vx * 0.01, p.y - p.vy * 0.01, p.crit);
-              if (this.phase !== 'wave') { dead = true; break; }
-              if (p.hit.size > p.pierce) { dead = true; break; }
-            }
+            const t = sweepCircleT(p.x, p.y, nx, ny, s.x, s.y, p.radius + s.radius);
+            if (t >= 0) events.push({ t, chain: c, seg: s, ci, si });
           }
         }
+        events.sort((a, b) => a.t - b.t);
+
+        for (const e of events) {
+          if (e.chest) {
+            if (e.chest.taken) continue;
+            if (this.phase !== 'wave' || this.over) { dead = true; break; }
+            this.openChest(e.chest);
+            dead = true;
+            break;
+          }
+          const c = e.chain;
+          const s = e.seg;
+          if (!c || !s || this.chains[e.ci] !== c || c.segs[e.si] !== s || s.hp <= 0) continue;
+          if (this.phase !== 'wave' || this.over) { dead = true; break; }
+          p.hit.add(s);
+          const hx = p.x + (nx - p.x) * e.t;
+          const hy = p.y + (ny - p.y) * e.t;
+          this.damageSeg(c, e.ci, e.si, p.dmg, 110, hx - p.vx * 0.01, hy - p.vy * 0.01, p.crit);
+          if (this.phase !== 'wave' || this.over) { dead = true; break; }
+          if (p.hit.size > p.pierce) { dead = true; break; }
+        }
       }
+
+      p.x = nx;
+      p.y = ny;
       if (dead) this.projs.splice(i, 1);
     }
   }
@@ -1515,12 +1627,20 @@ export class SpiralEngine {
       }
     }
 
-    s.hp -= dmg;
+    const appliedDamage = dmg * (s.weak ? WEAKPOINT_DMG_MUL : 1);
+    s.hp -= appliedDamage;
     s.flashT = 0.14;
-    if (dmg > 0) {
-      this.dmgHistory.push({ t: this.runTime, dmg });
+    if (appliedDamage > 0) {
+      this.dmgHistory.push({ t: this.runTime, dmg: appliedDamage });
     }
-    this.dmgNumbers.spawn(s.x + rand(-6, 6), s.y - s.radius - 2, Math.round(dmg), crit ? 'crit' : 'normal');
+    if (s.weak) {
+      this.dmgNumbers.spawn(s.x + rand(-6, 6), s.y - s.radius - 2, `${Math.round(appliedDamage)} WEAK`, 'custom', {
+        color: '#fde047', strokeColor: '#78350f', strokeWidth: 3, fontSize: 15, fontFamily: 'sans-serif', initialScale: 1.55,
+      });
+      this.burst(s.x, s.y, '#fde047', 5, 170);
+    } else {
+      this.dmgNumbers.spawn(s.x + rand(-6, 6), s.y - s.radius - 2, Math.round(appliedDamage), crit ? 'crit' : 'normal');
+    }
     this.sound.hit();
 
     // knock the whole chain slightly
@@ -1583,6 +1703,7 @@ export class SpiralEngine {
           c.segs[0].radius = Math.min(18, c.segs[0].radius + 2);
           c.segs[0].maxHp = Math.round(c.segs[0].maxHp * 1.6);
           c.segs[0].hp = c.segs[0].maxHp;
+          c.segs[0].weak = false;
         }
 
         // 5. Kinetic juice feedback
@@ -1666,6 +1787,7 @@ export class SpiralEngine {
     head.maxHp = Math.round(head.maxHp * 1.6);
     head.hp = head.maxHp;
     head.radius = Math.min(18, head.radius + 2);
+    head.weak = false;
     this.chains.push({
       kind: parent.kind, icon: parent.icon, color: parent.color, segs,
       r: nr, theta: nth, dir: parent.dir,
@@ -1808,6 +1930,7 @@ export class SpiralEngine {
     this.flushDrops();
     for (const ch of this.chests) if (!ch.taken) this.convertChest(ch);
     this.chests = [];
+    this.victory = victory;
     this.over = true;
     this.phase = 'over';
     const upgradeLevels: Record<string, number> = {};
@@ -1820,6 +1943,7 @@ export class SpiralEngine {
       score: Math.round(this.score), coins: this.coins,
       difficulty: this.diff.id, timeSec: Math.floor(this.runTime),
       chainKills: { ...this.chainKills }, upgradeLevels,
+      recoverable: !victory && !this.recoveryUsed,
     };
     if (victory) this.sound.victory();
     else this.sound.defeat();
@@ -2068,6 +2192,7 @@ export class SpiralEngine {
             slowed: (c.slowT ?? 0) > 0,
             hpValue: s.hp,
             hitFlash: s.flashT ?? 0,
+            weak: s.weak,
             time: this.runTime,
           }
         );

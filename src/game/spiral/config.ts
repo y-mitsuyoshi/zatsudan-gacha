@@ -1,6 +1,6 @@
 /**
  * 社畜スパイラルディフェンス — tuning data.
- * Central core + business chains spiral inward. 15 waves + endless.
+ * Central core + business chains spiral inward. 20 waves + endless.
  */
 
 export const VIEW = 640;
@@ -10,7 +10,13 @@ export const ARENA_R = 300;
 export const MOVE_R = 110;
 
 /** Waves to clear for victory. */
-export const FINAL_WAVE = 15;
+export const FINAL_WAVE = 20;
+
+export const BOSS_WAVES: readonly number[] = [5, 10, 15, 20];
+
+export function isBossWave(wave: number): boolean {
+  return BOSS_WAVES.includes(wave);
+}
 
 /** Performance caps. */
 export const MAX_CHAINS = 14;
@@ -88,15 +94,17 @@ export interface ChainDef {
   score: number;
   coins: number;
   boss: boolean;
+  headHpMul?: number;
+  weakEvery?: number;
 }
 
 export const CHAINS: Record<ChainKind, ChainDef> = {
   mail: { kind: 'mail', name: '未読メール列', icon: 'mail', color: '#60a5fa', segs: 5, segHp: 7, segRadius: 11, shrink: 19, angular: 0.8, contact: 7, score: 10, coins: 1, boss: false },
   doc: { kind: 'doc', name: '資料の山列', icon: 'doc', color: '#f59e0b', segs: 8, segHp: 17, segRadius: 13, shrink: 14, angular: 0.62, contact: 11, score: 20, coins: 2, boss: false },
   claim: { kind: 'claim', name: 'クレーム列', icon: 'claim', color: '#f472b6', segs: 6, segHp: 11, segRadius: 11, shrink: 22, angular: 1.0, contact: 9, score: 15, coins: 1, boss: false },
-  bossMid: { kind: 'bossMid', name: '上司の行列', icon: 'bossMid', color: '#ef4444', segs: 12, segHp: 42, segRadius: 15, shrink: 12, angular: 0.52, contact: 17, score: 150, coins: 12, boss: true },
-  exec: { kind: 'exec', name: '役員会議', icon: 'exec', color: '#dc2626', segs: 16, segHp: 80, segRadius: 16, shrink: 11, angular: 0.55, contact: 24, score: 400, coins: 30, boss: true },
-  president: { kind: 'president', name: '社長命令', icon: 'president', color: '#fbbf24', segs: 22, segHp: 150, segRadius: 17, shrink: 10, angular: 0.5, contact: 32, score: 1200, coins: 100, boss: true },
+  bossMid: { kind: 'bossMid', name: '上司の行列', icon: 'bossMid', color: '#ef4444', segs: 12, segHp: 42, segRadius: 15, shrink: 12, angular: 0.52, contact: 17, score: 150, coins: 12, boss: true, headHpMul: 4.5, weakEvery: 4 },
+  exec: { kind: 'exec', name: '役員会議', icon: 'exec', color: '#dc2626', segs: 16, segHp: 80, segRadius: 16, shrink: 11, angular: 0.55, contact: 24, score: 400, coins: 30, boss: true, headHpMul: 4.5, weakEvery: 4 },
+  president: { kind: 'president', name: '社長命令', icon: 'president', color: '#fbbf24', segs: 22, segHp: 112, segRadius: 17, shrink: 10, angular: 0.5, contact: 32, score: 1200, coins: 100, boss: true, headHpMul: 3.2, weakEvery: 4 },
 };
 
 export interface SpawnItem {
@@ -111,28 +119,27 @@ export function wavePlan(wave: number): SpawnItem[] {
   if (wave > FINAL_WAVE) {
     const k = wave - FINAL_WAVE;
     return [
-      { kind: 'mail', count: 3 + k, gap: Math.max(0.5, 1.4 - k * 0.1), delay: 0 },
-      { kind: 'claim', count: 2 + k, gap: Math.max(0.5, 1.6 - k * 0.1), delay: 2 },
-      { kind: 'doc', count: 2 + Math.floor(k / 2), gap: 2, delay: 4 },
+      { kind: 'mail', count: 3 + Math.min(9, k), gap: Math.max(0.5, 1.4 - k * 0.1), delay: 0 },
+      { kind: 'claim', count: 2 + Math.min(8, k), gap: Math.max(0.5, 1.6 - k * 0.1), delay: 2 },
+      { kind: 'doc', count: 2 + Math.min(6, Math.floor(k / 2)), gap: 2, delay: 4 },
       { kind: k % 3 === 0 ? 'president' : k % 2 === 0 ? 'exec' : 'bossMid', count: 1, gap: 1, delay: 6 },
     ];
   }
   const plan: SpawnItem[] = [];
-  // boss waves focus on the boss: fewer escorts
-  const isBossWave = wave === 5 || wave === 10 || wave === 15;
-  const mails = isBossWave ? 2 + Math.floor(wave * 0.4) : 2 + Math.floor(wave * 0.8);
-  plan.push({ kind: 'mail', count: mails, gap: Math.max(0.6, 1.8 - wave * 0.08), delay: 0 });
+  const bossWave = isBossWave(wave);
+  const mails = bossWave ? 3 + Math.floor(wave * 0.2) : Math.min(10, 3 + Math.floor(wave * 0.5));
+  plan.push({ kind: 'mail', count: mails, gap: Math.max(0.6, 1.7 - wave * 0.055), delay: 0 });
   if (wave >= 2) {
-    const docs = isBossWave ? Math.floor(wave / 3) : 1 + Math.floor(wave / 2);
+    const docs = bossWave ? Math.max(1, Math.floor(wave / 5)) : Math.min(6, 1 + Math.floor(wave * 0.35));
     plan.push({ kind: 'doc', count: docs, gap: 2.2, delay: 3 });
   }
   if (wave >= 3) {
-    const claims = isBossWave ? Math.floor(wave / 3) : 1 + Math.floor(wave / 2);
+    const claims = bossWave ? Math.max(1, Math.floor(wave / 5)) : Math.min(5, 1 + Math.floor(wave * 0.3));
     plan.push({ kind: 'claim', count: claims, gap: 1.8, delay: 6 });
   }
   if (wave === 5) plan.push({ kind: 'bossMid', count: 1, gap: 1, delay: 8 });
   if (wave === 10) plan.push({ kind: 'exec', count: 1, gap: 1, delay: 8 });
-  if (wave === 15) plan.push({ kind: 'president', count: 1, gap: 1, delay: 8 });
+  if (wave === 15 || wave === FINAL_WAVE) plan.push({ kind: 'president', count: 1, gap: 1, delay: 8 });
   return plan;
 }
 

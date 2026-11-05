@@ -138,6 +138,11 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [禁句トーク](${BASE_URL}/kinku-talk)
 - [社長の頭の中（ランキング予想）](${BASE_URL}/rank-guess)
 - [連想リレー](${BASE_URL}/word-chain)
+- [増殖ボール・カスケード](${BASE_URL}/ball-multiply)
+- [ドミノ・カスケード](${BASE_URL}/domino-cascade)
+- [サンド・フロー・シミュレーター](${BASE_URL}/sand-flow)
+- [バブル・マージ](${BASE_URL}/bubble-merge)
+- [重力オービット](${BASE_URL}/gravity-orbit)
 `;
 
   return new Response(body, {

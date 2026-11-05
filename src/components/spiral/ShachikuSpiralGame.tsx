@@ -23,7 +23,7 @@ import {
   type SpiralRecord, type SpiralStats, type AchState, type DailyState,
 } from '@/game/spiral/storage';
 import {
-  DIFFICULTIES, DIFFICULTY_ORDER, META_UPGRADES, FINAL_WAVE, formatTime, CENTER,
+  DIFFICULTIES, DIFFICULTY_ORDER, META_UPGRADES, FINAL_WAVE, BOSS_WAVES, formatTime, CENTER,
   STAGES, STAGE_ORDER, UPGRADES, UPGRADE_ORDER,
   type Difficulty, type StageId,
 } from '@/game/spiral/config';
@@ -223,8 +223,9 @@ export default function ShachikuSpiralGame() {
   const finishRun = useCallback((r: RunResult, d: Difficulty) => {
     const previousSettlement = lastSettledRunRef.current;
     const isFirstSettlement = previousSettlement === null;
+    const recoveredVictory = previousSettlement !== null && r.victory && !previousSettlement.victory;
 
-    if (isFirstSettlement) {
+    if (isFirstSettlement || recoveredVictory) {
       setRecords(saveRecord({ score: r.score, wave: r.wave, victory: r.victory, difficulty: d, date: Date.now() }));
     }
 
@@ -233,6 +234,8 @@ export default function ShachikuSpiralGame() {
     if (isFirstSettlement) {
       p.runs += 1;
       if (r.victory) p.wins += 1;
+    } else if (recoveredVictory) {
+      p.wins += 1;
     }
     saveProgress(p);
     setBank(p.coins);
@@ -417,6 +420,11 @@ export default function ShachikuSpiralGame() {
     engineRef.current?.continueEndless();
   }, []);
 
+  const recoverRun = useCallback(() => {
+    if (!engineRef.current?.recoverRun()) return;
+    setResult(null);
+  }, []);
+
   const buyMeta = useCallback((id: string) => {
     const p = loadProgress();
     const m = p.meta;
@@ -462,7 +470,9 @@ export default function ShachikuSpiralGame() {
   const title = bestTitle();
   const comp = encyCompletion();
   const missions = todayMissions();
-  const nextBoss = hud.wave <= 5 ? 'W5 課長' : hud.wave <= 10 ? 'W10 役員' : hud.wave <= 15 ? 'W15 社長' : '無限残業';
+  const nextBossWave = BOSS_WAVES.find((w) => w >= hud.wave) ?? FINAL_WAVE;
+  const nextBossName = nextBossWave === 5 ? '課長' : nextBossWave === 10 ? '役員' : '社長';
+  const nextBoss = hud.endless || hud.wave > FINAL_WAVE ? '無限残業' : `W${nextBossWave} ${nextBossName}`;
   const waveClearRatio = hud.waveSpawnTotal > 0
     ? Math.max(0, Math.min(100, ((hud.waveSpawnTotal - hud.chainsLeft) / hud.waveSpawnTotal) * 100))
     : 0;
@@ -731,6 +741,13 @@ export default function ShachikuSpiralGame() {
                 setManualAimActive(false);
               }
             }}
+            onLostPointerCapture={() => {
+              if (keysRef.current.size === 0 && !manualAimLocked) {
+                engineRef.current?.clearAim();
+                setManualAimActive(false);
+              }
+            }}
+            onContextMenu={(e) => e.preventDefault()}
           />
 
           {/* Banner notification */}
@@ -793,6 +810,13 @@ export default function ShachikuSpiralGame() {
                       : c.kind === 'bonus'
                         ? '即時リカバリー発動'
                         : '出力パラメータ強化';
+                    const categoryLabel = c.category === 'bonus'
+                      ? 'SUPPLY'
+                      : c.category === 'weapon'
+                        ? 'WEAPON'
+                        : c.category === 'core'
+                          ? 'CORE'
+                          : 'TECH';
                     const totalStars = c.maxLv > 0 ? Math.min(6, c.maxLv) : 1;
                     const filledStars = c.maxLv > 0 ? Math.min(totalStars, c.toLv) : 1;
 
@@ -825,6 +849,10 @@ export default function ShachikuSpiralGame() {
                               </span>
                             )}
                           </div>
+
+                          <p className="mt-0.5 font-mono text-[9px] font-bold tracking-[0.16em] text-[#94a3b8]">
+                            {categoryLabel}
+                          </p>
 
                           {/* SVG Star Rank Bar */}
                           <div className="mt-1.5 flex items-center justify-center gap-0.5">
@@ -919,6 +947,7 @@ export default function ShachikuSpiralGame() {
               result={result} freshAch={freshAch} records={records}
               onRetry={() => startRun(runMeta.difficulty, runMeta.stage)}
               onEndless={result.victory ? goEndless : undefined}
+              onRecover={!result.victory && result.recoverable ? recoverRun : undefined}
               onTitle={quitToTitle}
             />
           )}
@@ -1043,7 +1072,7 @@ function TitleOverlay(props: {
                 </h2>
               </div>
               <span className="border border-[#fbbf24]/50 bg-[#1c1409]/90 px-2 py-0.5 font-mono text-[10px] font-bold text-[#fbbf24]">
-                全15波 + 残業
+                全{FINAL_WAVE}波 + 残業
               </span>
             </div>
           </div>
@@ -1388,9 +1417,9 @@ function DailyTab(props: {
 
 function ResultOverlay(props: {
   result: RunResult; freshAch: string[]; records: SpiralRecord[];
-  onRetry: () => void; onEndless?: () => void; onTitle: () => void;
+  onRetry: () => void; onEndless?: () => void; onRecover?: () => void; onTitle: () => void;
 }) {
-  const { result, freshAch, records, onRetry, onEndless, onTitle } = props;
+  const { result, freshAch, records, onRetry, onEndless, onRecover, onTitle } = props;
   const fresh = ACHIEVEMENTS.filter((a) => freshAch.includes(a.id));
 
   return (
@@ -1442,6 +1471,15 @@ function ResultOverlay(props: {
         )}
 
         <div className="mt-4 space-y-2">
+          {onRecover && (
+            <button
+              type="button"
+              onClick={onRecover}
+              className="min-h-[48px] w-full border border-[#10b981] bg-[#047857] py-3 font-black text-white shadow-[0_4px_0_#065f46] transition hover:bg-[#059669]"
+            >
+              再起動して同波へ（1回限り・強化維持）
+            </button>
+          )}
           {onEndless && (
             <button
               type="button"

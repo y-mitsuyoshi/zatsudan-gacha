@@ -462,5 +462,35 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      url: `${BASE_URL}/ball-multiply`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/domino-cascade`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/sand-flow`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/bubble-merge`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/gravity-orbit`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
   ];
 }
