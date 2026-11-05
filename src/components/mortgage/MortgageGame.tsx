@@ -972,12 +972,12 @@ export function MortgageGame() {
             <p className="font-mono text-xs font-semibold tracking-wide text-[#0F6E68] dark:text-[#4CC0AF]">
               無料の住宅ローン人生シミュレーション · 国土交通省・日銀・住宅金融支援機構の統計にもとづく
             </p>
-            <h1 className="font-editorial mt-3 text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
+            <h2 className="font-editorial mt-3 text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
               マイホーム<em className="not-italic text-[#8C1D3C] dark:text-[#E2678A]">完済記</em>
               <span className="mt-2 block text-xl font-semibold text-[#4A5A61] sm:text-2xl dark:text-[#A3B2AF]">
                 35年・50年ローンの家計と暮らし
               </span>
-            </h1>
+            </h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-[#4A5A61] sm:text-lg dark:text-[#A3B2AF]">
               いまこの瞬間にも、日本のどこかで誰かがマイホームの鍵を受け取り、35年・50年の返済を始めています。全12世帯モデル・全12物件・7銀行プランからひとつの家族になって、完済の日までの家計と暮らしを体験します。
             </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { GameState } from '@/types/sugoroku';
 import {
   ACHIEVEMENT_LIST,

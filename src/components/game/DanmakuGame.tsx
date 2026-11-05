@@ -1117,12 +1117,12 @@ export default function DanmakuGame() {
                 <div className="font-mono text-[10px] font-bold tracking-[0.38em] text-cyan-300">
                   HYPER CORPORATE DANMAKU SHOOTER
                 </div>
-                <h1 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-5xl">
+                <h2 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-5xl">
                   社畜<span className="text-amber-400">シューティング</span>
                   <span className="ml-1.5 bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent">
                     NEO
                   </span>
-                </h1>
+                </h2>
                 <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-slate-300">
                   全6ステージ＋無限残業ループ。弾幕をかすめてハイパーゲージを溜め、
                   <strong className="text-amber-300">「残業覚醒（HYPER OVERDRIVE）」</strong>

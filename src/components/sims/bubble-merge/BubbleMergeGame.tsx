@@ -8,21 +8,18 @@ const WORLD_H = 600;
 const WALL = 12;
 const LEFT = WALL;
 const RIGHT = WORLD_W - WALL;
+const TOP = 0;
 const FLOOR = WORLD_H - 14;
-const SPAWN_Y = 56;
-const DANGER_Y = 112;
-const GRAVITY = 1280;
-const RESTITUTION = 0.18;
-const WALL_BOUNCE = 0.38;
+const FIXED_STEP = 1 / 120;
+const MAX_BUBBLES = 120;
 const MAX_LEVEL = 6;
-const DROP_COOLDOWN = 0.42;
-const COMBO_WINDOW = 2.6;
-const DANGER_LIMIT = 1.8;
-const STORAGE_KEY = 'bubble-merge-best-v1';
-const BUBBLE_RADII = [13, 17, 22, 28, 35, 43, 52];
-const MERGE_SCORE = [12, 24, 48, 96, 192, 384, 768];
-
-type Phase = 'playing' | 'over';
+const MAX_SPEED = 2600;
+const MERGE_TOLERANCE = 10;
+const MAX_PARTICLES = 520;
+const MAX_RINGS = 48;
+const TIER_RADII = Array.from({ length: MAX_LEVEL + 1 }, (_, level) =>
+  9 * Math.pow(Math.SQRT2, level)
+);
 
 type Palette = {
   light: string;
@@ -40,6 +37,32 @@ const PALETTES: Palette[] = [
   { light: '#ffeadf', mid: '#fdba74', edge: '#ea580c', glow: 'rgba(253,186,116,0.48)' },
   { light: '#fff3c4', mid: '#fbbf24', edge: '#b45309', glow: 'rgba(251,191,36,0.55)' },
 ];
+
+interface Settings {
+  gravity: number;
+  tension: number;
+  minRadius: number;
+  maxRadius: number;
+  spawnRate: number;
+  targetCount: number;
+  elasticity: number;
+  autoSpawn: boolean;
+  paused: boolean;
+  speed: number;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  gravity: 420,
+  tension: 0.55,
+  minRadius: 9,
+  maxRadius: 25.5,
+  spawnRate: 1.6,
+  targetCount: 24,
+  elasticity: 0.28,
+  autoSpawn: true,
+  paused: false,
+  speed: 1,
+};
 
 interface Bubble {
   id: number;
@@ -72,138 +95,194 @@ interface Ring {
   color: string;
 }
 
-interface FloatText {
-  x: number;
-  y: number;
-  text: string;
-  life: number;
-  maxLife: number;
-  color: string;
-}
-
 interface GameState {
-  phase: Phase;
   bubbles: Bubble[];
   particles: Particle[];
   rings: Ring[];
-  texts: FloatText[];
-  score: number;
-  combo: number;
-  comboTimer: number;
-  maxCombo: number;
-  best: number;
-  newBest: boolean;
   merges: number;
-  dropped: number;
-  currentLevel: number;
-  nextLevel: number;
-  aimX: number;
-  activePointer: number | null;
-  cooldown: number;
-  dangerTimer: number;
+  collisions: number;
+  time: number;
+  spawnTimer: number;
   shake: number;
   flash: number;
-  time: number;
   nextId: number;
-  hudDirty: boolean;
+  activePointer: number | null;
+  pointerX: number;
+  pointerY: number;
+  pointerActive: boolean;
+  lastSpawnX: number;
+  lastSpawnY: number;
+  lastSpawnTime: number;
 }
 
 interface HudState {
-  phase: Phase;
-  score: number;
-  combo: number;
-  maxCombo: number;
-  best: number;
-  newBest: boolean;
+  count: number;
   merges: number;
-  dropped: number;
-  nextLevel: number;
+  largest: number;
+  average: number;
+  collisions: number;
 }
 
-function randomLevel(): number {
-  const roll = Math.random();
-  if (roll < 0.48) return 0;
-  if (roll < 0.82) return 1;
-  return 2;
-}
-
-function comboMultiplier(combo: number): number {
-  return Math.min(5, 1 + Math.max(0, combo - 1) * 0.25);
-}
+const EMPTY_HUD: HudState = {
+  count: 0,
+  merges: 0,
+  largest: 0,
+  average: 0,
+  collisions: 0,
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function readBestScore(): number {
-  if (typeof window === 'undefined') return 0;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const value = raw ? Number(raw) : 0;
-    return Number.isFinite(value) && value > 0 ? value : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function writeBestScore(score: number) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, String(score));
-  } catch {
-    return;
-  }
-}
-
-function createInitialGame(bestScore: number): GameState {
+function createInitialGame(): GameState {
   return {
-    phase: 'playing',
     bubbles: [],
     particles: [],
     rings: [],
-    texts: [],
-    score: 0,
-    combo: 0,
-    comboTimer: 0,
-    maxCombo: 0,
-    best: bestScore,
-    newBest: false,
     merges: 0,
-    dropped: 0,
-    currentLevel: 0,
-    nextLevel: 1,
-    aimX: WORLD_W / 2,
-    activePointer: null,
-    cooldown: 0,
-    dangerTimer: 0,
+    collisions: 0,
+    time: 0,
+    spawnTimer: 0,
     shake: 0,
     flash: 0,
-    time: 0,
     nextId: 1,
-    hudDirty: false,
+    activePointer: null,
+    pointerX: WORLD_W / 2,
+    pointerY: WORLD_H / 2,
+    pointerActive: false,
+    lastSpawnX: WORLD_W / 2,
+    lastSpawnY: WORLD_H / 2,
+    lastSpawnTime: 0,
   };
 }
 
 function toHud(game: GameState): HudState {
+  let largest = 0;
+  let total = 0;
+  for (const bubble of game.bubbles) {
+    if (bubble.radius > largest) largest = bubble.radius;
+    total += bubble.radius;
+  }
   return {
-    phase: game.phase,
-    score: game.score,
-    combo: game.combo,
-    maxCombo: game.maxCombo,
-    best: game.best,
-    newBest: game.newBest,
+    count: game.bubbles.length,
     merges: game.merges,
-    dropped: game.dropped,
-    nextLevel: game.nextLevel,
+    largest,
+    average: game.bubbles.length > 0 ? total / game.bubbles.length : 0,
+    collisions: game.collisions,
   };
 }
 
-function triggerMerge(game: GameState, x: number, y: number, level: number) {
+function pickSpawnLevel(settings: Settings): number {
+  const allowed: number[] = [];
+  for (let level = 0; level <= MAX_LEVEL; level += 1) {
+    const radius = TIER_RADII[level];
+    if (radius >= settings.minRadius - 0.01 && radius <= settings.maxRadius + 0.01) {
+      allowed.push(level);
+    }
+  }
+  if (allowed.length === 0) {
+    const middle = (settings.minRadius + settings.maxRadius) / 2;
+    let best = 0;
+    for (let level = 1; level <= MAX_LEVEL; level += 1) {
+      if (Math.abs(TIER_RADII[level] - middle) < Math.abs(TIER_RADII[best] - middle)) {
+        best = level;
+      }
+    }
+    return best;
+  }
+  const roll = Math.pow(Math.random(), 1.6);
+  return allowed[Math.min(allowed.length - 1, Math.floor(roll * allowed.length))];
+}
+
+function pushBubble(
+  game: GameState,
+  x: number,
+  y: number,
+  level: number,
+  vx = 0,
+  vy = 0
+): Bubble {
+  const radius = TIER_RADII[level];
+  const bubble: Bubble = {
+    id: game.nextId,
+    x: clamp(Number.isFinite(x) ? x : WORLD_W / 2, LEFT + radius, RIGHT - radius),
+    y: clamp(Number.isFinite(y) ? y : WORLD_H / 2, TOP + radius, FLOOR - radius),
+    vx: clamp(Number.isFinite(vx) ? vx : 0, -MAX_SPEED, MAX_SPEED),
+    vy: clamp(Number.isFinite(vy) ? vy : 0, -MAX_SPEED, MAX_SPEED),
+    radius,
+    level,
+    age: 0,
+  };
+  game.nextId += 1;
+  game.bubbles.push(bubble);
+  return bubble;
+}
+
+function spawnAtTop(game: GameState, settings: Settings): boolean {
+  if (game.bubbles.length >= MAX_BUBBLES) return false;
+  const level = pickSpawnLevel(settings);
+  const radius = TIER_RADII[level];
+  const span = Math.max(1, RIGHT - LEFT - radius * 2);
+  const x = LEFT + radius + Math.random() * span;
+  pushBubble(game, x, TOP + radius + 2, level, (Math.random() - 0.5) * 30, 40);
+  return true;
+}
+
+function spawnAtPoint(game: GameState, settings: Settings, x: number, y: number): boolean {
+  if (game.bubbles.length >= MAX_BUBBLES) return false;
+  const level = pickSpawnLevel(settings);
+  pushBubble(game, x, y, level, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20);
+  return true;
+}
+
+function spawnInside(game: GameState, settings: Settings): boolean {
+  if (game.bubbles.length >= MAX_BUBBLES) return false;
+  const level = pickSpawnLevel(settings);
+  const radius = TIER_RADII[level];
+  const xMin = LEFT + radius;
+  const xMax = RIGHT - radius;
+  const yMin = TOP + radius;
+  const yMax = FLOOR - radius;
+  let x = (xMin + xMax) / 2;
+  let y = (yMin + yMax) / 2;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    x = xMin + Math.random() * Math.max(1, xMax - xMin);
+    y = yMin + Math.random() * Math.max(1, yMax - yMin);
+    let clear = true;
+    for (const bubble of game.bubbles) {
+      const dx = bubble.x - x;
+      const dy = bubble.y - y;
+      const minDistance = bubble.radius + radius + 2;
+      if (dx * dx + dy * dy < minDistance * minDistance) {
+        clear = false;
+        break;
+      }
+    }
+    if (clear) break;
+  }
+  pushBubble(game, x, y, level, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+  return true;
+}
+
+function adjustPopulation(game: GameState, settings: Settings, target: number) {
+  const desired = clamp(Math.round(target), 1, MAX_BUBBLES);
+  let guard = 0;
+  while (game.bubbles.length < desired && guard < MAX_BUBBLES) {
+    if (!spawnInside(game, settings)) break;
+    guard += 1;
+  }
+  while (game.bubbles.length > desired) {
+    game.bubbles.pop();
+  }
+}
+
+function triggerMerge(game: GameState, x: number, y: number, level: number, pop: boolean) {
   const palette = PALETTES[Math.min(level, MAX_LEVEL)];
-  const count = 12 + level * 4;
+  const count = 10 + level * 4 + (pop ? 18 : 0);
   for (let index = 0; index < count; index += 1) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 50 + Math.random() * (90 + level * 26);
+    const speed = 50 + Math.random() * (90 + level * 28) + (pop ? 60 : 0);
     const life = 0.3 + Math.random() * 0.55;
     game.particles.push({
       x,
@@ -216,82 +295,70 @@ function triggerMerge(game: GameState, x: number, y: number, level: number) {
       color: index % 4 === 0 ? '#ffffff' : palette.mid,
     });
   }
+  if (game.particles.length > MAX_PARTICLES) {
+    game.particles.splice(0, game.particles.length - MAX_PARTICLES);
+  }
+  const ringRadius = TIER_RADII[Math.min(level + 1, MAX_LEVEL)] * (pop ? 0.9 : 0.65);
   game.rings.push({
     x,
     y,
-    radius: BUBBLE_RADII[Math.min(level + 1, MAX_LEVEL)] * 0.7,
-    life: 0.5,
-    maxLife: 0.5,
+    radius: ringRadius,
+    life: pop ? 0.68 : 0.48,
+    maxLife: pop ? 0.68 : 0.48,
     color: palette.mid,
   });
-  game.flash = Math.min(0.9, game.flash + 0.1 + level * 0.035);
-  game.shake = Math.max(game.shake, 1.5 + level * 0.6);
+  if (pop) {
+    game.rings.push({
+      x,
+      y,
+      radius: ringRadius * 0.5,
+      life: 0.78,
+      maxLife: 0.78,
+      color: '#ffffff',
+    });
+  }
+  if (game.rings.length > MAX_RINGS) {
+    game.rings.splice(0, game.rings.length - MAX_RINGS);
+  }
+  game.flash = Math.min(1, game.flash + (pop ? 0.3 : 0.08 + level * 0.025));
+  game.shake = Math.max(game.shake, (pop ? 3 : 1) + level * 0.5);
 }
 
 function mergePair(game: GameState, first: Bubble, second: Bubble) {
   const level = first.level;
-  const multiplier = comboMultiplier(game.combo + 1);
-  const base = MERGE_SCORE[Math.min(level, MAX_LEVEL)];
-  const points = Math.round(base * multiplier);
-  let x = (first.x + second.x) / 2;
-  let y = (first.y + second.y) / 2;
-
+  const x = clamp((first.x + second.x) / 2, LEFT, RIGHT);
+  const y = clamp((first.y + second.y) / 2, TOP, FLOOR);
   game.merges += 1;
-  game.combo += 1;
-  game.comboTimer = COMBO_WINDOW;
-  game.maxCombo = Math.max(game.maxCombo, game.combo);
-  game.score += points;
-  game.hudDirty = true;
-
   if (level < MAX_LEVEL) {
-    const nextLevel = level + 1;
-    const nextRadius = BUBBLE_RADII[nextLevel];
-    x = clamp(x, LEFT + nextRadius, RIGHT - nextRadius);
-    y = Math.min(y, FLOOR - nextRadius);
-    game.bubbles.push({
-      id: game.nextId,
+    pushBubble(
+      game,
       x,
       y,
-      vx: (first.vx + second.vx) * 0.3,
-      vy: Math.min((first.vy + second.vy) * 0.3, 20) - 24,
-      radius: nextRadius,
-      level: nextLevel,
-      age: 0,
-    });
-    game.nextId += 1;
-  } else {
-    game.flash = Math.min(1, game.flash + 0.35);
+      level + 1,
+      (first.vx + second.vx) * 0.25,
+      (first.vy + second.vy) * 0.25 - 14
+    );
   }
-
-  triggerMerge(game, x, y, level);
-  game.texts.push({
-    x,
-    y: y - 14,
-    text: `+${points}`,
-    life: 0.95,
-    maxLife: 0.95,
-    color: level >= 4 ? '#fde68a' : '#e0f2fe',
-  });
+  triggerMerge(game, x, y, level, level >= MAX_LEVEL);
 }
 
-function resolveBubbles(game: GameState) {
+function resolveBubbles(game: GameState, settings: Settings, countCollisions: boolean) {
   const merged = new Set<number>();
   const bubbles = game.bubbles;
+  const tolerance = settings.tension * MERGE_TOLERANCE;
 
   for (let i = 0; i < bubbles.length; i += 1) {
     const first = bubbles[i];
     if (merged.has(first.id)) continue;
     for (let j = i + 1; j < bubbles.length; j += 1) {
       const second = bubbles[j];
-      if (merged.has(second.id) || second.id === first.id) continue;
+      if (merged.has(second.id)) continue;
       const dx = second.x - first.x;
       const dy = second.y - first.y;
       const minDistance = first.radius + second.radius;
       const distanceSq = dx * dx + dy * dy;
-      if (distanceSq >= minDistance * minDistance) continue;
-      const distance = Math.sqrt(distanceSq) || 0.001;
-      const nx = dx / distance;
-      const ny = dy / distance;
+      const mergeDistance = minDistance + tolerance;
+      if (distanceSq > mergeDistance * mergeDistance) continue;
 
       if (first.level === second.level) {
         merged.add(first.id);
@@ -300,32 +367,45 @@ function resolveBubbles(game: GameState) {
         break;
       }
 
-      const overlap = minDistance - distance;
-      const push = overlap / 2 + 0.05;
-      first.x -= nx * push;
-      first.y -= ny * push;
-      second.x += nx * push;
-      second.y += ny * push;
+      if (distanceSq >= minDistance * minDistance) continue;
+      const distance = Math.sqrt(distanceSq);
+      const nx = distance > 0.001 ? dx / distance : 1;
+      const ny = distance > 0.001 ? dy / distance : 0;
+      const overlap = minDistance - Math.max(distance, 0.001);
+      const massFirst = first.radius * first.radius;
+      const massSecond = second.radius * second.radius;
+      const totalMass = massFirst + massSecond;
+      const firstShare = massSecond / totalMass;
+      const secondShare = massFirst / totalMass;
+
+      first.x -= nx * overlap * firstShare;
+      first.y -= ny * overlap * firstShare;
+      second.x += nx * overlap * secondShare;
+      second.y += ny * overlap * secondShare;
 
       const relativeX = second.vx - first.vx;
       const relativeY = second.vy - first.vy;
       const normalVelocity = relativeX * nx + relativeY * ny;
       if (normalVelocity < 0) {
-        const impulse = (-(1 + RESTITUTION) * normalVelocity) / 2;
-        first.vx -= impulse * nx;
-        first.vy -= impulse * ny;
-        second.vx += impulse * nx;
-        second.vy += impulse * ny;
+        const inverseFirst = 1 / massFirst;
+        const inverseSecond = 1 / massSecond;
+        const impulse =
+          (-(1 + settings.elasticity) * normalVelocity) / (inverseFirst + inverseSecond);
+        first.vx -= impulse * inverseFirst * nx;
+        first.vy -= impulse * inverseFirst * ny;
+        second.vx += impulse * inverseSecond * nx;
+        second.vy += impulse * inverseSecond * ny;
+        if (countCollisions) game.collisions += 1;
       }
 
       const tangentX = -ny;
       const tangentY = nx;
       const tangentVelocity = relativeX * tangentX + relativeY * tangentY;
-      const friction = tangentVelocity * 0.04;
-      first.vx += friction * tangentX;
-      first.vy += friction * tangentY;
-      second.vx -= friction * tangentX;
-      second.vy -= friction * tangentY;
+      const friction = tangentVelocity * 0.02;
+      first.vx += friction * tangentX * firstShare;
+      first.vy += friction * tangentY * firstShare;
+      second.vx -= friction * tangentX * secondShare;
+      second.vy -= friction * tangentY * secondShare;
     }
   }
 
@@ -334,32 +414,66 @@ function resolveBubbles(game: GameState) {
   }
 }
 
-function stepPhysics(game: GameState, dt: number) {
+function stepPhysics(game: GameState, settings: Settings, dt: number) {
+  const drag = Math.exp(-0.18 * dt);
+  const wallBounce = Math.max(0.02, settings.elasticity * 0.9);
+  const floorBounce = Math.max(0.02, settings.elasticity);
+
   for (const bubble of game.bubbles) {
+    if (
+      !Number.isFinite(bubble.x) ||
+      !Number.isFinite(bubble.y) ||
+      !Number.isFinite(bubble.vx) ||
+      !Number.isFinite(bubble.vy)
+    ) {
+      bubble.x = WORLD_W / 2;
+      bubble.y = FLOOR / 2;
+      bubble.vx = 0;
+      bubble.vy = 0;
+    }
     bubble.age += dt;
-    bubble.vy += GRAVITY * dt;
-    bubble.vx *= 0.999;
+    bubble.vy += settings.gravity * dt;
+    bubble.vx *= drag;
+    bubble.vy *= drag;
+    bubble.vx = clamp(bubble.vx, -MAX_SPEED, MAX_SPEED);
+    bubble.vy = clamp(bubble.vy, -MAX_SPEED, MAX_SPEED);
     bubble.x += bubble.vx * dt;
     bubble.y += bubble.vy * dt;
 
     if (bubble.x - bubble.radius < LEFT) {
       bubble.x = LEFT + bubble.radius;
-      if (bubble.vx < 0) bubble.vx = -bubble.vx * WALL_BOUNCE;
+      if (bubble.vx < 0) {
+        bubble.vx = -bubble.vx * wallBounce;
+        if (Math.abs(bubble.vx) > 20) game.collisions += 1;
+      }
     }
     if (bubble.x + bubble.radius > RIGHT) {
       bubble.x = RIGHT - bubble.radius;
-      if (bubble.vx > 0) bubble.vx = -bubble.vx * WALL_BOUNCE;
+      if (bubble.vx > 0) {
+        bubble.vx = -bubble.vx * wallBounce;
+        if (Math.abs(bubble.vx) > 20) game.collisions += 1;
+      }
+    }
+    if (bubble.y - bubble.radius < TOP) {
+      bubble.y = TOP + bubble.radius;
+      if (bubble.vy < 0) {
+        bubble.vy = -bubble.vy * wallBounce;
+        if (Math.abs(bubble.vy) > 20) game.collisions += 1;
+      }
     }
     if (bubble.y + bubble.radius > FLOOR) {
       bubble.y = FLOOR - bubble.radius;
-      if (bubble.vy > 0) bubble.vy = -bubble.vy * RESTITUTION;
-      if (Math.abs(bubble.vy) < 18) bubble.vy = 0;
-      bubble.vx *= 0.9;
+      if (bubble.vy > 0) {
+        bubble.vy = -bubble.vy * floorBounce;
+        if (Math.abs(bubble.vy) > 20) game.collisions += 1;
+      }
+      if (Math.abs(bubble.vy) < 16) bubble.vy = 0;
+      bubble.vx *= 0.94;
     }
   }
 
-  for (let iteration = 0; iteration < 4; iteration += 1) {
-    resolveBubbles(game);
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    resolveBubbles(game, settings, iteration === 0);
   }
 }
 
@@ -377,42 +491,21 @@ function updateEffects(game: GameState, dt: number) {
     ring.life -= dt;
   }
   game.rings = game.rings.filter((ring) => ring.life > 0);
-
-  for (const text of game.texts) {
-    text.life -= dt;
-    text.y -= 30 * dt;
-  }
-  game.texts = game.texts.filter((text) => text.life > 0);
 }
 
-function endGame(game: GameState) {
-  if (game.phase !== 'playing') return;
-  game.phase = 'over';
-  game.activePointer = null;
-  game.newBest = game.score > game.best;
-  if (game.newBest) {
-    game.best = game.score;
-    writeBestScore(game.best);
+function updateAutoSpawn(game: GameState, settings: Settings, dt: number) {
+  if (!settings.autoSpawn || settings.spawnRate <= 0) {
+    game.spawnTimer = 0;
+    return;
   }
-  game.shake = Math.max(game.shake, 9);
-  game.flash = Math.max(game.flash, 0.8);
-  game.hudDirty = true;
-}
-
-function updateDanger(game: GameState, dt: number) {
-  let aboveLine = false;
-  for (const bubble of game.bubbles) {
-    if (bubble.age > 0.55 && bubble.y - bubble.radius < DANGER_Y) {
-      aboveLine = true;
-      break;
-    }
+  if (game.bubbles.length >= settings.targetCount) {
+    game.spawnTimer = Math.min(game.spawnTimer, 0);
+    return;
   }
-  if (aboveLine) {
-    game.dangerTimer = Math.min(DANGER_LIMIT, game.dangerTimer + dt);
-    if (game.dangerTimer >= DANGER_LIMIT) endGame(game);
-  } else {
-    game.dangerTimer = Math.max(0, game.dangerTimer - dt * 1.7);
-  }
+  game.spawnTimer -= dt;
+  if (game.spawnTimer > 0) return;
+  spawnAtTop(game, settings);
+  game.spawnTimer = Math.max(0.08, 1 / settings.spawnRate);
 }
 
 function makeBackdrop() {
@@ -433,7 +526,7 @@ function makeBackdrop() {
 
 const BACKDROP = makeBackdrop();
 
-function drawBackground(ctx: CanvasRenderingContext2D, time: number, dangerRatio: number) {
+function drawBackground(ctx: CanvasRenderingContext2D, time: number) {
   const background = ctx.createLinearGradient(-30, -30, WORLD_W + 30, WORLD_H + 30);
   background.addColorStop(0, '#061221');
   background.addColorStop(0.55, '#081a2d');
@@ -442,7 +535,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, time: number, dangerRatio
   ctx.fillRect(-40, -40, WORLD_W + 80, WORLD_H + 80);
 
   const glow = ctx.createRadialGradient(WORLD_W / 2, WORLD_H * 0.88, 20, WORLD_W / 2, WORLD_H * 0.88, 320);
-  glow.addColorStop(0, `rgba(34,211,238,${0.12 + dangerRatio * 0.06})`);
+  glow.addColorStop(0, 'rgba(34,211,238,0.12)');
   glow.addColorStop(0.55, 'rgba(14,116,144,0.06)');
   glow.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = glow;
@@ -497,7 +590,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, time: number, dangerRatio
   ctx.restore();
 }
 
-function drawContainer(ctx: CanvasRenderingContext2D, dangerRatio: number) {
+function drawContainer(ctx: CanvasRenderingContext2D) {
   const fill = ctx.createLinearGradient(0, 0, 0, FLOOR);
   fill.addColorStop(0, 'rgba(56,189,248,0.02)');
   fill.addColorStop(0.72, 'rgba(8,145,178,0.05)');
@@ -508,7 +601,7 @@ function drawContainer(ctx: CanvasRenderingContext2D, dangerRatio: number) {
   ctx.save();
   ctx.shadowColor = 'rgba(56,189,248,0.7)';
   ctx.shadowBlur = 12;
-  ctx.strokeStyle = `rgba(125,211,252,${0.32 + dangerRatio * 0.28})`;
+  ctx.strokeStyle = 'rgba(125,211,252,0.4)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(LEFT, 0);
@@ -536,44 +629,20 @@ function drawContainer(ctx: CanvasRenderingContext2D, dangerRatio: number) {
   ctx.fillRect(LEFT, FLOOR - 22, RIGHT - LEFT, 22);
 }
 
-function drawDangerLine(ctx: CanvasRenderingContext2D, time: number, dangerRatio: number) {
-  const active = dangerRatio > 0.02;
-  const pulse = active ? 0.55 + 0.35 * Math.sin(time * 15) : 0.32;
-  ctx.save();
-  ctx.setLineDash([7, 7]);
-  ctx.lineDashOffset = -time * 20;
-  ctx.strokeStyle = `rgba(251,113,133,${pulse})`;
-  ctx.lineWidth = active ? 1.6 : 1.2;
-  ctx.beginPath();
-  ctx.moveTo(LEFT + 4, DANGER_Y);
-  ctx.lineTo(RIGHT - 4, DANGER_Y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = `rgba(254,205,211,${active ? 0.85 : 0.5})`;
-  ctx.font = '700 8px ui-monospace, monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText('DANGER', RIGHT - 8, DANGER_Y - 6);
-  if (active) {
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(254,205,211,0.75)';
-    ctx.fillText('LIMIT', LEFT + 8, DANGER_Y - 6);
-  }
-  ctx.restore();
-}
-
 function drawBubble(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   radius: number,
   level: number,
-  alpha = 1
+  withGlow: boolean
 ) {
   const palette = PALETTES[Math.min(level, MAX_LEVEL)];
   ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.shadowColor = palette.glow;
-  ctx.shadowBlur = 10 + level * 2;
+  if (withGlow) {
+    ctx.shadowColor = palette.glow;
+    ctx.shadowBlur = 8 + level * 2;
+  }
   const body = ctx.createRadialGradient(
     x - radius * 0.35,
     y - radius * 0.42,
@@ -617,50 +686,17 @@ function drawBubble(
   ctx.restore();
 }
 
-function drawAimGuide(ctx: CanvasRenderingContext2D, game: GameState) {
-  const radius = BUBBLE_RADII[game.currentLevel];
-  const ready = game.cooldown <= 0;
+function drawPointer(ctx: CanvasRenderingContext2D, game: GameState) {
+  if (!game.pointerActive) return;
   ctx.save();
-  ctx.setLineDash([4, 9]);
-  ctx.lineDashOffset = -game.time * 26;
-  ctx.strokeStyle = ready ? 'rgba(186,230,253,0.17)' : 'rgba(186,230,253,0.07)';
+  ctx.setLineDash([3, 5]);
+  ctx.lineDashOffset = -game.time * 20;
+  ctx.strokeStyle = 'rgba(186,230,253,0.45)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(game.aimX, SPAWN_Y + radius + 5);
-  ctx.lineTo(game.aimX, FLOOR - 5);
+  ctx.arc(game.pointerX, game.pointerY, 15 + Math.sin(game.time * 6) * 2, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
-
-  ctx.save();
-  ctx.globalAlpha = ready ? 0.45 : 0.2;
-  ctx.fillStyle = 'rgba(186,230,253,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(game.aimX, FLOOR - 2, radius, 3.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawCurrentBubble(ctx: CanvasRenderingContext2D, game: GameState) {
-  const radius = BUBBLE_RADII[game.currentLevel];
-  const ready = game.cooldown <= 0;
-  const bob = Math.sin(game.time * 3.2) * 2;
-  const y = SPAWN_Y + bob;
-  drawBubble(ctx, game.aimX, y, radius, game.currentLevel, ready ? 1 : 0.32);
-  if (!ready) {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(253,230,138,0.72)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(
-      game.aimX,
-      y,
-      radius + 4,
-      -Math.PI / 2,
-      -Math.PI / 2 + (1 - game.cooldown / DROP_COOLDOWN) * Math.PI * 2
-    );
-    ctx.stroke();
-    ctx.restore();
-  }
 }
 
 function drawEffects(ctx: CanvasRenderingContext2D, game: GameState) {
@@ -684,36 +720,23 @@ function drawEffects(ctx: CanvasRenderingContext2D, game: GameState) {
     ctx.arc(ring.x, ring.y, ring.radius + progress * 46, 0, Math.PI * 2);
     ctx.stroke();
   }
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.textAlign = 'center';
-  ctx.font = '700 12px ui-monospace, monospace';
-  for (const text of game.texts) {
-    ctx.globalAlpha = Math.max(0, text.life / text.maxLife);
-    ctx.fillStyle = text.color;
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 6;
-    ctx.fillText(text.text, text.x, text.y);
-  }
   ctx.restore();
 }
 
 function renderScene(ctx: CanvasRenderingContext2D, game: GameState) {
-  const dangerRatio = game.dangerTimer / DANGER_LIMIT;
   ctx.save();
   if (game.shake > 0.1) {
     const shakeX = Math.sin(game.time * 89) * game.shake * 0.5;
     const shakeY = Math.cos(game.time * 71) * game.shake * 0.4;
     ctx.translate(shakeX, shakeY);
   }
-  drawBackground(ctx, game.time, dangerRatio);
-  drawContainer(ctx, dangerRatio);
-  drawDangerLine(ctx, game.time, dangerRatio);
-  if (game.phase === 'playing') drawAimGuide(ctx, game);
+  drawBackground(ctx, game.time);
+  drawContainer(ctx);
+  const withGlow = game.bubbles.length < 70;
   for (const bubble of game.bubbles) {
-    drawBubble(ctx, bubble.x, bubble.y, bubble.radius, bubble.level, 1);
+    drawBubble(ctx, bubble.x, bubble.y, bubble.radius, bubble.level, withGlow || bubble.level >= 3);
   }
-  if (game.phase === 'playing') drawCurrentBubble(ctx, game);
+  drawPointer(ctx, game);
   drawEffects(ctx, game);
   if (game.flash > 0) {
     ctx.fillStyle = `rgba(186,230,253,${Math.min(0.22, game.flash * 0.12)})`;
@@ -734,98 +757,151 @@ function renderScene(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.restore();
 }
 
+function pointerToWorld(event: React.PointerEvent<HTMLDivElement>) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return {
+    x: rect.width > 0 ? ((event.clientX - rect.left) / rect.width) * WORLD_W : WORLD_W / 2,
+    y: rect.height > 0 ? ((event.clientY - rect.top) / rect.height) * WORLD_H : WORLD_H / 2,
+  };
+}
+
+function SliderRow({
+  label,
+  value,
+  display,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  display: string;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[78px_minmax(0,1fr)_48px] items-center gap-2">
+      <span className="text-[10px] font-bold text-slate-300">{label}</span>
+      <input
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="h-5 w-full cursor-pointer accent-cyan-300"
+      />
+      <span className="text-right font-mono text-[10px] font-black text-cyan-200">{display}</span>
+    </div>
+  );
+}
+
 export function BubbleMergeGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gameRef = useRef<GameState>(createInitialGame(0));
-  const [hud, setHud] = useState<HudState>(() => toHud(gameRef.current));
+  const gameRef = useRef<GameState>(createInitialGame());
+  const settingsRef = useRef<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [hud, setHud] = useState<HudState>(EMPTY_HUD);
 
   const syncHud = useCallback(() => {
     setHud(toHud(gameRef.current));
   }, []);
 
-  const updateAim = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const game = gameRef.current;
-    const rect = event.currentTarget.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const radius = BUBBLE_RADII[game.currentLevel];
-    const x = ((event.clientX - rect.left) / rect.width) * WORLD_W;
-    game.aimX = clamp(x, LEFT + radius, RIGHT - radius);
-  }, []);
+  const updateSettings = useCallback(
+    (patch: Partial<Settings>) => {
+      const current = settingsRef.current;
+      const next = { ...current, ...patch };
+      settingsRef.current = next;
+      setSettings(next);
+      if (patch.targetCount !== undefined) {
+        adjustPopulation(gameRef.current, next, next.targetCount);
+        syncHud();
+      }
+    },
+    [syncHud]
+  );
 
-  const dropBubble = useCallback(() => {
-    const game = gameRef.current;
-    if (game.phase !== 'playing' || game.cooldown > 0) return;
-    const level = game.currentLevel;
-    const radius = BUBBLE_RADII[level];
-    const x = clamp(game.aimX, LEFT + radius, RIGHT - radius);
-    game.bubbles.push({
-      id: game.nextId,
-      x,
-      y: SPAWN_Y,
-      vx: 0,
-      vy: 30,
-      radius,
-      level,
-      age: 0,
-    });
-    game.nextId += 1;
-    game.dropped += 1;
-    game.currentLevel = game.nextLevel;
-    game.nextLevel = randomLevel();
-    const nextRadius = BUBBLE_RADII[game.currentLevel];
-    game.aimX = clamp(game.aimX, LEFT + nextRadius, RIGHT - nextRadius);
-    game.cooldown = DROP_COOLDOWN;
-    game.hudDirty = true;
-  }, []);
+  const handleStartSize = useCallback(
+    (value: number) => {
+      const current = settingsRef.current;
+      updateSettings({
+        minRadius: value,
+        maxRadius: Math.max(value, current.maxRadius),
+      });
+    },
+    [updateSettings]
+  );
 
-  const resetGame = useCallback(() => {
-    const best = gameRef.current.best;
-    gameRef.current = createInitialGame(best);
-    gameRef.current.currentLevel = randomLevel();
-    gameRef.current.nextLevel = randomLevel();
-    syncHud();
-  }, [syncHud]);
+  const handleEndSize = useCallback(
+    (value: number) => {
+      const current = settingsRef.current;
+      updateSettings({
+        maxRadius: value,
+        minRadius: Math.min(value, current.minRadius),
+      });
+    },
+    [updateSettings]
+  );
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement;
-      if (target.closest('button, a')) return;
+      if (target.closest('button, a, input')) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      const game = gameRef.current;
-      if (game.phase !== 'playing') return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
+      const game = gameRef.current;
+      const position = pointerToWorld(event);
       game.activePointer = event.pointerId;
-      updateAim(event);
+      game.pointerX = position.x;
+      game.pointerY = position.y;
+      game.pointerActive = true;
+      if (spawnAtPoint(game, settingsRef.current, position.x, position.y)) {
+        game.lastSpawnX = position.x;
+        game.lastSpawnY = position.y;
+        game.lastSpawnTime = performance.now();
+        syncHud();
+      }
     },
-    [updateAim]
+    [syncHud]
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       const game = gameRef.current;
-      if (game.phase !== 'playing') return;
-      if (game.activePointer !== null && game.activePointer !== event.pointerId) return;
-      if (game.activePointer === event.pointerId) event.preventDefault();
-      updateAim(event);
-    },
-    [updateAim]
-  );
-
-  const handlePointerUp = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      const game = gameRef.current;
       if (game.activePointer !== event.pointerId) return;
       event.preventDefault();
-      updateAim(event);
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
+      const position = pointerToWorld(event);
+      game.pointerX = position.x;
+      game.pointerY = position.y;
+      game.pointerActive = true;
+      const now = performance.now();
+      const distance = Math.hypot(position.x - game.lastSpawnX, position.y - game.lastSpawnY);
+      if (distance < 18 && now - game.lastSpawnTime < 110) return;
+      if (spawnAtPoint(game, settingsRef.current, position.x, position.y)) {
+        game.lastSpawnX = position.x;
+        game.lastSpawnY = position.y;
+        game.lastSpawnTime = now;
+        syncHud();
       }
-      game.activePointer = null;
-      dropBubble();
     },
-    [dropBubble, updateAim]
+    [syncHud]
   );
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const game = gameRef.current;
+    if (game.activePointer !== event.pointerId) return;
+    event.preventDefault();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    game.activePointer = null;
+    game.pointerActive = false;
+  }, []);
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const game = gameRef.current;
@@ -834,14 +910,28 @@ export function BubbleMergeGame() {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     game.activePointer = null;
+    game.pointerActive = false;
   }, []);
+
+  const handleReset = useCallback(() => {
+    const current = settingsRef.current;
+    gameRef.current = createInitialGame();
+    adjustPopulation(gameRef.current, current, current.targetCount);
+    syncHud();
+  }, [syncHud]);
+
+  const handleStep = useCallback(() => {
+    const game = gameRef.current;
+    const current = settingsRef.current;
+    if (!current.paused) updateSettings({ paused: true });
+    stepPhysics(game, current, FIXED_STEP);
+    updateEffects(game, FIXED_STEP);
+    syncHud();
+  }, [syncHud, updateSettings]);
 
   useEffect(() => {
     const game = gameRef.current;
-    const best = readBestScore();
-    if (best > game.best) game.best = best;
-    game.currentLevel = randomLevel();
-    game.nextLevel = randomLevel();
+    adjustPopulation(game, settingsRef.current, settingsRef.current.targetCount);
     syncHud();
   }, [syncHud]);
 
@@ -871,40 +961,32 @@ export function BubbleMergeGame() {
   useEffect(() => {
     let rafId = 0;
     let last = performance.now();
+    let lastHud = 0;
     let accumulator = 0;
-    const step = 1 / 120;
     const frame = (now: number) => {
-      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+      const dt = clamp((now - last) / 1000, 0, 0.05);
       last = now;
       const game = gameRef.current;
-      game.time += dt;
-      game.shake = Math.max(0, game.shake - dt * 30);
-      game.flash = Math.max(0, game.flash - dt * 2.4);
-      updateEffects(game, dt);
-
-      if (game.phase === 'playing') {
-        game.cooldown = Math.max(0, game.cooldown - dt);
-        if (game.combo > 0) {
-          game.comboTimer -= dt;
-          if (game.comboTimer <= 0) {
-            game.combo = 0;
-            game.comboTimer = 0;
-            game.hudDirty = true;
-          }
+      const current = settingsRef.current;
+      if (!current.paused) {
+        const simDt = dt * current.speed;
+        game.time += simDt;
+        game.shake = Math.max(0, game.shake - simDt * 30);
+        game.flash = Math.max(0, game.flash - simDt * 2.4);
+        updateEffects(game, simDt);
+        updateAutoSpawn(game, current, simDt);
+        accumulator = Math.min(accumulator + simDt, FIXED_STEP * 16);
+        let steps = 0;
+        while (accumulator >= FIXED_STEP && steps < 16) {
+          stepPhysics(game, current, FIXED_STEP);
+          accumulator -= FIXED_STEP;
+          steps += 1;
         }
-        accumulator = Math.min(accumulator + dt, step * 6);
-        while (accumulator >= step) {
-          stepPhysics(game, step);
-          accumulator -= step;
-        }
-        updateDanger(game, dt);
       }
-
-      if (game.hudDirty) {
-        game.hudDirty = false;
-        syncHud();
+      if (now - lastHud > 180) {
+        lastHud = now;
+        setHud(toHud(game));
       }
-
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -920,11 +1002,18 @@ export function BubbleMergeGame() {
     };
     rafId = window.requestAnimationFrame(frame);
     return () => window.cancelAnimationFrame(rafId);
-  }, [syncHud]);
+  }, []);
 
-  const nextPalette = PALETTES[hud.nextLevel];
-  const nextSize = Math.min(32, 13 + hud.nextLevel * 4);
-  const multiplier = comboMultiplier(hud.combo);
+  const handleAutoSpawn = () => updateSettings({ autoSpawn: !settingsRef.current.autoSpawn });
+  const handlePause = () => updateSettings({ paused: !settingsRef.current.paused });
+
+  const stats = [
+    { label: '泡の数', value: hud.count.toLocaleString() },
+    { label: '合体回数', value: hud.merges.toLocaleString() },
+    { label: '最大半径', value: hud.largest.toFixed(1) },
+    { label: '平均半径', value: hud.average.toFixed(1) },
+    { label: '衝突回数', value: hud.collisions.toLocaleString() },
+  ];
 
   return (
     <div className="min-h-screen bg-[#06111f] text-slate-100 select-none">
@@ -939,61 +1028,40 @@ export function BubbleMergeGame() {
             </Link>
             <div className="min-w-0">
               <p className="truncate text-[9px] font-bold tracking-[0.18em] text-cyan-300/80">
-                BUBBLE MERGE / バブル・マージ
+                BUBBLE MERGE / PHYSICS LAB
               </p>
-              <h2 className="truncate text-sm font-black sm:text-base">バブル・マージ</h2>
+              <h2 className="truncate text-sm font-black sm:text-base">バブル・マージ・ラボ</h2>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="rounded-lg border border-cyan-300/20 bg-cyan-950/30 px-2.5 py-1 text-[10px] text-slate-300">
-              BEST <span className="font-mono font-black text-cyan-200">{hud.best.toLocaleString()}</span>
-            </div>
-            <button
-              type="button"
-              onClick={resetGame}
-              className="rounded-lg border border-amber-300/30 bg-amber-400/10 px-2.5 py-1.5 text-[10px] font-black text-amber-200 transition hover:border-amber-300/70 hover:bg-amber-400/20"
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-black ${
+                settings.paused
+                  ? 'border-amber-300/30 bg-amber-400/10 text-amber-200'
+                  : 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
+              }`}
             >
-              リセット
-            </button>
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  settings.paused ? 'bg-amber-300' : 'bg-emerald-300'
+                }`}
+              />
+              {settings.paused ? 'PAUSED' : 'LIVE'}
+            </span>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[430px] flex-col gap-2 px-3 py-3">
-        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl border border-cyan-300/15 bg-white/[0.03] px-3 py-2">
-          <div className="min-w-0">
-            <p className="text-[9px] font-bold tracking-[0.18em] text-slate-400">SCORE</p>
-            <p className="truncate font-mono text-2xl font-black leading-tight text-white">
-              {hud.score.toLocaleString()}
-            </p>
-          </div>
-          <div className="min-w-[64px] text-right">
-            <p className="text-[9px] font-bold tracking-[0.18em] text-slate-400">COMBO</p>
-            <p
-              className={`font-mono text-xl font-black leading-tight ${
-                hud.combo > 0 ? 'text-amber-300' : 'text-slate-600'
-              }`}
-            >
-              x{multiplier.toFixed(2)}
-            </p>
-            <p className="text-[9px] font-bold text-slate-500">{hud.combo} COMBO</p>
-          </div>
-          <div className="flex items-center gap-2 border-l border-white/10 pl-2">
-            <div>
-              <p className="text-[9px] font-bold tracking-[0.18em] text-slate-400">NEXT</p>
-              <div className="mt-0.5 flex h-9 w-9 items-center justify-center">
-                <span
-                  className="block rounded-full"
-                  style={{
-                    width: nextSize,
-                    height: nextSize,
-                    background: `radial-gradient(circle at 34% 30%, #ffffff 0%, ${nextPalette.light} 24%, ${nextPalette.mid} 68%, ${nextPalette.edge} 100%)`,
-                    boxShadow: `0 0 14px ${nextPalette.glow}`,
-                  }}
-                />
-              </div>
+      <div className="mx-auto flex w-full max-w-[430px] flex-col gap-2.5 px-3 py-3">
+        <div className="grid grid-cols-5 gap-1 rounded-xl border border-cyan-300/15 bg-white/[0.03] py-1.5">
+          {stats.map((item) => (
+            <div key={item.label} className="min-w-0 px-1 text-center">
+              <p className="truncate text-[8px] font-bold tracking-[0.08em] text-slate-400">
+                {item.label}
+              </p>
+              <p className="truncate font-mono text-xs font-black text-cyan-100">{item.value}</p>
             </div>
-          </div>
+          ))}
         </div>
 
         <div
@@ -1003,71 +1071,151 @@ export function BubbleMergeGame() {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
+          onLostPointerCapture={handlePointerCancel}
           onContextMenu={(event) => event.preventDefault()}
           onDragStart={(event) => event.preventDefault()}
         >
           <canvas
             ref={canvasRef}
-            aria-label="バブル・マージのゲーム画面"
+            aria-label="バブル合体シミュレーターのキャンバス"
             className="block aspect-[13/20] w-full"
           />
 
-          {hud.phase === 'playing' && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-7">
-              <div className="rounded-full border border-cyan-300/25 bg-black/55 px-3 py-1.5 text-center text-[10px] font-bold text-cyan-100 backdrop-blur">
-                左右にドラッグして狙い、タップで落とす
-              </div>
+          {settings.paused && (
+            <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+              <span className="rounded-full border border-amber-300/30 bg-black/55 px-3 py-1 text-[10px] font-black tracking-[0.12em] text-amber-200 backdrop-blur">
+                一時停止中
+              </span>
             </div>
           )}
 
-          {hud.phase === 'over' && (
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="リザルト"
-              className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto bg-[#03101f]/90 px-4 py-6 text-center backdrop-blur-md"
-            >
-              <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300">RESULT</p>
-              <h3 className="mt-1 text-2xl font-black text-white">ゲームオーバー</h3>
-              <p className="mt-1 text-[11px] text-slate-300">泡が危険ラインを超えました</p>
-              <div className="mt-4 w-full max-w-[280px] rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                <div className="flex items-end justify-between border-b border-white/10 pb-2">
-                  <span className="text-[10px] font-bold text-slate-400">FINAL SCORE</span>
-                  <span className="font-mono text-2xl font-black text-cyan-200">
-                    {hud.score.toLocaleString()}
-                  </span>
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-left">
-                  {[
-                    { label: '最大コンボ', value: `${hud.maxCombo}` },
-                    { label: 'マージ回数', value: `${hud.merges}` },
-                    { label: '落とした泡', value: `${hud.dropped}` },
-                    { label: 'ベスト', value: hud.best.toLocaleString() },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">
-                      <p className="text-[9px] font-bold text-slate-500">{item.label}</p>
-                      <p className="font-mono text-sm font-black text-slate-100">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-                {hud.newBest && (
-                  <p className="mt-2 text-[10px] font-black tracking-[0.15em] text-amber-300">NEW BEST</p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={resetGame}
-                className="mt-4 rounded-xl border-2 border-cyan-300 bg-gradient-to-r from-cyan-400 to-sky-500 px-6 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:scale-[1.03]"
-              >
-                もう一度遊ぶ
-              </button>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-7">
+            <div className="rounded-full border border-cyan-300/25 bg-black/55 px-3 py-1.5 text-center text-[10px] font-bold text-cyan-100 backdrop-blur">
+              タップ / ドラッグで泡を追加
             </div>
-          )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={handleAutoSpawn}
+              aria-pressed={settings.autoSpawn}
+              className={`rounded-lg border px-2 py-2 text-[11px] font-black transition ${
+                settings.autoSpawn
+                  ? 'border-emerald-300/40 bg-emerald-400/10 text-emerald-200'
+                  : 'border-white/10 bg-white/[0.03] text-slate-400'
+              }`}
+            >
+              自動生成 {settings.autoSpawn ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={handlePause}
+              className={`rounded-lg border px-2 py-2 text-[11px] font-black transition ${
+                settings.paused
+                  ? 'border-amber-300/40 bg-amber-400/10 text-amber-200'
+                  : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-200'
+              }`}
+            >
+              {settings.paused ? '再生' : '一時停止'}
+            </button>
+            <button
+              type="button"
+              onClick={handleStep}
+              className="rounded-lg border border-sky-300/25 bg-sky-400/10 px-2 py-2 text-[11px] font-black text-sky-200 transition hover:border-sky-300/60"
+            >
+              1ステップ
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-lg border border-amber-300/30 bg-amber-400/10 px-2 py-2 text-[11px] font-black text-amber-200 transition hover:border-amber-300/70 hover:bg-amber-400/20"
+            >
+              リセット
+            </button>
+          </div>
+
+          <div className="mt-2.5 space-y-1.5 border-t border-white/10 pt-2.5">
+            <SliderRow
+              label="重力"
+              value={settings.gravity}
+              display={`${Math.round(settings.gravity)}`}
+              min={0}
+              max={1800}
+              step={20}
+              onChange={(value) => updateSettings({ gravity: value })}
+            />
+            <SliderRow
+              label="表面張力"
+              value={settings.tension}
+              display={`${Math.round(settings.tension * 100)}%`}
+              min={0}
+              max={1}
+              step={0.01}
+              onChange={(value) => updateSettings({ tension: value })}
+            />
+            <SliderRow
+              label="最小サイズ"
+              value={settings.minRadius}
+              display={`${settings.minRadius.toFixed(1)}`}
+              min={8}
+              max={40}
+              step={0.5}
+              onChange={handleStartSize}
+            />
+            <SliderRow
+              label="最大サイズ"
+              value={settings.maxRadius}
+              display={`${settings.maxRadius.toFixed(1)}`}
+              min={12}
+              max={72}
+              step={0.5}
+              onChange={handleEndSize}
+            />
+            <SliderRow
+              label="発生レート"
+              value={settings.spawnRate}
+              display={`${settings.spawnRate.toFixed(1)}/s`}
+              min={0}
+              max={8}
+              step={0.1}
+              onChange={(value) => updateSettings({ spawnRate: value })}
+            />
+            <SliderRow
+              label="泡の数"
+              value={settings.targetCount}
+              display={`${settings.targetCount}`}
+              min={4}
+              max={100}
+              step={1}
+              onChange={(value) => updateSettings({ targetCount: value })}
+            />
+            <SliderRow
+              label="弾性"
+              value={settings.elasticity}
+              display={`${Math.round(settings.elasticity * 100)}%`}
+              min={0}
+              max={0.9}
+              step={0.01}
+              onChange={(value) => updateSettings({ elasticity: value })}
+            />
+            <SliderRow
+              label="シミュ速度"
+              value={settings.speed}
+              display={`${settings.speed.toFixed(2)}x`}
+              min={0.25}
+              max={2.5}
+              step={0.05}
+              onChange={(value) => updateSettings({ speed: value })}
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold text-slate-400">
-          <span>同じサイズの泡は合体して大きくなる</span>
-          <span className="text-cyan-200">最大サイズは大きく弾ける</span>
+          <span>同サイズの泡は合体して大きくなる</span>
+          <span className="text-cyan-200">上限 {MAX_BUBBLES} 個</span>
         </div>
       </div>
     </div>

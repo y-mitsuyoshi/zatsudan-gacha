@@ -927,10 +927,9 @@ export function LogisticRegression() {
                       <span
                         className="block h-full bg-[var(--accent)]"
                         style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(0, probability * 100),
-                          )}%`,
+                          width: `${Math.round(
+                            Math.min(100, Math.max(0, probability * 100)) * 1000,
+                          ) / 1000}%`,
                         }}
                       />
                     </span>

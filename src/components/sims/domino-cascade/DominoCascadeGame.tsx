@@ -6,37 +6,18 @@ import Link from 'next/link';
 const CANVAS_W = 960;
 const CANVAS_H = 720;
 const TRACK_STEP = 4;
-const DOMINO_H = 92;
-const DOMINO_W = 28;
-const IDEAL_GAP = 58;
-const IDEAL_MIN = 46;
-const IDEAL_MAX = 78;
-const MAX_REACH = 104;
-const MIN_GAP = 46;
-const MAX_DOMINOES = 58;
-const BUILD_TIME = 45;
-const FALL_LIMIT = Math.PI / 2 - 0.04;
-const STORAGE_KEY = 'domino-cascade-best-v1';
+const DOMINO_W = 26;
+const MIN_GAP = 20;
+const MAX_DOMINOES = 160;
+const FALL_LIMIT = Math.PI / 2 - 0.035;
 const ACCENTS = ['#7fd6c2', '#f0b45c', '#ef8a78', '#9db4ff', '#d9a6f2'];
 
-type Phase = 'title' | 'build' | 'running' | 'result';
 type Preset = 's' | 'loop' | 'zigzag';
-type Quality = 'perfect' | 'ok' | 'far' | 'blocked';
+type Quality = 'good' | 'bad' | 'blocked';
 
 type Vec = { x: number; y: number };
-
-type TrackPoint = {
-  x: number;
-  y: number;
-  s: number;
-  tx: number;
-  ty: number;
-};
-
-type TrackShape = {
-  points: TrackPoint[];
-  length: number;
-};
+type TrackPoint = { x: number; y: number; s: number; tx: number; ty: number };
+type TrackShape = { points: TrackPoint[]; length: number };
 
 type Domino = {
   id: number;
@@ -51,18 +32,7 @@ type Domino = {
   done: boolean;
   triggered: boolean;
   nextTriggered: boolean;
-  linkGap: number;
-  linkPerfect: boolean;
   accent: string;
-};
-
-type Popup = {
-  x: number;
-  y: number;
-  text: string;
-  color: string;
-  life: number;
-  maxLife: number;
 };
 
 type Particle = {
@@ -76,39 +46,16 @@ type Particle = {
   maxLife: number;
 };
 
-type Banner = {
-  text: string;
-  sub: string;
-  color: string;
-  life: number;
-  maxLife: number;
-};
+type Ghost = { x: number; y: number; s: number; quality: Quality };
 
-type Ghost = {
-  x: number;
-  y: number;
-  s: number;
-  quality: Quality;
-};
-
-type Result = {
-  score: number;
-  toppled: number;
-  total: number;
-  perfect: number;
-  maxCombo: number;
-  coverage: number;
-  rank: string;
-  isBest: boolean;
-};
-
-type HudState = {
-  placed: number;
-  toppled: number;
-  score: number;
-  combo: number;
-  time: number;
-  perfect: number;
+type Settings = {
+  preset: Preset;
+  spacing: number;
+  height: number;
+  friction: number;
+  pushForce: number;
+  gravity: number;
+  speed: number;
 };
 
 type SimState = {
@@ -116,24 +63,53 @@ type SimState = {
   track: TrackShape;
   dominos: Domino[];
   nextId: number;
-  score: number;
+  spacing: number;
+  height: number;
+  friction: number;
+  pushForce: number;
+  gravity: number;
+  speed: number;
+  running: boolean;
+  paused: boolean;
+  launched: boolean;
+  settled: boolean;
   toppled: number;
-  perfectLinks: number;
-  combo: number;
-  maxCombo: number;
-  buildRemaining: number;
+  maxChain: number;
+  propSpeed: number;
+  completed: boolean;
+  chainBreakS: number | null;
   runTime: number;
   settleTime: number;
-  launched: boolean;
-  finished: boolean;
-  autoLaunched: boolean;
-  chainBroke: boolean;
-  chainBreakS: number;
-  popups: Popup[];
-  particles: Particle[];
-  banner: Banner | null;
+  firstTriggerAt: number;
+  lastTriggerAt: number;
   ghost: Ghost | null;
+  hoverRemoveId: number | null;
+  particles: Particle[];
   time: number;
+};
+
+type HudState = {
+  placed: number;
+  toppled: number;
+  remaining: number;
+  propSpeed: number;
+  maxChain: number;
+  completed: boolean;
+  settled: boolean;
+  launched: boolean;
+  running: boolean;
+  paused: boolean;
+  status: string;
+};
+
+const DEFAULT_SETTINGS: Settings = {
+  preset: 's',
+  spacing: 56,
+  height: 92,
+  friction: 0.35,
+  pushForce: 1.4,
+  gravity: 1,
+  speed: 1,
 };
 
 const PRESET_CONTROLS: Record<Preset, Vec[]> = {
@@ -190,13 +166,13 @@ const PRESET_NAMES: Record<Preset, string> = {
 };
 
 const QUALITY_COLORS: Record<Quality, string> = {
-  perfect: '#8cf0cd',
-  ok: '#f2c76a',
-  far: '#ff9b86',
+  good: '#8cf0cd',
+  bad: '#ff9b86',
   blocked: '#77827c',
 };
 
 function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
   return value < min ? min : value > max ? max : value;
 }
 
@@ -247,7 +223,10 @@ function buildTrack(preset: Preset): TrackShape {
   const extended: Vec[] = [
     { x: first.x * 2 - controls[1].x, y: first.y * 2 - controls[1].y },
     ...controls,
-    { x: last.x * 2 - controls[controls.length - 2].x, y: last.y * 2 - controls[controls.length - 2].y },
+    {
+      x: last.x * 2 - controls[controls.length - 2].x,
+      y: last.y * 2 - controls[controls.length - 2].y,
+    },
   ];
   const dense: Vec[] = [];
   for (let i = 0; i < extended.length - 3; i += 1) {
@@ -256,7 +235,7 @@ function buildTrack(preset: Preset): TrackShape {
     const p2 = extended[i + 2];
     const p3 = extended[i + 3];
     const segmentLength = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    const steps = Math.max(10, Math.ceil(segmentLength / 5));
+    const steps = Math.max(10, Math.min(220, Math.ceil(segmentLength / 5)));
     for (let j = 0; j < steps; j += 1) {
       dense.push(catmullRom(p0, p1, p2, p3, j / steps));
     }
@@ -269,7 +248,7 @@ function buildTrack(preset: Preset): TrackShape {
     );
   }
   const total = cumulative[cumulative.length - 1];
-  const count = Math.max(2, Math.ceil(total / TRACK_STEP));
+  const count = Math.max(2, Math.min(900, Math.ceil(total / TRACK_STEP)));
   const points: TrackPoint[] = [];
   for (let i = 0; i <= count; i += 1) {
     const target = Math.min(total, i * TRACK_STEP);
@@ -323,6 +302,10 @@ function nearestOnTrack(track: TrackShape, x: number, y: number) {
   return { x: best.x, y: best.y, s: best.s, dist: Math.sqrt(bestDistance) };
 }
 
+function getReach(height: number): number {
+  return Math.max(24, height * 0.94);
+}
+
 function makeDomino(track: TrackShape, distance: number, id: number): Domino {
   const point = pointAt(track, distance);
   return {
@@ -338,27 +321,33 @@ function makeDomino(track: TrackShape, distance: number, id: number): Domino {
     done: false,
     triggered: false,
     nextTriggered: false,
-    linkGap: 0,
-    linkPerfect: false,
-    accent: ACCENTS[Math.floor(point.s / IDEAL_GAP) % ACCENTS.length],
+    accent: ACCENTS[Math.floor(point.s / 64) % ACCENTS.length],
   };
 }
 
-function fillTrack(track: TrackShape): Domino[] {
+function fillTrack(track: TrackShape, spacing: number): Domino[] {
+  const gap = clamp(spacing, MIN_GAP, 120);
   const dominos: Domino[] = [];
-  let distance = 40;
+  let distance = 36;
   let id = 0;
-  while (distance < track.length - 28 && dominos.length < MAX_DOMINOES) {
+  let guard = 0;
+  while (distance < track.length - 24 && dominos.length < MAX_DOMINOES && guard < 400) {
     dominos.push(makeDomino(track, distance, id));
     id += 1;
-    distance += IDEAL_GAP;
+    distance += gap;
+    guard += 1;
   }
   return dominos;
 }
 
+function getGapQuality(sim: SimState, gap: number): Quality {
+  if (!Number.isFinite(gap) || gap < MIN_GAP) return 'blocked';
+  return gap <= getReach(sim.height) ? 'good' : 'bad';
+}
+
 function getPlacementQuality(sim: SimState, distance: number): Quality {
   if (sim.dominos.length >= MAX_DOMINOES) return 'blocked';
-  if (distance < 26 || distance > sim.track.length - 20) return 'blocked';
+  if (distance < 24 || distance > sim.track.length - 20) return 'blocked';
   let prev: Domino | null = null;
   let next: Domino | null = null;
   for (const domino of sim.dominos) {
@@ -368,100 +357,112 @@ function getPlacementQuality(sim: SimState, distance: number): Quality {
       next = domino;
     }
   }
-  if (!prev && !next) return 'perfect';
-  let minGap = Number.POSITIVE_INFINITY;
-  if (prev) minGap = Math.min(minGap, distance - prev.s);
-  if (next) minGap = Math.min(minGap, next.s - distance);
-  if (minGap < MIN_GAP) return 'blocked';
-  if (minGap >= IDEAL_MIN && minGap <= IDEAL_MAX) return 'perfect';
-  if (minGap <= MAX_REACH) return 'ok';
-  return 'far';
+  if (!prev && !next) return 'good';
+  const gaps: number[] = [];
+  if (prev) gaps.push(distance - prev.s);
+  if (next) gaps.push(next.s - distance);
+  if (gaps.some((gap) => gap < MIN_GAP)) return 'blocked';
+  const maxGap = Math.max(...gaps);
+  return maxGap <= getReach(sim.height) ? 'good' : 'bad';
 }
 
-function tryPlaceDomino(sim: SimState, distance: number): boolean {
+function insertDomino(sim: SimState, distance: number): boolean {
   if (getPlacementQuality(sim, distance) === 'blocked') return false;
-  sim.dominos.push(makeDomino(sim.track, distance, sim.nextId));
+  const domino = makeDomino(sim.track, distance, sim.nextId);
   sim.nextId += 1;
+  let index = sim.dominos.findIndex((item) => item.s > domino.s);
+  if (index < 0) index = sim.dominos.length;
+  sim.dominos.splice(index, 0, domino);
   return true;
 }
 
-function resetSimState(sim: SimState, preset: Preset, fill: boolean) {
-  const track = buildTrack(preset);
-  sim.preset = preset;
-  sim.track = track;
-  sim.dominos = fill ? fillTrack(track) : [];
-  sim.nextId = sim.dominos.length;
-  sim.score = 0;
-  sim.toppled = 0;
-  sim.perfectLinks = 0;
-  sim.combo = 0;
-  sim.maxCombo = 0;
-  sim.buildRemaining = BUILD_TIME;
-  sim.runTime = 0;
-  sim.settleTime = 0;
-  sim.launched = false;
-  sim.finished = false;
-  sim.autoLaunched = false;
-  sim.chainBroke = false;
-  sim.chainBreakS = 0;
-  sim.popups = [];
-  sim.particles = [];
-  sim.banner = null;
-  sim.ghost = null;
+function longestChain(dominos: Domino[]): number {
+  let longest = 0;
+  let run = 0;
+  for (const domino of dominos) {
+    if (domino.triggered) {
+      run += 1;
+      longest = Math.max(longest, run);
+    } else {
+      run = 0;
+    }
+  }
+  return longest;
 }
 
-function createInitialSim(): SimState {
-  const track = buildTrack('s');
-  const dominos = fillTrack(track);
+function resetPose(sim: SimState) {
+  for (const domino of sim.dominos) {
+    domino.angle = 0;
+    domino.vel = 0;
+    domino.falling = false;
+    domino.done = false;
+    domino.triggered = false;
+    domino.nextTriggered = false;
+  }
+  sim.running = false;
+  sim.paused = false;
+  sim.launched = false;
+  sim.settled = false;
+  sim.toppled = 0;
+  sim.maxChain = 0;
+  sim.propSpeed = 0;
+  sim.completed = false;
+  sim.chainBreakS = null;
+  sim.runTime = 0;
+  sim.settleTime = 0;
+  sim.firstTriggerAt = 0;
+  sim.lastTriggerAt = 0;
+  sim.ghost = null;
+  sim.hoverRemoveId = null;
+  sim.particles = [];
+}
+
+function createInitialSim(settings: Settings): SimState {
+  const track = buildTrack(settings.preset);
+  const dominos = fillTrack(track, settings.spacing);
   return {
-    preset: 's',
+    preset: settings.preset,
     track,
     dominos,
     nextId: dominos.length,
-    score: 0,
+    spacing: settings.spacing,
+    height: settings.height,
+    friction: settings.friction,
+    pushForce: settings.pushForce,
+    gravity: settings.gravity,
+    speed: settings.speed,
+    running: false,
+    paused: false,
+    launched: false,
+    settled: false,
     toppled: 0,
-    perfectLinks: 0,
-    combo: 0,
-    maxCombo: 0,
-    buildRemaining: BUILD_TIME,
+    maxChain: 0,
+    propSpeed: 0,
+    completed: false,
+    chainBreakS: null,
     runTime: 0,
     settleTime: 0,
-    launched: false,
-    finished: false,
-    autoLaunched: false,
-    chainBroke: false,
-    chainBreakS: 0,
-    popups: [],
-    particles: [],
-    banner: null,
+    firstTriggerAt: 0,
+    lastTriggerAt: 0,
     ghost: null,
+    hoverRemoveId: null,
+    particles: [],
     time: 0,
   };
 }
 
-function addPopup(sim: SimState, domino: Domino, text: string, color: string) {
-  if (sim.popups.length > 28) sim.popups.shift();
-  sim.popups.push({
-    x: domino.x,
-    y: domino.y - DOMINO_H * 0.78,
-    text,
-    color,
-    life: 0.95,
-    maxLife: 0.95,
-  });
-}
-
 function spawnDust(sim: SimState, domino: Domino) {
-  for (let i = 0; i < 7; i += 1) {
+  if (sim.particles.length > 180) return;
+  for (let i = 0; i < 6; i += 1) {
     const direction = Math.random() * Math.PI * 2;
-    const speed = 24 + Math.random() * 76;
-    const life = 0.32 + Math.random() * 0.28;
+    const speed = 20 + Math.random() * 64;
+    const life = 0.28 + Math.random() * 0.24;
     sim.particles.push({
       x: domino.x,
       y: domino.y,
       vx: Math.cos(direction) * speed,
-      vy: Math.sin(direction) * speed * 0.42 - 28,
-      size: 2 + Math.random() * 3.4,
+      vy: Math.sin(direction) * speed * 0.38 - 24,
+      size: 1.6 + Math.random() * 2.8,
       color: i % 3 === 0 ? '#f0c46c' : '#c9b58e',
       life,
       maxLife: life,
@@ -474,87 +475,60 @@ function triggerDomino(sim: SimState, index: number) {
   if (!domino || domino.triggered) return;
   domino.triggered = true;
   domino.falling = true;
-  domino.vel = 2.5 + Math.random() * 0.5;
+  domino.vel = clamp(0.55 + sim.pushForce * 0.9, 0.4, 5);
+  if (sim.toppled === 0) sim.firstTriggerAt = sim.runTime;
+  sim.lastTriggerAt = sim.runTime;
   sim.toppled += 1;
-  if (index > 0) {
-    if (domino.linkPerfect) {
-      sim.combo += 1;
-      sim.perfectLinks += 1;
-      sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
-      const bonus = 60 + Math.min(sim.combo, 10) * 20;
-      sim.score += 100 + bonus;
-      addPopup(sim, domino, `PERFECT x${sim.combo}`, '#8cf0cd');
-    } else {
-      sim.combo = 0;
-      sim.score += 100;
-      addPopup(sim, domino, '+100', '#f0d8a8');
-    }
-  } else {
-    sim.score += 100;
-    addPopup(sim, domino, '+100', '#f0d8a8');
-  }
-  if (sim.toppled === sim.dominos.length) {
-    sim.banner = {
-      text: 'ALL TOPPLED',
-      sub: '全ドミノ倒壊',
-      color: '#8cf0cd',
-      life: 2,
-      maxLife: 2,
-    };
-  }
+  sim.maxChain = Math.max(sim.maxChain, longestChain(sim.dominos));
+  sim.propSpeed =
+    sim.toppled > 1
+      ? clamp(
+          (sim.toppled - 1) / Math.max(0.001, sim.runTime - sim.firstTriggerAt),
+          0,
+          80,
+        )
+      : 0;
 }
 
 function updateEffects(sim: SimState, dt: number) {
-  for (const popup of sim.popups) {
-    popup.y -= 52 * dt;
-    popup.life -= dt;
-  }
-  sim.popups = sim.popups.filter((popup) => popup.life > 0);
   for (const particle of sim.particles) {
-    particle.vy += 210 * dt;
-    particle.vx *= 0.985;
+    particle.vy += 190 * dt;
+    particle.vx *= 0.986;
     particle.x += particle.vx * dt;
     particle.y += particle.vy * dt;
     particle.life -= dt;
   }
   sim.particles = sim.particles.filter((particle) => particle.life > 0);
-  if (sim.banner) {
-    sim.banner.life -= dt;
-    if (sim.banner.life <= 0) sim.banner = null;
-  }
 }
 
-function updateRunningSim(sim: SimState, dt: number): boolean {
+function updateRunningSim(sim: SimState, dt: number, force = false) {
+  if (!sim.running || (sim.paused && !force)) return;
   sim.runTime += dt;
   let active = false;
   for (let i = 0; i < sim.dominos.length; i += 1) {
     const domino = sim.dominos[i];
     if (!domino.falling || domino.done) continue;
     active = true;
-    domino.vel = Math.min(11, domino.vel + 14 * dt);
-    domino.angle += domino.vel * dt;
+    const gravityAccel = (0.8 + sim.gravity * 5.2) * Math.cos(clamp(domino.angle, 0, FALL_LIMIT));
+    domino.vel += gravityAccel * dt;
+    domino.vel *= Math.max(0, 1 - sim.friction * 1.4 * dt);
+    domino.vel = clamp(domino.vel, 0, 14);
+    domino.angle = clamp(domino.angle + domino.vel * dt, 0, FALL_LIMIT);
     if (!domino.nextTriggered) {
       const next = sim.dominos[i + 1];
       if (!next) {
         domino.nextTriggered = true;
       } else {
-        const gap = next.s - domino.s;
-        const reach = clamp((gap - DOMINO_W * 0.35) / DOMINO_H, 0.18, 0.97);
-        const contactAngle = Math.max(0.42, Math.min(1.05, Math.asin(reach)));
+        const gap = Math.max(0, next.s - domino.s);
+        const contactAngle = Math.asin(
+          clamp(Math.min(gap, sim.height * 0.985) / sim.height, 0.12, 0.985),
+        );
         if (domino.angle >= contactAngle) {
           domino.nextTriggered = true;
-          if (gap <= MAX_REACH) {
+          if (gap <= getReach(sim.height)) {
             triggerDomino(sim, i + 1);
           } else {
-            sim.chainBroke = true;
             sim.chainBreakS = (domino.s + next.s) / 2;
-            sim.banner = {
-              text: 'CHAIN BREAK',
-              sub: '間隔が広すぎます',
-              color: '#ff9b86',
-              life: 1.7,
-              maxLife: 1.7,
-            };
           }
         }
       }
@@ -567,16 +541,59 @@ function updateRunningSim(sim: SimState, dt: number): boolean {
   }
   if (active) sim.settleTime = 0;
   else sim.settleTime += dt;
-  return sim.launched && !active && sim.settleTime > 1.05;
+  if (sim.settleTime > 0.8) {
+    sim.running = false;
+    sim.paused = false;
+    sim.settled = true;
+    sim.toppled = sim.dominos.filter((domino) => domino.triggered).length;
+    sim.maxChain = longestChain(sim.dominos);
+    sim.completed = sim.dominos.length > 0 && sim.toppled === sim.dominos.length;
+    sim.propSpeed =
+      sim.toppled > 1
+        ? clamp(
+            (sim.toppled - 1) / Math.max(0.001, sim.lastTriggerAt - sim.firstTriggerAt),
+            0,
+            80,
+          )
+        : 0;
+  }
 }
 
-function getResultMessage(result: Result): string {
-  if (result.total === 0) return 'ドミノがありません。コースを埋めてから打ち上げよう。';
-  if (result.rank === 'S') return '完璧なカスケード。工房中に拍手が響く。';
-  if (result.rank === 'A') return '見事な連鎖。間隔をそろえてSを狙える。';
-  if (result.rank === 'B') return 'いい流れ。間隔をそろえるとさらに伸びる。';
-  if (result.rank === 'C') return 'まだ伸びしろあり。コースを埋めて連鎖をつなげよう。';
-  return '最初の一枚から。まずはコース全体にドミノを並べよう。';
+function toHud(sim: SimState): HudState {
+  let status = '待機';
+  if (sim.running && sim.paused) status = '一時停止';
+  else if (sim.running) status = '連鎖中';
+  else if (sim.settled) status = sim.completed ? '完走' : '停止';
+  else if (sim.launched) status = '停止';
+  return {
+    placed: sim.dominos.length,
+    toppled: sim.toppled,
+    remaining: Math.max(0, sim.dominos.length - sim.toppled),
+    propSpeed: sim.propSpeed,
+    maxChain: sim.maxChain,
+    completed: sim.completed,
+    settled: sim.settled,
+    launched: sim.launched,
+    running: sim.running,
+    paused: sim.paused,
+    status,
+  };
+}
+
+function sameHud(a: HudState, b: HudState): boolean {
+  return (
+    a.placed === b.placed &&
+    a.toppled === b.toppled &&
+    a.remaining === b.remaining &&
+    a.propSpeed === b.propSpeed &&
+    a.maxChain === b.maxChain &&
+    a.completed === b.completed &&
+    a.settled === b.settled &&
+    a.launched === b.launched &&
+    a.running === b.running &&
+    a.paused === b.paused &&
+    a.status === b.status
+  );
 }
 
 function roundRectPath(
@@ -704,7 +721,8 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.setLineDash([]);
   ctx.restore();
 
-  for (let distance = 40; distance < length - 24; distance += IDEAL_GAP) {
+  const tickGap = clamp(sim.spacing, MIN_GAP, 120);
+  for (let distance = 36; distance < length - 24; distance += tickGap) {
     const point = pointAt(sim.track, distance);
     const nx = -point.ty;
     const ny = point.tx;
@@ -775,7 +793,7 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.fill();
   ctx.restore();
 
-  if (sim.chainBroke) {
+  if (sim.chainBreakS !== null) {
     const breakPoint = pointAt(sim.track, sim.chainBreakS);
     ctx.save();
     ctx.translate(breakPoint.x, breakPoint.y);
@@ -796,9 +814,37 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   }
 }
 
+function drawLinkGuide(
+  ctx: CanvasRenderingContext2D,
+  sim: SimState,
+  fromS: number,
+  toS: number,
+  color: string,
+) {
+  const start = Math.min(fromS, toS);
+  const end = Math.max(fromS, toS);
+  const span = Math.max(1, end - start);
+  const steps = Math.max(2, Math.ceil(span / 16));
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.58;
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i += 1) {
+    const point = pointAt(sim.track, start + (span * i) / steps);
+    if (i === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawDomino(
   ctx: CanvasRenderingContext2D,
   domino: Domino,
+  height: number,
   ghostColor?: string,
   alpha = 1,
 ) {
@@ -818,12 +864,12 @@ function drawDomino(
   ctx.ellipse(0, 4, DOMINO_W * 0.72, DOMINO_W * 0.3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.rotate(rotation);
-  const body = ctx.createLinearGradient(0, 0, DOMINO_H, 0);
+  const body = ctx.createLinearGradient(0, 0, height, 0);
   body.addColorStop(0, ghostColor ?? '#c9b58e');
   body.addColorStop(0.36, ghostColor ?? '#f4e6c9');
   body.addColorStop(1, ghostColor ?? '#dcc59b');
   ctx.beginPath();
-  roundRectPath(ctx, 1, -DOMINO_W / 2, DOMINO_H - 2, DOMINO_W, 7);
+  roundRectPath(ctx, 1, -DOMINO_W / 2, height - 2, DOMINO_W, 7);
   ctx.fillStyle = body;
   ctx.fill();
   ctx.strokeStyle = ghostColor ? 'rgba(255, 255, 255, 0.55)' : 'rgba(36, 29, 18, 0.68)';
@@ -831,20 +877,20 @@ function drawDomino(
   ctx.stroke();
 
   ctx.beginPath();
-  roundRectPath(ctx, DOMINO_H - 18, -DOMINO_W / 2 + 3, 9, DOMINO_W - 6, 3.5);
+  roundRectPath(ctx, height - 18, -DOMINO_W / 2 + 3, 9, DOMINO_W - 6, 3.5);
   ctx.fillStyle = domino.accent;
   ctx.fill();
 
   ctx.fillStyle = 'rgba(42, 36, 24, 0.5)';
   ctx.beginPath();
-  ctx.arc(DOMINO_H * 0.42, 0, 3.8, 0, Math.PI * 2);
+  ctx.arc(height * 0.42, 0, 3.8, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = 'rgba(255, 248, 232, 0.38)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(8, -DOMINO_W / 2 + 4);
-  ctx.lineTo(DOMINO_H - 26, -DOMINO_W / 2 + 4);
+  ctx.lineTo(Math.max(10, height - 26), -DOMINO_W / 2 + 4);
   ctx.stroke();
   ctx.restore();
 }
@@ -866,11 +912,15 @@ function drawGhost(ctx: CanvasRenderingContext2D, sim: SimState) {
     done: false,
     triggered: false,
     nextTriggered: false,
-    linkGap: 0,
-    linkPerfect: false,
     accent: color,
   };
-  drawDomino(ctx, ghostDomino, color, 0.48);
+  for (const domino of sim.dominos) {
+    const gap = Math.abs(domino.s - point.s);
+    if (gap < 160) {
+      drawLinkGuide(ctx, sim, domino.s, point.s, QUALITY_COLORS[getGapQuality(sim, gap)]);
+    }
+  }
+  drawDomino(ctx, ghostDomino, sim.height, color, 0.48);
   ctx.save();
   ctx.strokeStyle = color;
   ctx.globalAlpha = 0.9;
@@ -881,10 +931,29 @@ function drawGhost(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.restore();
 }
 
+function drawHoverRemove(ctx: CanvasRenderingContext2D, sim: SimState) {
+  if (sim.hoverRemoveId === null) return;
+  const domino = sim.dominos.find((item) => item.id === sim.hoverRemoveId);
+  if (!domino) return;
+  ctx.save();
+  ctx.translate(domino.x, domino.y);
+  ctx.strokeStyle = 'rgba(255, 155, 134, 0.95)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, 22, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-7, -7);
+  ctx.lineTo(7, 7);
+  ctx.moveTo(7, -7);
+  ctx.lineTo(-7, 7);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function renderSim(
   ctx: CanvasRenderingContext2D,
   sim: SimState,
-  phase: Phase,
   background: HTMLCanvasElement | null,
 ) {
   if (background) {
@@ -894,10 +963,23 @@ function renderSim(
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   }
   drawTrack(ctx, sim);
-  if (phase === 'build') drawGhost(ctx, sim);
-  for (const domino of sim.dominos) {
-    drawDomino(ctx, domino);
+  if (!sim.running) {
+    for (let i = 0; i < sim.dominos.length - 1; i += 1) {
+      const gap = sim.dominos[i + 1].s - sim.dominos[i].s;
+      drawLinkGuide(
+        ctx,
+        sim,
+        sim.dominos[i].s,
+        sim.dominos[i + 1].s,
+        QUALITY_COLORS[getGapQuality(sim, gap)],
+      );
+    }
   }
+  for (const domino of sim.dominos) {
+    drawDomino(ctx, domino, sim.height);
+  }
+  drawHoverRemove(ctx, sim);
+  if (!sim.running) drawGhost(ctx, sim);
   for (const particle of sim.particles) {
     ctx.save();
     ctx.globalAlpha = clamp(particle.life / particle.maxLife, 0, 1);
@@ -907,228 +989,152 @@ function renderSim(
     ctx.fill();
     ctx.restore();
   }
-  for (const popup of sim.popups) {
-    ctx.save();
-    ctx.globalAlpha = clamp((popup.life / popup.maxLife) * 1.5, 0, 1);
-    ctx.fillStyle = popup.color;
-    ctx.font = '700 26px ui-monospace, SFMono-Regular, Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-    ctx.shadowBlur = 9;
-    ctx.fillText(popup.text, popup.x, popup.y);
-    ctx.restore();
-  }
-  if (sim.banner) {
-    const banner = sim.banner;
-    ctx.save();
-    ctx.globalAlpha = clamp((banner.life / banner.maxLife) * 2, 0, 1);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = banner.color;
-    ctx.font = '800 56px ui-monospace, SFMono-Regular, Menlo, monospace';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 20;
-    ctx.fillText(banner.text, CANVAS_W / 2, CANVAS_H * 0.34);
-    ctx.font = '700 24px ui-monospace, SFMono-Regular, Menlo, monospace';
-    ctx.fillStyle = 'rgba(245, 235, 215, 0.88)';
-    ctx.fillText(banner.sub, CANVAS_W / 2, CANVAS_H * 0.34 + 38);
-    ctx.restore();
-  }
+}
+
+type RangeControlProps = {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  display: string;
+  onChange: (value: number) => void;
+};
+
+function RangeControl({ label, value, min, max, step, display, onChange }: RangeControlProps) {
+  return (
+    <label className="block">
+      <span className="flex items-center justify-between gap-2 text-[11px] font-bold text-stone-300">
+        <span>{label}</span>
+        <span className="font-mono text-[11px] text-teal-200">{display}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-1.5 h-1.5 w-full cursor-pointer accent-teal-400"
+      />
+    </label>
+  );
 }
 
 export default function DominoCascadeGame() {
   const simRef = useRef<SimState | null>(null);
-  if (simRef.current === null) simRef.current = createInitialSim();
+  if (simRef.current === null) simRef.current = createInitialSim(DEFAULT_SETTINGS);
+
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef(settings);
+  const [hud, setHud] = useState<HudState>(() => toHud(simRef.current as SimState));
+  const hudRef = useRef(hud);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const backgroundRef = useRef<HTMLCanvasElement | null>(null);
   const pointerDownRef = useRef(false);
-  const phaseRef = useRef<Phase>('title');
-  const bestRef = useRef(0);
-  const launchRef = useRef<() => void>(() => undefined);
-  const finishRef = useRef<() => void>(() => undefined);
-
-  const [phase, setPhase] = useState<Phase>('title');
-  const [preset, setPreset] = useState<Preset>('s');
-  const [best, setBest] = useState(0);
-  const [result, setResult] = useState<Result | null>(null);
-  const [hud, setHud] = useState<HudState>({
-    placed: 0,
-    toppled: 0,
-    score: 0,
-    combo: 0,
-    time: BUILD_TIME,
-    perfect: 0,
-  });
+  const removeModeRef = useRef(false);
 
   const publishHud = useCallback(() => {
     const sim = simRef.current;
     if (!sim) return;
-    setHud({
-      placed: sim.dominos.length,
-      toppled: sim.toppled,
-      score: sim.score,
-      combo: sim.combo,
-      time: sim.buildRemaining,
-      perfect: sim.perfectLinks,
-    });
+    const next = toHud(sim);
+    if (!sameHud(next, hudRef.current)) {
+      hudRef.current = next;
+      setHud(next);
+    }
   }, []);
 
-  const startGame = useCallback(
-    (nextPreset: Preset, fill: boolean) => {
-      const sim = simRef.current;
-      if (!sim) return;
-      resetSimState(sim, nextPreset, fill);
-      phaseRef.current = 'build';
-      setPhase('build');
-      setPreset(nextPreset);
-      setResult(null);
-      publishHud();
-    },
-    [publishHud],
-  );
-
-  const changePreset = useCallback(
-    (nextPreset: Preset) => {
-      if (phaseRef.current !== 'build') return;
-      const sim = simRef.current;
-      if (!sim) return;
-      const track = buildTrack(nextPreset);
-      sim.preset = nextPreset;
-      sim.track = track;
-      sim.dominos = fillTrack(track);
-      sim.nextId = sim.dominos.length;
+  const applySettings = (patch: Partial<Settings>) => {
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    setSettings(next);
+    const sim = simRef.current;
+    if (sim) {
+      sim.preset = next.preset;
+      sim.spacing = next.spacing;
+      sim.height = next.height;
+      sim.friction = next.friction;
+      sim.pushForce = next.pushForce;
+      sim.gravity = next.gravity;
+      sim.speed = next.speed;
       sim.ghost = null;
-      setPreset(nextPreset);
-      publishHud();
-    },
-    [publishHud],
-  );
+    }
+    publishHud();
+  };
 
-  const clearDominoes = useCallback(() => {
-    if (phaseRef.current !== 'build') return;
+  const choosePreset = (preset: Preset) => {
+    const sim = simRef.current;
+    if (!sim) return;
+    const next = { ...settingsRef.current, preset };
+    settingsRef.current = next;
+    setSettings(next);
+    const track = buildTrack(preset);
+    sim.preset = preset;
+    sim.track = track;
+    sim.dominos = fillTrack(track, sim.spacing);
+    sim.nextId = sim.dominos.length;
+    sim.spacing = next.spacing;
+    resetPose(sim);
+    publishHud();
+  };
+
+  const autoFill = () => {
+    const sim = simRef.current;
+    if (!sim) return;
+    sim.dominos = fillTrack(sim.track, sim.spacing);
+    sim.nextId = sim.dominos.length;
+    resetPose(sim);
+    publishHud();
+  };
+
+  const clearDominoes = () => {
     const sim = simRef.current;
     if (!sim) return;
     sim.dominos = [];
     sim.nextId = 0;
-    sim.ghost = null;
+    resetPose(sim);
     publishHud();
-  }, [publishHud]);
+  };
 
-  const launch = useCallback(() => {
-    const sim = simRef.current;
-    if (!sim || phaseRef.current !== 'build' || sim.dominos.length === 0) return;
-    sim.dominos.sort((a, b) => a.s - b.s);
-    for (let i = 0; i < sim.dominos.length; i += 1) {
-      const domino = sim.dominos[i];
-      domino.angle = 0;
-      domino.vel = 0;
-      domino.falling = false;
-      domino.done = false;
-      domino.triggered = false;
-      domino.nextTriggered = false;
-      domino.linkGap = i > 0 ? domino.s - sim.dominos[i - 1].s : 0;
-      domino.linkPerfect = i > 0 && domino.linkGap >= IDEAL_MIN && domino.linkGap <= IDEAL_MAX;
-    }
-    sim.score = 0;
-    sim.toppled = 0;
-    sim.perfectLinks = 0;
-    sim.combo = 0;
-    sim.maxCombo = 0;
-    sim.runTime = 0;
-    sim.settleTime = 0;
-    sim.launched = true;
-    sim.finished = false;
-    sim.chainBroke = false;
-    sim.chainBreakS = 0;
-    sim.popups = [];
-    sim.particles = [];
-    sim.banner = null;
-    sim.ghost = null;
-    phaseRef.current = 'running';
-    setPhase('running');
-    triggerDomino(sim, 0);
-    publishHud();
-  }, [publishHud]);
-
-  const finish = useCallback(() => {
-    const sim = simRef.current;
-    if (!sim || sim.finished) return;
-    const currentPhase = phaseRef.current;
-    if (currentPhase !== 'running' && !(currentPhase === 'build' && sim.dominos.length === 0)) return;
-    sim.finished = true;
-    const total = sim.dominos.length;
-    let occupied = total > 0 ? DOMINO_W : 0;
-    for (let i = 1; i < total; i += 1) {
-      occupied += Math.min(sim.dominos[i].s - sim.dominos[i - 1].s, IDEAL_MAX);
-    }
-    const coverage = total > 0 ? clamp(occupied / sim.track.length, 0, 1) : 0;
-    const toppleRate = total > 0 ? sim.toppled / total : 0;
-    const completion = coverage * toppleRate;
-    const perfectRatio = total > 1 ? sim.perfectLinks / (total - 1) : 0;
-    let rank = 'D';
-    if (completion >= 0.93 && perfectRatio >= 0.8) rank = 'S';
-    else if (completion >= 0.78) rank = 'A';
-    else if (completion >= 0.5) rank = 'B';
-    else if (completion >= 0.22) rank = 'C';
-    const score = sim.score + (total > 0 && sim.toppled === total ? 1500 : 0);
-    sim.score = score;
-    const isBest = score > bestRef.current;
-    if (isBest) {
-      bestRef.current = score;
-      setBest(score);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, String(score));
-      } catch {
-        void 0;
-      }
-    }
-    const nextResult: Result = {
-      score,
-      toppled: sim.toppled,
-      total,
-      perfect: sim.perfectLinks,
-      maxCombo: sim.maxCombo,
-      coverage: Math.round(coverage * 100),
-      rank,
-      isBest,
-    };
-    phaseRef.current = 'result';
-    setPhase('result');
-    setResult(nextResult);
-    publishHud();
-  }, [publishHud]);
-
-  const goTitle = useCallback(() => {
+  const resetRun = () => {
     const sim = simRef.current;
     if (!sim) return;
-    resetSimState(sim, 's', true);
-    phaseRef.current = 'title';
-    setPhase('title');
-    setPreset('s');
-    setResult(null);
+    resetPose(sim);
     publishHud();
-  }, [publishHud]);
+  };
 
-  useEffect(() => {
-    launchRef.current = launch;
-  }, [launch]);
+  const launch = () => {
+    const sim = simRef.current;
+    if (!sim || sim.dominos.length === 0) return;
+    resetPose(sim);
+    sim.launched = true;
+    sim.running = true;
+    sim.paused = false;
+    sim.settled = false;
+    sim.runTime = 0;
+    sim.firstTriggerAt = 0;
+    sim.lastTriggerAt = 0;
+    triggerDomino(sim, 0);
+    publishHud();
+  };
 
-  useEffect(() => {
-    finishRef.current = finish;
-  }, [finish]);
+  const togglePause = () => {
+    const sim = simRef.current;
+    if (!sim || !sim.running) return;
+    sim.paused = !sim.paused;
+    publishHud();
+  };
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const saved = raw ? Number.parseInt(raw, 10) : 0;
-      if (Number.isFinite(saved) && saved > 0) {
-        bestRef.current = saved;
-        setBest(saved);
-      }
-    } catch {
-      setBest(0);
-    }
-  }, []);
+  const stepOnce = () => {
+    const sim = simRef.current;
+    if (!sim || !sim.running || !sim.paused) return;
+    const dt = (1 / 60) * clamp(sim.speed, 0.5, 2);
+    updateRunningSim(sim, dt, true);
+    updateEffects(sim, dt);
+    sim.time += dt;
+    publishHud();
+  };
 
   useEffect(() => {
     const canvas = document.createElement('canvas');
@@ -1146,7 +1152,7 @@ export default function DominoCascadeGame() {
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
-      const dpr = Math.min(2.5, Math.max(1, window.devicePixelRatio || 1));
+      const dpr = clamp(window.devicePixelRatio || 1, 1, 2.5);
       const width = Math.max(1, Math.round(rect.width * dpr));
       const height = Math.max(1, Math.round(rect.height * dpr));
       if (canvas.width !== width || canvas.height !== height) {
@@ -1171,22 +1177,20 @@ export default function DominoCascadeGame() {
     const frame = (now: number) => {
       const sim = simRef.current;
       if (sim) {
-        const dt = Math.min(0.034, Math.max(0, (now - last) / 1000));
+        const raw = (now - last) / 1000;
         last = now;
-        sim.time += dt;
-        const current = phaseRef.current;
-        if (current === 'build') {
-          sim.buildRemaining = Math.max(0, sim.buildRemaining - dt);
-          if (sim.buildRemaining <= 0 && !sim.autoLaunched) {
-            sim.autoLaunched = true;
-            if (sim.dominos.length > 0) launchRef.current();
-            else finishRef.current();
+        const dt = clamp(Number.isFinite(raw) ? raw : 0, 0, 0.05);
+        if (!sim.paused) sim.time += dt;
+        if (sim.running && !sim.paused) {
+          const scaled = dt * clamp(sim.speed, 0.5, 2);
+          const steps = Math.max(1, Math.min(8, Math.ceil(scaled / 0.014)));
+          const stepDt = scaled / steps;
+          for (let i = 0; i < steps; i += 1) {
+            updateRunningSim(sim, stepDt);
+            if (!sim.running) break;
           }
-        } else if (current === 'running') {
-          const ready = updateRunningSim(sim, dt);
-          if (ready) finishRef.current();
+          updateEffects(sim, scaled);
         }
-        updateEffects(sim, dt);
         const canvas = canvasRef.current;
         if (canvas) {
           const ctx = canvas.getContext('2d');
@@ -1194,20 +1198,17 @@ export default function DominoCascadeGame() {
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(canvas.width / CANVAS_W, 0, 0, canvas.height / CANVAS_H, 0, 0);
-            renderSim(ctx, sim, phaseRef.current, backgroundRef.current);
+            renderSim(ctx, sim, backgroundRef.current);
           }
         }
         hudClock += dt;
-        if (hudClock >= 0.08 && (current === 'build' || current === 'running')) {
+        if (hudClock >= 0.08) {
           hudClock = 0;
-          setHud({
-            placed: sim.dominos.length,
-            toppled: sim.toppled,
-            score: sim.score,
-            combo: sim.combo,
-            time: sim.buildRemaining,
-            perfect: sim.perfectLinks,
-          });
+          const next = toHud(sim);
+          if (!sameHud(next, hudRef.current)) {
+            hudRef.current = next;
+            setHud(next);
+          }
         }
       } else {
         last = now;
@@ -1229,53 +1230,112 @@ export default function DominoCascadeGame() {
     };
   };
 
-  const refreshGhost = (clientX: number, clientY: number): Ghost | null => {
-    const sim = simRef.current;
-    if (!sim || phaseRef.current !== 'build') return null;
+  const findDominoIndex = (sim: SimState, x: number, y: number) => {
+    const radius = clamp(sim.height * 0.45, 30, 54);
+    let bestIndex = -1;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < sim.dominos.length; i += 1) {
+      const domino = sim.dominos[i];
+      const distance = Math.hypot(domino.x - x, domino.y - y);
+      if (distance < bestDistance && distance <= radius) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  };
+
+  const clearHover = (sim: SimState) => {
+    sim.ghost = null;
+    sim.hoverRemoveId = null;
+  };
+
+  const refreshGhost = (sim: SimState, clientX: number, clientY: number) => {
     const point = getWorldPoint(clientX, clientY);
     if (!point) {
+      clearHover(sim);
+      return;
+    }
+    const hit = findDominoIndex(sim, point.x, point.y);
+    if (hit >= 0) {
+      sim.hoverRemoveId = sim.dominos[hit].id;
       sim.ghost = null;
-      return null;
+      return;
+    }
+    sim.hoverRemoveId = null;
+    if (sim.running) {
+      sim.ghost = null;
+      return;
     }
     const nearest = nearestOnTrack(sim.track, point.x, point.y);
-    if (nearest.dist > 126) {
+    if (nearest.dist > 132) {
       sim.ghost = null;
-      return null;
+      return;
     }
     const quality = getPlacementQuality(sim, nearest.s);
     if (quality === 'blocked') {
       sim.ghost = null;
-      return null;
+      return;
     }
-    const ghost: Ghost = { x: nearest.x, y: nearest.y, s: nearest.s, quality };
-    sim.ghost = ghost;
-    return ghost;
+    sim.ghost = { x: nearest.x, y: nearest.y, s: nearest.s, quality };
+  };
+
+  const beginEdit = (sim: SimState) => {
+    if (sim.launched || sim.running || sim.settled || sim.paused) resetPose(sim);
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    if (phaseRef.current !== 'build') return;
-    const sim = simRef.current;
-    if (!sim) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     pointerDownRef.current = true;
-    const ghost = refreshGhost(event.clientX, event.clientY);
-    if (ghost && tryPlaceDomino(sim, ghost.s)) {
-      sim.ghost = null;
+    const sim = simRef.current;
+    if (!sim) return;
+    beginEdit(sim);
+    const point = getWorldPoint(event.clientX, event.clientY);
+    if (!point) {
       publishHud();
+      return;
     }
+    const hit = findDominoIndex(sim, point.x, point.y);
+    if (hit >= 0) {
+      removeModeRef.current = true;
+      sim.dominos.splice(hit, 1);
+      clearHover(sim);
+      publishHud();
+      return;
+    }
+    removeModeRef.current = false;
+    const nearest = nearestOnTrack(sim.track, point.x, point.y);
+    if (nearest.dist <= 132 && insertDomino(sim, nearest.s)) {
+      sim.ghost = null;
+    }
+    publishHud();
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary) return;
-    if (phaseRef.current !== 'build') return;
     const sim = simRef.current;
     if (!sim) return;
-    const ghost = refreshGhost(event.clientX, event.clientY);
-    if (!pointerDownRef.current || !ghost) return;
-    if (tryPlaceDomino(sim, ghost.s)) {
+    if (!pointerDownRef.current) {
+      refreshGhost(sim, event.clientX, event.clientY);
+      return;
+    }
+    event.preventDefault();
+    const point = getWorldPoint(event.clientX, event.clientY);
+    if (!point) return;
+    if (removeModeRef.current) {
+      const hit = findDominoIndex(sim, point.x, point.y);
+      if (hit >= 0) {
+        sim.dominos.splice(hit, 1);
+        clearHover(sim);
+        publishHud();
+      }
+      return;
+    }
+    const nearest = nearestOnTrack(sim.track, point.x, point.y);
+    if (nearest.dist <= 132 && insertDomino(sim, nearest.s)) {
       sim.ghost = null;
       publishHud();
     }
@@ -1284,28 +1344,48 @@ export default function DominoCascadeGame() {
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary) return;
     pointerDownRef.current = false;
+    removeModeRef.current = false;
     if (event.pointerType !== 'mouse') {
       const sim = simRef.current;
-      if (sim) sim.ghost = null;
+      if (sim) clearHover(sim);
     }
   };
 
   const handlePointerCancel = () => {
     pointerDownRef.current = false;
+    removeModeRef.current = false;
     const sim = simRef.current;
-    if (sim) sim.ghost = null;
+    if (sim) clearHover(sim);
   };
 
   const handlePointerLeave = () => {
     pointerDownRef.current = false;
+    removeModeRef.current = false;
     const sim = simRef.current;
-    if (sim) sim.ghost = null;
+    if (sim) clearHover(sim);
   };
+
+  const reach = Math.round(getReach(settings.height));
+  const completionLabel = hud.settled
+    ? hud.completed
+      ? '完走'
+      : '途中停止'
+    : hud.launched
+      ? '進行中'
+      : '未実行';
+  const statusClass =
+    hud.status === '連鎖中'
+      ? 'border-teal-400/50 bg-teal-950/60 text-teal-200'
+      : hud.status === '完走'
+        ? 'border-emerald-400/50 bg-emerald-950/60 text-emerald-200'
+        : hud.status === '停止'
+          ? 'border-rose-400/50 bg-rose-950/60 text-rose-200'
+          : 'border-amber-400/40 bg-amber-950/40 text-amber-200';
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#07100f] text-stone-100 select-none">
       <header className="border-b border-stone-800 bg-[#07100f]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/games"
@@ -1315,22 +1395,19 @@ export default function DominoCascadeGame() {
             </Link>
             <div className="min-w-0">
               <p className="truncate font-mono text-[9px] font-bold tracking-[0.18em] text-amber-400 sm:text-[10px]">
-                DOMINO CASCADE / CHAIN LAB
+                DOMINO CHAIN LAB / SANDBOX
               </p>
               <h2 className="truncate text-xs font-black sm:text-base">ドミノ・カスケード</h2>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-2 py-1 text-[10px] sm:px-3 sm:text-xs">
-              <span className="text-stone-400">BEST </span>
-              <span className="font-mono font-black text-amber-300">{best.toLocaleString()}</span>
-            </div>
+          <div className="hidden shrink-0 rounded-lg border border-teal-500/30 bg-teal-950/20 px-3 py-1 text-[11px] font-bold text-teal-200 sm:block">
+            連鎖シミュレーター
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-2.5 py-2.5 sm:px-4 sm:py-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_264px] lg:gap-4">
+      <div className="mx-auto max-w-6xl px-2.5 py-2.5 sm:px-4 sm:py-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-4">
           <div className="min-w-0">
             <div
               className="relative overflow-hidden rounded-xl border-2 border-stone-800 bg-[#07100f] shadow-2xl"
@@ -1348,270 +1425,231 @@ export default function DominoCascadeGame() {
                 ref={canvasRef}
                 width={CANVAS_W}
                 height={CANVAS_H}
-                className={`block w-full touch-none ${
-                  phase === 'build' ? 'cursor-crosshair' : 'cursor-default'
-                }`}
+                className="block w-full touch-none cursor-crosshair"
               />
 
-              {(phase === 'build' || phase === 'running') && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-1 bg-gradient-to-b from-black/85 via-black/35 to-transparent px-2 py-2 sm:px-3 sm:py-2.5">
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 sm:gap-x-4">
-                    <div>
-                      <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[9px]">配置</p>
-                      <p className="font-mono text-xs font-black leading-none text-amber-200 sm:text-lg">
-                        {hud.placed}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[9px]">倒壊</p>
-                      <p className="font-mono text-xs font-black leading-none text-teal-200 sm:text-lg">
-                        {hud.toppled}
-                        <span className="text-[9px] font-bold text-stone-400">/{hud.placed}</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[9px]">SCORE</p>
-                      <p className="font-mono text-sm font-black leading-none text-white sm:text-xl">
-                        {hud.score.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {phase === 'build' ? (
-                      <span
-                        className={`rounded border px-2 py-0.5 font-mono text-[10px] font-black sm:text-xs ${
-                          hud.time <= 10
-                            ? 'border-rose-400/60 bg-rose-950/50 text-rose-200'
-                            : 'border-amber-400/40 bg-black/50 text-amber-200'
-                        }`}
-                      >
-                        {Math.max(0, Math.ceil(hud.time))}s
-                      </span>
-                    ) : (
-                      <span className="rounded border border-teal-400/40 bg-black/50 px-2 py-0.5 font-mono text-[10px] font-black text-teal-200 sm:text-xs">
-                        PERFECT x{hud.combo}
-                      </span>
-                    )}
-                    <span className="hidden text-[9px] font-bold text-stone-300 sm:block">
-                      {phase === 'build' ? 'なぞって配置 / タップで追加' : '連鎖発生中'}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/35 to-transparent px-2 py-2 sm:px-3">
+                <span className={`rounded border px-2 py-0.5 font-mono text-[10px] font-black sm:text-xs ${statusClass}`}>
+                  {hud.status}
+                </span>
+                <span className="font-mono text-[10px] font-bold text-stone-200 sm:text-xs">
+                  {hud.toppled} / {hud.placed} 枚
+                </span>
+              </div>
 
-              {phase === 'title' && (
-                <div
-                  className="absolute inset-0 z-20 flex flex-col items-center justify-center overflow-y-auto bg-[#050d0c]/80 px-3 py-3 text-center backdrop-blur-[2px] sm:px-6"
-                  style={{ touchAction: 'pan-y' }}
-                >
-                  <p className="font-mono text-[9px] font-bold tracking-[0.25em] text-amber-300/90 sm:text-[11px]">
-                    CHAIN REACTION ATELIER
-                  </p>
-                  <h3 className="mt-1 text-xl font-black leading-tight text-white sm:mt-2 sm:text-4xl">
-                    ドミノ・カスケード
-                  </h3>
-                  <p className="mt-1 max-w-md text-[10px] leading-4 text-stone-300 sm:mt-2 sm:text-sm sm:leading-6">
-                    真鍮のトラックにドミノを並べ、最初の一枚を倒そう。間隔をそろえるほどPERFECTコンボが伸びる。
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => startGame('s', false)}
-                    className="mt-3 w-full max-w-xs rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-black text-stone-950 shadow-xl transition hover:scale-[1.02] active:scale-[0.98] sm:mt-5 sm:py-3"
-                  >
-                    スタート
-                  </button>
-                  <div className="mt-2 w-full max-w-xs">
-                    <p className="text-[9px] font-bold tracking-wider text-stone-400 sm:text-[10px]">
-                      おまかせコースで開始
-                    </p>
-                    <div className="mt-1 grid grid-cols-3 gap-1.5">
-                      {(['s', 'loop', 'zigzag'] as Preset[]).map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => startGame(item, true)}
-                          className="rounded-lg border border-stone-600 bg-stone-900/80 px-1 py-1.5 text-[10px] font-bold text-stone-200 transition hover:border-teal-400 hover:text-teal-200 sm:text-xs"
-                        >
-                          {PRESET_LABELS[item]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[9px] text-stone-500 sm:text-[11px]">
-                    配置はなぞるだけ。打ち上げで連鎖開始。
-                  </p>
-                </div>
-              )}
-
-              {phase === 'result' && result && (
-                <div
-                  className="absolute inset-0 z-20 flex flex-col items-center justify-center overflow-y-auto bg-[#050d0c]/90 px-3 py-3 text-center backdrop-blur-sm sm:px-6"
-                  style={{ touchAction: 'pan-y' }}
-                >
-                  <p className="font-mono text-[9px] font-bold tracking-[0.22em] text-amber-300/90 sm:text-[11px]">
-                    CASCADE REPORT / {PRESET_NAMES[preset]}
-                  </p>
-                  <div className="mt-0.5 flex items-center gap-2 sm:mt-2 sm:gap-3">
-                    <span className="font-mono text-3xl font-black leading-none text-amber-300 sm:text-5xl">
-                      {result.rank}
-                    </span>
-                    <div className="text-left">
-                      <p className="text-[9px] font-bold text-stone-400 sm:text-[11px]">SCORE</p>
-                      <p className="font-mono text-lg font-black leading-none text-white sm:text-3xl">
-                        {result.score.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-[10px] font-bold text-teal-200 sm:mt-2 sm:text-sm">
-                    {getResultMessage(result)}
-                  </p>
-                  <div className="mt-2 grid w-full max-w-xs grid-cols-4 gap-1 sm:mt-4 sm:max-w-lg sm:gap-2">
-                    <div className="rounded border border-stone-700 bg-stone-900/80 px-1 py-1.5 sm:px-2">
-                      <p className="text-[8px] font-bold text-stone-400 sm:text-[10px]">倒壊</p>
-                      <p className="font-mono text-[11px] font-black text-white sm:text-base">
-                        {result.toppled}/{result.total}
-                      </p>
-                    </div>
-                    <div className="rounded border border-stone-700 bg-stone-900/80 px-1 py-1.5 sm:px-2">
-                      <p className="text-[8px] font-bold text-stone-400 sm:text-[10px]">PERFECT</p>
-                      <p className="font-mono text-[11px] font-black text-teal-200 sm:text-base">
-                        {result.perfect}
-                      </p>
-                    </div>
-                    <div className="rounded border border-stone-700 bg-stone-900/80 px-1 py-1.5 sm:px-2">
-                      <p className="text-[8px] font-bold text-stone-400 sm:text-[10px]">MAX COMBO</p>
-                      <p className="font-mono text-[11px] font-black text-amber-200 sm:text-base">
-                        {result.maxCombo}
-                      </p>
-                    </div>
-                    <div className="rounded border border-stone-700 bg-stone-900/80 px-1 py-1.5 sm:px-2">
-                      <p className="text-[8px] font-bold text-stone-400 sm:text-[10px]">充足率</p>
-                      <p className="font-mono text-[11px] font-black text-white sm:text-base">
-                        {result.coverage}%
-                      </p>
-                    </div>
-                  </div>
-                  {result.isBest && (
-                    <p className="mt-1 text-[9px] font-bold text-amber-300 sm:text-xs">自己ベスト更新</p>
-                  )}
-                  <div className="mt-2.5 flex w-full max-w-xs flex-row gap-1.5 sm:mt-4 sm:max-w-sm sm:gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startGame(preset, true)}
-                      className="flex-1 rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-2 py-2 text-[11px] font-black text-stone-950 shadow-lg transition hover:scale-[1.02] active:scale-[0.98] sm:px-4 sm:py-2.5 sm:text-sm"
-                    >
-                      もう一度
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goTitle}
-                      className="flex-1 rounded-xl border border-stone-600 bg-stone-900 px-2 py-2 text-[11px] font-bold text-stone-200 transition hover:border-stone-400 sm:px-4 sm:py-2.5 sm:text-sm"
-                    >
-                      コース選択
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-2 py-2 text-[9px] font-bold text-stone-300 sm:px-3 sm:text-[10px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-4 rounded-full bg-[#8cf0cd]" />
+                  連鎖可
+                  <span className="ml-2 h-1.5 w-4 rounded-full bg-[#ff9b86]" />
+                  途切れる
+                </span>
+                <span className="hidden text-stone-400 sm:inline">タップで削除 / ドラッグで配置</span>
+              </div>
             </div>
 
-            {phase === 'build' && (
-              <div className="mt-2 sm:mt-3">
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                  {(['s', 'loop', 'zigzag'] as Preset[]).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => changePreset(item)}
-                      className={`rounded-lg border px-2 py-2 text-[11px] font-bold transition sm:text-xs ${
-                        preset === item
-                          ? 'border-teal-400 bg-teal-950/50 text-teal-200'
-                          : 'border-stone-700 bg-stone-900 text-stone-300 hover:border-stone-500'
-                      }`}
-                    >
-                      {PRESET_LABELS[item]}コース
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={clearDominoes}
-                    disabled={hud.placed === 0}
-                    className="rounded-xl border border-stone-700 bg-stone-900 px-4 py-2.5 text-xs font-bold text-stone-300 transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
-                  >
-                    クリア
-                  </button>
-                  <button
-                    type="button"
-                    onClick={launch}
-                    disabled={hud.placed === 0}
-                    className="flex-1 rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-black text-stone-950 shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:border-stone-700 disabled:bg-stone-800 disabled:bg-none disabled:text-stone-500 disabled:shadow-none sm:text-base"
-                  >
-                    打ち上げ
-                  </button>
-                </div>
-                <p className="mt-1.5 text-center text-[10px] leading-4 text-stone-400 sm:text-xs">
-                  トラックをなぞって配置。間隔 {IDEAL_MIN}〜{IDEAL_MAX} でPERFECT。
+            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-5 sm:gap-2">
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
+                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">倒壊</p>
+                <p className="font-mono text-sm font-black text-teal-200 sm:text-lg">{hud.toppled}</p>
+              </div>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
+                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">残り</p>
+                <p className="font-mono text-sm font-black text-stone-100 sm:text-lg">{hud.remaining}</p>
+              </div>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
+                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">伝播速度</p>
+                <p className="font-mono text-sm font-black text-amber-200 sm:text-lg">
+                  {hud.propSpeed.toFixed(1)}
+                  <span className="ml-0.5 text-[9px] font-bold text-stone-400">枚/秒</span>
                 </p>
               </div>
-            )}
-
-            {phase === 'running' && (
-              <div className="mt-2 rounded-xl border border-stone-700 bg-stone-900/70 p-3 sm:mt-3">
-                <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs">
-                  <span className="font-bold text-teal-200">連鎖中...</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-teal-200">PERFECT {hud.perfect}</span>
-                    <span className="font-mono text-stone-300">
-                      {hud.toppled} / {hud.placed}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-800">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-teal-400 to-amber-300 transition-[width] duration-150"
-                    style={{ width: `${hud.placed > 0 ? (hud.toppled / hud.placed) * 100 : 0}%` }}
-                  />
-                </div>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
+                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">最大連鎖</p>
+                <p className="font-mono text-sm font-black text-white sm:text-lg">{hud.maxChain}</p>
               </div>
-            )}
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
+                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">完走</p>
+                <p className="text-[11px] font-black leading-5 text-stone-100 sm:text-sm">{completionLabel}</p>
+              </div>
+            </div>
+
+            <div className="mt-2 rounded-xl border border-stone-800 bg-stone-900/60 p-2.5 sm:p-3">
+              <button
+                type="button"
+                onClick={launch}
+                disabled={hud.placed === 0}
+                className="w-full rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-black text-stone-950 shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:border-stone-700 disabled:bg-stone-800 disabled:bg-none disabled:text-stone-500 disabled:shadow-none sm:text-base"
+              >
+                連鎖開始
+              </button>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={togglePause}
+                  disabled={!hud.running}
+                  className="rounded-lg border border-teal-500/40 bg-teal-950/40 px-2 py-2 text-xs font-bold text-teal-200 transition hover:border-teal-300 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+                >
+                  {hud.paused ? '再開' : '一時停止'}
+                </button>
+                <button
+                  type="button"
+                  onClick={stepOnce}
+                  disabled={!hud.paused}
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-2 py-2 text-xs font-bold text-stone-200 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+                >
+                  1ステップ
+                </button>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={resetRun}
+                  disabled={hud.placed === 0 && !hud.launched}
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-1 py-2 text-[11px] font-bold text-stone-200 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
+                >
+                  リセット
+                </button>
+                <button
+                  type="button"
+                  onClick={autoFill}
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-1 py-2 text-[11px] font-bold text-stone-200 transition hover:border-teal-400 hover:text-teal-200 sm:text-xs"
+                >
+                  おまかせ配置
+                </button>
+                <button
+                  type="button"
+                  onClick={clearDominoes}
+                  disabled={hud.placed === 0}
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-1 py-2 text-[11px] font-bold text-stone-200 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
+                >
+                  クリア
+                </button>
+              </div>
+            </div>
           </div>
 
           <aside className="flex flex-col gap-2.5">
-            <div className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-400">HOW TO PLAY</p>
+            <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-400">COURSE</p>
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                {(['s', 'loop', 'zigzag'] as Preset[]).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => choosePreset(item)}
+                    className={`rounded-lg border px-1 py-2 text-[11px] font-bold transition sm:text-xs ${
+                      settings.preset === item
+                        ? 'border-teal-400 bg-teal-950/50 text-teal-200'
+                        : 'border-stone-700 bg-stone-900 text-stone-300 hover:border-stone-500'
+                    }`}
+                  >
+                    {PRESET_LABELS[item]}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] leading-4 text-stone-500">
+                {PRESET_NAMES[settings.preset]}。選択すると現在の間隔で自動配置します。
+              </p>
+            </section>
+
+            <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">PARAMETERS</p>
+              <div className="mt-3 space-y-3">
+                <RangeControl
+                  label="間隔"
+                  value={settings.spacing}
+                  min={MIN_GAP}
+                  max={120}
+                  step={2}
+                  display={`${settings.spacing}px`}
+                  onChange={(value) => applySettings({ spacing: value })}
+                />
+                <RangeControl
+                  label="ドミノの高さ"
+                  value={settings.height}
+                  min={56}
+                  max={132}
+                  step={2}
+                  display={`${settings.height}px`}
+                  onChange={(value) => applySettings({ height: value })}
+                />
+                <RangeControl
+                  label="摩擦"
+                  value={settings.friction}
+                  min={0}
+                  max={1.2}
+                  step={0.05}
+                  display={settings.friction.toFixed(2)}
+                  onChange={(value) => applySettings({ friction: value })}
+                />
+                <RangeControl
+                  label="押し出し"
+                  value={settings.pushForce}
+                  min={0.6}
+                  max={2.4}
+                  step={0.1}
+                  display={settings.pushForce.toFixed(1)}
+                  onChange={(value) => applySettings({ pushForce: value })}
+                />
+                <RangeControl
+                  label="重力"
+                  value={settings.gravity}
+                  min={0.4}
+                  max={2}
+                  step={0.05}
+                  display={settings.gravity.toFixed(2)}
+                  onChange={(value) => applySettings({ gravity: value })}
+                />
+              </div>
+              <div className="mt-3">
+                <p className="text-[11px] font-bold text-stone-300">シミュレーション速度</p>
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                  {[0.5, 1, 2].map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => applySettings({ speed: item })}
+                      className={`rounded-lg border px-1 py-1.5 font-mono text-[11px] font-bold transition sm:text-xs ${
+                        settings.speed === item
+                          ? 'border-amber-400 bg-amber-950/40 text-amber-200'
+                          : 'border-stone-700 bg-stone-900 text-stone-300 hover:border-stone-500'
+                      }`}
+                    >
+                      {item}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-300">SPACING GUIDE</p>
+              <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-stone-300 sm:text-xs">
+                <span>連鎖できる間隔</span>
+                <span className="font-mono font-black text-teal-200">
+                  {MIN_GAP} - {reach}px
+                </span>
+              </div>
+              <p className="mt-2 text-[10px] leading-4 text-stone-500">
+                緑のリンクは次のドミノへ届く間隔、赤は届かない間隔です。高さを変えると到達距離も変わります。
+              </p>
+            </section>
+
+            <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">HOW TO USE</p>
               <ol className="mt-2 space-y-2 text-[11px] leading-5 text-stone-300 sm:text-xs">
                 <li>
                   <span className="font-bold text-white">1.</span> コースを選ぶか、トラックをなぞってドミノを配置。
                 </li>
                 <li>
-                  <span className="font-bold text-white">2.</span> 打ち上げボタンで最初の一枚を倒す。
+                  <span className="font-bold text-white">2.</span> 既存のドミノをタップすると削除。間隔ガイドを確認。
                 </li>
                 <li>
-                  <span className="font-bold text-white">3.</span> 間隔をそろえてPERFECTコンボを伸ばす。
+                  <span className="font-bold text-white">3.</span> 連鎖開始後は速度切替、一時停止、1ステップで観察。
                 </li>
               </ol>
-            </div>
-            <div className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">SCORING</p>
-              <div className="mt-2 space-y-1.5 text-[10px] text-stone-300 sm:text-xs">
-                <div className="flex justify-between">
-                  <span>倒壊ボーナス</span>
-                  <span className="font-mono text-white">+100</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>PERFECT間隔</span>
-                  <span className="font-mono text-teal-200">+80〜</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>全倒達成</span>
-                  <span className="font-mono text-amber-200">+1,500</span>
-                </div>
-              </div>
-              <p className="mt-2 text-[9px] leading-4 text-stone-500 sm:text-[11px]">
-                理想の間隔は {IDEAL_MIN}〜{IDEAL_MAX}。広すぎると連鎖が止まります。
-              </p>
-            </div>
+            </section>
           </aside>
         </div>
       </div>

@@ -1046,8 +1046,8 @@ export function PrincipalComponentAnalysis() {
                 {result.scores.map((score, index) => (
                   <circle
                     key={`pca-score-${index}`}
-                    cx={chart.x.scale(score[0])}
-                    cy={chart.y.scale(score[1] ?? 0)}
+                    cx={Math.round(chart.x.scale(score[0]) * 1000) / 1000}
+                    cy={Math.round(chart.y.scale(score[1] ?? 0) * 1000) / 1000}
                     r={3.5}
                     fill="var(--accent)"
                     stroke="var(--paper)"

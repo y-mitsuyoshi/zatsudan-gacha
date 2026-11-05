@@ -6,10 +6,6 @@ const APP_URL = 'https://zatsudan-gacha.app';
 export const metadata: Metadata = {
   title: 'ページが見つかりません',
   description: 'お探しのページは見つかりませんでした。',
-  robots: {
-    index: false,
-    follow: false,
-  },
   openGraph: {
     title: 'ページが見つかりません',
     description: 'お探しのページは見つかりませんでした。',

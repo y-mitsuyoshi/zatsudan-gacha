@@ -354,15 +354,20 @@ function CoordinateMap({
   samePoint,
 }: CoordinateMapProps) {
   const view = buildMapView(pointA, pointB);
+  const roundSvg = (value: number) => Math.round(value * 1000) / 1000;
   const projectedA = view.project(pointA.lat, pointA.lon);
+  projectedA.x = roundSvg(projectedA.x);
+  projectedA.y = roundSvg(projectedA.y);
   const projectedB = view.project(pointB.lat, view.pointBLongitude);
+  projectedB.x = roundSvg(projectedB.x);
+  projectedB.y = roundSvg(projectedB.y);
   const midpointLongitude =
     midpoint !== null
       ? pointA.lon + normalizeLongitude(midpoint.lon - pointA.lon)
       : null;
   const projectedMidpoint =
     midpoint !== null && midpointLongitude !== null && !samePoint
-      ? view.project(midpoint.lat, midpointLongitude)
+      ? (() => { const point = view.project(midpoint.lat, midpointLongitude); point.x = roundSvg(point.x); point.y = roundSvg(point.y); return point; })()
       : null;
   const mapDescriptionId = 'coordinate-distance-map-description';
   const mapLabel = samePoint
@@ -373,10 +378,12 @@ function CoordinateMap({
     : `地点A（${formatLatitudeLabel(pointA.lat)}、${formatLongitudeLabel(pointA.lon)}）と地点B（${formatLatitudeLabel(pointB.lat)}、${formatLongitudeLabel(pointB.lon)}）を正距円筒図法の簡易グリッドに配置し、2点を直線で結んでいます。中点も小さな円で示しています。背景の緯度・経度線は位置確認用の目安であり、地形や実際の経路を表すものではありません。`;
   const labelAOffsetY = projectedA.y <= projectedB.y ? -14 : 22;
   const labelBOffsetY = projectedA.y <= projectedB.y ? 22 : -14;
-  const labelAX =
-    projectedA.x + (projectedA.x > MAP_WIDTH / 2 ? -12 : 12);
-  const labelBX =
-    projectedB.x + (projectedB.x > MAP_WIDTH / 2 ? -12 : 12);
+  const labelAX = roundSvg(
+    projectedA.x + (projectedA.x > MAP_WIDTH / 2 ? -12 : 12),
+  );
+  const labelBX = roundSvg(
+    projectedB.x + (projectedB.x > MAP_WIDTH / 2 ? -12 : 12),
+  );
 
   return (
     <>

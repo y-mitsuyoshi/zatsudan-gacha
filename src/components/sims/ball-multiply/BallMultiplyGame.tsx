@@ -5,26 +5,55 @@ import Link from 'next/link';
 
 const WORLD_W = 720;
 const WORLD_H = 900;
-const WALL = 24;
-const LAUNCH_Y = 104;
-const LAUNCH_MIN_X = 86;
-const LAUNCH_MAX_X = WORLD_W - 86;
-const ZONE_TOP = 806;
-const COLLECT_Y = 840;
-const GRAVITY = 880;
-const BALL_RADIUS = 7;
-const PEG_RADIUS = 8;
-const MAX_BALLS = 150;
-const LAUNCH_SUPPLY = 14;
-const ROUND_TIME = 90;
-const COMBO_WINDOW = 1.8;
-const STORAGE_KEY = 'ball-multiply-best-v1';
-const ZONE_VALUES = [40, 80, 160, 320, 160, 80, 40];
-const ZONE_COLORS = ['#38bdf8', '#2dd4bf', '#a3e635', '#fbbf24', '#fb7185', '#c084fc', '#60a5fa'];
-const BALL_COLORS = ['#5eead4', '#67e8f9', '#a5b4fc', '#f9a8d4', '#fde68a'];
-const ZONE_WIDTH = (WORLD_W - WALL * 2) / ZONE_VALUES.length;
+const WALL = 22;
+const LAUNCH_Y = 96;
+const LAUNCH_MIN_X = WALL + 34;
+const LAUNCH_MAX_X = WORLD_W - WALL - 34;
+const FLOOR_Y = WORLD_H - 46;
+const PEG_TOP = 196;
+const PEG_BOTTOM = 716;
+const BALL_RADIUS = 8;
+const PEG_RADIUS = 9;
+const MAX_SPLIT_DEPTH = 3;
+const MAX_PARTICLES = 220;
+const SETTLE_TTL = 6;
+const SPEED_OPTIONS = [0.5, 1, 2];
 
-type Phase = 'ready' | 'playing' | 'result';
+const BALL_COLORS = ['#5eead4', '#67e8f9', '#a5b4fc', '#f9a8d4', '#fde68a'];
+
+interface SimParams {
+  gravity: number;
+  pegRows: number;
+  splitChance: number;
+  restitution: number;
+  maxBalls: number;
+  autoSpawn: boolean;
+  speed: number;
+}
+
+const DEFAULT_PARAMS: SimParams = {
+  gravity: 880,
+  pegRows: 8,
+  splitChance: 0.4,
+  restitution: 0.72,
+  maxBalls: 220,
+  autoSpawn: true,
+  speed: 1,
+};
+
+const PRESETS: { id: string; label: string; params: SimParams }[] = [
+  { id: 'standard', label: '標準', params: { ...DEFAULT_PARAMS } },
+  {
+    id: 'gravity',
+    label: '高重力',
+    params: { ...DEFAULT_PARAMS, gravity: 1500, restitution: 0.52, splitChance: 0.45, maxBalls: 260 },
+  },
+  {
+    id: 'split',
+    label: '分裂多め',
+    params: { ...DEFAULT_PARAMS, splitChance: 0.75, pegRows: 10, maxBalls: 340 },
+  },
+];
 
 interface Peg {
   x: number;
@@ -41,9 +70,10 @@ interface Ball {
   vx: number;
   vy: number;
   r: number;
-  splits: number;
+  splitBudget: number;
   cooldown: number;
   color: number;
+  rest: number;
 }
 
 interface Particle {
@@ -57,84 +87,70 @@ interface Particle {
   color: string;
 }
 
-interface FloatText {
-  x: number;
-  y: number;
-  text: string;
-  life: number;
-  maxLife: number;
-  color: string;
-}
-
-interface GameState {
-  phase: Phase;
+interface SimState {
+  running: boolean;
+  params: SimParams;
   pegs: Peg[];
   balls: Ball[];
   particles: Particle[];
-  texts: FloatText[];
-  score: number;
-  combo: number;
-  maxCombo: number;
-  comboTimer: number;
-  dropsLeft: number;
-  collected: number;
-  timeLeft: number;
-  time: number;
   aimX: number;
   aiming: boolean;
   pointerId: number | null;
   launcherFlash: number;
-  zoneFlash: number[];
-  bestScore: number;
-  endReason: string;
-  victory: boolean;
-  shake: number;
+  time: number;
+  totalSplits: number;
+  peakBalls: number;
+  collisionCount: number;
+  collisionWindow: number;
+  collisionRate: number;
+  autoTimer: number;
 }
 
 interface HudState {
-  phase: Phase;
-  score: number;
-  combo: number;
-  multiplier: number;
-  maxCombo: number;
-  dropsLeft: number;
+  running: boolean;
   activeBalls: number;
-  collected: number;
-  timeLeft: number;
-  bestScore: number;
-  endReason: string;
-  victory: boolean;
+  totalSplits: number;
+  collisionRate: number;
+  peakBalls: number;
+  settledBalls: number;
+  autoSpawn: boolean;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function comboMultiplier(combo: number): number {
-  return 1 + Math.min(4, Math.floor(combo / 5) * 0.5);
+function finite(value: number, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
 }
 
-function zoneIndexForX(x: number): number {
-  const index = Math.floor((x - WALL) / ZONE_WIDTH);
-  return clamp(index, 0, ZONE_VALUES.length - 1);
+function sanitizeParams(params: SimParams): SimParams {
+  return {
+    gravity: clamp(finite(params.gravity, DEFAULT_PARAMS.gravity), 200, 1800),
+    pegRows: clamp(Math.round(finite(params.pegRows, DEFAULT_PARAMS.pegRows)), 3, 12),
+    splitChance: clamp(finite(params.splitChance, DEFAULT_PARAMS.splitChance), 0, 1),
+    restitution: clamp(finite(params.restitution, DEFAULT_PARAMS.restitution), 0.2, 0.95),
+    maxBalls: clamp(Math.round(finite(params.maxBalls, DEFAULT_PARAMS.maxBalls)), 40, 400),
+    autoSpawn: Boolean(params.autoSpawn),
+    speed: clamp(finite(params.speed, DEFAULT_PARAMS.speed), 0.5, 2),
+  };
 }
 
-function createPegs(): Peg[] {
+function createPegs(rows: number): Peg[] {
   const pegs: Peg[] = [];
-  const rows = 8;
-  const rowGap = 62;
-  const startY = 214;
-  const margin = 56;
-  const unit = (WORLD_W - margin * 2) / 7;
-  for (let row = 0; row < rows; row += 1) {
-    const count = row % 2 === 0 ? 8 : 7;
+  const safeRows = clamp(Math.round(finite(rows, DEFAULT_PARAMS.pegRows)), 3, 12);
+  const rowGap = (PEG_BOTTOM - PEG_TOP) / Math.max(1, safeRows - 1);
+  const margin = 66;
+  const unit = (WORLD_W - margin * 2) / 6.5;
+  for (let row = 0; row < safeRows; row += 1) {
+    const count = row % 2 === 0 ? 7 : 6;
     const offset = row % 2 === 0 ? 0 : 0.5;
     for (let col = 0; col < count; col += 1) {
       pegs.push({
         x: margin + (col + offset) * unit,
-        y: startY + row * rowGap,
+        y: PEG_TOP + row * rowGap,
         r: PEG_RADIUS,
-        golden: (row * 5 + col * 3) % 17 === 0,
+        golden: (row * 7 + col * 5) % 23 === 0,
         flash: 0,
         phase: Math.random() * Math.PI * 2,
       });
@@ -143,277 +159,266 @@ function createPegs(): Peg[] {
   return pegs;
 }
 
-function readBestScore(): number {
-  if (typeof window === 'undefined') return 0;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const value = raw ? Number(raw) : 0;
-    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function writeBestScore(score: number) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, String(score));
-  } catch {
-    return;
-  }
-}
-
-function createInitialGame(bestScore: number): GameState {
+function createInitialSim(params: SimParams): SimState {
+  const safe = sanitizeParams(params);
   return {
-    phase: 'ready',
-    pegs: createPegs(),
+    running: true,
+    params: safe,
+    pegs: createPegs(safe.pegRows),
     balls: [],
     particles: [],
-    texts: [],
-    score: 0,
-    combo: 0,
-    maxCombo: 0,
-    comboTimer: 0,
-    dropsLeft: LAUNCH_SUPPLY,
-    collected: 0,
-    timeLeft: ROUND_TIME,
-    time: 0,
     aimX: WORLD_W / 2,
     aiming: false,
     pointerId: null,
     launcherFlash: 0,
-    zoneFlash: ZONE_VALUES.map(() => 0),
-    bestScore,
-    endReason: '',
-    victory: false,
-    shake: 0,
+    time: 0,
+    totalSplits: 0,
+    peakBalls: 0,
+    collisionCount: 0,
+    collisionWindow: 0,
+    collisionRate: 0,
+    autoTimer: 0.8,
   };
 }
 
-function resetRun(game: GameState) {
-  game.phase = 'playing';
-  game.pegs = createPegs();
-  game.balls = [];
-  game.particles = [];
-  game.texts = [];
-  game.score = 0;
-  game.combo = 0;
-  game.maxCombo = 0;
-  game.comboTimer = 0;
-  game.dropsLeft = LAUNCH_SUPPLY;
-  game.collected = 0;
-  game.timeLeft = ROUND_TIME;
-  game.time = 0;
-  game.aimX = WORLD_W / 2;
-  game.aiming = false;
-  game.pointerId = null;
-  game.launcherFlash = 0;
-  game.zoneFlash = ZONE_VALUES.map(() => 0);
-  game.endReason = '';
-  game.victory = false;
-  game.shake = 0;
-}
-
-function toHud(game: GameState): HudState {
+function toHud(sim: SimState): HudState {
+  let settledBalls = 0;
+  for (const ball of sim.balls) {
+    if (ball.rest > 0.3) settledBalls += 1;
+  }
   return {
-    phase: game.phase,
-    score: game.score,
-    combo: game.combo,
-    multiplier: comboMultiplier(game.combo),
-    maxCombo: game.maxCombo,
-    dropsLeft: game.dropsLeft,
-    activeBalls: game.balls.length,
-    collected: game.collected,
-    timeLeft: game.timeLeft,
-    bestScore: game.bestScore,
-    endReason: game.endReason,
-    victory: game.victory,
+    running: sim.running,
+    activeBalls: sim.balls.length,
+    totalSplits: sim.totalSplits,
+    collisionRate: Math.round(sim.collisionRate),
+    peakBalls: sim.peakBalls,
+    settledBalls,
+    autoSpawn: sim.params.autoSpawn,
   };
 }
 
-function spawnBurst(game: GameState, x: number, y: number, color: string, count: number) {
-  for (let index = 0; index < count; index += 1) {
-    const angle = (Math.PI * 2 * index) / count + Math.random() * 0.7;
-    const speed = 40 + Math.random() * 170;
-    const life = 0.4 + Math.random() * 0.6;
-    game.particles.push({
+function spawnBurst(sim: SimState, x: number, y: number, color: string, count: number) {
+  const room = MAX_PARTICLES - sim.particles.length;
+  const amount = Math.min(count, Math.max(0, room));
+  for (let index = 0; index < amount; index += 1) {
+    const angle = (Math.PI * 2 * index) / amount + Math.random() * 0.8;
+    const speed = 35 + Math.random() * 150;
+    const life = 0.35 + Math.random() * 0.5;
+    sim.particles.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       life,
       maxLife: life,
-      size: 1 + Math.random() * 2.6,
+      size: 1 + Math.random() * 2.4,
       color,
     });
   }
 }
 
-function addText(game: GameState, x: number, y: number, text: string, color: string) {
-  game.texts.push({
-    x,
-    y,
-    text,
-    life: 1,
-    maxLife: 1,
-    color,
-  });
+function registerCollision(sim: SimState) {
+  sim.collisionCount += 1;
 }
 
-function updateEffects(game: GameState, dt: number) {
-  for (const particle of game.particles) {
+function spawnBall(sim: SimState, x: number, vx = 0, vy = 62): boolean {
+  if (sim.balls.length >= sim.params.maxBalls) return false;
+  const spawnX = clamp(finite(x, WORLD_W / 2), LAUNCH_MIN_X, LAUNCH_MAX_X);
+  const color = Math.floor(Math.random() * BALL_COLORS.length);
+  sim.balls.push({
+    x: spawnX,
+    y: LAUNCH_Y + 18,
+    vx: clamp(finite(vx, 0) + (Math.random() - 0.5) * 20, -260, 260),
+    vy: clamp(finite(vy, 62), 20, 320),
+    r: BALL_RADIUS,
+    splitBudget: MAX_SPLIT_DEPTH,
+    cooldown: 0.12,
+    color,
+    rest: 0,
+  });
+  sim.peakBalls = Math.max(sim.peakBalls, sim.balls.length);
+  sim.launcherFlash = 1;
+  spawnBurst(sim, spawnX, LAUNCH_Y + 18, BALL_COLORS[color] ?? '#5eead4', 7);
+  return true;
+}
+
+function trySplit(sim: SimState, ball: Ball, peg: Peg, nx: number, ny: number, distance: number) {
+  if (ball.cooldown > 0 || ball.splitBudget <= 0) return;
+  if (!peg.golden && Math.random() >= sim.params.splitChance) return;
+  if (sim.balls.length >= sim.params.maxBalls) return;
+  if (peg.golden) {
+    ball.splitBudget = Math.min(MAX_SPLIT_DEPTH + 1, ball.splitBudget + 1);
+  }
+  ball.splitBudget -= 1;
+  ball.cooldown = 0.16;
+  const tangentX = -ny;
+  const tangentY = nx;
+  const spread = (Math.random() - 0.5) * (150 + (1 - sim.params.restitution) * 220);
+  const childColor = (ball.color + 1) % BALL_COLORS.length;
+  const child: Ball = {
+    x: peg.x + nx * (distance + 1),
+    y: peg.y + ny * (distance + 1),
+    vx: clamp(ball.vx * 0.6 + tangentX * spread + (Math.random() - 0.5) * 30, -520, 520),
+    vy: clamp(Math.abs(ball.vy) * 0.4 + 50 + Math.abs(spread) * 0.12, 20, 760),
+    r: Math.max(4.5, ball.r * 0.87),
+    splitBudget: ball.splitBudget,
+    cooldown: 0.2,
+    color: childColor,
+    rest: 0,
+  };
+  sim.balls.push(child);
+  sim.totalSplits += 1;
+  sim.peakBalls = Math.max(sim.peakBalls, sim.balls.length);
+  spawnBurst(sim, child.x, child.y, BALL_COLORS[childColor] ?? '#5eead4', 6);
+}
+
+function updateEffects(sim: SimState, dt: number) {
+  for (const particle of sim.particles) {
     particle.life -= dt;
     particle.x += particle.vx * dt;
     particle.y += particle.vy * dt;
     particle.vx *= 0.985;
-    particle.vy = particle.vy * 0.985 + 40 * dt;
+    particle.vy = particle.vy * 0.985 + 140 * dt;
   }
-  game.particles = game.particles.filter((particle) => particle.life > 0);
-  for (const text of game.texts) {
-    text.life -= dt;
-    text.y -= 34 * dt;
+  sim.particles = sim.particles.filter(
+    (particle) =>
+      particle.life > 0 &&
+      Number.isFinite(particle.x) &&
+      Number.isFinite(particle.y) &&
+      particle.y < WORLD_H + 60 &&
+      particle.x > -60 &&
+      particle.x < WORLD_W + 60
+  );
+  if (sim.launcherFlash > 0) sim.launcherFlash = Math.max(0, sim.launcherFlash - dt * 2.6);
+  for (const peg of sim.pegs) {
+    if (peg.flash > 0) peg.flash = Math.max(0, peg.flash - dt * 3.6);
   }
-  game.texts = game.texts.filter((text) => text.life > 0);
-  for (let index = 0; index < game.zoneFlash.length; index += 1) {
-    if (game.zoneFlash[index] > 0) {
-      game.zoneFlash[index] = Math.max(0, game.zoneFlash[index] - dt * 2.6);
+}
+
+function updateBall(sim: SimState, ball: Ball, dt: number): boolean {
+  const restitution = sim.params.restitution;
+  ball.cooldown = Math.max(0, ball.cooldown - dt);
+  ball.vy = Math.min(1350, ball.vy + sim.params.gravity * dt);
+  ball.vx = clamp(ball.vx * 0.999, -620, 620);
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+
+  if (
+    !Number.isFinite(ball.x) ||
+    !Number.isFinite(ball.y) ||
+    !Number.isFinite(ball.vx) ||
+    !Number.isFinite(ball.vy)
+  ) {
+    return false;
+  }
+
+  if (ball.x - ball.r < WALL) {
+    ball.x = WALL + ball.r;
+    if (ball.vx < 0) {
+      ball.vx = -ball.vx * restitution;
+      registerCollision(sim);
     }
   }
-  if (game.launcherFlash > 0) game.launcherFlash = Math.max(0, game.launcherFlash - dt * 2.4);
-  if (game.shake > 0) game.shake = Math.max(0, game.shake - dt * 22);
-  for (const peg of game.pegs) {
-    if (peg.flash > 0) peg.flash = Math.max(0, peg.flash - dt * 3.4);
+  if (ball.x + ball.r > WORLD_W - WALL) {
+    ball.x = WORLD_W - WALL - ball.r;
+    if (ball.vx > 0) {
+      ball.vx = -ball.vx * restitution;
+      registerCollision(sim);
+    }
   }
+
+  for (const peg of sim.pegs) {
+    if (Math.abs(peg.y - ball.y) > 32 || Math.abs(peg.x - ball.x) > 32) continue;
+    const dx = ball.x - peg.x;
+    const dy = ball.y - peg.y;
+    const minDist = ball.r + peg.r;
+    const distanceSq = dx * dx + dy * dy;
+    if (distanceSq >= minDist * minDist) continue;
+    const distance = Math.sqrt(distanceSq) || 0.001;
+    const nx = dx / distance;
+    const ny = dy / distance;
+    ball.x = peg.x + nx * minDist;
+    ball.y = peg.y + ny * minDist;
+    const dot = ball.vx * nx + ball.vy * ny;
+    if (dot < 0) {
+      ball.vx -= (1 + restitution) * dot * nx;
+      ball.vy -= (1 + restitution) * dot * ny;
+      ball.vx += (Math.random() - 0.5) * 46;
+      peg.flash = 1;
+      registerCollision(sim);
+      trySplit(sim, ball, peg, nx, ny, minDist);
+    }
+    break;
+  }
+
+  const floorLine = FLOOR_Y - ball.r;
+  if (ball.y > floorLine) {
+    ball.y = floorLine;
+    if (ball.vy > 0) {
+      const impact = ball.vy;
+      ball.vy = -impact * restitution;
+      ball.vx *= 0.94;
+      if (Math.abs(ball.vy) < 34) ball.vy = 0;
+      if (impact > 12) registerCollision(sim);
+    }
+  }
+
+  const nearFloor = ball.y >= floorLine - 1.5;
+  if (nearFloor && Math.abs(ball.vy) < 38 && Math.abs(ball.vx) < 28) {
+    ball.rest += dt;
+    ball.vx *= 0.975;
+  } else {
+    ball.rest = 0;
+  }
+
+  if (ball.y > WORLD_H + 60 || ball.y < -240 || Math.abs(ball.x) > WORLD_W + 140) {
+    return false;
+  }
+  if (ball.rest > SETTLE_TTL) {
+    spawnBurst(sim, ball.x, ball.y, BALL_COLORS[ball.color] ?? '#5eead4', 4);
+    return false;
+  }
+  return true;
 }
 
-function collectBall(game: GameState, ball: Ball) {
-  const index = zoneIndexForX(ball.x);
-  game.combo += 1;
-  game.maxCombo = Math.max(game.maxCombo, game.combo);
-  game.comboTimer = COMBO_WINDOW;
-  const multiplier = comboMultiplier(game.combo);
-  const points = Math.round(ZONE_VALUES[index] * multiplier);
-  game.score += points;
-  game.collected += 1;
-  game.zoneFlash[index] = 1;
-  game.shake = Math.min(7, game.shake + 1.4);
-  const color = ZONE_COLORS[index] ?? '#5eead4';
-  spawnBurst(game, ball.x, COLLECT_Y - 8, color, 11);
-  addText(game, ball.x, COLLECT_Y - 24, `+${points}`, color);
-  if (multiplier > 1) {
-    addText(game, ball.x, COLLECT_Y - 46, `x${multiplier}`, '#fef3c7');
-  }
-}
+function advanceSim(sim: SimState, rawDt: number) {
+  const dt = Math.min(0.04, Math.max(0, finite(rawDt, 0))) * sim.params.speed;
+  if (!Number.isFinite(dt) || dt <= 0) return;
+  sim.time += dt;
+  if (sim.time > 100000) sim.time = 0;
+  updateEffects(sim, dt);
 
-function finishRun(game: GameState, victory: boolean, reason: string) {
-  if (game.phase !== 'playing') return;
-  game.phase = 'result';
-  game.victory = victory;
-  game.endReason = reason;
-  game.aiming = false;
-  game.pointerId = null;
-  if (game.score > game.bestScore) {
-    game.bestScore = game.score;
-    writeBestScore(game.bestScore);
-  }
-}
-
-function updateGame(game: GameState, dt: number) {
-  game.time += dt;
-  updateEffects(game, dt);
-
-  if (game.phase !== 'playing') return;
-
-  game.timeLeft = Math.max(0, game.timeLeft - dt);
-  if (game.comboTimer > 0) {
-    game.comboTimer = Math.max(0, game.comboTimer - dt);
-    if (game.comboTimer === 0 && game.combo > 0) game.combo = 0;
+  if (sim.params.autoSpawn) {
+    sim.autoTimer -= dt;
+    if (sim.autoTimer <= 0) {
+      if (sim.balls.length < sim.params.maxBalls) {
+        const margin = WALL + 52;
+        const x = margin + Math.random() * (WORLD_W - margin * 2);
+        spawnBall(sim, x, (Math.random() - 0.5) * 40, 55 + Math.random() * 25);
+        sim.autoTimer = 1 + Math.random() * 0.5;
+      } else {
+        sim.autoTimer = 0.35;
+      }
+    }
+  } else {
+    sim.autoTimer = Math.max(sim.autoTimer, 0.55);
   }
 
-  const substeps = Math.min(4, Math.max(1, Math.ceil(dt / (1 / 120))));
+  const substeps = clamp(Math.ceil(dt / 0.009), 1, 10);
   const stepDt = dt / substeps;
   for (let step = 0; step < substeps; step += 1) {
-    for (let index = game.balls.length - 1; index >= 0; index -= 1) {
-      const ball = game.balls[index];
+    for (let index = sim.balls.length - 1; index >= 0; index -= 1) {
+      const ball = sim.balls[index];
       if (!ball) continue;
-      ball.cooldown = Math.max(0, ball.cooldown - stepDt);
-      ball.vy = Math.min(1100, ball.vy + GRAVITY * stepDt);
-      ball.vx = clamp(ball.vx * 0.999, -520, 520);
-      ball.x += ball.vx * stepDt;
-      ball.y += ball.vy * stepDt;
-
-      if (ball.x - ball.r < WALL) {
-        ball.x = WALL + ball.r;
-        ball.vx = Math.abs(ball.vx) * 0.58;
-      }
-      if (ball.x + ball.r > WORLD_W - WALL) {
-        ball.x = WORLD_W - WALL - ball.r;
-        ball.vx = -Math.abs(ball.vx) * 0.58;
-      }
-
-      for (const peg of game.pegs) {
-        if (Math.abs(peg.y - ball.y) > 28 || Math.abs(peg.x - ball.x) > 28) continue;
-        const dx = ball.x - peg.x;
-        const dy = ball.y - peg.y;
-        const minDist = ball.r + peg.r;
-        const distanceSq = dx * dx + dy * dy;
-        if (distanceSq >= minDist * minDist) continue;
-        const distance = Math.sqrt(distanceSq) || 0.001;
-        const nx = dx / distance;
-        const ny = dy / distance;
-        ball.x = peg.x + nx * minDist;
-        ball.y = peg.y + ny * minDist;
-        const dot = ball.vx * nx + ball.vy * ny;
-        if (dot < 0) {
-          ball.vx -= 1.6 * dot * nx;
-          ball.vy -= 1.6 * dot * ny;
-        }
-        ball.vx += (Math.random() - 0.5) * 80;
-        ball.vy = Math.abs(ball.vy) * 0.65 + 30;
-        peg.flash = 1;
-
-        if (peg.golden) {
-          game.score += 25;
-          ball.splits = Math.min(5, ball.splits + 1);
-          spawnBurst(game, peg.x, peg.y, '#fbbf24', 8);
-          addText(game, peg.x, peg.y - 14, '+25', '#fbbf24');
-        }
-
-        if (ball.cooldown === 0 && ball.splits > 0 && game.balls.length < MAX_BALLS) {
-          ball.splits -= 1;
-          ball.cooldown = 0.12;
-          const color = (ball.color + 1) % BALL_COLORS.length;
-          const child: Ball = {
-            x: peg.x + nx * (minDist + 1),
-            y: peg.y + ny * (minDist + 1),
-            vx: ball.vx * 0.72 + (Math.random() - 0.5) * 170,
-            vy: Math.abs(ball.vy) * 0.55 + 30,
-            r: Math.max(4.5, ball.r - 0.6),
-            splits: ball.splits,
-            cooldown: 0.16,
-            color,
-          };
-          game.balls.push(child);
-          spawnBurst(game, child.x, child.y, BALL_COLORS[color] ?? '#5eead4', 5);
-        }
-        break;
-      }
-
-      if (ball.y + ball.r >= COLLECT_Y) {
-        collectBall(game, ball);
-        game.balls.splice(index, 1);
-        continue;
-      }
-      if (ball.y > WORLD_H + 80) {
-        game.balls.splice(index, 1);
-      }
+      if (!updateBall(sim, ball, stepDt)) sim.balls.splice(index, 1);
     }
   }
 
-  if (game.balls.length === 0 && game.dropsLeft === 0) {
-    finishRun(game, true, 'すべてのボールを回収しました');
-  } else if (game.timeLeft <= 0) {
-    finishRun(game, false, '制限時間が終了しました');
+  sim.collisionWindow += dt;
+  if (sim.collisionWindow >= 0.75) {
+    sim.collisionRate = sim.collisionCount / sim.collisionWindow;
+    sim.collisionCount = 0;
+    sim.collisionWindow = 0;
   }
 }
 
@@ -433,7 +438,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, time: number) {
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
   const glowB = ctx.createRadialGradient(560, 620, 20, 560, 620, 420);
-  glowB.addColorStop(0, 'rgba(251,191,36,0.09)');
+  glowB.addColorStop(0, 'rgba(251,191,36,0.08)');
   glowB.addColorStop(0.55, 'rgba(180,83,9,0.04)');
   glowB.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = glowB;
@@ -444,11 +449,11 @@ function drawBackground(ctx: CanvasRenderingContext2D, time: number) {
   ctx.lineWidth = 1;
   for (let x = WALL; x <= WORLD_W - WALL; x += 48) {
     ctx.beginPath();
-    ctx.moveTo(x, 130);
-    ctx.lineTo(x, ZONE_TOP);
+    ctx.moveTo(x, 138);
+    ctx.lineTo(x, FLOOR_Y);
     ctx.stroke();
   }
-  for (let y = 160; y < ZONE_TOP; y += 48) {
+  for (let y = 160; y < FLOOR_Y; y += 48) {
     ctx.beginPath();
     ctx.moveTo(WALL, y);
     ctx.lineTo(WORLD_W - WALL, y);
@@ -462,78 +467,61 @@ function drawBackground(ctx: CanvasRenderingContext2D, time: number) {
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(WALL, LAUNCH_Y + 24);
-  ctx.lineTo(WALL, ZONE_TOP);
+  ctx.lineTo(WALL, FLOOR_Y);
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(WORLD_W - WALL, LAUNCH_Y + 24);
-  ctx.lineTo(WORLD_W - WALL, ZONE_TOP);
+  ctx.lineTo(WORLD_W - WALL, FLOOR_Y);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawZones(ctx: CanvasRenderingContext2D, game: GameState) {
-  const top = ZONE_TOP;
-  const height = WORLD_H - top - 12;
-  for (let index = 0; index < ZONE_VALUES.length; index += 1) {
-    const x = WALL + index * ZONE_WIDTH;
-    const flash = game.zoneFlash[index] ?? 0;
-    const color = ZONE_COLORS[index] ?? '#5eead4';
-    const gradient = ctx.createLinearGradient(0, top, 0, top + height);
-    gradient.addColorStop(0, `${color}22`);
-    gradient.addColorStop(0.5, `${color}${flash > 0.2 ? '66' : '38'}`);
-    gradient.addColorStop(1, `${color}${flash > 0.2 ? '99' : '55'}`);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(x + 1, top, ZONE_WIDTH - 2, height);
-
-    ctx.save();
-    ctx.globalAlpha = 0.35 + flash * 0.6;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + 0.75, top + 0.75, ZONE_WIDTH - 1.5, height - 1.5);
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.globalAlpha = 0.92;
-    ctx.textAlign = 'center';
-    ctx.font = '700 16px ui-monospace, monospace';
-    ctx.fillText(String(ZONE_VALUES[index]), x + ZONE_WIDTH / 2, top + height * 0.55);
-    ctx.globalAlpha = 0.5;
-    ctx.font = '600 9px ui-monospace, monospace';
-    ctx.fillText('PTS', x + ZONE_WIDTH / 2, top + height * 0.78);
-    ctx.restore();
-  }
+function drawFloor(ctx: CanvasRenderingContext2D, time: number) {
+  const height = WORLD_H - FLOOR_Y;
+  const gradient = ctx.createLinearGradient(0, FLOOR_Y, 0, WORLD_H);
+  gradient.addColorStop(0, 'rgba(13,148,136,0.22)');
+  gradient.addColorStop(0.45, 'rgba(6,78,72,0.3)');
+  gradient.addColorStop(1, 'rgba(2,13,12,0.95)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(WALL, FLOOR_Y, WORLD_W - WALL * 2, height);
 
   ctx.save();
-  ctx.strokeStyle = 'rgba(253,230,138,0.72)';
+  ctx.strokeStyle = `rgba(153,246,228,${0.5 + Math.sin(time * 2) * 0.08})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(WALL, top);
-  ctx.lineTo(WORLD_W - WALL, top);
+  ctx.moveTo(WALL, FLOOR_Y);
+  ctx.lineTo(WORLD_W - WALL, FLOOR_Y);
   ctx.stroke();
+
+  ctx.globalAlpha = 0.28;
+  ctx.lineWidth = 1;
+  for (let x = WALL + 18; x < WORLD_W - WALL; x += 34) {
+    ctx.beginPath();
+    ctx.moveTo(x, FLOOR_Y + 7);
+    ctx.lineTo(x + 10, FLOOR_Y + 20);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
-function drawPegs(ctx: CanvasRenderingContext2D, game: GameState) {
-  for (const peg of game.pegs) {
-    const pulse = 0.5 + 0.5 * Math.sin(game.time * 2 + peg.phase);
+function drawPegs(ctx: CanvasRenderingContext2D, sim: SimState) {
+  for (const peg of sim.pegs) {
+    const pulse = 0.5 + 0.5 * Math.sin(sim.time * 2 + peg.phase);
     const color = peg.golden ? '#fbbf24' : '#5eead4';
     ctx.save();
     if (peg.golden) {
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 16 + peg.flash * 22;
+      ctx.shadowBlur = 14 + peg.flash * 20;
     }
-    const gradient = ctx.createRadialGradient(peg.x - peg.r * 0.35, peg.y - peg.r * 0.4, 1, peg.x, peg.y, peg.r);
-    gradient.addColorStop(0, peg.golden ? '#fef3c7' : '#ccfbf1');
-    gradient.addColorStop(0.55, color);
-    gradient.addColorStop(1, peg.golden ? '#92400e' : '#0f766e');
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(peg.x, peg.y, peg.r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
-
-    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    ctx.beginPath();
+    ctx.arc(peg.x - peg.r * 0.3, peg.y - peg.r * 0.34, peg.r * 0.34, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalAlpha = (peg.golden ? 0.34 : 0.15) + peg.flash * 0.55;
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.2 + peg.flash * 2;
@@ -544,12 +532,12 @@ function drawPegs(ctx: CanvasRenderingContext2D, game: GameState) {
   }
 }
 
-function drawLauncher(ctx: CanvasRenderingContext2D, game: GameState) {
-  const x = game.aimX;
-  const active = game.phase === 'playing' && game.dropsLeft > 0;
+function drawLauncher(ctx: CanvasRenderingContext2D, sim: SimState) {
+  const x = sim.aimX;
+  const active = sim.running;
   ctx.save();
   const glow = ctx.createRadialGradient(x, LAUNCH_Y, 2, x, LAUNCH_Y, 60);
-  glow.addColorStop(0, `rgba(94,234,212,${active ? 0.35 : 0.1})`);
+  glow.addColorStop(0, `rgba(94,234,212,${active ? 0.35 : 0.14})`);
   glow.addColorStop(1, 'rgba(94,234,212,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
@@ -568,7 +556,7 @@ function drawLauncher(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = active ? '#ccfbf1' : '#475569';
+  ctx.fillStyle = active ? '#ccfbf1' : '#94a3b8';
   ctx.shadowColor = active ? '#5eead4' : 'transparent';
   ctx.shadowBlur = active ? 18 : 0;
   ctx.beginPath();
@@ -576,12 +564,12 @@ function drawLauncher(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  if (game.launcherFlash > 0) {
-    ctx.globalAlpha = game.launcherFlash;
+  if (sim.launcherFlash > 0) {
+    ctx.globalAlpha = sim.launcherFlash;
     ctx.strokeStyle = '#fde68a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(x, LAUNCH_Y + 16, 14 + (1 - game.launcherFlash) * 42, 0, Math.PI * 2);
+    ctx.arc(x, LAUNCH_Y + 16, 14 + (1 - sim.launcherFlash) * 42, 0, Math.PI * 2);
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
@@ -589,72 +577,63 @@ function drawLauncher(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.fillStyle = 'rgba(153,246,228,0.75)';
   ctx.font = '700 10px ui-monospace, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('DROP', x, LAUNCH_Y - 38);
+  ctx.fillText('SPAWN', x, LAUNCH_Y - 38);
   ctx.restore();
 }
 
-function drawAimGuide(ctx: CanvasRenderingContext2D, game: GameState) {
-  const x = game.aimX;
-  const active = game.phase === 'playing' && game.dropsLeft > 0;
-  const index = zoneIndexForX(x);
-  const color = ZONE_COLORS[index] ?? '#5eead4';
+function drawAimGuide(ctx: CanvasRenderingContext2D, sim: SimState) {
+  const x = sim.aimX;
+  const active = sim.aiming;
   ctx.save();
   ctx.setLineDash([5, 10]);
-  ctx.strokeStyle = active ? 'rgba(94,234,212,0.35)' : 'rgba(94,234,212,0.12)';
+  ctx.strokeStyle = active ? 'rgba(94,234,212,0.5)' : 'rgba(94,234,212,0.2)';
   ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.moveTo(x, LAUNCH_Y + 30);
-  ctx.lineTo(x, COLLECT_Y);
+  ctx.lineTo(x, FLOOR_Y);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = color;
-  ctx.globalAlpha = active ? 0.85 : 0.35;
+  ctx.fillStyle = '#5eead4';
+  ctx.globalAlpha = active ? 0.9 : 0.45;
   ctx.beginPath();
-  ctx.arc(x, COLLECT_Y, 4, 0, Math.PI * 2);
+  ctx.arc(x, FLOOR_Y, 4, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 0.4;
-  ctx.strokeStyle = color;
+  ctx.strokeStyle = '#5eead4';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(x, COLLECT_Y, 12 + Math.sin(game.time * 4) * 2, 0, Math.PI * 2);
+  ctx.arc(x, FLOOR_Y, 12 + Math.sin(sim.time * 4) * 2, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawBalls(ctx: CanvasRenderingContext2D, game: GameState) {
+function drawBalls(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  for (const ball of game.balls) {
+  for (const ball of sim.balls) {
     const color = BALL_COLORS[ball.color] ?? '#5eead4';
-    const glow = ctx.createRadialGradient(ball.x, ball.y, 1, ball.x, ball.y, ball.r * 4);
-    glow.addColorStop(0, `${color}cc`);
-    glow.addColorStop(0.45, `${color}44`);
-    glow.addColorStop(1, `${color}00`);
-    ctx.fillStyle = glow;
+    ctx.globalAlpha = ball.rest > 0.3 ? 0.06 : 0.12;
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r * 4, 0, Math.PI * 2);
+    ctx.arc(ball.x, ball.y, ball.r * 2.3, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 
-  for (const ball of game.balls) {
+  for (const ball of sim.balls) {
     const color = BALL_COLORS[ball.color] ?? '#5eead4';
-    const gradient = ctx.createRadialGradient(
-      ball.x - ball.r * 0.35,
-      ball.y - ball.r * 0.4,
-      1,
-      ball.x,
-      ball.y,
-      ball.r
-    );
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(0.5, color);
-    gradient.addColorStop(1, '#0f766e');
-    ctx.fillStyle = gradient;
+    ctx.save();
+    ctx.globalAlpha = ball.rest > 0.3 ? 0.66 : 1;
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.58)';
+    ctx.beginPath();
+    ctx.arc(ball.x - ball.r * 0.32, ball.y - ball.r * 0.36, ball.r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -672,34 +651,15 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]) {
   ctx.restore();
 }
 
-function drawTexts(ctx: CanvasRenderingContext2D, texts: FloatText[]) {
+function renderScene(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.font = '700 13px ui-monospace, monospace';
-  for (const text of texts) {
-    const alpha = Math.max(0, text.life / text.maxLife);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = text.color;
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 6;
-    ctx.fillText(text.text, text.x, text.y);
-  }
-  ctx.restore();
-}
-
-function renderScene(ctx: CanvasRenderingContext2D, game: GameState) {
-  ctx.save();
-  if (game.shake > 0.1) {
-    ctx.translate(Math.sin(game.time * 90) * game.shake * 0.4, Math.cos(game.time * 71) * game.shake * 0.3);
-  }
-  drawBackground(ctx, game.time);
-  drawZones(ctx, game);
-  drawPegs(ctx, game);
-  if (game.phase !== 'result') drawAimGuide(ctx, game);
-  drawLauncher(ctx, game);
-  drawBalls(ctx, game);
-  drawParticles(ctx, game.particles);
-  drawTexts(ctx, game.texts);
+  drawBackground(ctx, sim.time);
+  drawFloor(ctx, sim.time);
+  drawPegs(ctx, sim);
+  drawAimGuide(ctx, sim);
+  drawLauncher(ctx, sim);
+  drawBalls(ctx, sim);
+  drawParticles(ctx, sim.particles);
 
   const vignette = ctx.createRadialGradient(
     WORLD_W / 2,
@@ -716,29 +676,64 @@ function renderScene(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.restore();
 }
 
+interface ParamSliderProps {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  display: string;
+  onChange: (value: number) => void;
+}
+
+function ParamSlider({ id, label, value, min, max, step, display, onChange }: ParamSliderProps) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="text-[11px] font-bold text-teal-100/80">
+          {label}
+        </label>
+        <span className="font-mono text-[10px] font-black text-teal-200">{display}</span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-1 w-full cursor-pointer accent-teal-300"
+      />
+    </div>
+  );
+}
+
 export function BallMultiplyGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gameRef = useRef<GameState>(createInitialGame(0));
+  const gameRef = useRef<SimState | null>(null);
+  if (gameRef.current === null) {
+    gameRef.current = createInitialSim(DEFAULT_PARAMS);
+  }
+  const [params, setParams] = useState<SimParams>({ ...DEFAULT_PARAMS });
+  const [hud, setHud] = useState<HudState>(() => toHud(gameRef.current as SimState));
   const hudRef = useRef<HudState | null>(null);
-  const [hud, setHud] = useState<HudState>(() => toHud(gameRef.current));
 
   const syncHud = useCallback(() => {
-    const next = toHud(gameRef.current);
+    const sim = gameRef.current;
+    if (!sim) return;
+    const next = toHud(sim);
     const prev = hudRef.current;
     if (
       prev !== null &&
-      prev.phase === next.phase &&
-      prev.score === next.score &&
-      prev.combo === next.combo &&
-      prev.multiplier === next.multiplier &&
-      prev.maxCombo === next.maxCombo &&
-      prev.dropsLeft === next.dropsLeft &&
+      prev.running === next.running &&
       prev.activeBalls === next.activeBalls &&
-      prev.collected === next.collected &&
-      Math.ceil(prev.timeLeft) === Math.ceil(next.timeLeft) &&
-      prev.bestScore === next.bestScore &&
-      prev.endReason === next.endReason &&
-      prev.victory === next.victory
+      prev.totalSplits === next.totalSplits &&
+      prev.collisionRate === next.collisionRate &&
+      prev.peakBalls === next.peakBalls &&
+      prev.settledBalls === next.settledBalls &&
+      prev.autoSpawn === next.autoSpawn
     ) {
       return;
     }
@@ -746,37 +741,92 @@ export function BallMultiplyGame() {
     setHud(next);
   }, []);
 
-  const startGame = useCallback(() => {
-    resetRun(gameRef.current);
+  const updateParams = useCallback(
+    (patch: Partial<SimParams>) => {
+      const sim = gameRef.current;
+      if (!sim) return;
+      const prev = sim.params;
+      const next = sanitizeParams({
+        gravity: patch.gravity ?? prev.gravity,
+        pegRows: patch.pegRows ?? prev.pegRows,
+        splitChance: patch.splitChance ?? prev.splitChance,
+        restitution: patch.restitution ?? prev.restitution,
+        maxBalls: patch.maxBalls ?? prev.maxBalls,
+        autoSpawn: patch.autoSpawn ?? prev.autoSpawn,
+        speed: patch.speed ?? prev.speed,
+      });
+      sim.params = next;
+      if (next.pegRows !== prev.pegRows) sim.pegs = createPegs(next.pegRows);
+      if (sim.balls.length > next.maxBalls) sim.balls.length = next.maxBalls;
+      if (!prev.autoSpawn && next.autoSpawn) sim.autoTimer = 0.3;
+      setParams(next);
+      syncHud();
+    },
+    [syncHud]
+  );
+
+  const resetSim = useCallback(() => {
+    const sim = gameRef.current;
+    if (!sim) return;
+    const fresh = createInitialSim(sim.params);
+    gameRef.current = fresh;
+    setParams(fresh.params);
     syncHud();
   }, [syncHud]);
 
-  const launchBall = useCallback(() => {
-    const game = gameRef.current;
-    if (game.phase !== 'playing' || game.dropsLeft <= 0) return;
-    if (game.balls.length >= MAX_BALLS) return;
-    game.dropsLeft -= 1;
-    game.launcherFlash = 1;
-    const color = Math.floor(Math.random() * BALL_COLORS.length);
-    game.balls.push({
-      x: game.aimX,
-      y: LAUNCH_Y + 22,
-      vx: (Math.random() - 0.5) * 30,
-      vy: 55 + Math.random() * 25,
-      r: BALL_RADIUS,
-      splits: 3,
-      cooldown: 0.1,
-      color,
-    });
-    spawnBurst(game, game.aimX, LAUNCH_Y + 22, BALL_COLORS[color] ?? '#5eead4', 8);
+  const resetParams = useCallback(() => {
+    const sim = gameRef.current;
+    if (!sim) return;
+    const next = { ...DEFAULT_PARAMS };
+    sim.params = next;
+    sim.pegs = createPegs(next.pegRows);
+    if (sim.balls.length > next.maxBalls) sim.balls.length = next.maxBalls;
+    sim.autoTimer = 0.8;
+    setParams(next);
     syncHud();
   }, [syncHud]);
+
+  const applyPreset = useCallback(
+    (preset: SimParams) => {
+      const fresh = createInitialSim(preset);
+      gameRef.current = fresh;
+      setParams(fresh.params);
+      syncHud();
+    },
+    [syncHud]
+  );
+
+  const toggleRunning = useCallback(() => {
+    const sim = gameRef.current;
+    if (!sim) return;
+    sim.running = !sim.running;
+    syncHud();
+  }, [syncHud]);
+
+  const stepOnce = useCallback(() => {
+    const sim = gameRef.current;
+    if (!sim || sim.running) return;
+    advanceSim(sim, 1 / 60);
+    syncHud();
+  }, [syncHud]);
+
+  const spawnAt = useCallback(
+    (x: number) => {
+      const sim = gameRef.current;
+      if (!sim) return;
+      spawnBall(sim, x, (Math.random() - 0.5) * 30, 55 + Math.random() * 25);
+      syncHud();
+    },
+    [syncHud]
+  );
 
   const updateAim = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width <= 0) return;
+    const sim = gameRef.current;
+    if (!sim) return;
     const x = ((event.clientX - rect.left) / rect.width) * WORLD_W;
-    gameRef.current.aimX = clamp(x, LAUNCH_MIN_X, LAUNCH_MAX_X);
+    sim.aimX = clamp(x, LAUNCH_MIN_X, LAUNCH_MAX_X);
   }, []);
 
   const handlePointerDown = useCallback(
@@ -784,12 +834,12 @@ export function BallMultiplyGame() {
       const target = event.target as HTMLElement;
       if (target.closest('button, a')) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      const game = gameRef.current;
-      if (game.phase !== 'playing' || game.dropsLeft <= 0) return;
+      const sim = gameRef.current;
+      if (!sim) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      game.aiming = true;
-      game.pointerId = event.pointerId;
+      sim.aiming = true;
+      sim.pointerId = event.pointerId;
       updateAim(event);
     },
     [updateAim]
@@ -797,8 +847,8 @@ export function BallMultiplyGame() {
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      const game = gameRef.current;
-      if (!game.aiming || game.pointerId !== event.pointerId) return;
+      const sim = gameRef.current;
+      if (!sim || !sim.aiming || sim.pointerId !== event.pointerId) return;
       event.preventDefault();
       updateAim(event);
     },
@@ -807,38 +857,31 @@ export function BallMultiplyGame() {
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      const game = gameRef.current;
-      if (!game.aiming || game.pointerId !== event.pointerId) return;
+      const sim = gameRef.current;
+      if (!sim || !sim.aiming || sim.pointerId !== event.pointerId) return;
       event.preventDefault();
       updateAim(event);
-      game.aiming = false;
-      game.pointerId = null;
+      sim.aiming = false;
+      sim.pointerId = null;
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      launchBall();
+      spawnAt(sim.aimX);
     },
-    [launchBall, updateAim]
+    [spawnAt, updateAim]
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const game = gameRef.current;
-    if (game.pointerId === event.pointerId) {
-      game.aiming = false;
-      game.pointerId = null;
+    const sim = gameRef.current;
+    if (!sim) return;
+    if (sim.pointerId === event.pointerId) {
+      sim.aiming = false;
+      sim.pointerId = null;
     }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }, []);
-
-  useEffect(() => {
-    const best = readBestScore();
-    if (best > gameRef.current.bestScore) {
-      gameRef.current.bestScore = best;
-      syncHud();
-    }
-  }, [syncHud]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -868,24 +911,26 @@ export function BallMultiplyGame() {
     let last = performance.now();
     let hudAccumulator = 0;
     const frame = (now: number) => {
-      const dt = Math.min(0.034, Math.max(0, (now - last) / 1000));
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
       last = now;
-      const game = gameRef.current;
-      updateGame(game, dt);
-      hudAccumulator += dt;
-      if (hudAccumulator >= 0.1) {
-        hudAccumulator = 0;
-        syncHud();
-      }
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx && canvas.width > 0 && canvas.height > 0) {
-          const scaleX = canvas.width / WORLD_W;
-          const scaleY = canvas.height / WORLD_H;
-          ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-          ctx.clearRect(0, 0, WORLD_W, WORLD_H);
-          renderScene(ctx, game);
+      const sim = gameRef.current;
+      if (sim) {
+        if (sim.running) advanceSim(sim, dt);
+        hudAccumulator += dt;
+        if (hudAccumulator >= 0.1) {
+          hudAccumulator = 0;
+          syncHud();
+        }
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx && canvas.width > 0 && canvas.height > 0) {
+            const scaleX = canvas.width / WORLD_W;
+            const scaleY = canvas.height / WORLD_H;
+            ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+            ctx.clearRect(0, 0, WORLD_W, WORLD_H);
+            renderScene(ctx, sim);
+          }
         }
       }
       rafId = window.requestAnimationFrame(frame);
@@ -907,18 +952,24 @@ export function BallMultiplyGame() {
             </Link>
             <div className="min-w-0">
               <p className="truncate text-[9px] font-bold tracking-[0.18em] text-teal-300/80 sm:text-[10px]">
-                BALL MULTIPLY / CASCADE SIMULATOR
+                BALL MULTIPLY / PHYSICS SANDBOX
               </p>
-              <h2 className="truncate text-sm font-black sm:text-lg">増殖ボール・カスケード</h2>
+              <h2 className="truncate text-sm font-black sm:text-lg">増殖ボール・シミュレーター</h2>
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="hidden rounded-lg border border-teal-400/20 bg-teal-950/30 px-2.5 py-1 text-[10px] text-teal-100/70 sm:block">
-              BEST <span className="font-mono font-black text-teal-200">{hud.bestScore.toLocaleString()}</span>
+            <div
+              className={`hidden rounded-lg border px-2.5 py-1 text-[10px] font-black sm:block ${
+                hud.running
+                  ? 'border-teal-400/20 bg-teal-950/30 text-teal-200'
+                  : 'border-amber-300/30 bg-amber-400/10 text-amber-200'
+              }`}
+            >
+              {hud.running ? 'RUNNING' : 'PAUSED'}
             </div>
             <button
               type="button"
-              onClick={startGame}
+              onClick={resetSim}
               className="rounded-lg border border-amber-300/30 bg-amber-400/10 px-2.5 py-1.5 text-[10px] font-black text-amber-200 transition hover:border-amber-300/70 hover:bg-amber-400/20 sm:text-xs"
             >
               リセット
@@ -927,7 +978,7 @@ export function BallMultiplyGame() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:grid-cols-[minmax(0,600px)_300px] lg:justify-center lg:gap-5">
+      <div className="mx-auto grid max-w-6xl gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:grid-cols-[minmax(0,600px)_320px] lg:justify-center lg:gap-5">
         <div className="min-w-0 sm:mx-auto sm:w-full sm:max-w-[560px] lg:mx-0 lg:max-w-none">
           <div
             className="relative touch-none overflow-hidden rounded-2xl border border-teal-400/20 bg-[#04100f] shadow-[0_0_70px_rgba(45,212,191,0.08)]"
@@ -939,124 +990,90 @@ export function BallMultiplyGame() {
             onContextMenu={(event) => event.preventDefault()}
             onDragStart={(event) => event.preventDefault()}
           >
-            <canvas ref={canvasRef} aria-label="増殖ボール・カスケードのゲーム画面" className="block aspect-[4/5] w-full" />
+            <canvas
+              ref={canvasRef}
+              aria-label="増殖ボール・シミュレーターのシミュレーション画面"
+              className="block aspect-[4/5] w-full"
+            />
 
-            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/80 via-black/30 to-transparent p-2.5 sm:p-3">
+            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/80 via-black/25 to-transparent p-2.5 sm:p-3">
               <div className="min-w-0">
                 <p className="font-mono text-2xl font-black leading-tight text-white sm:text-3xl">
-                  {hud.score.toLocaleString()}
+                  {hud.activeBalls}
                 </p>
-                <p className="text-[9px] font-bold text-teal-100/50">SCORE</p>
+                <p className="text-[9px] font-bold text-teal-100/50">CURRENT BALLS</p>
                 <p className="mt-1 text-[9px] font-bold text-teal-200/80">
-                  BALLS <span className="font-mono">{hud.activeBalls}</span>
+                  SPLITS <span className="font-mono">{hud.totalSplits}</span>
                 </p>
               </div>
               <div className="text-right">
-                <p
-                  className={`font-mono text-xl font-black leading-tight ${
-                    hud.combo > 0 ? 'text-amber-300' : 'text-slate-500'
-                  }`}
-                >
-                  {hud.combo}
-                  <span className="ml-1 text-[10px]">COMBO</span>
+                <p className="font-mono text-base font-black leading-tight text-teal-200 sm:text-lg">
+                  {hud.collisionRate}
+                  <span className="ml-1 text-[9px] text-teal-100/50">COL/S</span>
                 </p>
-                <p className="text-[9px] font-bold text-teal-100/50">MULTIPLIER x{hud.multiplier.toFixed(1)}</p>
-                <p className="mt-1 text-[9px] font-bold text-teal-200">
-                  DROP <span className="font-mono">{hud.dropsLeft}</span>
+                <p className="mt-1 text-[9px] font-bold text-teal-100/60">
+                  PEAK <span className="font-mono text-teal-100/90">{hud.peakBalls}</span>
                 </p>
-                <p className="text-[9px] font-bold text-amber-200">
-                  TIME <span className="font-mono">{Math.ceil(hud.timeLeft)}s</span>
+                <p className="text-[9px] font-bold text-teal-100/60">
+                  SETTLED <span className="font-mono text-teal-100/90">{hud.settledBalls}</span>
                 </p>
               </div>
             </div>
 
-            {hud.phase === 'ready' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto bg-[#03110f]/85 px-5 py-6 text-center backdrop-blur-sm">
-                <p className="text-[10px] font-black tracking-[0.28em] text-teal-300">BALL MULTIPLY CASCADE</p>
-                <h3 className="mt-2 text-2xl font-black text-white sm:text-3xl">増殖ボール・カスケード</h3>
-                <p className="mt-2 max-w-xs text-[11px] leading-6 text-teal-50/75">
-                  ピンに当たるたびにボールが分裂。ドラッグで狙いを定め、指を離してドロップ。7つの回収ゾーンへ導いてコンボを繋げよう。
-                </p>
-                <div className="mt-4 flex gap-3 text-[10px] font-bold text-teal-200/80">
-                  <span>ドロップ {LAUNCH_SUPPLY}</span>
-                  <span>制限時間 {ROUND_TIME}秒</span>
+            {!hud.running && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-5">
+                <div className="rounded-xl border border-white/10 bg-black/45 px-4 py-2.5 text-center backdrop-blur-sm">
+                  <p className="text-[10px] font-black tracking-[0.24em] text-teal-300">PAUSED</p>
+                  <p className="mt-1 text-[10px] text-teal-100/60">再生するとシミュレーションが再開します</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={startGame}
-                  className="mt-4 rounded-xl border-2 border-teal-300 bg-gradient-to-r from-teal-400 to-emerald-500 px-6 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:scale-[1.03]"
-                >
-                  ゲームスタート
-                </button>
-                <p className="mt-3 text-[10px] text-teal-100/50">タップでもその位置からドロップできます</p>
-              </div>
-            )}
-
-            {hud.phase === 'result' && (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="リザルト"
-                className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto bg-[#020d0c]/90 px-4 py-6 text-center backdrop-blur-md"
-              >
-                <p className="text-[10px] font-black tracking-[0.25em] text-teal-300">
-                  {hud.victory ? 'CASCADE COMPLETE' : 'SESSION REPORT'}
-                </p>
-                <h3 className="mt-1 text-2xl font-black text-white sm:text-3xl">
-                  {hud.victory ? '全ボール回収' : 'リザルト'}
-                </h3>
-                <p className="mt-1 text-[11px] text-teal-100/60">{hud.endReason}</p>
-                <div className="mt-4 w-full max-w-xs rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                  <div className="flex items-end justify-between border-b border-white/10 pb-2">
-                    <span className="text-[10px] font-bold text-teal-100/50">FINAL SCORE</span>
-                    <span className="font-mono text-2xl font-black text-teal-200">{hud.score.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-left">
-                    {[
-                      { label: '回収ボール', value: `${hud.collected}` },
-                      { label: '最大コンボ', value: `${hud.maxCombo}` },
-                      { label: '残りドロップ', value: `${hud.dropsLeft}` },
-                      { label: 'ランク', value: hud.score >= 8000 ? 'S' : hud.score >= 5000 ? 'A' : hud.score >= 2500 ? 'B' : 'C' },
-                    ].map((item) => (
-                      <div key={item.label} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">
-                        <p className="text-[9px] font-bold text-teal-100/40">{item.label}</p>
-                        <p className="font-mono text-sm font-black text-teal-50">{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[10px] font-bold text-amber-200">自己ベスト {hud.bestScore.toLocaleString()}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={startGame}
-                  className="mt-4 rounded-xl border-2 border-teal-300 bg-gradient-to-r from-teal-400 to-emerald-500 px-6 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:scale-[1.03]"
-                >
-                  もう一度挑戦する
-                </button>
               </div>
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-teal-100/60 sm:text-xs">
-              <span>残りドロップ</span>
-              <span className="flex items-center gap-1">
-                {Array.from({ length: LAUNCH_SUPPLY }, (_, index) => (
-                  <span
-                    key={index}
-                    className={`h-2 w-2 rounded-full ${
-                      index < hud.dropsLeft ? 'bg-teal-300 shadow-[0_0_8px_rgba(94,234,212,0.9)]' : 'bg-slate-700'
-                    }`}
-                  />
-                ))}
-              </span>
-              <span className="font-mono text-teal-200">
-                {hud.dropsLeft}/{LAUNCH_SUPPLY}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px] text-teal-100/60 sm:text-xs">
-              <span className="font-bold text-amber-200">TIME {Math.ceil(hud.timeLeft)}s</span>
-              <span className="hidden sm:inline">ドラッグで狙い・離してドロップ</span>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+            <button
+              type="button"
+              onClick={toggleRunning}
+              className={`rounded-lg border px-3 py-1.5 text-[11px] font-black transition ${
+                hud.running
+                  ? 'border-teal-300/40 bg-teal-400/15 text-teal-100 hover:bg-teal-400/25'
+                  : 'border-amber-300/50 bg-amber-400/20 text-amber-100 hover:bg-amber-400/30'
+              }`}
+            >
+              {hud.running ? '一時停止' : '再生'}
+            </button>
+            <button
+              type="button"
+              onClick={stepOnce}
+              disabled={hud.running}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-teal-100/70 transition hover:border-teal-300/40 hover:text-teal-200 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              1ステップ
+            </button>
+            <button
+              type="button"
+              onClick={resetSim}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-teal-100/70 transition hover:border-teal-300/40 hover:text-teal-200"
+            >
+              リセット
+            </button>
+            <div className="ml-auto flex items-center gap-0.5 rounded-lg border border-white/10 bg-black/20 p-0.5">
+              <span className="px-1 text-[9px] font-black tracking-[0.14em] text-teal-100/40">SPEED</span>
+              {SPEED_OPTIONS.map((speed) => (
+                <button
+                  key={speed}
+                  type="button"
+                  onClick={() => updateParams({ speed })}
+                  aria-pressed={params.speed === speed}
+                  className={`rounded-md px-2 py-1 font-mono text-[10px] font-black transition ${
+                    params.speed === speed
+                      ? 'bg-teal-300 text-slate-950'
+                      : 'text-teal-100/60 hover:text-teal-100'
+                  }`}
+                >
+                  {speed}x
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -1064,27 +1081,124 @@ export function BallMultiplyGame() {
         <aside className="mx-auto flex w-full max-w-[560px] flex-col gap-2.5 sm:gap-3 lg:mx-0 lg:max-w-none">
           <div className="rounded-xl border border-teal-400/15 bg-[#071b19]/80 p-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">HOW TO PLAY</span>
-              <span className="text-[10px] text-teal-100/50">3 STEPS</span>
+              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">SIMULATION PARAMS</span>
+              <button
+                type="button"
+                onClick={resetParams}
+                className="text-[10px] font-bold text-teal-100/50 transition hover:text-teal-200"
+              >
+                初期値に戻す
+              </button>
             </div>
-            <ol className="mt-2 space-y-2 text-[11px] leading-5 text-teal-100/75">
-              <li>1. 画面をドラッグして落とす位置を決める</li>
-              <li>2. 指を離してボールをドロップ</li>
-              <li>3. 分裂したボールを回収ゾーンへ導く</li>
-            </ol>
+
+            <div className="mt-3 space-y-3">
+              <ParamSlider
+                id="param-gravity"
+                label="重力"
+                value={params.gravity}
+                min={200}
+                max={1800}
+                step={20}
+                display={`${params.gravity}`}
+                onChange={(value) => updateParams({ gravity: value })}
+              />
+              <ParamSlider
+                id="param-pegs"
+                label="ピン段数"
+                value={params.pegRows}
+                min={3}
+                max={12}
+                step={1}
+                display={`${params.pegRows} 段`}
+                onChange={(value) => updateParams({ pegRows: value })}
+              />
+              <ParamSlider
+                id="param-split"
+                label="分裂確率"
+                value={Math.round(params.splitChance * 100)}
+                min={0}
+                max={100}
+                step={5}
+                display={`${Math.round(params.splitChance * 100)}%`}
+                onChange={(value) => updateParams({ splitChance: value / 100 })}
+              />
+              <ParamSlider
+                id="param-restitution"
+                label="反発係数"
+                value={params.restitution}
+                min={0.2}
+                max={0.95}
+                step={0.01}
+                display={params.restitution.toFixed(2)}
+                onChange={(value) => updateParams({ restitution: value })}
+              />
+              <ParamSlider
+                id="param-max-balls"
+                label="上限ボール数"
+                value={params.maxBalls}
+                min={40}
+                max={400}
+                step={20}
+                display={`${params.maxBalls}`}
+                onChange={(value) => updateParams({ maxBalls: value })}
+              />
+
+              <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-teal-100/80">自動スポーン</p>
+                  <p className="text-[9px] leading-4 text-teal-100/40">一定間隔でボールを自動投入</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={params.autoSpawn}
+                  aria-label="自動スポーン"
+                  onClick={() => updateParams({ autoSpawn: !params.autoSpawn })}
+                  className={`relative h-6 w-11 shrink-0 rounded-full border transition ${
+                    params.autoSpawn
+                      ? 'border-teal-300/60 bg-teal-400/30'
+                      : 'border-white/15 bg-white/10'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-[3px] h-[18px] w-[18px] rounded-full transition-all ${
+                      params.autoSpawn ? 'left-[23px] bg-teal-200' : 'left-[3px] bg-slate-400'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 border-t border-white/10 pt-2.5">
+              <p className="text-[9px] font-black tracking-[0.18em] text-teal-300/80">PRESETS</p>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset.params)}
+                    className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[10px] font-bold text-teal-100/70 transition hover:border-teal-300/50 hover:text-teal-200"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-xl border border-teal-400/15 bg-[#071b19]/80 p-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">SESSION</span>
-              <span className="text-[10px] text-teal-100/50">STATUS</span>
+              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">OBSERVATION</span>
+              <span className="text-[10px] text-teal-100/50">LIVE</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {[
-                { label: 'フィールド上', value: `${hud.activeBalls}` },
-                { label: '回収ボール', value: `${hud.collected}` },
-                { label: '最大コンボ', value: `${hud.maxCombo}` },
-                { label: '倍率', value: `x${hud.multiplier.toFixed(1)}` },
+                { label: '現在のボール', value: `${hud.activeBalls}` },
+                { label: '累計分裂', value: `${hud.totalSplits}` },
+                { label: '衝突 / 秒', value: `${hud.collisionRate}` },
+                { label: '最大ボール', value: `${hud.peakBalls}` },
+                { label: '静止中', value: `${hud.settledBalls}` },
+                { label: '自動スポーン', value: hud.autoSpawn ? 'ON' : 'OFF' },
               ].map((item) => (
                 <div key={item.label} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">
                   <p className="text-[9px] font-bold text-teal-100/40">{item.label}</p>
@@ -1092,36 +1206,21 @@ export function BallMultiplyGame() {
                 </div>
               ))}
             </div>
-            <div className="mt-3">
-              <div className="flex justify-between text-[10px] font-bold text-teal-100/50">
-                <span>TIME</span>
-                <span className="font-mono text-teal-200">{Math.ceil(hud.timeLeft)}s</span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-teal-300 to-amber-300"
-                  style={{ width: `${Math.max(0, Math.min(100, (hud.timeLeft / ROUND_TIME) * 100))}%` }}
-                />
-              </div>
-            </div>
           </div>
 
           <div className="rounded-xl border border-teal-400/15 bg-[#071b19]/80 p-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">CASCADE RULES</span>
-              <span className="text-[10px] text-teal-100/50">TIPS</span>
+              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">HOW TO OBSERVE</span>
+              <span className="text-[10px] text-teal-100/50">3 STEPS</span>
             </div>
-            <div className="mt-2 space-y-2 text-[11px] leading-5 text-teal-100/70">
-              <p>
-                <span className="font-bold text-teal-200">分裂</span> ピンに当たるたび最大3回まで分裂
-              </p>
-              <p>
-                <span className="font-bold text-amber-200">金ピン</span> 25点と分裂回数1回を追加
-              </p>
-              <p>
-                <span className="font-bold text-teal-200">コンボ</span> 連続回収で最大5倍の倍率
-              </p>
-            </div>
+            <ol className="mt-2 space-y-2 text-[11px] leading-5 text-teal-100/75">
+              <li>1. 画面をタップ／ドラッグしてボールを投入</li>
+              <li>2. ピンに当たったボールが確率で分裂</li>
+              <li>3. スライダーで重力・反発・分裂を調整して観察</li>
+            </ol>
+            <p className="mt-2 rounded-lg bg-white/[0.03] px-2.5 py-1.5 text-[10px] leading-4 text-teal-100/55">
+              金色のピンは必ず分裂し、分裂回数を1回追加します。静止したボールはしばらくすると排出されます。
+            </p>
           </div>
         </aside>
       </div>

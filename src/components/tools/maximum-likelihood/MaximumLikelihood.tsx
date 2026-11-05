@@ -408,12 +408,13 @@ function DistributionChart({ chart }: { chart: ChartData }) {
     ...barValues,
     ...chart.curve.map((point) => point.y),
   );
+  const roundSvg = (value: number) => Math.round(value * 1000) / 1000;
   const slotWidth = plotWidth / bins.length;
-  const barWidth = Math.max(2, slotWidth * 0.62);
+  const barWidth = roundSvg(Math.max(2, slotWidth * 0.62));
   const toX = (value: number) =>
-    paddingLeft + ((value - chart.min) / safeRange) * plotWidth;
+    roundSvg(paddingLeft + ((value - chart.min) / safeRange) * plotWidth);
   const toY = (value: number) =>
-    baseline - (Math.max(0, value) / maxValue) * plotHeight;
+    roundSvg(baseline - (Math.max(0, value) / maxValue) * plotHeight);
   const curvePoints = chart.curve
     .map((point) => `${toX(point.x)},${toY(point.y)}`)
     .join(' ');

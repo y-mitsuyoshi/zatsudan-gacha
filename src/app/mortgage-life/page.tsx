@@ -87,6 +87,7 @@ export default function MortgageLifePage() {
         </nav>
 
         <main role="main" className="pb-12">
+          <h1 className="sr-only">{game.h1}</h1>
           <MortgageGame />
         </main>
       </div>

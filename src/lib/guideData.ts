@@ -93,7 +93,7 @@ export const guides: GuideData[] = [
     ],
     related: [
       { href: '/icebreak', label: '会議のアイスブレイクお題30選', description: '会議の冒頭に使える質問' },
-      { href: '/remote-work', label: 'リモートワークの雑談ネタ20選', description: 'オンライン会議の会話のきっかけ' },
+      { href: '/guides/remote-work', label: 'リモートワークの雑談ネタ20選', description: 'オンライン会議の会話のきっかけ' },
       { href: '/themes/work', label: '仕事の雑談お題一覧', description: '仕事カテゴリのお題を見る' },
       { href: '/', label: '雑談テーマガチャでランダムに選ぶ', description: 'お題をガチャで抽選' },
     ],

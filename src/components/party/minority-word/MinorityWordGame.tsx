@@ -306,8 +306,8 @@ export function MinorityWordGame() {
     setResultVote(selectedVote);
     setScores((previous) =>
       majorityWon
-        ? { ...previous, villagers: previous.majority + 1 }
-        : { ...previous, wolves: previous.minority + 1 },
+        ? { ...previous, majority: previous.majority + 1 }
+        : { ...previous, minority: previous.minority + 1 },
     );
     setSelectedVote(null);
     setLiveMessage(
