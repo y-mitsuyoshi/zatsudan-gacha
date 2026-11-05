@@ -119,7 +119,7 @@ export default function AboutPage() {
   </nav>
   <header className="mb-8">
    <p className="paper-kicker">ABOUT</p>
-   <h1 className="mt-2 text-3xl font-black text-[var(--ink)]">運営者情報・サイトについて</h1>
+   <h1 className="mt-2 text-3xl font-editorial text-[var(--ink)]">運営者情報・サイトについて</h1>
    <p className="mt-2 text-sm text-[var(--ink-soft)]">最終更新: 2026年11月3日</p>
   </header>
 

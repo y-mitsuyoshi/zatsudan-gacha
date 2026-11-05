@@ -43,14 +43,12 @@ const guideCards = [
  ...guides.map((guide) => ({
  slug: guide.slug,
  href: `/guides/${guide.slug}`,
- emoji: guide.emoji,
  title: guide.h1,
  description: guide.description,
  })),
  {
  slug: 'icebreak',
  href: '/icebreak',
- emoji: '🗣️',
  title: '会議のアイスブレイクにおすすめの雑談お題30選',
  description: '会議の冒頭で使えるアイスブレイクのお題を30個厳選。初対面・チーム・1on1向けの質問例を紹介します。',
  },
@@ -118,7 +116,7 @@ export default function GuidesPage() {
   </nav>
   <header className="mb-8 max-w-3xl">
    <p className="paper-kicker">SCENE GUIDE</p>
-   <h1 className="mt-2 text-3xl font-black text-[var(--ink)] sm:text-4xl">
+   <h1 className="mt-2 text-3xl font-editorial text-[var(--ink)] sm:text-4xl">
    シーン別・雑談お題ガイド
    </h1>
    <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)] sm:text-base">
@@ -145,7 +143,7 @@ export default function GuidesPage() {
     className="group rounded-none border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition hover:-translate-y-1 hover:border-[var(--accent)] "
    >
     <span className="font-label text-[9px] text-[var(--accent)]">Guide</span>
-    <h3 className="mt-2 text-base font-black text-[var(--ink)]">{guide.title}</h3>
+    <h3 className="mt-2 text-base font-editorial text-[var(--ink)]">{guide.title}</h3>
     <p className="mt-1 text-xs leading-relaxed text-[var(--ink-soft)]">{guide.description}</p>
     <span className="mt-3 inline-flex text-xs font-bold text-[var(--accent)]">ガイドを読む →</span>
    </Link>

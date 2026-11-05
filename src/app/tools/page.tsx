@@ -7,8 +7,8 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料で使える便利ツール一覧｜住宅・不動産・資産形成など全24ツール',
-  description: '住宅ローン、住宅購入費用、賃貸vs購入、固定資産税、売却税金、坪単価、借入可能額、繰上返済、複利積立など、住まいとお金の計算ツール10種類を追加。文字数・JSON・画像圧縮など全24ツールを無料公開中。',
+  title: '無料で使える便利ツール一覧｜統計・地図・住宅・実用など全34ツール',
+  description: '都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップ、都市間距離、緯度経度、世界時差など統計・地図ツール10種類を追加。住宅・お金、実用、クリエイティブを含む全34ツールを無料公開中。',
   keywords: [
     '無料 Webツール',
     '住宅ローン 計算',
@@ -36,6 +36,15 @@ export const metadata: Metadata = {
     '駅名標メーカー',
     '画像作成 無料',
     'SNS シェア',
+    '都道府県 統計',
+    '標準偏差 計算',
+    '相関係数 計算',
+    '偏差値 計算',
+    '統計グラフ 作成',
+    'ヒートマップ 作成',
+    '都市間 距離',
+    '緯度経度 距離',
+    '世界時差',
     'スマホ ツール',
   ],
   alternates: {
@@ -43,7 +52,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: '無料で使える便利ツール一覧',
-    description: '住宅ローン、住宅購入費用、固定資産税、売却税金、坪単価、繰上返済、複利積立など住まいとお金のツール10種類。文字数・JSON・画像圧縮など全24ツール。登録不要・スマホ対応。',
+    description: '都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップ、都市間距離、緯度経度、世界時差など統計・地図ツール10種類。住まい・お金、実用、クリエイティブを含む全34ツール。登録不要・スマホ対応。',
     url: `${APP_URL}/tools`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -53,7 +62,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '無料で使える便利ツール一覧',
-    description: '住宅ローン、住宅購入費用、固定資産税、売却税金、坪単価、繰上返済、複利積立など住まいとお金のツール10種類。文字数・JSON・画像圧縮など全24ツール。登録不要・スマホ対応。',
+    description: '都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップ、都市間距離、緯度経度、世界時差など統計・地図ツール10種類。住まい・お金、実用、クリエイティブを含む全34ツール。登録不要・スマホ対応。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -211,14 +220,129 @@ const financeTools = [
   },
 ];
 
-const allTools = [...creativeTools, ...utilityTools, ...financeTools];
+const statsTools = [
+  {
+    name: '都道府県統計ランキング',
+    href: '/prefecture-ranking',
+    tagline: '47都道府県を人口・面積・密度で比較',
+    description: '47都道府県の人口・面積・人口密度を、地域やキーワードで絞り込みながらランキング形式で比較。上位10件の棒グラフと全47件の一覧表をブラウザ内で確認できます。',
+  },
+  {
+    name: '都道府県統計クイズ',
+    href: '/prefecture-quiz',
+    tagline: '統計データから5問のクイズ',
+    description: '人口・面積・人口密度・地域区分からランダムに5問を出題。4択で答え、正誤と解説、最終スコアを確認できる学習クイズです。',
+  },
+  {
+    name: '標準偏差・分散計算',
+    href: '/standard-deviation',
+    tagline: '平均・分散・標準偏差を計算',
+    description: 'カンマ・スペース・改行区切りの数値から、平均・中央値・範囲・分散・標準偏差・変動係数を計算。母集団と標本の切り替えにも対応します。',
+  },
+  {
+    name: '相関係数・散布図',
+    href: '/correlation-coefficient',
+    tagline: '2つのデータの関係を可視化',
+    description: 'XとYの数値データから、平均・標準偏差・共分散・相関係数r・決定係数R²・回帰直線を計算し、散布図で関係性を確認できます。',
+  },
+  {
+    name: '偏差値計算',
+    href: '/deviation-score',
+    tagline: '得点から偏差値とパーセンタイル',
+    description: '得点・平均点・標準偏差から偏差値・zスコア・推定パーセンタイルを計算。得点リストをまとめて入力するモードにも対応しています。',
+  },
+  {
+    name: '統計グラフメーカー',
+    href: '/statistics-graph',
+    tagline: 'ラベルと値からグラフを作成',
+    description: 'ラベルと値を1行ずつ入力するだけで、棒グラフ・折れ線グラフをSVGで作成。並び替え、タイトル、単位、最大12件の表示設定に対応します。',
+  },
+  {
+    name: 'ヒートマップメーカー',
+    href: '/heatmap-maker',
+    tagline: 'CSVの数値を色の濃淡で可視化',
+    description: 'CSV形式の数値データから、行と列の傾向がわかるヒートマップを作成。ヘッダー・行ラベル、3種類の配色、行単位/全体の正規化に対応します。',
+  },
+];
+
+const mapTools = [
+  {
+    name: '主要都市間距離計算',
+    href: '/city-distance',
+    tagline: '都市間の直線距離と方角',
+    description: '全国の主要都市から2地点を選び、大円距離と方角の目安を計算。緯度経度を簡易マップ上に示し、位置関係も確認できます。',
+  },
+  {
+    name: '緯度経度距離・方位計算',
+    href: '/coordinate-distance',
+    tagline: '座標から距離・方位・中点を算出',
+    description: '2地点の緯度経度から、ハバーサイン式による距離、初期方位、16方位、中点座標を計算。座標グリッド上に2地点と線を表示します。',
+  },
+  {
+    name: '世界時差クロック',
+    href: '/world-timezone',
+    tagline: '主要都市の現在時刻と時差',
+    description: '世界の主要都市の現在時刻・日付・UTCオフセット・基準都市との時差を一覧表示。昼夜の目安も確認できる世界時計ツールです。',
+  },
+];
+
+const allTools = [...creativeTools, ...utilityTools, ...financeTools, ...statsTools, ...mapTools];
+
+function ToolSection({
+  id,
+  eyebrow,
+  title,
+  range,
+  tools,
+  intro,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  range: string;
+  tools: { name: string; href: string; tagline: string; description: string }[];
+  intro?: string;
+}) {
+  return (
+    <section aria-labelledby={`${id}-heading`} id={id} className="mt-14">
+      <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
+        <div>
+          <p className="paper-kicker">{eyebrow}</p>
+          <h2 id={`${id}-heading`} className="font-editorial mt-2 text-2xl">{title}</h2>
+        </div>
+        <span className="font-label text-[9px] text-[var(--ink-soft)]">{range}</span>
+      </div>
+      {intro && <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">{intro}</p>}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {tools.map((tool, index) => (
+          <Link
+            key={tool.href}
+            href={tool.href}
+            className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
+              <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
+            </div>
+            <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
+            <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
+            <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
+            <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+              Open tool →
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 const faqs = [
-  { q: '紹介している24のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類、住まい・お金の計算ツール10種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
+  { q: '紹介している34のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類、住まい・お金の計算ツール10種類、統計ツール7種類、地図・距離ツール3種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
   { q: 'スマートフォンでも使えますか？', a: 'はい。各ツールはスマートフォンのブラウザに対応しています。' },
-  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類と住まい・お金の計算ツール10種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
+  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類、住まい・お金の計算ツール10種類、統計ツール7種類、地図・距離ツール3種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
   { q: '作成した画像はSNSで使えますか？', a: 'はい。プロフィールメーカー・駅名標メーカー・画像リサイズツールで作成した画像は、SNSの投稿やプロフィールに利用できます。' },
-  { q: 'オフラインでも使えますか？', a: '実用ツールと住まい・お金の計算ツールは、ページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
+  { q: 'オフラインでも使えますか？', a: '実用ツール、住まい・お金の計算ツール、統計ツール、地図・距離ツールは、ページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
 ];
 
 const jsonLd = [
@@ -282,122 +406,74 @@ export default function ToolsPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Tool Archive / 24 Titles</p>
+            <p className="paper-kicker">Tool Archive / 34 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で使える<br className="sm:hidden" />便利ツール
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
               文字数カウント、JSON整形、画像圧縮など毎日使える実用ツール10種類。
-              住宅ローン・不動産・資産形成の計算ツール10種類、クリエイティブツール4種類を収録しています。
+              住まい・お金の計算10種類、統計・データ分析7種類、地図・距離・時差3種類、クリエイティブ4種類を収録しています。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
             <p className="font-label text-[9px] text-[var(--accent)]">Privacy Note</p>
             <p className="mt-2">
-              実用ツールと住まい・お金の計算ツールはすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
+              実用・住まい・お金・統計・地図ツールはすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
             </p>
           </div>
         </section>
 
-        <section aria-labelledby="utility-tools-heading" id="utility-tools">
-          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
-            <div>
-              <p className="paper-kicker">Everyday Utilities</p>
-              <h2 id="utility-tools-heading" className="font-editorial mt-2 text-2xl">毎日使える実用ツール（10種類）</h2>
-            </div>
-            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 10</span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {utilityTools.map((tool, index) => (
-              <Link
-                key={tool.href}
-                href={tool.href}
-                className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
-                </div>
-                <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
-                <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
-                <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
-                <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
-                  Open tool →
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <ToolSection
+          id="utility-tools"
+          eyebrow="Everyday Utilities"
+          title="毎日使える実用ツール（10種類）"
+          range="01 — 10"
+          tools={utilityTools}
+        />
 
-        <section aria-labelledby="finance-tools-heading" className="mt-14" id="finance-tools">
-          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
-            <div>
-              <p className="paper-kicker">Money &amp; Home</p>
-              <h2 id="finance-tools-heading" className="font-editorial mt-2 text-2xl">住まい・お金の計算ツール（10種類）</h2>
-            </div>
-            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 10</span>
-          </div>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
-            住宅ローン、購入費用、賃貸との比較、税金、売却、借入可能額、繰上返済、資産形成まで。入力内容はブラウザ内だけで処理されます。
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {financeTools.map((tool, index) => (
-              <Link
-                key={tool.href}
-                href={tool.href}
-                className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
-                </div>
-                <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
-                <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
-                <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
-                <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
-                  Open tool →
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <ToolSection
+          id="finance-tools"
+          eyebrow="Money & Home"
+          title="住まい・お金の計算ツール（10種類）"
+          range="01 — 10"
+          tools={financeTools}
+          intro="住宅ローン、購入費用、賃貸との比較、税金、売却、借入可能額、繰上返済、資産形成まで。入力内容はブラウザ内だけで処理されます。"
+        />
 
-        <section aria-labelledby="creative-tools-heading" className="mt-14" id="creative-tools">
-          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
-            <div>
-              <p className="paper-kicker">Creative Tools</p>
-              <h2 id="creative-tools-heading" className="font-editorial mt-2 text-2xl">作って遊べるクリエイティブツール（4種類）</h2>
-            </div>
-            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 04</span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {creativeTools.map((tool, index) => (
-              <Link
-                key={tool.href}
-                href={tool.href}
-                className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
-                </div>
-                <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
-                <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
-                <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
-                <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
-                  Open tool →
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <ToolSection
+          id="stats-tools"
+          eyebrow="Statistics & Data"
+          title="統計・データ分析ツール（7種類）"
+          range="01 — 07"
+          tools={statsTools}
+          intro="都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップまで。データを貼り付けて、ブラウザ内で集計・可視化できます。"
+        />
+
+        <ToolSection
+          id="map-tools"
+          eyebrow="Maps & Distance"
+          title="地図・距離・時差ツール（3種類）"
+          range="01 — 03"
+          tools={mapTools}
+          intro="主要都市の直線距離、緯度経度からの距離・方位、世界の時差を確認。外部地図サービスを使わず、端末内の計算だけで表示します。"
+        />
+
+        <ToolSection
+          id="creative-tools"
+          eyebrow="Creative Tools"
+          title="作って遊べるクリエイティブツール（4種類）"
+          range="01 — 04"
+          tools={creativeTools}
+        />
 
         <SeoContentSection
           eyebrow="TOOL GUIDE"
-          title="24の無料Webツール"
+          title="34の無料Webツール"
           intro="用途に合わせて、気になるツールを選んでください。"
           faqs={faqs}
           related={[
+            { href: '/prefecture-ranking', label: '都道府県統計ランキング', description: '47都道府県を人口・面積・密度で比較' },
+            { href: '/city-distance', label: '主要都市間距離計算', description: '都市間の直線距離を簡易マップで確認' },
             { href: '/games', label: '無料ブラウザゲーム一覧', description: '社畜ゲームをまとめて探す' },
             { href: '/themes', label: '雑談お題カテゴリ一覧', description: '会話のネタを探す' },
           ]}

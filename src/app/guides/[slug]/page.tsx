@@ -141,7 +141,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
   <header>
    <span className="font-label text-[9px] text-[var(--accent)]">Guide</span>
    <p className="mt-3 paper-kicker">SCENE GUIDE</p>
-   <h1 className="mt-2 text-3xl font-black leading-tight text-[var(--ink)] sm:text-4xl">
+   <h1 className="mt-2 text-3xl font-editorial leading-tight text-[var(--ink)] sm:text-4xl">
    {guide.h1}
    </h1>
    <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)] sm:text-base">
@@ -183,7 +183,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
    <div className="mt-3 grid gap-3 sm:grid-cols-3">
    {guide.tips.map((tip) => (
     <div key={tip.title} className="rounded-sm border border-[var(--line)] bg-[var(--paper-strong)] p-4 ">
-    <h3 className="text-sm font-black text-[var(--ink)]">{tip.title}</h3>
+    <h3 className="text-sm font-editorial text-[var(--ink)]">{tip.title}</h3>
     <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-soft)]">{tip.text}</p>
     </div>
    ))}

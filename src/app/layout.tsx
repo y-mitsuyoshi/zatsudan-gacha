@@ -4,6 +4,10 @@ import { Providers } from "./providers";
 import { DomainRedirect } from "@/components/DomainRedirect";
 import { AdSenseScript } from "@/components/AdSenseScript";
 import { Footer } from "@/components/Footer";
+import { themeCategories } from "@/lib/themeCategories";
+import { themeData } from "@/lib/themeData";
+
+const totalThemeCount = Object.values(themeData).flat().length;
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -51,7 +55,7 @@ export const metadata: Metadata = {
     default: "雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選",
     template: "%s｜雑談テーマガチャ",
   },
-  description: "会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」。25カテゴリ・700以上のお題から、ボタンひとつで会話のきっかけをランダム提案。履歴・お気に入り・タイムアタック・ルーレット・AI深掘り質問も無料で使えます。",
+  description: `会議のアイスブレイクやリモートワーク中の雑談に困ったら「雑談テーマガチャ」。${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、ボタンひとつで会話のきっかけをランダム提案。履歴・お気に入り・タイムアタック・ルーレット・AI深掘り質問も無料で使えます。`,
   keywords: [
     '雑談',
     '雑談テーマ',
@@ -133,7 +137,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選",
-    description: "25カテゴリ・700以上のお題から、ボタンひとつで会話のきっかけをランダム提案。会議のアイスブレイク、1on1、リモートワークの雑談に。",
+    description: `${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、ボタンひとつで会話のきっかけをランダム提案。会議のアイスブレイク、1on1、リモートワークの雑談に。`,
     url: "https://zatsudan-gacha.app/",
     siteName: "雑談テーマガチャ",
     locale: "ja_JP",
@@ -150,7 +154,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選",
-    description: "25カテゴリ・700以上のお題から、ボタンひとつで会話のきっかけをランダム提案。会議のアイスブレイク、1on1、リモートワークの雑談に。",
+    description: `${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、ボタンひとつで会話のきっかけをランダム提案。会議のアイスブレイク、1on1、リモートワークの雑談に。`,
     images: ["https://zatsudan-gacha.app/ogp.png"],
   },
 };

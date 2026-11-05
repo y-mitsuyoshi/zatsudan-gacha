@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ThemeGacha } from '@/components/ThemeGacha';
 import { ThemeList } from '@/components/ThemeList';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { FaqList } from '@/components/FaqList';
 import { ShareButtons } from '@/components/ShareButtons';
 import { themeCategories, totalThemeCount } from '@/lib/themeCategories';
 import { guides } from '@/lib/guideData';
@@ -104,27 +105,22 @@ const icebreakGroups = [
 
 const tips = [
  {
- emoji: '⏱️',
  title: '1人1分以内で答える',
  text: 'アイスブレイクは長引かせすぎないのがコツ。1人1分以内を目安にすると、本題への切り替えがスムーズです。',
  },
  {
- emoji: '🗣️',
  title: '答えやすいお題から始める',
  text: '最初は「好きな食べ物」など、誰でも答えられるお題を選ぶと、参加者の緊張がほぐれます。',
  },
  {
- emoji: '❓',
  title: 'ひとつ質問を重ねる',
  text: '「それで？」「最近だと？」と質問を重ねると、会話が自然に広がります。',
  },
  {
- emoji: '👥',
  title: '全員が話す機会をつくる',
  text: 'お題を出す前に「一人ずつお願いします」と伝えておくと、発言しやすくなります。',
  },
  {
- emoji: '🎲',
  title: 'お題選びはランダムに任せる',
  text: '偏りを避けたいときは、ガチャでお題を決めるのがおすすめ。盛り上がるきっかけになります。',
  },
@@ -310,7 +306,6 @@ export default function IcebreakPage() {
    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
    {tips.map((tip) => (
     <div key={tip.title} className="p-4 bg-[var(--paper-strong)] rounded-sm border border-[var(--line)]">
-
     <h3 className="font-bold text-sm mt-2 mb-1.5">{tip.title}</h3>
     <p className="text-xs text-[var(--ink-soft)] leading-relaxed">{tip.text}</p>
     </div>
@@ -402,19 +397,7 @@ export default function IcebreakPage() {
    <h2 id="faq-heading" className="font-editorial text-2xl text-[var(--ink)] mb-4">
    会議のアイスブレイクに関するよくある質問
    </h2>
-   <div className="space-y-3">
-   {faqs.map((faq) => (
-    <details key={faq.question} className="group bg-[var(--paper-strong)] rounded-none border border-[var(--line)]">
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5 font-bold text-sm sm:text-base">
-     <span>{faq.question}</span>
-     <span className="shrink-0 text-[var(--accent)] transition-transform group-open:rotate-45 text-xl" aria-hidden="true">＋</span>
-    </summary>
-    <p className="px-4 sm:px-5 pb-4 sm:pb-5 text-sm text-[var(--ink-soft)] leading-relaxed">
-     {faq.answer}
-    </p>
-    </details>
-   ))}
-   </div>
+   <FaqList items={faqs} />
   </section>
 
   <ShareButtons

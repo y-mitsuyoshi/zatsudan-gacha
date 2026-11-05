@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ThemeGacha } from '@/components/ThemeGacha';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { FaqList } from '@/components/FaqList';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { ShareButtons } from '@/components/ShareButtons';
 import {
@@ -65,42 +66,34 @@ export const metadata: Metadata = {
 
 const useCases = [
   {
-    emoji: '💻',
     title: 'オンライン会議の冒頭に',
     description: 'いきなり本題に入る前のアイスブレイクに。1問選ぶだけで、参加者の緊張がほぐれます。',
   },
   {
-    emoji: '🤝',
     title: '1on1や面談のきっかけに',
     description: '仕事の話だけでは見えない、相手の人柄や価値観を知る入口になります。',
   },
   {
-    emoji: '🏢',
     title: 'チームの交流・雑談タイムに',
     description: 'リモートワークで減りがちな何気ない会話を、手軽に増やせます。',
   },
   {
-    emoji: '🎓',
     title: '研修・ワークショップに',
     description: 'グループワークのウォームアップや、ブレイクアウトルームの話題提供に。',
   },
   {
-    emoji: '🍻',
     title: '飲み会・パーティーに',
     description: '初対面の人が多い場でも、会話が止まらないお題をランダムに選べます。',
   },
   {
-    emoji: '🏠',
     title: '家族・友達との団らんに',
     description: '食事の席や休日の会話に。いつもと少し違う話題で盛り上がれます。',
   },
   {
-    emoji: '🎤',
     title: 'スピーチ・朝礼の練習に',
     description: 'タイムアタックモードで、与えられたお題について話す練習ができます。',
   },
   {
-    emoji: '🎲',
     title: '誰が話すか決めたいときに',
     description: 'ルーレットモードなら、項目と重みを設定して公平に順番を決められます。',
   },
@@ -174,15 +167,16 @@ const partyGameLinks = [
 ];
 
 const otherTools = [
-  { title: '社畜人狼', description: '会社を舞台にした人狼ゲーム', href: '/shachiku-jinro', emoji: '🐺' },
-  { title: '社畜すごろく', description: '定時退社を目指すすごろく', href: '/shachiku-sugoroku', emoji: '🏢' },
-  { title: '異世界ステータス', description: '異世界での自分を診断', href: '/isekai-status', emoji: '⚔️' },
-  { title: 'プロフィールメーカー', description: '推し活プロフィールカード', href: '/profile-maker', emoji: '💖' },
-  { title: '社畜通勤サバイバー', description: '満員電車を突破する3Dゲーム', href: '/barricade-defense', emoji: '🚃' },
-  { title: '社畜サバイバー', description: '18時まで生き残るサバイバル', href: '/shachiku-survivor', emoji: '🏃' },
-  { title: '社畜スパイラル', description: '渦巻く業務からコアを守る', href: '/shachiku-spiral', emoji: '🌀' },
-  { title: '言い訳ジェネレーター', description: 'AIが考える究極の言い逃れ', href: '/excuse-generator', emoji: '🙇‍♂️' },
-  { title: '駅名標メーカー', description: 'オリジナル駅名標を作成', href: '/station-sign-maker', emoji: '🚉' },
+  { title: '都道府県統計ランキング', description: '人口・面積・密度を47都道府県で比較', href: '/prefecture-ranking' },
+  { title: '統計グラフメーカー', description: 'ラベルと値から棒・折れ線グラフを作成', href: '/statistics-graph' },
+  { title: '相関係数・散布図', description: '2つのデータの関係を散布図で可視化', href: '/correlation-coefficient' },
+  { title: '主要都市間距離計算', description: '都市間の直線距離と方角を簡易マップで確認', href: '/city-distance' },
+  { title: '世界時差クロック', description: '主要都市の現在時刻と時差を一覧表示', href: '/world-timezone' },
+  { title: 'プロフィールメーカー', description: '推し活プロフィールカードを作成', href: '/profile-maker' },
+  { title: '駅名標メーカー', description: 'オリジナル駅名標を作成', href: '/station-sign-maker' },
+  { title: '社畜人狼', description: '会社を舞台にしたソロ人狼ゲーム', href: '/shachiku-jinro' },
+  { title: '社畜すごろく', description: '定時退社を目指すキャリアボード', href: '/shachiku-sugoroku' },
+  { title: '言い訳ジェネレーター', description: 'AIが考える究極の言い逃れ', href: '/excuse-generator' },
 ];
 
 function serializeJsonLd(data: unknown): string {
@@ -425,10 +419,10 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[
-              { emoji: '🎲', title: 'ワンタップ抽選', text: 'ボタンひとつでお題をランダム表示' },
-              { emoji: '🗂️', title: `${themeCategories.length}カテゴリ`, text: '話題に合わせてフィルターできる' },
-              { emoji: '⭐', title: '履歴・お気に入り', text: 'ブラウザに自動保存。登録不要' },
-              { emoji: '✨', title: 'AI深掘り', text: '会話が広がる質問を3つ提案' },
+              { title: 'ワンタップ抽選', text: 'ボタンひとつでお題をランダム表示' },
+              { title: `${themeCategories.length}カテゴリ`, text: '話題に合わせてフィルターできる' },
+              { title: '履歴・お気に入り', text: 'ブラウザに自動保存。登録不要' },
+              { title: 'AI深掘り', text: '会話が広がる質問を3つ提案' },
             ].map((feature, index) => (
               <div key={feature.title} className="border border-[var(--line)] bg-[var(--paper-strong)] p-4 sm:p-5">
                 <span className="font-label text-[9px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
@@ -560,19 +554,7 @@ export default function Home() {
           <h2 id="faq-heading" className="font-editorial text-2xl sm:text-3xl text-[var(--ink)] mb-6">
             よくある質問
           </h2>
-          <div className="space-y-3">
-            {faqs.map((faq) => (
-              <details key={faq.question} className="group bg-[var(--paper-strong)] rounded-none border border-[var(--line)]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5 font-bold text-sm sm:text-base">
-                  <span>{faq.question}</span>
-                  <span className="shrink-0 text-[var(--accent)] transition-transform group-open:rotate-45 text-xl" aria-hidden="true">＋</span>
-                </summary>
-                <p className="px-4 sm:px-5 pb-4 sm:pb-5 text-sm text-[var(--ink-soft)] leading-relaxed">
-                  {faq.answer}
-                </p>
-              </details>
-            ))}
-          </div>
+          <FaqList items={faqs} />
         </section>
 
         <section aria-labelledby="party-games-heading">
@@ -610,19 +592,22 @@ export default function Home() {
         </section>
 
         <section aria-labelledby="other-tools-heading">
-          <p className="paper-kicker mb-2">OTHER TOOLS</p>
+          <p className="paper-kicker mb-2">DISCOVER MORE</p>
           <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 id="other-tools-heading" className="font-editorial text-2xl sm:text-3xl text-[var(--ink)] mb-3">
-                他のツールでも遊ぶ
+                ゲーム・ツールを探す
               </h2>
               <p className="text-sm text-[var(--ink-soft)]">
-                雑談だけじゃない、コミュニケーションを楽しむための無料ツールを用意しています。
+                雑談の合間に使える統計・地図ツールから、ゲーム、プロフィール作成まで。
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-x-4 gap-y-1">
               <Link href="/tools" className="text-sm font-bold text-[var(--accent)] hover:underline">
                 無料ツール一覧を見る →
+              </Link>
+              <Link href="/tools#stats-tools" className="text-sm font-bold text-[var(--accent)] hover:underline">
+                統計・地図ツールを見る →
               </Link>
               <Link href="/games" className="text-sm font-bold text-[var(--accent)] hover:underline">
                 無料ゲーム一覧を見る →

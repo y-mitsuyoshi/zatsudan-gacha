@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <main className="paper-page flex min-h-[70vh] items-center justify-center px-4 py-16">
-      <div className="max-w-lg w-full text-center paper-panel max-w-lg p-8">
+      <div className="w-full max-w-lg text-center paper-panel p-8">
         <p className="font-editorial text-6xl text-[var(--accent)] mb-3">404</p>
         <h1 className="font-editorial text-2xl text-[var(--ink)] mb-3">
           ページが見つかりません

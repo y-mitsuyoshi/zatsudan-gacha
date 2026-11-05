@@ -3,11 +3,28 @@ import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { ConsentSettingsButton } from '@/components/ConsentSettingsButton';
 
+const APP_URL = 'https://zatsudan-gacha.app';
+
 export const metadata: Metadata = {
  title: 'プライバシーポリシー',
  description: '雑談テーマガチャのプライバシーポリシー。取得する情報、Cookie・アクセス解析・広告の取り扱い、AI機能への入力、保存データの管理方法について説明します。',
  alternates: {
  canonical: '/privacy',
+ },
+ openGraph: {
+ title: 'プライバシーポリシー｜雑談テーマガチャ',
+ description: '取得する情報、Cookie・アクセス解析・広告の取り扱い、AI機能への入力、保存データの管理方法について説明します。',
+ url: `${APP_URL}/privacy`,
+ siteName: '雑談テーマガチャ',
+ locale: 'ja_JP',
+ type: 'website',
+ images: [{ url: `${APP_URL}/ogp.png`, width: 1200, height: 630, alt: 'プライバシーポリシー' }],
+ },
+ twitter: {
+ card: 'summary_large_image',
+ title: 'プライバシーポリシー｜雑談テーマガチャ',
+ description: 'Cookie・アクセス解析・広告・AI機能への入力など、情報の取り扱いについて説明します。',
+ images: [`${APP_URL}/ogp.png`],
  },
  robots: {
  index: true,

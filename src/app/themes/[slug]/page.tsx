@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ThemeGacha } from '@/components/ThemeGacha';
 import { ThemeList } from '@/components/ThemeList';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { FaqList } from '@/components/FaqList';
 import { ShareButtons } from '@/components/ShareButtons';
 import { themeData } from '@/lib/themeData';
 import { themeCategories, themeCategoryBySlug } from '@/lib/themeCategories';
@@ -259,17 +260,14 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
    <div className="grid sm:grid-cols-3 gap-3">
    {[
     {
-    emoji: '🗣️',
     title: '答えやすいお題から',
     text: '最初は「好きな食べ物」など答えやすいお題を選ぶと、会話が始まりやすくなります。',
     },
     {
-    emoji: '❓',
     title: 'ひとつ質問を重ねる',
     text: '相手の答えに対して「それはなぜ？」「最近だと？」と聞くと、自然に話が広がります。',
     },
     {
-    emoji: '✨',
     title: 'AI深掘りも活用',
     text: '会話が止まりそうなときは、ガチャのAI深掘り機能で質問のヒントをもらうのもおすすめです。',
     },
@@ -288,19 +286,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
    <h2 id="category-faq-heading" className="font-editorial text-2xl text-[var(--ink)] mb-4">
    「{category.name}」のお題についてよくある質問
    </h2>
-   <div className="space-y-2">
-   {categoryFaqs.map((faq) => (
-    <details key={faq.q} className="group rounded-sm border border-[var(--line)] bg-[var(--paper-strong)] ">
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 text-sm font-bold">
-     <span>{faq.q}</span>
-     <span className="shrink-0 text-[var(--accent)] transition-transform group-open:rotate-45" aria-hidden="true">＋</span>
-    </summary>
-    <p className="border-t border-[var(--line)] px-4 py-3 text-sm leading-7 text-[var(--ink-soft)] ">
-     {faq.a}
-    </p>
-    </details>
-   ))}
-   </div>
+   <FaqList items={categoryFaqs.map((faq) => ({ question: faq.q, answer: faq.a }))} />
   </section>
 
   <section aria-labelledby="related-guides-heading" className="mb-14">

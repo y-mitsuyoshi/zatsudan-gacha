@@ -44,7 +44,7 @@ ${categorySections}
 - 社長の頭の中（ランキング予想） (${BASE_URL}/rank-guess): 社長のランキングを予想するチームゲーム
 - 連想リレー (${BASE_URL}/word-chain): 言葉をつないで高得点を狙う連想ゲーム
 
-## 収録Webツール一覧（全24種類・無料・登録不要）
+## 収録Webツール一覧（全34種類・無料・登録不要）
 
 - 文字数カウンター (${BASE_URL}/character-counter): 文字・行・単語・UTF-8バイト数を集計
 - JSON整形・検証 (${BASE_URL}/json-formatter): JSONの整形・圧縮・構文チェック
@@ -70,6 +70,16 @@ ${categorySections}
 - 住宅ローン借入可能額 (${BASE_URL}/mortgage-borrowing-capacity): 年収からの借入可能額
 - 繰上返済効果 (${BASE_URL}/prepayment-simulator): 期間短縮・返済額軽減の比較
 - 複利・積立 資産形成 (${BASE_URL}/compound-interest-calculator): 複利・積立・税引後評価額
+- 都道府県統計ランキング (${BASE_URL}/prefecture-ranking): 人口・面積・人口密度のランキング比較
+- 都道府県統計クイズ (${BASE_URL}/prefecture-quiz): 統計データから学ぶ5問クイズ
+- 標準偏差・分散計算 (${BASE_URL}/standard-deviation): 平均・分散・標準偏差・変動係数
+- 相関係数・散布図 (${BASE_URL}/correlation-coefficient): 相関係数・決定係数・回帰直線
+- 偏差値計算 (${BASE_URL}/deviation-score): 偏差値・zスコア・推定パーセンタイル
+- 統計グラフメーカー (${BASE_URL}/statistics-graph): 棒グラフ・折れ線グラフをSVGで作成
+- ヒートマップメーカー (${BASE_URL}/heatmap-maker): CSV数値のヒートマップ可視化
+- 主要都市間距離計算 (${BASE_URL}/city-distance): 主要都市の大円距離と方角
+- 緯度経度距離・方位計算 (${BASE_URL}/coordinate-distance): 2地点の距離・方位・中点
+- 世界時差クロック (${BASE_URL}/world-timezone): 主要都市の現在時刻・時差・昼夜
 
 ## 利用について
 

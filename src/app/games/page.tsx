@@ -206,7 +206,7 @@ const partyGames = [
   },
 ];
 
-const tools = [
+const creativeTools = [
   { name: '推し活プロフィールメーカー', href: '/profile-maker', description: '推し紹介カードを無料作成' },
   { name: '異世界転生ステータスカード', href: '/isekai-status', description: '5つの質問で異世界キャラ診断' },
   { name: '究極の言い訳ジェネレーター', href: '/excuse-generator', description: 'AIが面白い言い訳を生成' },
@@ -378,15 +378,15 @@ export default function GamesPage() {
         <section className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="tools-heading">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="paper-kicker">Other Tools</p>
-              <h2 id="tools-heading" className="font-editorial mt-2 text-2xl">ゲーム以外の無料ツール</h2>
+              <p className="paper-kicker">Creative Tools</p>
+              <h2 id="tools-heading" className="font-editorial mt-2 text-2xl">作って遊べるクリエイティブツール</h2>
             </div>
             <Link href="/tools" className="font-label text-[9px] text-[var(--accent)] hover:underline">
-              ツール一覧を見る →
+              全34ツールを見る →
             </Link>
           </div>
           <div className="mt-4 grid gap-x-6 sm:grid-cols-2">
-            {tools.map((tool, index) => (
+            {creativeTools.map((tool, index) => (
               <Link
                 key={tool.href}
                 href={tool.href}
@@ -408,7 +408,7 @@ export default function GamesPage() {
           intro="1分で遊べる爽快アクションから、じっくり戦略を練るローグライク、みんなで盛り上がるパーティーゲームまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[
-            { href: '/tools', label: '無料ツール一覧', description: 'プロフィール・診断・駅名標' },
+            { href: '/tools', label: '無料ツール一覧', description: '実用・統計・地図・クリエイティブの全34ツール' },
             { href: '/guides', label: 'シーン別・雑談ガイド', description: '会議や1on1の話題を探す' },
           ]}
         />

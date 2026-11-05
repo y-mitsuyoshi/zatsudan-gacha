@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
+import { FaqList } from '@/components/FaqList';
 import { themeCategories, totalThemeCount } from '@/lib/themeCategories';
 
 const APP_URL = 'https://zatsudan-gacha.app';
@@ -212,17 +213,7 @@ export default function ThemesIndexPage() {
    <h2 id="themes-faq-heading" className="font-editorial text-2xl text-[var(--ink)] mb-4">
    雑談お題のカテゴリについてよくある質問
    </h2>
-   <div className="space-y-2">
-   {faqs.map((faq) => (
-    <details key={faq.q} className="group rounded-sm border border-[var(--line)] bg-[var(--paper-strong)] ">
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 text-sm font-bold">
-     <span>{faq.q}</span>
-     <span className="shrink-0 text-[var(--accent)] transition-transform group-open:rotate-45" aria-hidden="true">＋</span>
-    </summary>
-    <p className="border-t border-[var(--line)] px-4 py-3 text-sm leading-7 text-[var(--ink-soft)] ">{faq.a}</p>
-    </details>
-   ))}
-   </div>
+   <FaqList items={faqs.map((faq) => ({ question: faq.q, answer: faq.a }))} />
   </section>
   </div>
  </main>
