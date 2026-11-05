@@ -57,9 +57,9 @@ export const ShareButtons = ({
     const iconClass = compact ? 'h-6 w-6' : 'h-8 w-8';
 
     return (
-        <div className={`${compact ? '' : 'mt-10 pt-6 border-t border-gray-200 dark:border-gray-700'} ${className}`}>
+        <div className={`${compact ? '' : 'mt-10 pt-6 border-t border-[var(--line)]'} ${className}`}>
             {!compact && (
-                <h3 className="text-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                <h3 className="text-center font-editorial text-lg text-[var(--ink)] mb-4">
                     {heading}
                 </h3>
             )}
@@ -78,7 +78,7 @@ export const ShareButtons = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={shareText ? 'このお題をFacebookでシェア' : 'Facebookでシェア'}
-                    className="text-blue-600 dark:text-blue-500 transition-all hover:scale-110 hover:opacity-80"
+                    className="text-[#2563eb] dark:text-[#60a5fa] transition-all hover:scale-110 hover:opacity-80"
                 >
                     <FacebookIcon className={iconClass} />
                 </a>
@@ -87,7 +87,7 @@ export const ShareButtons = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={shareText ? 'このお題をLINEでシェア' : 'LINEでシェア'}
-                    className="text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-all hover:scale-110 hover:opacity-80"
+                    className="text-[var(--ink-soft)] hover:text-green-500 dark:hover:text-green-400 transition-all hover:scale-110 hover:opacity-80"
                 >
                     <LineIcon className={iconClass} />
                 </a>

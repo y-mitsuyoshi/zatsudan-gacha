@@ -14,7 +14,7 @@ interface RouletteItem {
 const CANVAS_SIZE = 340;
 
 const DEFAULT_COLORS = [
-  '#667EEA', '#764BA2', '#F093FB', '#F5576C', 
+  '#667EEA', '#764BA2', '#F093FB', '#F5576C',
   '#4FACFE', '#00F2FE', '#43E97B', '#38F9D7',
   '#FFECD2', '#FCB69F', '#A8EDEA', '#FED6E3'
 ];
@@ -90,22 +90,22 @@ export function RouletteMode() {
 
     // 合計重みを計算
     const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
-    
+
     let currentAngle = rotation * Math.PI / 180;
-    
+
     // セクションを描画
     items.forEach((item) => {
       const sectionAngle = (item.weight / totalWeight) * 2 * Math.PI;
-      
+
       // セクションのグラデーションを作成
       const startAngle = currentAngle;
       const endAngle = currentAngle + sectionAngle;
       const midAngle = startAngle + sectionAngle / 2;
-      
+
       const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
       gradient.addColorStop(0, item.color);
       gradient.addColorStop(1, item.color + '80'); // 透明度を追加
-      
+
       // セクションを描画
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
@@ -113,7 +113,7 @@ export function RouletteMode() {
       ctx.closePath();
       ctx.fillStyle = gradient;
       ctx.fill();
-      
+
       // 美しい境界線
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.lineWidth = 2;
@@ -139,25 +139,25 @@ export function RouletteMode() {
 
       ctx.save();
       ctx.translate(textX, textY);
-      
+
       // テキストの角度を調整
       let rotationAngle = textAngle + Math.PI / 2;
       if (rotationAngle > Math.PI / 2 && rotationAngle < 3 * Math.PI / 2) {
         rotationAngle += Math.PI;
       }
       ctx.rotate(rotationAngle);
-      
+
       // モダンで読みやすいフォント
       ctx.font = '700 15px "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      
+
       // テキストの影
       ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
       ctx.shadowBlur = 3;
       ctx.shadowOffsetX = 1;
       ctx.shadowOffsetY = 1;
-      
+
       // テキストの塗りつぶし
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(item.name, 0, 0);
@@ -170,7 +170,7 @@ export function RouletteMode() {
     const centerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 25);
     centerGradient.addColorStop(0, '#ffffff');
     centerGradient.addColorStop(1, '#f1f5f9');
-    
+
     ctx.beginPath();
     ctx.arc(centerX, centerY, 25, 0, 2 * Math.PI);
     ctx.fillStyle = centerGradient;
@@ -194,21 +194,21 @@ export function RouletteMode() {
     ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 3;
-    
+
     // 指針のグラデーション
     const arrowGradient = ctx.createLinearGradient(0, -6, 0, 20);
     arrowGradient.addColorStop(0, '#ef4444');
     arrowGradient.addColorStop(1, '#dc2626');
-    
+
     ctx.beginPath();
     ctx.moveTo(0, 20);
     ctx.lineTo(-13, -6);
     ctx.lineTo(13, -6);
     ctx.closePath();
-    
+
     ctx.fillStyle = arrowGradient;
     ctx.fill();
-    
+
     // 指針の縁取り
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
@@ -264,7 +264,7 @@ export function RouletteMode() {
     if (winner?.id === id) {
       setWinner(null);
     }
-    
+
     // Google Analytics イベント送信
     if (itemToRemove) {
       trackEvent('roulette_item_removed', {
@@ -277,11 +277,11 @@ export function RouletteMode() {
     if (isSpinning) return;
     if (newWeight >= 1 && newWeight <= 10) {
       const oldItem = items.find(item => item.id === id);
-      setItems(items.map(item => 
+      setItems(items.map(item =>
         item.id === id ? { ...item, weight: newWeight } : item
       ));
       setError('');
-      
+
       // Google Analytics イベント送信
       if (oldItem) {
         trackEvent('roulette_weight_changed', {
@@ -318,7 +318,7 @@ export function RouletteMode() {
 
     // イージング関数
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-    
+
     const startTime = Date.now();
     const duration = 3000 + Math.random() * 2000; // 3-5秒
     const startRotation = rotation;
@@ -327,7 +327,7 @@ export function RouletteMode() {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const easedProgress = easeOut(progress);
-      
+
       const currentRotation = startRotation + finalRotation * easedProgress;
       setRotation(currentRotation % 360);
 
@@ -345,33 +345,33 @@ export function RouletteMode() {
 
   const determineWinner = (finalRotation: number) => {
     const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
-    
+
     // 矢印は真上（12時方向）にあるので、正確な当選判定
     const normalizedRotation = ((finalRotation % 360) + 360) % 360;
     const arrowAngle = (270 - normalizedRotation + 360) % 360;
-    
+
     let currentAngle = 0;
     let winnerItem: RouletteItem | null = null;
-    
+
     for (const item of items) {
       const sectionAngle = (item.weight / totalWeight) * 360;
       const endAngle = currentAngle + sectionAngle;
-      
+
       if (arrowAngle >= currentAngle && arrowAngle < endAngle) {
         winnerItem = item;
         setWinner(item);
         break;
       }
-      
+
       currentAngle = endAngle;
     }
-    
+
     // フォールバック
     if (!winnerItem && items.length > 0) {
       winnerItem = items[0];
       setWinner(items[0]);
     }
-    
+
     // Google Analytics イベント送信 - 結果確定
     if (winnerItem) {
       trackEvent('roulette_result', {
@@ -387,12 +387,9 @@ export function RouletteMode() {
   return (
     <div className="space-y-6">
       {/* ルーレット描画エリア */}
-      <div className="relative bg-gradient-to-br from-white via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-2xl overflow-hidden">
+      <div className="relative bg-[var(--paper-strong)] p-8 rounded-none border border-[var(--line)]  overflow-hidden">
         {/* 背景装飾 */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 to-purple-400/5 rounded-3xl"></div>
-        <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-xl"></div>
-        <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-indigo-200/20 to-pink-200/20 rounded-full blur-xl"></div>
-        
+
         <div className="relative flex justify-center mb-8">
           <div className="relative w-full max-w-sm sm:max-w-md md:max-w-lg">
             <canvas
@@ -401,7 +398,7 @@ export function RouletteMode() {
               height={340}
               role="img"
               aria-label="ルーレットの盤面"
-              className="rounded-full shadow-2xl ring-4 ring-white/50 dark:ring-gray-800/50 w-full h-auto max-w-[280px] sm:max-w-[320px] md:max-w-[340px] mx-auto"
+              className="rounded-full  ring-4 ring-[var(--line)] w-full h-auto max-w-[280px] sm:max-w-[320px] md:max-w-[340px] mx-auto"
               style={{
                 filter: isSpinning ? 'blur(0.5px) brightness(1.1)' : 'none',
                 transition: 'filter 0.3s ease, transform 0.3s ease',
@@ -418,20 +415,20 @@ export function RouletteMode() {
             type="button"
             onClick={spinRoulette}
             disabled={isSpinning || items.length === 0}
-            className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 shadow-lg ${
+            className={`px-8 py-4 rounded-none font-semibold text-lg transition-all duration-300  ${
               isSpinning
-                ? 'bg-gray-400 text-white cursor-not-allowed scale-95'
+                ? 'bg-[var(--paper-muted)] text-[var(--ink-soft)] cursor-not-allowed scale-95'
                 : items.length === 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-xl transform hover:scale-105 active:scale-95'
+                ? 'bg-[var(--paper-muted)] text-[var(--ink-soft)] cursor-not-allowed'
+                : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transform hover:scale-105 active:scale-95'
             }`}
           >
             <PlayIcon className="w-6 h-6 inline mr-2" />
             {isSpinning ? 'スピン中...' : items.length === 0 ? '項目を追加してください' : 'スタート'}
           </button>
-          
+
           {items.length === 0 && (
-            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-3 text-sm text-[var(--ink-soft)]">
               ルーレットを回すには、少なくとも1つの項目を追加してください
             </p>
           )}
@@ -440,12 +437,12 @@ export function RouletteMode() {
         {/* 結果表示 */}
         {winner && !isSpinning && (
           <div
-            className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border-2 border-green-200 dark:border-green-700 text-center"
+            className="mt-8 p-6 bg-[var(--paper-muted)] rounded-none border-2 border-[var(--line-strong)] text-center"
             role="status"
             aria-live="polite"
           >
             <div className="text-5xl mb-4 animate-bounce">🎉</div>
-            <div 
+            <div
               className="text-3xl font-black tracking-wide"
               style={{ color: winner.color }}
             >
@@ -457,8 +454,8 @@ export function RouletteMode() {
 
       {/* アイテム管理エリア */}
       <div className="space-y-6">
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">項目の設定</h3>
-        
+        <h3 className="text-2xl font-bold text-[var(--ink)]">項目の設定</h3>
+
         {/* 新しいアイテム追加 */}
         <div className="flex flex-col sm:flex-row gap-3">
           <input
@@ -471,7 +468,7 @@ export function RouletteMode() {
             onKeyDown={(e) => e.key === 'Enter' && addItem()}
             placeholder="新しい項目を入力（最大20文字）"
             aria-label="ルーレットに追加する項目"
-            className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-base disabled:opacity-60"
+            className="flex-1 px-4 py-3 border-2 border-[var(--line)] rounded-sm bg-[var(--paper-strong)] text-[var(--ink)] placeholder:text-[var(--ink-soft)] focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] transition-all font-medium text-base disabled:opacity-60"
             maxLength={20}
             disabled={isSpinning}
           />
@@ -480,7 +477,7 @@ export function RouletteMode() {
             onClick={addItem}
             disabled={!newItemName.trim() || items.length >= 12 || isSpinning}
             aria-label="項目を追加"
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 disabled:transform-none font-semibold whitespace-nowrap min-w-[120px] sm:min-w-0"
+            className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--paper-muted)] text-white rounded-sm transition-all duration-200  transform hover:scale-105 disabled:transform-none font-semibold whitespace-nowrap min-w-[120px] sm:min-w-0"
           >
             <PlusIcon className="w-5 h-5 mx-auto" />
           </button>
@@ -492,7 +489,7 @@ export function RouletteMode() {
         {/* アイテムリスト */}
         <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
           {items.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-12 text-[var(--ink-soft)]">
               <div className="text-6xl mb-4">🎯</div>
               <p className="text-lg font-medium">項目がありません</p>
               <p className="text-sm mt-2">上の入力フィールドから項目を追加してください</p>
@@ -501,21 +498,21 @@ export function RouletteMode() {
             items.map((item, index) => (
             <div
               key={item.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
+              className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-[var(--paper-muted)] rounded-none border-2 border-[var(--line)] transition-colors hover:border-[var(--accent)]"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div
-                  className="w-6 h-6 rounded-full shadow-lg border-2 border-white flex-shrink-0"
+                  className="w-6 h-6 rounded-full  border-2 border-white flex-shrink-0"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-gray-900 dark:text-white font-semibold text-base sm:text-lg truncate">
+                <span className="text-[var(--ink)] font-semibold text-base sm:text-lg truncate">
                   {item.name}
                 </span>
               </div>
 
               <div className="flex items-center justify-between sm:justify-end gap-3">
-                <div className="flex items-center gap-2 sm:gap-3 bg-white dark:bg-gray-700 rounded-xl px-3 py-2 border border-gray-200 dark:border-gray-600">
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
+                <div className="flex items-center gap-2 sm:gap-3 bg-[var(--paper-strong)] rounded-sm px-3 py-2 border border-[var(--line)]">
+                  <span className="text-xs sm:text-sm text-[var(--ink-soft)] font-medium whitespace-nowrap">
                     重み
                   </span>
                   <button
@@ -523,11 +520,11 @@ export function RouletteMode() {
                     onClick={() => updateWeight(item.id, item.weight - 1)}
                     disabled={isSpinning || item.weight <= 1}
                     aria-label={`${item.name}の重みを減らす`}
-                    className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                    className="p-2 sm:p-1.5 rounded-sm hover:bg-[var(--paper-muted)] disabled:opacity-50 transition-colors"
                   >
-                    <MinusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    <MinusIcon className="w-4 h-4 text-[var(--ink-soft)]" />
                   </button>
-                  <span className="w-6 sm:w-8 text-center text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                  <span className="w-6 sm:w-8 text-center text-base sm:text-lg font-bold text-[var(--ink)]">
                     {item.weight}
                   </span>
                   <button
@@ -535,9 +532,9 @@ export function RouletteMode() {
                     onClick={() => updateWeight(item.id, item.weight + 1)}
                     disabled={isSpinning || item.weight >= 10}
                     aria-label={`${item.name}の重みを増やす`}
-                    className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                    className="p-2 sm:p-1.5 rounded-sm hover:bg-[var(--paper-muted)] disabled:opacity-50 transition-colors"
                   >
-                    <PlusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    <PlusIcon className="w-4 h-4 text-[var(--ink-soft)]" />
                   </button>
                 </div>
 
@@ -545,7 +542,7 @@ export function RouletteMode() {
                   type="button"
                   onClick={() => removeItem(item.id)}
                   disabled={isSpinning}
-                  className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:hover:scale-100 flex-shrink-0"
+                  className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:hover:scale-100 flex-shrink-0"
                   title="削除"
                   aria-label={`${item.name}を削除`}
                 >
@@ -557,7 +554,7 @@ export function RouletteMode() {
           )}
         </div>
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-sm p-4">
           <div className="text-sm sm:text-base text-blue-800 dark:text-blue-200 space-y-2 font-medium">
             <p>💡 最大12項目まで追加できます</p>
             <p>⚖️ 重みが大きいほど当選確率が高くなります（1-10）</p>

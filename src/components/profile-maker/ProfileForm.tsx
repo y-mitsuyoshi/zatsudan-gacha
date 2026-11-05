@@ -5,297 +5,297 @@ import { ProfileState } from "@/types";
 import { fileToOptimizedDataUrl } from "@/lib/image";
 
 interface ProfileFormProps {
-  profile: ProfileState;
-  setProfile: React.Dispatch<React.SetStateAction<ProfileState>>;
+ profile: ProfileState;
+ setProfile: React.Dispatch<React.SetStateAction<ProfileState>>;
 }
 
 // Reusable Input Component
 const FormInput = ({ label, name, value, onChange, placeholder, required = false, as = 'input', maxLength }: {
-  label: string;
-  name: keyof ProfileState;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  placeholder?: string;
-  required?: boolean;
-  as?: 'input' | 'textarea';
-  maxLength?: number;
+ label: string;
+ name: keyof ProfileState;
+ value: string;
+ onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+ placeholder?: string;
+ required?: boolean;
+ as?: 'input' | 'textarea';
+ maxLength?: number;
 }) => (
-  <div className="mb-6">
-    <label htmlFor={name} className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-      {label} {required && <span className="text-red-500 ml-1">*</span>}
-    </label>
-    {as === 'input' ? (
-      <input
-        type="text"
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        maxLength={maxLength}
-        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-      />
-    ) : (
-      <textarea
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        rows={3}
-        maxLength={maxLength}
-        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-      />
-    )}
-  </div>
+ <div className="mb-6">
+  <label htmlFor={name} className="block text-sm font-semibold text-[var(--ink)] mb-2">
+   {label} {required && <span className="text-red-500 ml-1">*</span>}
+  </label>
+  {as === 'input' ? (
+   <input
+    type="text"
+    id={name}
+    name={name}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    required={required}
+    maxLength={maxLength}
+    className="w-full p-3 border border-[var(--line-strong)] rounded-sm bg-[var(--paper-muted)]  focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] transition"
+   />
+  ) : (
+   <textarea
+    id={name}
+    name={name}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    rows={3}
+    maxLength={maxLength}
+    className="w-full p-3 border border-[var(--line-strong)] rounded-sm bg-[var(--paper-muted)]  focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] transition"
+   />
+  )}
+ </div>
 );
 
 export const ProfileForm: React.FC<ProfileFormProps> = ({ profile, setProfile }) => {
-  const [imageError, setImageError] = useState('');
+ const [imageError, setImageError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProfile(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const { name, value } = e.target;
+  setProfile(prev => ({
+   ...prev,
+   [name]: value,
+  }));
+ };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setImageError('');
+ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  setImageError('');
 
-    if (!file) {
-      return;
-    }
+  if (!file) {
+   return;
+  }
 
-    try {
-      const imageUrl = await fileToOptimizedDataUrl(file);
-      setProfile(prev => ({ ...prev, image: imageUrl }));
-    } catch (error) {
-      setImageError(error instanceof Error ? error.message : '画像を読み込めませんでした。');
-    } finally {
-      // Allow selecting the same file again after a failed attempt.
-      e.target.value = '';
-    }
-  };
+  try {
+   const imageUrl = await fileToOptimizedDataUrl(file);
+   setProfile(prev => ({ ...prev, image: imageUrl }));
+  } catch (error) {
+   setImageError(error instanceof Error ? error.message : '画像を読み込めませんでした。');
+  } finally {
+   // Allow selecting the same file again after a failed attempt.
+   e.target.value = '';
+  }
+ };
 
-  return (
-    <form onSubmit={(event) => event.preventDefault()}>
-      <h3 className="text-lg font-bold mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">基本情報</h3>
-      <FormInput
-        label="推しの名前"
-        name="name"
-        value={profile.name}
-        onChange={handleChange}
-        required
-        maxLength={30}
-      />
-      <FormInput
-        label="推しの所属・グループ名など"
-        name="group"
-        value={profile.group}
-        onChange={handleChange}
-        maxLength={40}
-      />
-      
-      <div className="mb-6">
-        <label htmlFor="image" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          推しの画像
-        </label>
-        <div className="space-y-3">
-          <input
-            type="file"
-            id="image"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={handleImageUpload}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-          />
-          {imageError && (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">{imageError}</p>
-          )}
-          <p className="text-xs text-gray-500 dark:text-gray-400">PNG・JPEG・WebP、8MBまで。大きな画像は自動で縮小します。</p>
-          {profile.image && (
-            <div className="flex items-center space-x-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={profile.image}
-                alt="推しの画像プレビュー"
-                className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
-              />
-              <button
-                type="button"
-                onClick={() => setProfile(prev => ({ ...prev, image: '' }))}
-                className="text-red-500 hover:text-red-700 text-sm font-medium"
-              >
-                画像を削除
-              </button>
-            </div>
-          )}
-        </div>
+ return (
+  <form onSubmit={(event) => event.preventDefault()}>
+   <h3 className="text-lg font-bold mb-4 text-[var(--accent)] border-b pb-2">基本情報</h3>
+   <FormInput
+    label="推しの名前"
+    name="name"
+    value={profile.name}
+    onChange={handleChange}
+    required
+    maxLength={30}
+   />
+   <FormInput
+    label="推しの所属・グループ名など"
+    name="group"
+    value={profile.group}
+    onChange={handleChange}
+    maxLength={40}
+   />
+
+   <div className="mb-6">
+    <label htmlFor="image" className="block text-sm font-semibold text-[var(--ink)] mb-2">
+     推しの画像
+    </label>
+    <div className="space-y-3">
+     <input
+      type="file"
+      id="image"
+      accept="image/png,image/jpeg,image/webp"
+      onChange={handleImageUpload}
+      className="w-full p-3 border border-[var(--line-strong)] rounded-sm bg-[var(--paper-muted)]  focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--accent-soft)] file:text-[var(--accent)] hover:file:bg-[var(--paper-muted)]"
+     />
+     {imageError && (
+      <p className="text-sm text-red-600 " role="alert">{imageError}</p>
+     )}
+     <p className="text-xs text-[var(--ink-soft)]">PNG・JPEG・WebP、8MBまで。大きな画像は自動で縮小します。</p>
+     {profile.image && (
+      <div className="flex items-center space-x-3">
+       {/* eslint-disable-next-line @next/next/no-img-element */}
+       <img
+        src={profile.image}
+        alt="推しの画像プレビュー"
+        className="w-16 h-16 object-cover rounded-sm border border-[var(--line-strong)]"
+       />
+       <button
+        type="button"
+        onClick={() => setProfile(prev => ({ ...prev, image: '' }))}
+        className="text-red-500 hover:text-red-700 text-sm font-medium"
+       >
+        画像を削除
+       </button>
       </div>
-      
-      <div className="mb-6">
-          <label htmlFor="color" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              担当・イメージカラー
-          </label>
-          <div className="flex items-center">
-              <input
-                  type="color"
-                  id="color"
-                  name="color"
-                  value={profile.color}
-                  onChange={handleChange}
-                  className="w-10 h-10 p-1 border-none rounded-lg cursor-pointer"
-              />
-              <span className="ml-3 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white text-sm">
-                  {profile.color}
-              </span>
-          </div>
-      </div>
+     )}
+    </div>
+   </div>
 
-      <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">推しの&quot;好き&quot;を語る</h3>
+   <div className="mb-6">
+     <label htmlFor="color" className="block text-sm font-semibold text-[var(--ink)] mb-2">
+       担当・イメージカラー
+     </label>
+     <div className="flex items-center">
+       <input
+         type="color"
+         id="color"
+         name="color"
+         value={profile.color}
+         onChange={handleChange}
+         className="w-10 h-10 p-1 border-none rounded-sm cursor-pointer"
+       />
+       <span className="ml-3 p-2 border border-[var(--line-strong)] rounded-sm bg-[var(--paper-muted)]  text-sm">
+         {profile.color}
+       </span>
+     </div>
+   </div>
 
-      <TagInput
-        label="推しの好きなところ（最大3つ）"
-        tags={profile.likes}
-        setTags={(newLikes) => setProfile(p => ({...p, likes: newLikes}))}
-        suggestions={['顔', '声', '性格', 'ダンス', '演技', '面白い', '優しい', '世界観']}
-        maxTags={3}
-      />
+   <h3 className="text-lg font-bold mt-8 mb-4 text-[var(--accent)] border-b pb-2">推しの&quot;好き&quot;を語る</h3>
 
-      <FormInput
-        label="推しとの出会い（きっかけ）"
-        name="episode"
-        value={profile.episode}
-        onChange={handleChange}
-        placeholder="例：「〇〇という作品で一目惚れ」"
-        maxLength={160}
-      />
-      <FormInput
-        label="一番好きなビジュアル・衣装"
-        name="favoriteVisual"
-        value={profile.favoriteVisual}
-        onChange={handleChange}
-        placeholder="例：「〇〇のライブ衣装」"
-        maxLength={120}
-      />
-      <FormInput
-        label="一番好きなセリフ・歌詞"
-        name="favoriteQuote"
-        value={profile.favoriteQuote}
-        onChange={handleChange}
-        as="textarea"
-        maxLength={160}
-      />
+   <TagInput
+    label="推しの好きなところ（最大3つ）"
+    tags={profile.likes}
+    setTags={(newLikes) => setProfile(p => ({...p, likes: newLikes}))}
+    suggestions={['顔', '声', '性格', 'ダンス', '演技', '面白い', '優しい', '世界観']}
+    maxTags={3}
+   />
 
-      <TagInput
-        label="推しを表すオリジナルタグ（最大3つ）"
-        tags={profile.customTags}
-        setTags={(newTags) => setProfile(p => ({...p, customTags: newTags}))}
-        placeholder="例: #存在が尊い"
-        maxTags={3}
-      />
+   <FormInput
+    label="推しとの出会い（きっかけ）"
+    name="episode"
+    value={profile.episode}
+    onChange={handleChange}
+    placeholder="例：「〇〇という作品で一目惚れ」"
+    maxLength={160}
+   />
+   <FormInput
+    label="一番好きなビジュアル・衣装"
+    name="favoriteVisual"
+    value={profile.favoriteVisual}
+    onChange={handleChange}
+    placeholder="例：「〇〇のライブ衣装」"
+    maxLength={120}
+   />
+   <FormInput
+    label="一番好きなセリフ・歌詞"
+    name="favoriteQuote"
+    value={profile.favoriteQuote}
+    onChange={handleChange}
+    as="textarea"
+    maxLength={160}
+   />
 
-      <h3 className="text-lg font-bold mt-8 mb-4 text-indigo-600 dark:text-indigo-400 border-b pb-2">ステータス・記念日</h3>
-      <FormInput
-        label="ファン歴"
-        name="fanHistory"
-        value={profile.fanHistory}
-        onChange={handleChange}
-        placeholder="例: 約3年 / 2020年から"
-        maxLength={40}
-      />
-      <FormInput
-        label="推しへの称号"
-        name="title"
-        value={profile.title}
-        onChange={handleChange}
-        placeholder="例: 顔面国宝"
-        maxLength={30}
-      />
-    </form>
-  );
+   <TagInput
+    label="推しを表すオリジナルタグ（最大3つ）"
+    tags={profile.customTags}
+    setTags={(newTags) => setProfile(p => ({...p, customTags: newTags}))}
+    placeholder="例: #存在が尊い"
+    maxTags={3}
+   />
+
+   <h3 className="text-lg font-bold mt-8 mb-4 text-[var(--accent)] border-b pb-2">ステータス・記念日</h3>
+   <FormInput
+    label="ファン歴"
+    name="fanHistory"
+    value={profile.fanHistory}
+    onChange={handleChange}
+    placeholder="例: 約3年 / 2020年から"
+    maxLength={40}
+   />
+   <FormInput
+    label="推しへの称号"
+    name="title"
+    value={profile.title}
+    onChange={handleChange}
+    placeholder="例: 顔面国宝"
+    maxLength={30}
+   />
+  </form>
+ );
 };
 
 // --- Sub-components ---
 
 const TagInput = ({ label, tags, setTags, suggestions = [], placeholder = "タグを入力", maxTags }: {
-  label: string;
-  tags: string[];
-  setTags: (tags: string[]) => void;
-  suggestions?: string[];
-  placeholder?: string;
-  maxTags?: number;
+ label: string;
+ tags: string[];
+ setTags: (tags: string[]) => void;
+ suggestions?: string[];
+ placeholder?: string;
+ maxTags?: number;
 }) => {
-    const [inputValue, setInputValue] = useState('');
-    const inputId = useId();
+  const [inputValue, setInputValue] = useState('');
+  const inputId = useId();
 
-    const addTag = (tag: string) => {
-        const newTag = tag.trim();
-        if (newTag && !tags.includes(newTag) && (!maxTags || tags.length < maxTags)) {
-            setTags([...tags, newTag]);
-        }
-        setInputValue('');
-    };
+  const addTag = (tag: string) => {
+    const newTag = tag.trim();
+    if (newTag && !tags.includes(newTag) && (!maxTags || tags.length < maxTags)) {
+      setTags([...tags, newTag]);
+    }
+    setInputValue('');
+  };
 
-    const removeTag = (tagToRemove: string) => {
-        setTags(tags.filter(tag => tag !== tagToRemove));
-    };
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            addTag(inputValue);
-        }
-    };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(inputValue);
+    }
+  };
 
-    return (
-        <div className="mb-6">
-            <label htmlFor={inputId} className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{label}</label>
-            <div className="flex flex-wrap gap-2 mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 min-h-[44px]">
-                {tags.map(tag => (
-                    <span key={tag} className="flex items-center bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-sm font-medium px-2.5 py-1 rounded-full">
-                        {tag}
-                        <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="ml-2 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
-                            aria-label={`${tag}を削除`}
-                        >
-                            &times;
-                        </button>
-                    </span>
-                ))}
-                {(!maxTags || tags.length < maxTags) && (
-                    <input
-                        id={inputId}
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={tags.length === 0 ? placeholder : ''}
-                        maxLength={30}
-                        className="flex-grow bg-transparent focus:outline-none text-gray-800 dark:text-white"
-                    />
-                )}
-            </div>
-            {suggestions.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                    {suggestions.map(suggestion => (
-                        <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => addTag(suggestion)}
-                            disabled={tags.includes(suggestion) || (maxTags != null && tags.length >= maxTags)}
-                            className="px-3 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-full hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            + {suggestion}
-                        </button>
-                    ))}
-                </div>
-            )}
+  return (
+    <div className="mb-6">
+      <label htmlFor={inputId} className="block text-sm font-semibold text-[var(--ink)] mb-2">{label}</label>
+      <div className="flex flex-wrap gap-2 mb-2 p-2 border border-[var(--line-strong)] rounded-sm bg-[var(--paper-muted)] min-h-[44px]">
+        {tags.map(tag => (
+          <span key={tag} className="flex items-center bg-[var(--accent-soft)] text-[var(--accent)] text-sm font-medium px-2.5 py-1 rounded-full">
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="ml-2 text-[var(--accent)] hover:text-[var(--accent-hover)] "
+              aria-label={`${tag}を削除`}
+            >
+              &times;
+            </button>
+          </span>
+        ))}
+        {(!maxTags || tags.length < maxTags) && (
+          <input
+            id={inputId}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={tags.length === 0 ? placeholder : ''}
+            maxLength={30}
+            className="flex-grow bg-transparent focus:outline-none text-[var(--ink)] "
+          />
+        )}
+      </div>
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map(suggestion => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => addTag(suggestion)}
+              disabled={tags.includes(suggestion) || (maxTags != null && tags.length >= maxTags)}
+              className="px-3 py-1 bg-[var(--paper-muted)] text-[var(--ink)] text-sm rounded-full hover:bg-[var(--paper-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              + {suggestion}
+            </button>
+          ))}
         </div>
-    );
+      )}
+    </div>
+  );
 }

@@ -401,67 +401,67 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
     return (
         <div
             ref={gachaRef}
-            className={`relative bg-white dark:bg-gray-800 p-5 sm:p-7 md:p-8 rounded-3xl shadow-xl border border-white/60 dark:border-gray-700 text-center w-full transition-colors duration-300 ${className}`}
+            className={`relative bg-[var(--paper-strong)] p-5 sm:p-7 md:p-8 rounded-none shadow-[4px_4px_0_var(--paper-shadow)] border border-[var(--line)] text-center w-full transition-colors duration-300 ${className}`}
         >
             <div className="flex items-center justify-between gap-3 mb-5">
                 <div className="text-left">
-                    <p className="text-xs font-bold tracking-widest text-indigo-500 dark:text-indigo-400">ZATSUDAN GACHA</p>
-                    <h2 className="text-xl font-black text-gray-800 dark:text-gray-100">お題ガチャ</h2>
+                    <p className="paper-kicker">Zatsudan Gacha</p>
+                    <h2 className="font-editorial text-xl text-[var(--ink)]">お題ガチャ</h2>
                 </div>
-                <span className="shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1.5">
+                <span className="shrink-0 text-xs font-semibold text-[var(--ink-soft)] bg-[var(--paper-muted)] rounded-full px-3 py-1.5">
                     全{totalThemeCount}問
                 </span>
             </div>
 
             <div className="mb-5">
-                <div className="flex justify-center bg-gray-100 dark:bg-gray-700 rounded-xl p-1 mb-3" role="group" aria-label="遊び方">
+                <div className="flex justify-center bg-[var(--paper-muted)] rounded-sm p-1 mb-3" role="group" aria-label="遊び方">
                     {GAME_MODES.map((mode) => (
                         <button
                             key={mode.id}
                             type="button"
                             aria-pressed={gameMode === mode.id}
                             onClick={() => handleModeChange(mode.id)}
-                            className={`w-1/3 py-2 px-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                            className={`w-1/3 py-2 px-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
                                 gameMode === mode.id
-                                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-800/60'
+                                    ? 'bg-[var(--paper-strong)] text-[var(--accent)] shadow'
+                                    : 'text-[var(--ink-soft)] hover:bg-[var(--paper-strong)]'
                             }`}
                         >
                             {mode.label}
                         </button>
                     ))}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 min-h-[1rem]">{MODE_HINTS[gameMode]}</p>
+                <p className="text-xs text-[var(--ink-soft)] min-h-[1rem]">{MODE_HINTS[gameMode]}</p>
             </div>
 
             {gameMode !== 'roulette' && (
                 <div className="mb-5">
-                    <label htmlFor="category-select" className="block text-left text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    <label htmlFor="category-select" className="block text-left text-sm font-bold text-[var(--ink)] mb-2">
                         カテゴリを選ぶ
                     </label>
                     <select
                         id="category-select"
                         value={selectedCategory}
                         onChange={handleCategoryChange}
-                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        className="field-paper p-3 text-sm"
                     >
                         <option value="all">すべてのテーマ（{totalThemeCount}問）</option>
                         {themeCategories.map((category) => (
                             <option key={category.name} value={category.name}>
-                                {category.emoji} {category.name}（{themeData[category.name]?.length ?? 0}問）
+                                {category.name}（{themeData[category.name]?.length ?? 0}問）
                             </option>
                         ))}
                     </select>
                     <div className="flex items-center justify-between mt-2 px-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-[var(--ink-soft)]">
                             {selectedCategoryMeta
-                                ? `${selectedCategoryMeta.emoji} ${selectedCategoryMeta.name}・${themePool.length}問から抽選`
+                                ? `${selectedCategoryMeta.name}・${themePool.length}問から抽選`
                                 : `全${themePool.length}問から抽選`}
                         </p>
                         {selectedCategoryMeta && (
                             <Link
                                 href={`/themes/${selectedCategoryMeta.slug}`}
-                                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                className="text-xs font-semibold text-[var(--accent)] hover:underline"
                             >
                                 お題一覧を見る
                             </Link>
@@ -475,7 +475,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                     <div
                         id="theme-display"
                         aria-busy={isSpinning}
-                        className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-700/60 dark:via-gray-800 dark:to-gray-700/60 rounded-2xl p-5 sm:p-6 min-h-[170px] flex flex-col items-center justify-center mb-5 border border-indigo-100 dark:border-gray-700 transition-all duration-300"
+                        className="bg-[var(--paper-muted)] rounded-none p-5 sm:p-6 min-h-[170px] flex flex-col items-center justify-center mb-5 border border-[var(--line)] transition-all duration-300"
                     >
                         <p className="sr-only" aria-live="polite">
                             {isSpinning
@@ -485,17 +485,17 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                     : 'カテゴリを選んでガチャを回してください'}
                         </p>
                         {isSpinning ? (
-                            <p className="text-2xl md:text-3xl font-black text-gray-700 dark:text-gray-200 animate-pulse leading-relaxed">
+                            <p className="text-2xl md:text-3xl font-black text-[var(--ink)] animate-pulse leading-relaxed">
                                 {previewTheme}
                             </p>
                         ) : currentTheme ? (
                             <div className="w-full">
-                                <span className="inline-block bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 text-xs font-bold px-3 py-1 rounded-full mb-3">
+                                <span className="inline-block bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold px-3 py-1 rounded-full mb-3">
                                     {currentCategoryMeta
-                                        ? `${currentCategoryMeta.emoji} ${currentCategoryMeta.name}`
+                                        ? currentCategoryMeta.name
                                         : 'お題'}
                                 </span>
-                                <p className="text-2xl md:text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-relaxed">
+                                <p className="text-2xl md:text-3xl font-black text-[var(--accent)] leading-relaxed">
                                     {currentTheme}
                                 </p>
                                 <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
@@ -505,7 +505,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                             copyText(currentTheme, 'お題をコピーしました');
                                             trackEvent('theme_copied', { theme: currentTheme });
                                         }}
-                                        className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                        className="p-2.5 rounded-full text-[var(--ink-soft)] hover:bg-[var(--paper-muted)] hover:text-[var(--accent)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                                         aria-label="お題をコピー"
                                         title="お題をコピー"
                                     >
@@ -520,7 +520,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                                 action: isFavorite ? 'removed' : 'added',
                                             });
                                         }}
-                                        className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+                                        className="p-2.5 rounded-full text-[var(--ink-soft)] hover:bg-[var(--paper-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
                                         aria-label={isFavorite ? 'お気に入りから削除' : 'お気に入りに追加'}
                                         title={isFavorite ? 'お気に入りから削除' : 'お気に入りに追加'}
                                     >
@@ -536,7 +536,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                             setIsPresentationOpen(true);
                                             trackEvent('presentation_opened');
                                         }}
-                                        className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                        className="p-2.5 rounded-full text-[var(--ink-soft)] hover:bg-[var(--paper-muted)] hover:text-[var(--accent)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                                         aria-label="お題を大きく表示"
                                         title="お題を大きく表示"
                                     >
@@ -545,7 +545,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                     <button
                                         type="button"
                                         onClick={speakTheme}
-                                        className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                        className="p-2.5 rounded-full text-[var(--ink-soft)] hover:bg-[var(--paper-muted)] hover:text-[var(--accent)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                                         aria-label="お題を読み上げる"
                                         title="お題を読み上げる"
                                     >
@@ -554,16 +554,16 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                     <ShareButtons
                                         compact
                                         shareText={currentTheme}
-                                        className="ml-1 pl-3 border-l border-gray-200 dark:border-gray-600"
+                                        className="ml-1 pl-3 border-l border-[var(--line-strong)]"
                                     />
                                 </div>
                             </div>
                         ) : (
                             <div>
-                                <p className="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                                <p className="text-lg font-semibold text-[var(--ink-soft)] mb-1">
                                     会話のきっかけを、ガチャで。
                                 </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-sm text-[var(--ink-soft)]">
                                     カテゴリを選んでボタンを押してね！
                                 </p>
                             </div>
@@ -574,8 +574,8 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                         <p
                             className={`text-sm rounded-lg px-3 py-2 mb-4 ${
                                 copyStatus === 'success'
-                                    ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
-                                    : 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
+                                    ? 'text-[#2f5d57] bg-[#edf5f2] dark:bg-[#172622]'
+                                    : 'text-[var(--accent)] bg-[var(--accent-soft)]'
                             }`}
                             role={copyStatus === 'error' ? 'alert' : 'status'}
                             aria-live="polite"
@@ -596,37 +596,36 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                 type="button"
                                 onClick={getDeeperQuestions}
                                 disabled={isDiggingDeeper}
-                                className="w-full bg-white dark:bg-gray-700 border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-600 font-bold py-3 px-6 rounded-xl text-base transition-all duration-200 shadow-sm hover:shadow-md btn-active-effect flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="paper-button w-full py-3 px-6 text-base disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <span className="mr-2" aria-hidden="true">✨</span>
                                 {isDiggingDeeper ? 'AIが考えています...' : 'AIに深掘り質問を考えてもらう'}
                             </button>
 
                             {isDiggingDeeper && (
                                 <div className="flex items-center justify-center p-4 mt-3" role="status">
                                     <div className="loader"></div>
-                                    <p className="ml-3 text-sm text-gray-600 dark:text-gray-400">
+                                    <p className="ml-3 text-sm text-[var(--ink-soft)]">
                                         会話が広がる質問を考えています...
                                     </p>
                                 </div>
                             )}
 
                             {digDeeperError && (
-                                <div className="mt-3 p-3 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 rounded-lg" role="alert">
+                                <div className="mt-3 p-3 text-sm text-[var(--accent)] bg-[var(--accent-soft)] rounded-lg" role="alert">
                                     {digDeeperError}
                                 </div>
                             )}
 
                             {digDeeperQuestions && digDeeperQuestions.length > 0 && (
-                                <div id="dig-deeper-results" className="mt-4 text-left bg-indigo-50 dark:bg-gray-900/50 p-4 rounded-xl border border-indigo-100 dark:border-gray-700">
+                                <div id="dig-deeper-results" className="mt-4 border border-[var(--line)] bg-[var(--paper-muted)] p-4 text-left">
                                     <div className="flex items-center justify-between gap-2 mb-3">
-                                        <h4 className="font-bold text-base text-gray-800 dark:text-gray-200">
-                                            💭 こんな話題で深掘りしてみては？
+                                        <h4 className="font-bold text-base text-[var(--ink)]">
+                                            こんな話題で深掘りしてみては？
                                         </h4>
                                         <button
                                             type="button"
                                             onClick={copyAllQuestions}
-                                            className="shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                            className="shrink-0 text-xs font-semibold text-[var(--accent)] hover:underline"
                                         >
                                             すべてコピー
                                         </button>
@@ -636,7 +635,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                             <button
                                                 key={`${question}-${index}`}
                                                 type="button"
-                                                className="w-full text-left p-3.5 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                                className="w-full rounded-sm border border-[var(--line)] bg-[var(--paper-strong)] p-3.5 text-left transition-colors hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                                                 onClick={() => {
                                                     copyText(question, '質問をコピーしました');
                                                     trackEvent('ai_question_copied', {
@@ -645,13 +644,13 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                                     });
                                                 }}
                                             >
-                                                <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+                                                <span className="text-[var(--ink)] font-medium text-sm">
                                                     {question}
                                                 </span>
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-3">
+                                    <p className="text-xs text-[var(--ink-soft)] text-center mt-3">
                                         質問をクリックするとコピーできます
                                     </p>
                                 </div>
@@ -660,9 +659,8 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                             <div className="mt-4 text-center">
                                 <Link
                                     href={`/excuse-generator?situation=${encodeURIComponent('雑談テーマが難しすぎて話せない')}&details=${encodeURIComponent('テーマは「' + currentTheme + '」でした')}`}
-                                    className="text-xs text-gray-400 hover:text-indigo-500 transition-colors inline-flex items-center justify-center gap-1"
+                                    className="inline-flex items-center justify-center gap-1 text-xs text-[var(--ink-soft)] transition-colors hover:text-[var(--accent)]"
                                 >
-                                    <span aria-hidden="true">🙇‍♂️</span>
                                     このテーマで話すのは無理...（言い訳を作る）
                                 </Link>
                             </div>
@@ -674,7 +672,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                         type="button"
                         onClick={spinGacha}
                         disabled={isSpinning}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white font-black py-4 px-6 rounded-xl text-xl transition-all duration-200 shadow-md hover:shadow-lg btn-active-effect disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300"
+                        className="paper-button-primary w-full px-6 py-4 text-xl disabled:cursor-not-allowed disabled:opacity-70"
                     >
                         {gachaButtonText}
                     </button>
@@ -721,7 +719,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
 
             {isPresentationOpen && currentTheme && (
                 <div
-                    className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 overflow-y-auto bg-[#12100d]/75 p-4"
                     role="dialog"
                     aria-modal="true"
                     aria-label="お題の拡大表示"
@@ -729,21 +727,21 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                 >
                     <div className="flex min-h-full items-center justify-center">
                         <div
-                            className="relative w-full max-w-4xl rounded-3xl border border-white/20 bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 text-center shadow-2xl dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 sm:p-10"
+                            className="relative w-full max-w-4xl border border-[var(--line-strong)] bg-[var(--paper-strong)] p-6 text-center shadow-[6px_6px_0_var(--paper-shadow)] sm:p-10"
                             onClick={(event) => event.stopPropagation()}
                         >
                             <button
                                 type="button"
                                 onClick={() => setIsPresentationOpen(false)}
-                                className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                                className="paper-button absolute right-4 top-4 h-9 w-9 p-0"
                                 aria-label="拡大表示を閉じる"
                             >
                                 <XMarkIcon className="h-6 w-6" />
                             </button>
-                            <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300">
-                                {currentCategoryMeta ? `${currentCategoryMeta.emoji} ${currentCategoryMeta.name}` : 'お題'}
+                            <span className="inline-block border border-[var(--line)] bg-[var(--paper-muted)] px-3 py-1 font-label text-[9px] text-[var(--accent)]">
+                                {currentCategoryMeta ? currentCategoryMeta.name : 'お題'}
                             </span>
-                            <p className="mt-5 text-3xl font-black leading-tight text-indigo-700 dark:text-indigo-300 sm:text-5xl">
+                            <p className="mt-5 text-3xl font-black leading-tight text-[var(--accent)] sm:text-5xl">
                                 {currentTheme}
                             </p>
                             <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
@@ -753,7 +751,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                         copyText(currentTheme, 'お題をコピーしました');
                                         trackEvent('theme_copied', { theme: currentTheme });
                                     }}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                                    className="inline-flex items-center gap-2 rounded-sm bg-[var(--accent)] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[var(--accent-hover)]"
                                 >
                                     <ClipboardIcon className="h-4 w-4" />
                                     コピー
@@ -761,7 +759,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                 <button
                                     type="button"
                                     onClick={speakTheme}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-indigo-300 bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-700 dark:bg-gray-800 dark:text-indigo-200"
+                                    className="paper-button gap-2 px-4 py-2.5 text-sm text-[var(--accent)]"
                                 >
                                     <SpeakerWaveIcon className="h-4 w-4" />
                                     読み上げ
@@ -769,7 +767,7 @@ export const ThemeGacha = ({ initialCategory, className = '' }: ThemeGachaProps)
                                 <button
                                     type="button"
                                     onClick={() => setIsPresentationOpen(false)}
-                                    className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                                    className="paper-button px-4 py-2.5 text-sm"
                                 >
                                     閉じる
                                 </button>

@@ -13,7 +13,7 @@ type HistoryListProps = {
 export const HistoryList = ({ history, favorites, onToggleFavorite, onSelectTheme, onClear }: HistoryListProps) => {
   if (history.length === 0) {
     return (
-      <div className="text-center text-gray-500 dark:text-gray-400 py-6 flex items-center justify-center">
+      <div className="text-center text-[var(--ink-soft)] py-6 flex items-center justify-center">
         <ClockIcon className="h-5 w-5 mr-2" />
         <span>まだ履歴はありません。ガチャを回すとここに残ります。</span>
       </div>
@@ -23,12 +23,12 @@ export const HistoryList = ({ history, favorites, onToggleFavorite, onSelectThem
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <p className="text-xs text-gray-500 dark:text-gray-400">最新10件まで保存されます</p>
+        <p className="text-xs text-[var(--ink-soft)]">最新10件まで保存されます</p>
         {onClear && (
           <button
             type="button"
             onClick={onClear}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 underline underline-offset-2"
+            className="text-xs text-[var(--ink-soft)] hover:text-[var(--accent)] underline underline-offset-2"
           >
             履歴を消去
           </button>
@@ -37,29 +37,29 @@ export const HistoryList = ({ history, favorites, onToggleFavorite, onSelectThem
       {history.map((theme) => {
         const category = getCategoryForTheme(theme);
         return (
-          <div key={theme} className="flex items-center justify-between gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <div key={theme} className="flex items-center justify-between gap-2 p-3 bg-[var(--paper-muted)] rounded-sm">
             <button
               type="button"
               className="flex-grow min-w-0 text-left group"
               onClick={() => onSelectTheme(theme)}
             >
-              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span className="block text-xs text-[var(--ink-soft)] mb-1">
                 {category ? `${category.emoji} ${category.name}` : 'お題'}
               </span>
-              <span className="block text-sm font-medium text-gray-800 dark:text-gray-100 group-hover:underline">
+              <span className="block text-sm font-medium text-[var(--ink)] group-hover:underline">
                 {theme}
               </span>
             </button>
             <button
               type="button"
               onClick={() => onToggleFavorite(theme)}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+              className="p-2 rounded-full hover:bg-[var(--paper-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
               aria-label={favorites.includes(theme) ? 'お気に入りから削除' : 'お気に入りに追加'}
             >
               {favorites.includes(theme) ? (
                 <StarIconSolid className="h-5 w-5 text-yellow-400" />
               ) : (
-                <StarIconOutline className="h-5 w-5 text-gray-400" />
+                <StarIconOutline className="h-5 w-5 text-[var(--ink-soft)]" />
               )}
             </button>
           </div>

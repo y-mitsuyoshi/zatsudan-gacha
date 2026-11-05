@@ -16,28 +16,29 @@ export function ConsentBanner() {
       role="region"
       aria-label="Cookieとアクセス解析の同意"
     >
-      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-2xl p-4 sm:p-5">
-        <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-1">
+      <div className="paper-panel mx-auto max-w-3xl p-4 sm:p-5">
+        <p className="paper-kicker">Cookie & Analytics</p>
+        <p className="mt-1 text-sm font-bold text-[var(--ink)]">
           Cookieとアクセス解析について
         </p>
-        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+        <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)] sm:text-sm">
           より良いサービスづくりのため、Google Analyticsと広告配信（Google AdSense）を利用しています。同意いただいた場合のみ、これらのCookieを有効にします。必須のCookieは常に利用します。
-          <Link href="/privacy" className="ml-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          <Link href="/privacy" className="ml-1 font-semibold text-[var(--accent)] hover:underline">
             プライバシーポリシー
           </Link>
         </p>
-        <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={reject}
-            className="order-2 sm:order-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="paper-button order-2 px-4 py-2.5 text-sm sm:order-1"
           >
             必須のみ
           </button>
           <button
             type="button"
             onClick={accept}
-            className="order-1 sm:order-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-colors"
+            className="paper-button-primary order-1 px-4 py-2.5 text-sm sm:order-2"
           >
             同意して続ける
           </button>

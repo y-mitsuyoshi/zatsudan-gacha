@@ -176,33 +176,33 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                 return (
                     <div className="w-full text-center">
                         <div className="mb-4">
-                            <p className="text-xs font-semibold tracking-widest text-indigo-500 dark:text-indigo-400 mb-1">
+                            <p className="text-xs font-semibold tracking-widest text-[var(--accent)] mb-1">
                                 {status === 'paused' ? '一時停止中' : '残り時間'}
                             </p>
                             <p
-                                className="text-5xl md:text-6xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums"
+                                className="text-5xl md:text-6xl font-black text-[var(--accent)] tabular-nums"
                                 role="timer"
                                 aria-live="off"
                             >
                                 {timeLeft}
                             </p>
                         </div>
-                        <div className="h-2 w-full bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-5">
+                        <div className="h-2 w-full bg-[var(--paper-muted)] rounded-full overflow-hidden mb-5">
                             <div
                                 className={`h-full rounded-full transition-all duration-300 ${
-                                    timeLeft <= 10 ? 'bg-red-500' : 'bg-indigo-500'
+                                    timeLeft <= 10 ? 'bg-red-500' : 'bg-[var(--accent)]'
                                 }`}
                                 style={{ width: `${progress}%` }}
                             />
                         </div>
-                        <p className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 leading-relaxed">
+                        <p className="text-xl md:text-2xl font-bold text-[var(--ink)] mb-6 leading-relaxed">
                             {currentTheme}
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 onClick={status === 'paused' ? resumeGame : pauseGame}
-                                className="flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 font-bold py-3 px-4 rounded-lg transition-all"
+                                className="flex items-center justify-center gap-2 bg-[var(--paper-strong)] border border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--paper-muted)] font-bold py-3 px-4 rounded-sm transition-all"
                             >
                                 {status === 'paused' ? (
                                     <><PlayIcon className="w-5 h-5" />再開</>
@@ -213,7 +213,7 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                             <button
                                 type="button"
                                 onClick={skipTheme}
-                                className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
+                                className="flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold py-3 px-4 rounded-sm transition-all"
                             >
                                 <ForwardIcon className="w-5 h-5" />
                                 別のお題
@@ -224,16 +224,16 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
             case 'finished':
                 return (
                     <div className="w-full text-center">
-                        <p className="text-2xl font-black text-gray-800 dark:text-gray-100 mb-2">終了！</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">お題</p>
-                        <p className="text-xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-6 leading-relaxed">
+                        <p className="text-2xl font-black text-[var(--ink)] mb-2">終了！</p>
+                        <p className="text-sm text-[var(--ink-soft)] mb-4">お題</p>
+                        <p className="text-xl md:text-2xl font-bold text-[var(--accent)] mb-6 leading-relaxed">
                             {currentTheme}
                         </p>
                         <div className="flex items-center justify-center gap-2 mb-5">
                             <button
                                 type="button"
                                 onClick={copyTheme}
-                                className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-2 rounded-lg hover:bg-gray-200/60 dark:hover:bg-gray-600/60 transition-colors"
+                                className="flex items-center gap-1.5 text-sm text-[var(--ink-soft)] hover:text-[var(--accent)] px-3 py-2 rounded-sm hover:bg-[var(--paper-muted)] transition-colors"
                             >
                                 {isCopied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
                                 {isCopied ? 'コピーしました' : 'お題をコピー'}
@@ -243,14 +243,14 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                             <button
                                 type="button"
                                 onClick={nextTheme}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all"
+                                className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold py-3 px-6 rounded-sm text-lg transition-all"
                             >
                                 次のテーマへ
                             </button>
                             <button
                                 type="button"
                                 onClick={replayTheme}
-                                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 font-semibold py-3 px-6 rounded-lg transition-all"
+                                className="w-full flex items-center justify-center gap-2 bg-[var(--paper-strong)] border border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--paper-muted)] font-semibold py-3 px-6 rounded-sm transition-all"
                             >
                                 <ArrowPathIcon className="w-5 h-5" />
                                 同じお題でもう一度
@@ -263,7 +263,7 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                 return (
                     <div className="w-full text-center">
                         <div className="mb-5">
-                            <label htmlFor="timer-duration" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label htmlFor="timer-duration" className="block text-sm font-medium text-[var(--ink)] mb-2">
                                 タイマー設定（秒）
                             </label>
                             <div className="flex items-center justify-center gap-2">
@@ -273,12 +273,12 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                                     value={durationInput}
                                     onChange={(event) => setDurationInput(event.target.value)}
                                     onBlur={() => setDurationInput(String(timerDuration))}
-                                    className="w-28 p-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="w-28 p-2 text-center border border-[var(--line-strong)] rounded-sm bg-[var(--paper-strong)] dark:text-white  focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
                                     min="10"
                                     max="600"
                                     inputMode="numeric"
                                 />
-                                <span className="text-sm text-gray-500 dark:text-gray-400">秒</span>
+                                <span className="text-sm text-[var(--ink-soft)]">秒</span>
                             </div>
                             <div className="flex items-center justify-center gap-2 mt-3">
                                 {[30, 60, 120].map((seconds) => (
@@ -288,8 +288,8 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                                         onClick={() => setDurationInput(String(seconds))}
                                         className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                                             timerDuration === seconds
-                                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-indigo-400'
+                                                ? 'bg-[var(--accent)] text-white border-[var(--ink)]'
+                                                : 'bg-[var(--paper-strong)] text-[var(--ink-soft)] border-[var(--line-strong)] hover:border-[var(--accent)]'
                                         }`}
                                     >
                                         {seconds}秒
@@ -297,14 +297,14 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
                                 ))}
                             </div>
                         </div>
-                        <p className="text-lg text-gray-600 dark:text-gray-400 mb-5">
+                        <p className="text-lg text-[var(--ink-soft)] mb-5">
                             制限時間内に、お題について語りきろう！
                         </p>
                         <button
                             type="button"
                             onClick={startGame}
                             disabled={themes.length === 0}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-lg text-xl transition-all"
+                            className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--paper-muted)] disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-sm text-xl transition-all"
                         >
                             スタート
                         </button>
@@ -314,7 +314,7 @@ export const TimeAttackMode = ({ themes }: TimeAttackModeProps) => {
     };
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 min-h-[280px] flex items-center justify-center border border-gray-200 dark:border-gray-700">
+        <div className="bg-[var(--paper-muted)] rounded-sm p-6 min-h-[280px] flex items-center justify-center border border-[var(--line)]">
             {renderGameState()}
         </div>
     );

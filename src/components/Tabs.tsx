@@ -15,7 +15,7 @@ export const Tabs = ({ tabs }: TabsProps) => {
 
   return (
     <div>
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="border-b border-[var(--line)]">
         <nav className="-mb-px flex space-x-4" role="tablist" aria-label="履歴とお気に入り">
           {tabs.map((tab, index) => (
             <button
@@ -28,9 +28,9 @@ export const Tabs = ({ tabs }: TabsProps) => {
               onClick={() => setActiveTab(index)}
               className={`${
                 activeTab === index
-                  ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
-              } whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t`}
+                  ? 'border-[var(--accent)] text-[var(--accent)]'
+                  : 'border-transparent text-[var(--ink-soft)] hover:text-[var(--ink)] hover:border-[var(--line-strong)]'
+              } whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-t`}
             >
               {tab.label}
             </button>

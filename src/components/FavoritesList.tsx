@@ -11,7 +11,7 @@ type FavoritesListProps = {
 export const FavoritesList = ({ favorites, onToggleFavorite, onSelectTheme, onClear }: FavoritesListProps) => {
   if (favorites.length === 0) {
     return (
-      <div className="text-center text-gray-500 dark:text-gray-400 py-6">
+      <div className="text-center text-[var(--ink-soft)] py-6">
         お気に入りはまだありません。☆を押すと保存できます。
       </div>
     );
@@ -20,12 +20,12 @@ export const FavoritesList = ({ favorites, onToggleFavorite, onSelectTheme, onCl
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <p className="text-xs text-gray-500 dark:text-gray-400">{favorites.length}件のお気に入り</p>
+        <p className="text-xs text-[var(--ink-soft)]">{favorites.length}件のお気に入り</p>
         {onClear && (
           <button
             type="button"
             onClick={onClear}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 underline underline-offset-2"
+            className="text-xs text-[var(--ink-soft)] hover:text-[var(--accent)] underline underline-offset-2"
           >
             お気に入りを消去
           </button>
@@ -34,23 +34,23 @@ export const FavoritesList = ({ favorites, onToggleFavorite, onSelectTheme, onCl
       {favorites.map((theme) => {
         const category = getCategoryForTheme(theme);
         return (
-          <div key={theme} className="flex items-center justify-between gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <div key={theme} className="flex items-center justify-between gap-2 p-3 bg-[var(--paper-muted)] rounded-sm">
             <button
               type="button"
               className="flex-grow min-w-0 text-left group"
               onClick={() => onSelectTheme(theme)}
             >
-              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span className="block text-xs text-[var(--ink-soft)] mb-1">
                 {category ? `${category.emoji} ${category.name}` : 'お題'}
               </span>
-              <span className="block text-sm font-medium text-gray-800 dark:text-gray-100 group-hover:underline">
+              <span className="block text-sm font-medium text-[var(--ink)] group-hover:underline">
                 {theme}
               </span>
             </button>
             <button
               type="button"
               onClick={() => onToggleFavorite(theme)}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+              className="p-2 rounded-full hover:bg-[var(--paper-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
               aria-label="お気に入りから削除"
             >
               <StarIconSolid className="h-5 w-5 text-yellow-400" />
