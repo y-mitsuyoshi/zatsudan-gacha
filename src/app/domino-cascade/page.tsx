@@ -38,7 +38,7 @@ const game: GameSeoData = {
     { q: '採点や記録はありますか？', a: '採点やランキングはありません。表示されるのは倒壊数、残り、伝播速度、最大連鎖、完走状況などの観察用指標だけです。' },
   ],
   related: [
-    { href: '/games', label: '無料ブラウザゲーム一覧', description: 'シミュレーションやミニゲームをまとめて探す' },
+    { href: '/games#simulation-games', label: '無料シミュレーション一覧', description: 'シミュレーションやミニゲームをまとめて探す' },
     { href: '/ball-multiply', label: 'ボール増殖シミュレーター', description: 'ボールが増えて跳ねる物理シミュレーション' },
     { href: '/sand-flow', label: 'サンドフロー', description: '砂の流れを描いて楽しむシミュレーション' },
     { href: '/gravity-orbit', label: '重力オービット', description: '重力と軌道を試す物理シミュレーター' },
@@ -97,7 +97,7 @@ export default function DominoCascadePage() {
         related={game.related}
         breadcrumbs={[
           { label: '雑談テーマガチャ', href: '/' },
-          { label: '無料ゲーム一覧', href: '/games' },
+          { label: '無料シミュレーション一覧', href: '/games#simulation-games' },
           { label: game.name },
         ]}
       />

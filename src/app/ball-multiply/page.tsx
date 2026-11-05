@@ -33,8 +33,8 @@ const game: GameSeoData = {
       text: 'いつでも一時停止して動きを止め、1ステップずつ進めて衝突の瞬間を確認できます。リセットでボールを消去し、パラメータの初期化で標準設定に戻せます。',
     },
     {
-      title: 'スコアなしの観察メトリクス',
-      text: '現在のボール数、累計分裂回数、1秒あたりの衝突回数、最大同時ボール数、静止中のボール数をリアルタイム表示。得点やタイマーではなく、物理挙動の変化を数値で観察できます。',
+      title: 'ボール数の成長カーブを記録',
+      text: '0.5秒ごとのボール数を折れ線グラフで記録し、経過時間・増加速度（balls/s）・累計分裂・衝突回数・最大同時ボール数・静止中のボール数をリアルタイム表示。ボールがどのくらいの時間で増え、どこで飽和するかを観察できます。',
     },
     {
       title: '390px幅対応の高解像度Canvas',
@@ -52,7 +52,7 @@ const game: GameSeoData = {
     },
     {
       title: '分裂と衝突のカスケードを観察',
-      text: 'ピンに当たって分裂するボールの軌道、衝突回数、静止して排出されるまでの流れを眺めます。一時停止や1ステップで瞬間を確認できます。',
+      text: 'ピンに当たって分裂するボールの軌道と、成長カーブの立ち上がり・飽和を眺めます。経過時間と増加速度、衝突回数を確認しながら、一時停止や1ステップで瞬間を観察できます。',
     },
     {
       title: '速度とパラメータを変えて比較',
@@ -86,7 +86,7 @@ const game: GameSeoData = {
     },
   ],
   related: [
-    { href: '/games', label: '無料ブラウザゲーム一覧', description: 'シミュレーションやパズルをまとめて探す' },
+    { href: '/games#simulation-games', label: '無料シミュレーション一覧', description: 'シミュレーションやパズルをまとめて探す' },
     { href: '/gravity-orbit', label: '重力オービット', description: '重力スリングショットで星を巡るシミュレーション' },
     { href: '/sand-flow', label: 'サンド・フロー', description: '色砂を注いで流れを観察する落下砂シミュレーション' },
     { href: '/tools', label: '無料ツール一覧', description: '計算や変換に使える便利ツールを探す' },
@@ -161,7 +161,7 @@ export default function BallMultiplyPage() {
         related={game.related}
         breadcrumbs={[
           { label: '雑談テーマガチャ', href: '/' },
-          { label: '無料ゲーム一覧', href: '/games' },
+          { label: '無料シミュレーション一覧', href: '/games#simulation-games' },
           { label: game.name },
         ]}
         jsonLd={buildGameJsonLd(game)}

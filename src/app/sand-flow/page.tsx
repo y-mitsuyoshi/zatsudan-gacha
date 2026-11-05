@@ -90,7 +90,7 @@ const game: GameSeoData = {
     },
   ],
   related: [
-    { href: '/games', label: '無料シミュレーション・ゲーム一覧', description: '物理シミュレーションやミニゲームをまとめて探す' },
+    { href: '/games#simulation-games', label: '無料シミュレーション一覧', description: '物理シミュレーションやミニゲームをまとめて探す' },
     { href: '/domino-cascade', label: 'ドミノ・カスケード', description: 'ドミノを並べて連鎖を起こすシミュレーション' },
     { href: '/ball-multiply', label: '増殖ボール・カスケード', description: 'ボールが分裂して増える物理シミュレーション' },
     { href: '/gravity-orbit', label: '重力オービット', description: '重力スリングショットで星を巡るシミュレーション' },
@@ -148,7 +148,7 @@ export default function SandFlowPage() {
         related={game.related}
         breadcrumbs={[
           { label: '雑談テーマガチャ', href: '/' },
-          { label: '無料シミュレーション一覧', href: '/games' },
+          { label: '無料シミュレーション一覧', href: '/games#simulation-games' },
           { label: game.name },
         ]}
       />

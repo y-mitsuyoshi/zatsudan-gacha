@@ -770,7 +770,7 @@ export function SandFlowGame() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
-              href="/games"
+              href="/games#simulation-games"
               className="shrink-0 whitespace-nowrap rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 transition hover:border-emerald-400 hover:text-emerald-300 sm:px-3 sm:text-xs"
             >
               一覧へ

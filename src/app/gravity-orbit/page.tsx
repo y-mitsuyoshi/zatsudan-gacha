@@ -90,7 +90,7 @@ const game: GameSeoData = {
     },
   ],
   related: [
-    { href: '/games', label: '無料シミュレーション・ゲーム一覧', description: '物理シミュレーションやミニゲームをまとめて探す' },
+    { href: '/games#simulation-games', label: '無料シミュレーション一覧', description: '物理シミュレーションやミニゲームをまとめて探す' },
     { href: '/sand-flow', label: 'サンド・フロー・サンドボックス', description: '重力や風を操る落下砂シミュレーター' },
     { href: '/domino-cascade', label: 'ドミノ・カスケード', description: 'ドミノの連鎖と倒れ方を観察する物理シミュレーション' },
     { href: '/bubble-merge', label: 'バブルマージ', description: '泡の合体と成長を観察するマージシミュレーション' },
@@ -165,7 +165,7 @@ export default function GravityOrbitPage() {
         related={game.related}
         breadcrumbs={[
           { label: '雑談テーマガチャ', href: '/' },
-          { label: '無料シミュレーション・ゲーム一覧', href: '/games' },
+          { label: '無料シミュレーション一覧', href: '/games#simulation-games' },
           { label: game.name },
         ]}
         jsonLd={buildGameJsonLd(game)}

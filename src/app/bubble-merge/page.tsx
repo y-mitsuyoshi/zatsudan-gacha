@@ -82,7 +82,7 @@ const game: GameSeoData = {
     },
   ],
   related: [
-    { href: '/games', label: '無料ゲーム・シミュレーション一覧', description: '物理サンドボックスやミニゲームをまとめて探す' },
+    { href: '/games#simulation-games', label: '無料シミュレーション一覧', description: '物理サンドボックスやミニゲームをまとめて探す' },
     { href: '/gravity-orbit', label: '重力オービット', description: '重力と軌道を調整して楽しむシミュレーション' },
     { href: '/sand-flow', label: 'サンドフロー', description: '砂の流れを描いて観察するシミュレーション' },
     { href: '/tools', label: '無料ツール一覧', description: '計算や変換に使える便利ツールを探す' },
@@ -157,7 +157,7 @@ export default function BubbleMergePage() {
         related={game.related}
         breadcrumbs={[
           { label: '雑談テーマガチャ', href: '/' },
-          { label: '無料ゲーム一覧', href: '/games' },
+          { label: '無料シミュレーション一覧', href: '/games#simulation-games' },
           { label: game.name },
         ]}
         jsonLd={buildGameJsonLd(game)}

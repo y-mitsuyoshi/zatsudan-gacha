@@ -87,6 +87,12 @@ interface Particle {
   color: string;
 }
 
+interface HistoryPoint {
+  t: number;
+  count: number;
+  splits: number;
+}
+
 interface SimState {
   running: boolean;
   params: SimParams;
@@ -98,6 +104,8 @@ interface SimState {
   pointerId: number | null;
   launcherFlash: number;
   time: number;
+  history: HistoryPoint[];
+  historyTimer: number;
   totalSplits: number;
   peakBalls: number;
   collisionCount: number;
@@ -114,6 +122,9 @@ interface HudState {
   peakBalls: number;
   settledBalls: number;
   autoSpawn: boolean;
+  elapsed: number;
+  growthRate: number;
+  history: HistoryPoint[];
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -172,6 +183,8 @@ function createInitialSim(params: SimParams): SimState {
     pointerId: null,
     launcherFlash: 0,
     time: 0,
+    history: [],
+    historyTimer: 0,
     totalSplits: 0,
     peakBalls: 0,
     collisionCount: 0,
@@ -186,6 +199,12 @@ function toHud(sim: SimState): HudState {
   for (const ball of sim.balls) {
     if (ball.rest > 0.3) settledBalls += 1;
   }
+  const first = sim.history[0];
+  const last = sim.history[sim.history.length - 1];
+  const growthRate =
+    first !== undefined && last !== undefined && last.t > first.t
+      ? (last.count - first.count) / (last.t - first.t)
+      : 0;
   return {
     running: sim.running,
     activeBalls: sim.balls.length,
@@ -194,6 +213,9 @@ function toHud(sim: SimState): HudState {
     peakBalls: sim.peakBalls,
     settledBalls,
     autoSpawn: sim.params.autoSpawn,
+    elapsed: Math.round(sim.time * 10) / 10,
+    growthRate: Math.round(growthRate * 10) / 10,
+    history: [...sim.history],
   };
 }
 
@@ -386,6 +408,12 @@ function advanceSim(sim: SimState, rawDt: number) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   sim.time += dt;
   if (sim.time > 100000) sim.time = 0;
+  sim.historyTimer += dt;
+  if (sim.historyTimer >= 0.5) {
+    sim.historyTimer = 0;
+    sim.history.push({ t: sim.time, count: sim.balls.length, splits: sim.totalSplits });
+    if (sim.history.length > 240) sim.history.shift();
+  }
   updateEffects(sim, dt);
 
   if (sim.params.autoSpawn) {
@@ -710,6 +738,39 @@ function ParamSlider({ id, label, value, min, max, step, display, onChange }: Pa
   );
 }
 
+function GrowthChart({ history }: { history: HistoryPoint[] }) {
+  const width = 280;
+  const height = 96;
+  const padding = { top: 10, right: 8, bottom: 18, left: 26 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  if (history.length < 2) {
+    return (
+      <div className="mt-2 flex h-24 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/[0.02] text-[10px] text-teal-100/40">
+        0.5秒ごとにボール数を記録します
+      </div>
+    );
+  }
+  const firstTime = history[0].t;
+  const lastTime = history[history.length - 1].t;
+  const timeSpan = Math.max(0.5, lastTime - firstTime);
+  const maxCount = Math.max(1, ...history.map((point) => point.count));
+  const x = (t: number) => Math.round((padding.left + ((t - firstTime) / timeSpan) * plotWidth) * 1000) / 1000;
+  const y = (count: number) => Math.round((padding.top + (1 - count / maxCount) * plotHeight) * 1000) / 1000;
+  const points = history.map((point) => `${x(point.t)},${y(point.count)}`).join(' ');
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-auto w-full" role="img" aria-label="経過時間に対するボール数の推移">
+      <line x1={padding.left} y1={padding.top + plotHeight} x2={width - padding.right} y2={padding.top + plotHeight} stroke="rgba(153,246,228,0.2)" />
+      <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="rgba(153,246,228,0.2)" />
+      <polyline points={points} fill="none" stroke="#5eead4" strokeWidth={2} strokeLinejoin="round" />
+      <text x={padding.left - 4} y={padding.top + 4} textAnchor="end" fontSize={8} fill="rgba(153,246,228,0.55)">{maxCount}</text>
+      <text x={padding.left - 4} y={padding.top + plotHeight} textAnchor="end" fontSize={8} fill="rgba(153,246,228,0.55)">0</text>
+      <text x={padding.left} y={height - 4} fontSize={8} fill="rgba(153,246,228,0.55)">0s</text>
+      <text x={width - padding.right} y={height - 4} textAnchor="end" fontSize={8} fill="rgba(153,246,228,0.55)">{Math.round(lastTime)}s</text>
+    </svg>
+  );
+}
+
 export function BallMultiplyGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<SimState | null>(null);
@@ -733,7 +794,10 @@ export function BallMultiplyGame() {
       prev.collisionRate === next.collisionRate &&
       prev.peakBalls === next.peakBalls &&
       prev.settledBalls === next.settledBalls &&
-      prev.autoSpawn === next.autoSpawn
+      prev.autoSpawn === next.autoSpawn &&
+      prev.elapsed === next.elapsed &&
+      prev.growthRate === next.growthRate &&
+      prev.history.length === next.history.length
     ) {
       return;
     }
@@ -945,10 +1009,10 @@ export function BallMultiplyGame() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
-              href="/games"
+              href="/games#simulation-games"
               className="shrink-0 whitespace-nowrap rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-bold text-teal-100/70 transition hover:border-teal-300/50 hover:text-teal-200 sm:px-3 sm:text-xs"
             >
-              ゲーム一覧
+              シミュレーション一覧
             </Link>
             <div className="min-w-0">
               <p className="truncate text-[9px] font-bold tracking-[0.18em] text-teal-300/80 sm:text-[10px]">
@@ -1188,6 +1252,19 @@ export function BallMultiplyGame() {
 
           <div className="rounded-xl border border-teal-400/15 bg-[#071b19]/80 p-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">GROWTH CURVE</span>
+              <span className="text-[10px] text-teal-100/50">BALLS / TIME</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-teal-100/60">
+              <span>経過 <span className="font-mono text-teal-100">{hud.elapsed.toFixed(1)}s</span></span>
+              <span>増加 <span className="font-mono text-teal-100">{hud.growthRate.toFixed(1)}</span> balls/s</span>
+            </div>
+            <GrowthChart history={hud.history} />
+            <p className="mt-1 text-[9px] leading-4 text-teal-100/40">0.5秒ごとのボール数を記録。分裂の立ち上がりと飽和の仕方を確認できます。</p>
+          </div>
+
+          <div className="rounded-xl border border-teal-400/15 bg-[#071b19]/80 p-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <span className="text-[10px] font-black tracking-[0.2em] text-teal-300">OBSERVATION</span>
               <span className="text-[10px] text-teal-100/50">LIVE</span>
             </div>
@@ -1199,6 +1276,8 @@ export function BallMultiplyGame() {
                 { label: '最大ボール', value: `${hud.peakBalls}` },
                 { label: '静止中', value: `${hud.settledBalls}` },
                 { label: '自動スポーン', value: hud.autoSpawn ? 'ON' : 'OFF' },
+                { label: '経過時間', value: `${hud.elapsed.toFixed(1)}s` },
+                { label: '増加速度', value: `${hud.growthRate.toFixed(1)}/s` },
               ].map((item) => (
                 <div key={item.label} className="rounded-lg bg-white/[0.03] px-2.5 py-1.5">
                   <p className="text-[9px] font-bold text-teal-100/40">{item.label}</p>

@@ -1388,10 +1388,10 @@ export default function DominoCascadeGame() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
-              href="/games"
+              href="/games#simulation-games"
               className="shrink-0 whitespace-nowrap rounded border border-stone-700 bg-stone-900 px-2.5 py-1.5 text-[10px] font-bold text-stone-300 transition hover:border-amber-400 hover:text-amber-300 sm:px-3 sm:text-xs"
             >
-              ← 無料ゲーム一覧
+              ← シミュレーション一覧
             </Link>
             <div className="min-w-0">
               <p className="truncate font-mono text-[9px] font-bold tracking-[0.18em] text-amber-400 sm:text-[10px]">

@@ -1468,7 +1468,7 @@ export default function GravityOrbitGame() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
-              href="/games"
+              href="/games#simulation-games"
               className="shrink-0 whitespace-nowrap rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-bold text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-200 sm:px-3 sm:text-xs"
             >
               一覧へ
