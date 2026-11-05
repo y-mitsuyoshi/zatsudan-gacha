@@ -7,10 +7,20 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料で使える便利ツール一覧｜プロフィール・診断・言い訳・駅名標',
-  description: '推し活プロフィールメーカー、異世界転生ステータスカード、究極の言い訳ジェネレーター、駅名標メーカーなど、登録不要で使える無料Webツールを一覧で紹介します。スマホ対応。',
+  title: '無料で使える便利ツール一覧｜文字数・JSON・画像圧縮など全14ツール',
+  description: '文字数カウンター、JSON整形、URLエンコード、ハッシュ生成、パスワード生成、単位変換、BMI計算、ローン返済、画像圧縮、カラー変換など、登録不要で使える無料Webツール全14種類を紹介。スマホ対応。',
   keywords: [
     '無料 Webツール',
+    '文字数カウンター',
+    'JSON整形',
+    'URLエンコード',
+    'ハッシュ生成',
+    'パスワード生成',
+    '単位変換',
+    'BMI 計算',
+    'ローン返済 計算',
+    '画像圧縮',
+    'カラーコード変換',
     'プロフィールメーカー',
     '異世界転生 診断',
     '言い訳ジェネレーター',
@@ -24,7 +34,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: '無料で使える便利ツール一覧',
-    description: 'プロフィール作成、異世界診断、AI言い訳生成、駅名標作成。登録不要で使える無料Webツールをまとめました。',
+    description: '文字数カウント、JSON整形、画像圧縮、パスワード生成など、毎日使える実用ツールとクリエイティブツール全14種類。登録不要・スマホ対応。',
     url: `${APP_URL}/tools`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -34,12 +44,12 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '無料で使える便利ツール一覧',
-    description: 'プロフィール作成、異世界診断、AI言い訳生成、駅名標作成。登録不要で使える無料Webツールをまとめました。',
+    description: '文字数カウント、JSON整形、画像圧縮、パスワード生成など、毎日使える実用ツールとクリエイティブツール全14種類。登録不要・スマホ対応。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
 
-const tools = [
+const creativeTools = [
   {
     name: '推し活プロフィールメーカー',
     href: '/profile-maker',
@@ -66,11 +76,77 @@ const tools = [
   },
 ];
 
+const utilityTools = [
+  {
+    name: '文字数カウンター',
+    href: '/character-counter',
+    tagline: '文字・行・単語・バイト数を集計',
+    description: '入力したテキストの文字数、UTF-16、行数、単語数、UTF-8バイト数、読了時間をリアルタイムで集計。SNS投稿や原稿の長さ確認に便利です。',
+  },
+  {
+    name: 'JSON整形・検証',
+    href: '/json-formatter',
+    tagline: 'JSONを見やすく整形・圧縮',
+    description: 'JSONを2/4スペースまたはタブで整形し、最小化も可能。構文エラーの位置を確認できるため、APIレスポンスや設定ファイルのチェックに使えます。',
+  },
+  {
+    name: 'URLエンコード・デコード',
+    href: '/url-encoder',
+    tagline: 'URLの文字列を安全に変換',
+    description: '日本語や記号を含むURLをencodeURIComponent/encodeURIで変換し、デコードも可能。不正なパーセントエンコードも安全に検出します。',
+  },
+  {
+    name: 'ハッシュ生成',
+    href: '/hash-generator',
+    tagline: 'SHA-256/384/512を生成',
+    description: 'Web Crypto APIでテキストのSHA-256・SHA-384・SHA-512ハッシュを生成。入力はブラウザ内だけで処理され、サーバーへ送信されません。',
+  },
+  {
+    name: 'パスワード生成',
+    href: '/password-generator',
+    tagline: '安全なランダムパスワードを作成',
+    description: 'crypto.getRandomValuesを使い、長さ・文字種・記号・紛らわしい文字の除外を指定してパスワードを生成。強度の目安とコピー機能を備えています。',
+  },
+  {
+    name: '単位変換',
+    href: '/unit-converter',
+    tagline: '長さ・重さ・温度などを変換',
+    description: '長さ、重さ、温度、面積、体積、速度、データ容量を相互変換。日常生活や仕事の計算に使える無料の単位変換ツールです。',
+  },
+  {
+    name: 'BMI・健康計算',
+    href: '/bmi-calculator',
+    tagline: 'BMI・基礎代謝・消費カロリー',
+    description: '身長・体重・年齢・性別・活動量からBMI、標準体重、基礎代謝、推定消費カロリーを計算。健康管理の目安に使えます。',
+  },
+  {
+    name: 'ローン返済シミュレーター',
+    href: '/loan-calculator',
+    tagline: '月額返済と利息を試算',
+    description: '借入額・金利・返済期間・元利均等/元金均等から、月額返済、総利息、総返済額、年次返済表を試算。住宅ローンや事業ローンの検討に。',
+  },
+  {
+    name: '画像リサイズ・圧縮',
+    href: '/image-resizer',
+    tagline: 'ブラウザ内で画像を軽量化',
+    description: 'JPEG・PNG・WebP画像を指定サイズにリサイズし、品質を調整して圧縮。画像はアップロードされず、端末内だけで処理されます。',
+  },
+  {
+    name: 'カラーコード変換・配色',
+    href: '/color-converter',
+    tagline: 'HEX・RGB・HSLと配色を確認',
+    description: 'HEX・RGB・HSLを相互変換し、補色・類似色・トライアドなどの配色を生成。WCAGコントラスト比も確認できるデザインツールです。',
+  },
+];
+
+const allTools = [...creativeTools, ...utilityTools];
+
 const faqs = [
-  { q: '紹介しているツールは無料ですか？', a: 'はい。すべて無料で利用できます。会員登録やログインは不要です。' },
+  { q: '紹介している14のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
   { q: 'スマートフォンでも使えますか？', a: 'はい。各ツールはスマートフォンのブラウザに対応しています。' },
-  { q: '入力した内容はサーバーに送信されますか？', a: 'ツールによって異なります。プロフィールと駅名標はブラウザ内で処理され、サーバーには送信されません。言い訳ジェネレーターはAI生成のため、入力内容がOpenCode Go APIに送信されます。' },
-  { q: '作成した画像はSNSで使えますか？', a: 'はい。画像として保存できるツールは、SNSの投稿やプロフィールに利用できます。' },
+  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
+  { q: '作成した画像はSNSで使えますか？', a: 'はい。プロフィールメーカー・駅名標メーカー・画像リサイズツールで作成した画像は、SNSの投稿やプロフィールに利用できます。' },
+  { q: 'オフラインでも使えますか？', a: '実用ツールはページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
 ];
 
 const jsonLd = [
@@ -83,8 +159,9 @@ const jsonLd = [
     inLanguage: 'ja-JP',
     mainEntity: {
       '@type': 'ItemList',
-      numberOfItems: tools.length,
-      itemListElement: tools.map((tool, index) => ({
+      numberOfItems: allTools.length,
+      itemListOrder: 'https://schema.org/ItemListOrderAscending',
+      itemListElement: allTools.map((tool, index) => ({
         '@type': 'ListItem',
         position: index + 1,
         name: tool.name,
@@ -133,30 +210,63 @@ export default function ToolsPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Tool Archive / 4 Titles</p>
+            <p className="paper-kicker">Tool Archive / 14 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で使える<br className="sm:hidden" />便利ツール
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              推し活プロフィール、異世界キャラ診断、言い訳作成、駅名標作成。
-              登録不要で今すぐ使えるWebツールをまとめました。
+              文字数カウント、JSON整形、画像圧縮、パスワード生成など、毎日使える実用ツール10種類。
+              さらにプロフィール作成・診断・言い訳・駅名標のクリエイティブツール4種類を収録しています。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
             <p className="font-label text-[9px] text-[var(--accent)]">Privacy Note</p>
             <p className="mt-2">
-              プロフィールと駅名標はブラウザ内で処理。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
+              実用ツール10種類はすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
             </p>
           </div>
         </section>
 
-        <section aria-labelledby="tool-list-heading">
+        <section aria-labelledby="utility-tools-heading" id="utility-tools">
           <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
-            <h2 id="tool-list-heading" className="font-editorial text-2xl">ツール一覧</h2>
+            <div>
+              <p className="paper-kicker">Everyday Utilities</p>
+              <h2 id="utility-tools-heading" className="font-editorial mt-2 text-2xl">毎日使える実用ツール（10種類）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 10</span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {utilityTools.map((tool, index) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
+                </div>
+                <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
+                <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
+                <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
+                <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                  Open tool →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="creative-tools-heading" className="mt-14" id="creative-tools">
+          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
+            <div>
+              <p className="paper-kicker">Creative Tools</p>
+              <h2 id="creative-tools-heading" className="font-editorial mt-2 text-2xl">作って遊べるクリエイティブツール（4種類）</h2>
+            </div>
             <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 04</span>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {tools.map((tool, index) => (
+            {creativeTools.map((tool, index) => (
               <Link
                 key={tool.href}
                 href={tool.href}
@@ -179,7 +289,7 @@ export default function ToolsPage() {
 
         <SeoContentSection
           eyebrow="TOOL GUIDE"
-          title="4つの無料Webツール"
+          title="14の無料Webツール"
           intro="用途に合わせて、気になるツールを選んでください。"
           faqs={faqs}
           related={[

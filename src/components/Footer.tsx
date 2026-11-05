@@ -30,6 +30,12 @@ const services = [
 const siteLinks = [
   { label: '無料ゲーム一覧', href: '/games' },
   { label: '無料ツール一覧', href: '/tools' },
+  { label: '文字数カウンター', href: '/character-counter' },
+  { label: 'JSON整形', href: '/json-formatter' },
+  { label: '画像圧縮', href: '/image-resizer' },
+  { label: 'パスワード生成', href: '/password-generator' },
+  { label: '単位変換', href: '/unit-converter' },
+  { label: 'BMI計算', href: '/bmi-calculator' },
   { label: 'シーン別ガイド', href: '/guides' },
   { label: '会議のアイスブレイク', href: '/icebreak' },
   { label: 'お題カテゴリ一覧', href: '/themes' },

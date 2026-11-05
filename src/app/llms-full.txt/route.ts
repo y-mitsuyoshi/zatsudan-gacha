@@ -44,6 +44,23 @@ ${categorySections}
 - 社長の頭の中（ランキング予想） (${BASE_URL}/rank-guess): 社長のランキングを予想するチームゲーム
 - 連想リレー (${BASE_URL}/word-chain): 言葉をつないで高得点を狙う連想ゲーム
 
+## 収録Webツール一覧（全14種類・無料・登録不要）
+
+- 文字数カウンター (${BASE_URL}/character-counter): 文字・行・単語・UTF-8バイト数を集計
+- JSON整形・検証 (${BASE_URL}/json-formatter): JSONの整形・圧縮・構文チェック
+- URLエンコード・デコード (${BASE_URL}/url-encoder): URL文字列の安全な変換
+- ハッシュ生成 (${BASE_URL}/hash-generator): SHA-256/384/512ハッシュをブラウザ内で生成
+- パスワード生成 (${BASE_URL}/password-generator): 安全なランダムパスワードを生成
+- 単位変換 (${BASE_URL}/unit-converter): 長さ・重さ・温度・面積・体積・速度・データ容量
+- BMI・健康計算 (${BASE_URL}/bmi-calculator): BMI・標準体重・基礎代謝・推定消費カロリー
+- ローン返済シミュレーター (${BASE_URL}/loan-calculator): 月額返済・総利息・年次返済表
+- 画像リサイズ・圧縮 (${BASE_URL}/image-resizer): 画像をブラウザ内でリサイズ・圧縮
+- カラーコード変換・配色 (${BASE_URL}/color-converter): HEX/RGB/HSL変換・配色・コントラスト比
+- 推し活プロフィールメーカー (${BASE_URL}/profile-maker): 推し紹介カードを作成
+- 異世界転生ステータスカード (${BASE_URL}/isekai-status): 異世界キャラクター診断
+- 究極の言い訳ジェネレーター (${BASE_URL}/excuse-generator): AIによる言い訳生成
+- 駅名標メーカー (${BASE_URL}/station-sign-maker): オリジナル駅名標を作成
+
 ## 利用について
 
 このお題データは、雑談やアイスブレイクの話題づくりに自由に利用できます。Webサイトや記事で紹介する場合は、${BASE_URL}/ へのリンクを掲載してください。
