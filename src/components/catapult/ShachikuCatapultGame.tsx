@@ -119,6 +119,13 @@ interface FieldObject {
   used: boolean;
 }
 
+interface FieldCoin {
+  id: number;
+  x: number;
+  y: number;
+  collected: boolean;
+}
+
 interface Particle {
   x: number;
   y: number;
@@ -143,6 +150,8 @@ interface RunSummary {
   maxAltitude: number;
   bounces: number;
   shattered: number;
+  maxCombo: number;
+  boostActivations: number;
   perfectLaunch: boolean;
   earnedCoins: number;
   newRecord: boolean;
@@ -249,6 +258,20 @@ class CatapultSoundEngine {
     this.playTone(120 + Math.random() * 60, 85, 0.06, 'sawtooth', 0.08);
   }
 
+  playCoin(combo: number) {
+    const base = 760 + Math.min(8, combo) * 55;
+    this.playTone(base, base * 1.6, 0.09, 'triangle', 0.18);
+  }
+
+  playBoost() {
+    this.playTone(180, 920, 0.28, 'sawtooth', 0.32);
+    setTimeout(() => this.playTone(640, 1640, 0.3, 'square', 0.26), 100);
+  }
+
+  playSkim() {
+    this.playTone(210, 310, 0.08, 'sine', 0.12);
+  }
+
   playUpgrade() {
     this.playTone(440, 880, 0.14, 'triangle', 0.24);
     setTimeout(() => this.playTone(660, 1320, 0.18, 'sine', 0.24), 70);
@@ -256,6 +279,15 @@ class CatapultSoundEngine {
 }
 
 const sfx = new CatapultSoundEngine();
+
+function haptic(pattern: number | number[]) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function ShachikuCatapultGame() {
   const [save, setSave] = useState<SaveData>(DEFAULT_SAVE);
@@ -271,6 +303,11 @@ export default function ShachikuCatapultGame() {
     diveCooldown: 0,
     bounces: 0,
     shattered: 0,
+    combo: 0,
+    maxCombo: 0,
+    boost: 0,
+    boostActive: false,
+    skim: false,
     zoneName: 'AREA 1: 夕暮れオフィス街',
     jetting: false,
   });
@@ -287,6 +324,7 @@ export default function ShachikuCatapultGame() {
   const simRef = useRef({
     angleDeg: 45,
     angleDir: 1,
+    anglePerfect: false,
     powerPct: 0,
     powerDir: 1,
     perfectLaunch: false,
@@ -306,9 +344,20 @@ export default function ShachikuCatapultGame() {
     bounces: 0,
     shattered: 0,
     bonusCoins: 0,
+    combo: 0,
+    comboTimer: 0,
+    maxCombo: 0,
+    boostMeter: 0,
+    boostActive: 0,
+    boostActivations: 0,
+    shake: 0,
+    skimTimer: 0,
+    skimBannerTimer: 0,
     stoppedFrames: 0,
     nextSpawnX: 70,
+    nextCoinX: 90,
     objects: [] as FieldObject[],
+    coins: [] as FieldCoin[],
     particles: [] as Particle[],
     banners: [] as FloatingBanner[],
     jetSoundTick: 0,
@@ -380,12 +429,12 @@ export default function ShachikuCatapultGame() {
         h = 7.5;
       } else if (roll < 0.56) {
         type = 'cannon';
-        y = Math.random() < 0.45 ? 0 : 12 + Math.random() * 28;
+        y = Math.random() < 0.45 ? 0 : 8 + Math.random() * (30 + Math.min(150, sim.y * 0.45));
         w = 12;
         h = 9;
       } else if (roll < 0.80) {
         type = 'updraft';
-        y = 6 + Math.random() * 48;
+        y = 6 + Math.random() * (45 + Math.min(150, sim.y * 0.45));
         w = 14;
         h = 28;
       } else {
@@ -411,12 +460,35 @@ export default function ShachikuCatapultGame() {
     sim.objects = sim.objects.filter((o) => o.x > sim.x - 120);
   }, []);
 
+  const spawnCoinsUpTo = useCallback((targetX: number, sponsorLv: number) => {
+    const sim = simRef.current;
+    const spacing = Math.max(48, 82 - sponsorLv * 3.2);
+    while (sim.nextCoinX < targetX) {
+      const count = 3 + Math.floor(Math.random() * 3);
+      const baseY = Math.random() < 0.7 ? 11 + Math.random() * 32 : Math.max(8, sim.y - 30 + Math.random() * 60);
+      const arcHeight = 7 + Math.random() * 15;
+      for (let i = 0; i < count; i++) {
+        const x = sim.nextCoinX + i * 7;
+        const y = baseY + Math.sin((i / Math.max(1, count - 1)) * Math.PI) * arcHeight;
+        sim.coins.push({
+          id: Math.round(x * 100) + i,
+          x,
+          y,
+          collected: false,
+        });
+      }
+      sim.nextCoinX += spacing + count * 7;
+    }
+    sim.coins = sim.coins.filter((c) => c.x > sim.x - 80);
+  }, []);
+
   const startLaunchSequence = useCallback(() => {
     const up = saveRef.current.upgrades;
     const maxFuel = 100 + (up.fuel - 1) * 22;
     simRef.current = {
       angleDeg: 35,
       angleDir: 1,
+      anglePerfect: false,
       powerPct: 10,
       powerDir: 1,
       perfectLaunch: false,
@@ -435,40 +507,62 @@ export default function ShachikuCatapultGame() {
       bounces: 0,
       shattered: 0,
       bonusCoins: 0,
+      combo: 0,
+      comboTimer: 0,
+      maxCombo: 0,
+      boostMeter: 0,
+      boostActive: 0,
+      boostActivations: 0,
+      shake: 0,
+      skimTimer: 0,
+      skimBannerTimer: 0,
       stoppedFrames: 0,
       nextSpawnX: 65,
+      nextCoinX: 90,
       objects: [],
+      coins: [],
       particles: [],
       banners: [],
       jetSoundTick: 0,
     };
     spawnObjectsUpTo(800, up.sponsor);
+    spawnCoinsUpTo(800, up.sponsor);
     setSummary(null);
     setAngleDeg(35);
     setPowerPct(10);
     setPhase('aim_angle');
-  }, [spawnObjectsUpTo]);
+  }, [spawnCoinsUpTo, spawnObjectsUpTo]);
 
   const executeLaunch = useCallback(
     (lockedAngle: number, lockedPower: number) => {
       const up = saveRef.current.upgrades;
       const sim = simRef.current;
-      const isPerfect = lockedPower >= 88;
+      const anglePerfect = sim.anglePerfect && lockedAngle >= 40 && lockedAngle <= 50;
+      const isPerfect = anglePerfect && lockedPower >= 85;
+      const isSuper = isPerfect && lockedPower >= 95;
       sim.perfectLaunch = isPerfect;
 
       const tensionMult = 1 + (up.tension - 1) * 0.12;
       const powerRatio = Math.max(0.25, lockedPower / 100);
-      const baseSpeed = 88 * tensionMult * powerRatio * (isPerfect ? 1.16 : 1.0);
+      const launchBonus = isSuper ? 1.3 : isPerfect ? 1.22 : 1.0;
+      const baseSpeed = 88 * tensionMult * powerRatio * launchBonus;
       const rad = (lockedAngle * Math.PI) / 180;
 
       sim.vx = Math.cos(rad) * baseSpeed;
       sim.vy = Math.sin(rad) * baseSpeed;
+      sim.shake = isPerfect ? 0.42 : 0.2;
+      sim.boostMeter = Math.min(100, sim.boostMeter + (isPerfect ? 18 : 6));
 
       sfx.playLaunch(isPerfect);
+      haptic(isPerfect ? [16, 24, 20] : 10);
       if (isPerfect) {
-        addBanner('PERFECT LAUNCH!', '定時ジャスト発射ボーナス +16%初速', '#facc15');
+        addBanner(
+          isSuper ? '定時ジャスト！超発射' : '定時ジャスト発射！',
+          isSuper ? '角度40-50°×出力95%以上 ボーナス +30%初速' : '角度40-50°×出力85%以上 ボーナス +22%初速',
+          '#facc15'
+        );
       } else {
-        addBanner('LAUNCH!', `発射角度 ${Math.round(lockedAngle)}° / 出力 ${Math.round(lockedPower)}%`, '#38bdf8');
+        addBanner('LAUNCH!', `角度 ${Math.round(lockedAngle)}° / 出力 ${Math.round(lockedPower)}% — 40-50°と85%以上を狙おう`, '#38bdf8');
       }
 
       for (let i = 0; i < 28; i++) {
@@ -498,7 +592,9 @@ export default function ShachikuCatapultGame() {
     sim.diveCooldown = 2.5;
     sim.vy = -Math.max(72, Math.abs(sim.vy) + 55);
     sim.vx *= 1.08;
+    sim.shake = 0.28;
     sfx.playDiveStamp();
+    haptic(16);
     addBanner('急降下スタンプ！', '着地バウンド 1.35x 強化', '#f43f5e');
   }, [addBanner]);
 
@@ -509,7 +605,9 @@ export default function ShachikuCatapultGame() {
     const maxAlt = Math.round(sim.maxAltitude);
     const sponsorMult = 1 + (curSave.upgrades.sponsor - 1) * 0.2;
 
-    const baseCoins = Math.floor(dist * 0.14 + maxAlt * 0.25 + sim.bounces * 12 + sim.shattered * 35 + sim.bonusCoins);
+    const baseCoins = Math.floor(
+      dist * 0.14 + maxAlt * 0.25 + sim.bounces * 12 + sim.shattered * 35 + sim.maxCombo * 8 + sim.boostActivations * 40 + sim.bonusCoins
+    );
     const earnedCoins = Math.max(15, Math.round(baseCoins * sponsorMult));
     const newRecord = dist > curSave.bestDistance;
     const totalShattered = curSave.totalShattered + sim.shattered;
@@ -538,6 +636,8 @@ export default function ShachikuCatapultGame() {
       maxAltitude: maxAlt,
       bounces: sim.bounces,
       shattered: sim.shattered,
+      maxCombo: sim.maxCombo,
+      boostActivations: sim.boostActivations,
       perfectLaunch: sim.perfectLaunch,
       earnedCoins,
       newRecord,
@@ -551,9 +651,11 @@ export default function ShachikuCatapultGame() {
     const sim = simRef.current;
     if (p === 'aim_angle') {
       const locked = Math.round(sim.angleDeg);
+      const perfect = locked >= 40 && locked <= 50;
       sim.angleDeg = locked;
+      sim.anglePerfect = perfect;
       setAngleDeg(locked);
-      sfx.playLock(locked >= 40 && locked <= 50);
+      sfx.playLock(perfect);
       setPhase('aim_power');
     } else if (p === 'aim_power') {
       const lockedP = Math.round(sim.powerPct);
@@ -614,6 +716,7 @@ export default function ShachikuCatapultGame() {
       const sim = simRef.current;
       const up = saveRef.current.upgrades;
       const curPhase = phaseRef.current;
+      if (sim.shake > 0) sim.shake = Math.max(0, sim.shake - dt * 3.4);
 
       // 1. Update gauges or physics
       if (curPhase === 'aim_angle') {
@@ -639,6 +742,15 @@ export default function ShachikuCatapultGame() {
       } else if (curPhase === 'flying') {
         if (sim.diveCooldown > 0) {
           sim.diveCooldown = Math.max(0, sim.diveCooldown - dt);
+        }
+        if (sim.comboTimer > 0) {
+          sim.comboTimer = Math.max(0, sim.comboTimer - dt);
+          if (sim.comboTimer <= 0) sim.combo = 0;
+        }
+        if (sim.boostActive > 0) {
+          sim.boostActive = Math.max(0, sim.boostActive - dt);
+          sim.vx += 34 * dt;
+          sim.fuel = Math.min(sim.maxFuel, sim.fuel + 7 * dt);
         }
 
         // Jetpack thrust
@@ -675,6 +787,20 @@ export default function ShachikuCatapultGame() {
         const drag = Math.pow(0.992 + (up.aero - 1) * 0.0006, dt * 60);
         sim.vx *= drag;
 
+        // Ground-skimming rewards daring low flight
+        if (sim.y > 0.6 && sim.y < 6.5 && sim.vy < 8 && sim.vx > 35) {
+          sim.vx += (26 + up.aero * 2) * dt;
+          sim.boostMeter = Math.min(100, sim.boostMeter + 8 * dt);
+          sim.skimTimer += dt;
+          if (sim.skimTimer > 0.8) {
+            sim.skimTimer = 0;
+            sfx.playSkim();
+            addBanner('地面スレスレ加速！', 'ボーナスゲージ上昇中', '#34d399');
+          }
+        } else {
+          sim.skimTimer = Math.max(0, sim.skimTimer - dt * 2);
+        }
+
         // Integrate position
         sim.x += sim.vx * dt;
         sim.y += sim.vy * dt;
@@ -682,6 +808,46 @@ export default function ShachikuCatapultGame() {
         sim.rotation += (sim.vx * 0.08 + (sim.diving ? 12 : 0)) * dt;
 
         spawnObjectsUpTo(sim.x + 650, up.sponsor);
+        spawnCoinsUpTo(sim.x + 650, up.sponsor);
+
+        // Collect 定時コイン and build combo
+        const collectRadius = sim.boostActive > 0 ? 11 : 6.5;
+        for (const coin of sim.coins) {
+          if (coin.collected) continue;
+          if (Math.abs(coin.x - sim.x) < collectRadius && Math.abs(coin.y - sim.y) < collectRadius + 2.5) {
+            coin.collected = true;
+            sim.combo += 1;
+            sim.comboTimer = 2.5;
+            sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
+            sim.bonusCoins += 8 + sim.combo * 2;
+            sim.boostMeter = Math.min(100, sim.boostMeter + 5);
+            sfx.playCoin(sim.combo);
+            for (let i = 0; i < 7; i++) {
+              sim.particles.push({
+                x: coin.x,
+                y: coin.y,
+                vx: (Math.random() - 0.5) * 26,
+                vy: Math.random() * 22,
+                life: 0.38,
+                maxLife: 0.38,
+                color: '#facc15',
+                size: 2.5 + Math.random() * 3,
+              });
+            }
+          }
+        }
+
+        if (sim.boostMeter >= 100 && sim.boostActive <= 0) {
+          sim.boostMeter = 0;
+          sim.boostActive = 4;
+          sim.boostActivations += 1;
+          sim.vx = Math.max(sim.vx * 1.32 + 18, sim.vx);
+          sim.vy = Math.max(sim.vy, 18);
+          sim.shake = 0.5;
+          sfx.playBoost();
+          haptic([20, 30, 20]);
+          addBanner('定時退社フィーバー！', '4秒間 超加速＆コイン回収範囲アップ', '#facc15');
+        }
 
         // Check collisions with field objects
         for (const obj of sim.objects) {
@@ -691,6 +857,7 @@ export default function ShachikuCatapultGame() {
           if (dx < obj.w * 0.65 && Math.abs(dy) < obj.h * 0.75 + 2.5) {
             obj.used = true;
             const diveMult = sim.diving ? 1.35 : 1.0;
+            const shatteredBefore = sim.shattered;
 
             if (obj.type === 'van') {
               sim.y = Math.max(sim.y, 2);
@@ -726,6 +893,7 @@ export default function ShachikuCatapultGame() {
                 // Shatter barrier!
                 sim.shattered += 1;
                 sim.bonusCoins += 45;
+                haptic(14);
                 sim.vx *= 1.06;
                 sim.vy = Math.max(32, Math.abs(sim.vy) * 0.85);
                 sim.diving = false;
@@ -738,6 +906,15 @@ export default function ShachikuCatapultGame() {
                 sfx.playSlowHit();
                 addBanner('残業ブロック接触...', 'ジェットまたは急降下で粉砕可能', '#f87171');
               }
+            }
+
+            if (obj.type !== 'barrier' || sim.shattered > shatteredBefore) {
+              sim.combo += 1;
+              sim.comboTimer = 2.5;
+              sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
+              const gained = obj.type === 'barrier' ? 10 : obj.type === 'cannon' ? 9 : 7;
+              sim.boostMeter = Math.min(100, sim.boostMeter + gained);
+              sim.shake = Math.max(sim.shake, obj.type === 'barrier' ? 0.24 : 0.16);
             }
 
             // Burst particles
@@ -771,7 +948,13 @@ export default function ShachikuCatapultGame() {
             sim.vy = Math.abs(sim.vy) * bounceRestitution * diveBoost;
             sim.vx = sim.vx * (0.86 + (up.bounce - 1) * 0.012) * (diveBoost > 1 ? 1.18 : 1.0);
             sim.bounces += 1;
+            sim.combo += 1;
+            sim.comboTimer = 2.5;
+            sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
+            sim.boostMeter = Math.min(100, sim.boostMeter + (diveBoost > 1 ? 10 : 5));
+            sim.shake = Math.max(sim.shake, diveBoost > 1 ? 0.36 : 0.18);
             sfx.playBounce(diveBoost > 1);
+            if (diveBoost > 1) haptic(20);
             if (diveBoost > 1) {
               addBanner('急降下スタンプ着地！', '1.35x ハイパーバウンド', '#f43f5e');
             }
@@ -827,6 +1010,11 @@ export default function ShachikuCatapultGame() {
             diveCooldown: Number(sim.diveCooldown.toFixed(1)),
             bounces: sim.bounces,
             shattered: sim.shattered,
+            combo: sim.combo,
+            maxCombo: sim.maxCombo,
+            boost: Math.round(sim.boostMeter),
+            boostActive: sim.boostActive > 0,
+            skim: sim.y > 0.6 && sim.y < 6.5 && sim.vx > 35 && sim.vy < 8,
             zoneName: getZoneInfo(sim.x).name,
             jetting: isJetting,
           });
@@ -847,7 +1035,7 @@ export default function ShachikuCatapultGame() {
 
     rafId = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(rafId);
-  }, [addBanner, finishRun, spawnObjectsUpTo]);
+  }, [addBanner, finishRun, spawnCoinsUpTo, spawnObjectsUpTo]);
 
   const handleBuyUpgrade = (id: UpgradeId) => {
     const meta = UPGRADE_LIST.find((u) => u.id === id);
@@ -915,7 +1103,7 @@ export default function ShachikuCatapultGame() {
                   社畜ぶっとばし！定時退社カタパルト
                 </h2>
                 <p className="mt-2 text-xs leading-6 text-stone-300">
-                  角度とパワーを決めて大空へ。有給ジェットと急降下スタンプで10,000m先の南国リゾートを目指そう。
+                  角度とパワーを決めて大空へ。定時コインを集めてフィーバーを発動し、有給ジェットと急降下スタンプで10,000m先の南国リゾートを目指そう。
                 </p>
                 <button
                   type="button"
@@ -944,6 +1132,59 @@ export default function ShachikuCatapultGame() {
               onPointerLeave={() => handlePrimaryActionUp()}
               style={{ touchAction: 'none' }}
             >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 bg-stone-950/95 px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-[9px] font-bold text-stone-400">DISTANCE</p>
+                    <p className="font-mono text-base font-black leading-tight text-amber-300 sm:text-xl">
+                      {hudState.distance.toLocaleString()} <span className="text-[10px]">m</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-stone-400">ALTITUDE</p>
+                    <p className="font-mono text-sm font-bold leading-tight text-sky-300">
+                      {hudState.altitude.toLocaleString()} <span className="text-[10px]">m</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-stone-400">SPEED</p>
+                    <p className="font-mono text-sm font-bold leading-tight text-emerald-300">
+                      {hudState.speed} <span className="text-[10px]">km/h</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="hidden rounded border border-amber-500/30 bg-stone-900/90 px-2 py-0.5 text-[10px] font-bold text-amber-300 sm:inline">
+                    {hudState.zoneName}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-bold text-orange-300">燃料</span>
+                    <div className="h-2 w-16 overflow-hidden rounded-full border border-stone-600 bg-stone-900">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-75"
+                        style={{ width: `${Math.min(100, (hudState.fuel / Math.max(1, hudState.maxFuel)) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[9px] font-bold ${hudState.boostActive ? 'text-yellow-200' : 'text-fuchsia-300'}`}>
+                      {hudState.boostActive ? 'フィーバー' : '定時'}
+                    </span>
+                    <div className="h-2 w-16 overflow-hidden rounded-full border border-stone-600 bg-stone-900">
+                      <div
+                        className={`h-full transition-all duration-75 ${hudState.boostActive ? 'bg-gradient-to-r from-yellow-300 to-rose-400' : 'bg-gradient-to-r from-fuchsia-500 to-amber-300'}`}
+                        style={{ width: `${hudState.boostActive ? 100 : hudState.boost}%` }}
+                      />
+                    </div>
+                  </div>
+                  {hudState.combo > 1 && (
+                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-200">
+                      {hudState.combo} COMBO
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <canvas
                 ref={canvasRef}
                 width={CANVAS_W}
@@ -951,58 +1192,17 @@ export default function ShachikuCatapultGame() {
                 className="block aspect-[16/9] w-full cursor-pointer"
               />
 
-              {/* HUD Overlay during Launch / Flight */}
-              {(phase === 'aim_angle' || phase === 'aim_power' || phase === 'flying') && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-3">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-stone-400">DISTANCE</p>
-                      <p className="font-mono text-xl font-black text-amber-300 sm:text-2xl">
-                        {hudState.distance.toLocaleString()} <span className="text-xs">m</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-stone-400">ALTITUDE</p>
-                      <p className="font-mono text-lg font-bold text-sky-300">
-                        {hudState.altitude.toLocaleString()} <span className="text-xs">m</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-stone-400">SPEED</p>
-                      <p className="font-mono text-lg font-bold text-emerald-300">
-                        {hudState.speed} <span className="text-xs">km/h</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end">
-                    <span className="rounded bg-stone-900/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-300 border border-amber-500/30">
-                      {hudState.zoneName}
-                    </span>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-orange-300">有給ジェット燃料</span>
-                      <div className="h-3 w-32 overflow-hidden rounded-full border border-stone-600 bg-stone-900">
-                        <div
-                          className="h-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-75"
-                          style={{ width: `${Math.min(100, (hudState.fuel / Math.max(1, hudState.maxFuel)) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Aiming Gauge Instructions */}
               {(phase === 'aim_angle' || phase === 'aim_power') && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center px-4">
+                <div className="pointer-events-none absolute inset-x-0 bottom-5 hidden justify-center px-4 sm:flex">
                   <div className="rounded-xl border border-amber-400/60 bg-black/85 px-6 py-3 text-center shadow-xl">
                     <p className="text-xs font-bold tracking-wider text-amber-300">
-                      {phase === 'aim_angle' ? 'STEP 1: 発射アングル決定 (15°〜75°)' : 'STEP 2: カタパルト出力決定 (88%以上でPERFECT!)'}
+                      {phase === 'aim_angle' ? 'STEP 1: 発射アングル決定 (15°〜75°)' : 'STEP 2: カタパルト出力決定 (85%以上でPERFECT!)'}
                     </p>
                     <p className="mt-1 text-lg font-black text-white">
                       {phase === 'aim_angle'
-                        ? `現在角度: ${angleDeg}° — 画面クリック / タップ / Spaceでロック！`
-                        : `現在パワー: ${powerPct}% — 画面クリック / タップ / Spaceで発射！`}
+                        ? `現在角度: ${angleDeg}° — 緑ゾーン 40°〜50° を狙え！`
+                        : `現在パワー: ${powerPct}% — 緑ゾーン 85%以上で発射！`}
                     </p>
                   </div>
                 </div>
@@ -1010,7 +1210,7 @@ export default function ShachikuCatapultGame() {
 
               {/* Active Flight Controls */}
               {phase === 'flying' && (
-                <div className="absolute inset-x-0 bottom-3 hidden items-center justify-between px-4 sm:flex">
+                <div className="hidden items-center justify-between gap-3 border-t border-stone-800 bg-stone-950/95 px-4 py-2 sm:flex">
                   <div className="pointer-events-none rounded-lg border border-stone-700/80 bg-black/70 px-3 py-1.5 text-xs text-stone-200">
                     長押し / Spaceホールド: <span className="font-bold text-amber-300">有給ジェット噴射</span>
                   </div>
@@ -1045,7 +1245,7 @@ export default function ShachikuCatapultGame() {
                     社畜ぶっとばし！定時退社カタパルト
                   </h2>
                   <p className="mt-2 max-w-lg text-xs leading-relaxed text-stone-300 sm:text-sm">
-                    ブラック企業本社50階の屋上カタパルトから定時退社！角度とパワーを決めて大空へ飛び出し、有給ジェットパックと急降下スタンプを駆使して10,000m先の南国リゾート島を目指そう。
+                    ブラック企業本社50階の屋上カタパルトから定時退社！角度40-50°・出力85%以上で定時ジャスト発射。定時コインを集めてフィーバーを発動し、有給ジェットパックと急降下スタンプを駆使して10,000m先の南国リゾート島を目指そう。
                   </p>
                   <button
                     type="button"
@@ -1070,7 +1270,7 @@ export default function ShachikuCatapultGame() {
                     </span>
                   )}
 
-                  <div className="mt-4 grid w-full max-w-md grid-cols-2 gap-2 rounded-xl border border-stone-700 bg-stone-900/90 p-3 text-xs sm:grid-cols-4">
+                  <div className="mt-4 grid w-full max-w-md grid-cols-2 gap-2 rounded-xl border border-stone-700 bg-stone-900/90 p-3 text-xs sm:grid-cols-3">
                     <div>
                       <p className="text-stone-400">最大高度</p>
                       <p className="mt-0.5 font-mono text-sm font-black text-sky-300">{summary.maxAltitude} m</p>
@@ -1082,6 +1282,14 @@ export default function ShachikuCatapultGame() {
                     <div>
                       <p className="text-stone-400">残業粉砕</p>
                       <p className="mt-0.5 font-mono text-sm font-black text-rose-300">{summary.shattered} 個</p>
+                    </div>
+                    <div>
+                      <p className="text-stone-400">最大コンボ</p>
+                      <p className="mt-0.5 font-mono text-sm font-black text-fuchsia-300">{summary.maxCombo}</p>
+                    </div>
+                    <div>
+                      <p className="text-stone-400">フィーバー</p>
+                      <p className="mt-0.5 font-mono text-sm font-black text-amber-300">{summary.boostActivations} 回</p>
                     </div>
                     <div>
                       <p className="text-stone-400">獲得積立金</p>
@@ -1105,6 +1313,39 @@ export default function ShachikuCatapultGame() {
                 </div>
               )}
             </div>
+
+            {(phase === 'aim_angle' || phase === 'aim_power') && (
+              <div className="rounded-xl border border-amber-500/40 bg-stone-900 p-3 sm:hidden">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-amber-300">
+                    {phase === 'aim_angle' ? '発射アングル' : 'カタパルト出力'}
+                  </span>
+                  <span className={phase === 'aim_angle' ? (angleDeg >= 40 && angleDeg <= 50 ? 'text-green-300' : 'text-stone-200') : (powerPct >= 85 ? 'text-green-300' : 'text-stone-200')}>
+                    {phase === 'aim_angle' ? `${angleDeg}°` : `${powerPct}%`} {phase === 'aim_angle' ? (angleDeg >= 40 && angleDeg <= 50 ? 'PERFECT' : '') : (powerPct >= 85 ? 'PERFECT' : '')}
+                  </span>
+                </div>
+                <div className="relative mt-2 h-4 overflow-hidden rounded-full border border-stone-600 bg-stone-950">
+                  <div
+                    className="absolute inset-y-0 bg-green-500/35"
+                    style={phase === 'aim_angle' ? { left: '41.7%', width: '16.6%' } : { left: '85%', width: '15%' }}
+                  />
+                  <div
+                    className={`absolute top-0 h-full w-0.5 ${phase === 'aim_angle' ? (angleDeg >= 40 && angleDeg <= 50 ? 'bg-green-300' : 'bg-white') : (powerPct >= 85 ? 'bg-green-300' : 'bg-white')}`}
+                    style={{ left: phase === 'aim_angle' ? `${((angleDeg - 15) / 60) * 100}%` : `${powerPct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-stone-400">
+                  {phase === 'aim_angle' ? '緑ゾーン 40°〜50° でPERFECT' : '緑ゾーン 85%以上でPERFECT'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handlePrimaryActionDown}
+                  className="mt-2 w-full rounded-xl border-2 border-amber-300 bg-amber-500 px-4 py-3 text-sm font-black text-stone-950 active:scale-[0.98]"
+                >
+                  {phase === 'aim_angle' ? '角度をロック' : 'パワーを発射！'}
+                </button>
+              </div>
+            )}
 
             {phase === 'flying' && (
               <div className="grid grid-cols-2 gap-2 sm:hidden">
@@ -1151,6 +1392,8 @@ export default function ShachikuCatapultGame() {
                   <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">最大高度</p><p className="font-mono font-black text-sky-300">{summary.maxAltitude} m</p></div>
                   <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">バウンド</p><p className="font-mono font-black text-emerald-300">{summary.bounces} 回</p></div>
                   <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">残業粉砕</p><p className="font-mono font-black text-rose-300">{summary.shattered} 個</p></div>
+                  <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">最大コンボ</p><p className="font-mono font-black text-fuchsia-300">{summary.maxCombo}</p></div>
+                  <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">フィーバー</p><p className="font-mono font-black text-amber-300">{summary.boostActivations} 回</p></div>
                   <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">獲得積立金</p><p className="font-mono font-black text-amber-300">+{summary.earnedCoins} G</p></div>
                 </div>
                 <button
@@ -1164,7 +1407,11 @@ export default function ShachikuCatapultGame() {
             )}
 
             {/* Field Guide Legend */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-stone-800 bg-stone-900/60 p-3 text-xs sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-stone-800 bg-stone-900/60 p-3 text-xs sm:grid-cols-5">
+              <div className="rounded-lg border border-yellow-500/20 bg-stone-950/70 p-2.5">
+                <p className="font-black text-yellow-300">定時コイン</p>
+                <p className="mt-0.5 text-[11px] text-stone-400">空中で集めて定時ゲージをMAXに。フィーバーで4秒間超加速！</p>
+              </div>
               <div className="rounded-lg border border-amber-500/20 bg-stone-950/70 p-2.5">
                 <p className="font-black text-amber-300">ボーナス支給車</p>
                 <p className="mt-0.5 text-[11px] text-stone-400">特大トランポリン跳躍＋ジェット燃料38%回復</p>
@@ -1277,7 +1524,10 @@ function renderScene(
     jetActive: boolean;
     fuel: number;
     diving: boolean;
+    boostActive: number;
+    shake: number;
     objects: FieldObject[];
+    coins: FieldCoin[];
     particles: Particle[];
     banners: FloatingBanner[];
   },
@@ -1297,9 +1547,27 @@ function renderScene(
   const scale = sim.y > 65 ? Math.max(2.6, 6 - (sim.y - 65) * 0.025) : 6;
   const camX = sim.x;
   const camY = Math.max(0, sim.y - 32);
+  const shakeX = sim.shake > 0 ? (Math.random() - 0.5) * sim.shake * 34 : 0;
+  const shakeY = sim.shake > 0 ? (Math.random() - 0.5) * sim.shake * 34 : 0;
 
-  const worldToScreenX = (wx: number) => 170 + (wx - camX) * scale;
-  const worldToScreenY = (wy: number) => GROUND_Y - (wy - camY) * scale;
+  const worldToScreenX = (wx: number) => 170 + (wx - camX) * scale + shakeX;
+  const worldToScreenY = (wy: number) => GROUND_Y - (wy - camY) * scale + shakeY;
+
+  // Speed lines
+  const flightSpeed = Math.hypot(sim.vx, sim.vy);
+  if (phase === 'flying' && (flightSpeed > 55 || sim.boostActive > 0)) {
+    const intensity = Math.min(0.3, (flightSpeed - 45) / 420 + (sim.boostActive > 0 ? 0.12 : 0));
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0.05, intensity)})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 14; i++) {
+      const ly = ((i * 73 + sim.x * 11) % (CANVAS_H + 80)) - 40;
+      const lx = ((i * 191 + sim.x * 17) % (CANVAS_W + 160)) - 80;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx - 45 - intensity * 90, ly + 2);
+      ctx.stroke();
+    }
+  }
 
   // Parallax Distant Skyline / Viaduct / Resort
   ctx.fillStyle = 'rgba(10, 12, 22, 0.45)';
@@ -1367,26 +1635,40 @@ function renderScene(
     if (phase === 'aim_angle' || phase === 'aim_power') {
       ctx.save();
       ctx.translate(hqX, hqY);
-      ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.3)';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(0, 0, 72, (-75 * Math.PI) / 180, (-15 * Math.PI) / 180);
       ctx.stroke();
 
+      // Perfect angle zone 40-50 degrees
+      ctx.strokeStyle = 'rgba(74, 222, 128, 0.9)';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(0, 0, 72, (-50 * Math.PI) / 180, (-40 * Math.PI) / 180);
+      ctx.stroke();
+
       // Pointer ray
-      ctx.strokeStyle = '#facc15';
+      const angleIsPerfect = sim.angleDeg >= 40 && sim.angleDeg <= 50;
+      ctx.strokeStyle = angleIsPerfect ? '#4ade80' : '#facc15';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(Math.cos(-rad) * 86, Math.sin(-rad) * 86);
       ctx.stroke();
 
-      // Power bar
+      // Power bar with perfect zone
       if (phase === 'aim_power') {
-        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillStyle = 'rgba(0,0,0,0.78)';
         ctx.fillRect(-50, -115, 120, 16);
-        ctx.fillStyle = sim.powerPct >= 88 ? '#f43f5e' : '#facc15';
+        ctx.fillStyle = 'rgba(74, 222, 128, 0.45)';
+        ctx.fillRect(-48 + 116 * 0.85, -113, 116 * 0.15, 12);
+        ctx.fillStyle = sim.powerPct >= 85 ? '#4ade80' : '#facc15';
         ctx.fillRect(-48, -113, (116 * sim.powerPct) / 100, 12);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PERFECT 85%+', 10, -119);
       }
       ctx.restore();
 
@@ -1474,6 +1756,32 @@ function renderScene(
     ctx.restore();
   }
 
+  // 定時コイン
+  const coinPhase = performance.now() / 260;
+  for (const coin of sim.coins) {
+    if (coin.collected) continue;
+    const cx = worldToScreenX(coin.x);
+    const cy = worldToScreenY(coin.y);
+    if (cx < -30 || cx > CANVAS_W + 30) continue;
+    const bob = Math.sin(coinPhase + coin.id) * 3;
+    ctx.save();
+    ctx.translate(cx, cy + bob);
+    ctx.fillStyle = sim.boostActive > 0 ? '#fde047' : '#facc15';
+    ctx.beginPath();
+    ctx.arc(0, 0, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#a16207';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#422006';
+    ctx.font = '900 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('定', 0, 1);
+    ctx.restore();
+  }
+  ctx.textBaseline = 'alphabetic';
+
   // Particles
   for (const p of sim.particles) {
     const px = worldToScreenX(p.x);
@@ -1489,6 +1797,18 @@ function renderScene(
   // Player Salaryman
   const px = worldToScreenX(sim.x);
   const py = worldToScreenY(sim.y);
+  if (sim.boostActive > 0) {
+    const pulse = 26 + Math.sin(performance.now() / 80) * 5;
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.8)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(px, py - 10, pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.14)';
+    ctx.beginPath();
+    ctx.arc(px, py - 10, pulse + 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.save();
   ctx.translate(px, py - 12);
   ctx.rotate(phase === 'flying' ? sim.rotation : (-sim.angleDeg * Math.PI) / 180);
@@ -1530,20 +1850,20 @@ function renderScene(
   ctx.restore();
 
   // Floating Banners
-  let bannerY = 92;
-  for (const b of sim.banners) {
+  let bannerY = 155;
+  for (const b of sim.banners.slice(-2)) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, b.life);
-    ctx.font = '900 22px sans-serif';
+    ctx.font = '900 26px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = b.color;
     ctx.fillText(b.text, CANVAS_W / 2, bannerY);
     if (b.subText) {
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = 'bold 14px sans-serif';
       ctx.fillStyle = '#f8fafc';
-      ctx.fillText(b.subText, CANVAS_W / 2, bannerY + 18);
+      ctx.fillText(b.subText, CANVAS_W / 2, bannerY + 22);
     }
     ctx.restore();
-    bannerY += 42;
+    bannerY += 48;
   }
 }

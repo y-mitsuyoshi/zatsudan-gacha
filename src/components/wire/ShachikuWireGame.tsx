@@ -9,6 +9,10 @@ const STORAGE_KEY = 'shachiku-wire-v1';
 const CANVAS_W = 960;
 const CANVAS_H = 540;
 const DANGER_Y = 495;
+const START_X = 90;
+const PERFECT_MIN = 10;
+const PERFECT_MAX = 65;
+const MAX_TETHER_TIME = 5;
 
 type CourseId = 'stage1' | 'stage2' | 'endless';
 
@@ -106,6 +110,33 @@ interface WireBanner {
   life: number;
 }
 
+function findBestAnchor(x: number, y: number, anchors: AnchorPoint[]): AnchorPoint | null {
+  let best: AnchorPoint | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const a of anchors) {
+    const dx = a.x - x;
+    const dy = a.y - y;
+    if (dx > -20 && dx < 520 && dy < 90) {
+      const dist = Math.hypot(dx, dy);
+      const score = Math.abs(dx - 150) + dist * 0.3;
+      if (score < bestScore) {
+        bestScore = score;
+        best = a;
+      }
+    }
+  }
+  return best;
+}
+
+function haptic(pattern: number | number[]) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* ignore */
+  }
+}
+
 class WireSoundEngine {
   private ctx: AudioContext | null = null;
 
@@ -193,6 +224,9 @@ export default function ShachikuWireGame() {
     safetyNets: 1,
     speedKmh: 0,
     releaseAngle: 0,
+    tethered: false,
+    anchorReady: false,
+    swingTime: 0,
   });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -217,6 +251,9 @@ export default function ShachikuWireGame() {
     dashCharges: 1,
     safetyNets: 2,
     perfectCount: 0,
+    swingTime: 0,
+    anchorMissCooldown: 0,
+    shake: 0,
     nextAnchorX: 280,
     anchors: [] as AnchorPoint[],
     rings: [] as WifiRing[],
@@ -309,7 +346,7 @@ export default function ShachikuWireGame() {
       const c = COURSES.find((item) => item.id === activeId) ?? COURSES[0];
 
       simRef.current = {
-        x: 90,
+        x: START_X,
         y: 220,
         vx: 390,
         vy: -60,
@@ -322,6 +359,9 @@ export default function ShachikuWireGame() {
         dashCharges: 1,
         safetyNets: 2,
         perfectCount: 0,
+        swingTime: 0,
+        anchorMissCooldown: 0,
+        shake: 0,
         nextAnchorX: 250,
         anchors: [],
         rings: [],
@@ -340,6 +380,9 @@ export default function ShachikuWireGame() {
         safetyNets: 2,
         speedKmh: 65,
         releaseAngle: 0,
+        tethered: false,
+        anchorReady: true,
+        swingTime: 0,
       });
       setPhase('playing');
     },
@@ -351,32 +394,26 @@ export default function ShachikuWireGame() {
     const sim = simRef.current;
     if (sim.tetheredTo) return;
 
-    // Pick best overhead anchor slightly ahead of or above player
-    let best: AnchorPoint | null = null;
-    let bestScore = Number.POSITIVE_INFINITY;
-    for (const a of sim.anchors) {
-      const dx = a.x - sim.x;
-      const dy = a.y - sim.y;
-      if (dx > -80 && dx < 520 && dy < 70) {
-        const dist = Math.hypot(dx, dy);
-        const score = Math.abs(dx - 150) + dist * 0.3;
-        if (score < bestScore) {
-          bestScore = score;
-          best = a;
-        }
+    const best = findBestAnchor(sim.x, sim.y, sim.anchors);
+    if (!best) {
+      if (sim.anchorMissCooldown <= 0) {
+        sim.anchorMissCooldown = 0.8;
+        addBanner('アンカー圏外', '光回線が届く位置まで落下しよう', '#f59e0b');
+        haptic(20);
       }
+      return;
     }
 
-    if (best) {
-      sim.tetheredTo = best;
-      sim.ropeLen = Math.max(85, Math.min(245, Math.hypot(sim.x - best.x, sim.y - best.y)));
-      sim.swingsCount += 1;
-      if (sim.swingsCount % 3 === 0 && sim.dashCharges < 3) {
-        sim.dashCharges += 1;
-        addBanner('緊急エアダッシュ +1 チャージ！', 'Shift / 右下ボタンで発動可能', '#38bdf8');
-      }
-      sfx.playGrappleAttach();
+    sim.tetheredTo = best;
+    sim.ropeLen = Math.max(85, Math.min(245, Math.hypot(sim.x - best.x, sim.y - best.y)));
+    sim.swingsCount += 1;
+    sim.swingTime = 0;
+    haptic(12);
+    if (sim.swingsCount % 3 === 0 && sim.dashCharges < 3) {
+      sim.dashCharges += 1;
+      addBanner('緊急エアダッシュ +1 チャージ！', 'Shift / 右下ボタンで発動可能', '#38bdf8');
     }
+    sfx.playGrappleAttach();
   }, [addBanner]);
 
   const releaseWire = useCallback(() => {
@@ -385,9 +422,10 @@ export default function ShachikuWireGame() {
     if (!sim.tetheredTo) return;
 
     sim.tetheredTo = null;
+    sim.swingTime = 0;
     // Check upward velocity angle: in screen coords, upward means vy < 0
     const upwardDeg = (Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI;
-    const isPerfect = upwardDeg >= 10 && upwardDeg <= 65 && sim.vx > 150;
+    const isPerfect = upwardDeg >= PERFECT_MIN && upwardDeg <= PERFECT_MAX && sim.vx > 150;
 
     if (isPerfect) {
       sim.combo += 1;
@@ -395,8 +433,10 @@ export default function ShachikuWireGame() {
       sim.perfectCount += 1;
       sim.vx = Math.min(820, sim.vx * 1.26 + 105);
       sim.vy = Math.min(-280, sim.vy * 1.16 - 80);
+      sim.shake = 0.22;
       const pts = 250 * sim.combo;
       sim.score += pts;
+      haptic([12, 20, 18]);
 
       sim.sonicRings.push({
         x: sim.x,
@@ -427,6 +467,8 @@ export default function ShachikuWireGame() {
     sim.vx = Math.max(620, sim.vx + 240);
     sim.vy = -210;
     sim.score += 180;
+    sim.shake = 0.3;
+    haptic(18);
     sim.sonicRings.push({
       x: sim.x,
       y: sim.y,
@@ -444,9 +486,10 @@ export default function ShachikuWireGame() {
       const sim = simRef.current;
       const curCourse = courseRef.current;
       const curSave = saveRef.current;
+      const traveled = Math.max(0, Math.floor((sim.x - START_X) / 6));
       const distM = Math.min(
-        Number.isFinite(curCourse.targetDist) && cleared ? curCourse.targetDist : Math.floor(sim.x / 6),
-        Math.floor(sim.x / 6)
+        Number.isFinite(curCourse.targetDist) && cleared ? curCourse.targetDist : traveled,
+        traveled
       );
       const finalDist = cleared && Number.isFinite(curCourse.targetDist) ? curCourse.targetDist : distM;
       const finalScore = Math.round(sim.score + finalDist * 10 + (cleared ? 3000 : 0));
@@ -468,8 +511,10 @@ export default function ShachikuWireGame() {
         totalPerfects: curSave.totalPerfects + sim.perfectCount,
       };
       persistSave(nextSave);
+      sim.shake = 0;
 
       if (cleared) sfx.playClear();
+      haptic(cleared ? [18, 40, 18] : 80);
       setPhase(cleared ? 'cleared' : 'gameover');
     },
     [persistSave]
@@ -524,9 +569,14 @@ export default function ShachikuWireGame() {
 
       if (phaseRef.current === 'playing') {
         const gravity = 640; // px/s^2 downward
+        sim.shake = Math.max(0, sim.shake - dt * 3.5);
+        if (sim.anchorMissCooldown > 0) {
+          sim.anchorMissCooldown = Math.max(0, sim.anchorMissCooldown - dt);
+        }
 
         if (sim.tetheredTo) {
           const anchor = sim.tetheredTo;
+          sim.swingTime += dt;
           sim.vy += gravity * dt;
           // Active swing pump boost so swinging feels fast and commercial
           sim.vx += 260 * dt;
@@ -560,9 +610,14 @@ export default function ShachikuWireGame() {
             }
           }
 
-          // Auto-release if player swings far past the anchor
-          if (sim.x - anchor.x > sim.ropeLen * 0.92 && sim.y < anchor.y + 25) {
-            releaseWire();
+          // Safety auto-release: holding forever should not stall the run
+          if (sim.swingTime > MAX_TETHER_TIME) {
+            sim.tetheredTo = null;
+            sim.swingTime = 0;
+            sim.vx = Math.max(360, sim.vx);
+            sim.vy = Math.min(sim.vy, -180);
+            addBanner('ワイヤー自動解除', '長押ししすぎ。上昇角で自分から離そう', '#f59e0b');
+            haptic(15);
           }
         } else {
           sim.vy += gravity * dt;
@@ -591,6 +646,8 @@ export default function ShachikuWireGame() {
             sim.vy = Math.min(-140, sim.vy - 95);
             const ringPts = 300 * Math.max(1, sim.combo);
             sim.score += ringPts;
+            sim.shake = 0.18;
+            haptic(10);
             sim.sonicRings.push({
               x: r.x,
               y: r.y,
@@ -609,9 +666,12 @@ export default function ShachikuWireGame() {
           if (sim.safetyNets > 0) {
             sim.safetyNets -= 1;
             sim.tetheredTo = null;
+            sim.swingTime = 0;
             sim.y = DANGER_Y - 12;
             sim.vy = -520;
             sim.vx = Math.max(410, sim.vx);
+            sim.shake = 0.32;
+            haptic(22);
             sfx.playSafetyTrampoline();
             addBanner('始末書トランポリン発動！', `緊急復帰成功（残り保険 ${sim.safetyNets}回）`, '#34d399');
           } else {
@@ -620,7 +680,7 @@ export default function ShachikuWireGame() {
         }
 
         // Check Course Goal (Last Train Reached!)
-        const distM = Math.floor(sim.x / 6);
+        const distM = Math.max(0, Math.floor((sim.x - START_X) / 6));
         if (Number.isFinite(curCourse.targetDist) && distM >= curCourse.targetDist) {
           finalizeRun(true);
         }
@@ -643,6 +703,7 @@ export default function ShachikuWireGame() {
         hudTimer += dt;
         if (hudTimer >= 0.06) {
           hudTimer = 0;
+          const bestAnchor = findBestAnchor(sim.x, sim.y, sim.anchors);
           setHud({
             distanceM: distM,
             targetM: curCourse.targetDist,
@@ -653,6 +714,9 @@ export default function ShachikuWireGame() {
             safetyNets: sim.safetyNets,
             speedKmh: Math.round(Math.hypot(sim.vx, sim.vy) * 0.18),
             releaseAngle: sim.tetheredTo ? Math.round((Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI) : 0,
+            tethered: Boolean(sim.tetheredTo),
+            anchorReady: Boolean(bestAnchor),
+            swingTime: sim.tetheredTo ? sim.swingTime : 0,
           });
         }
       }
@@ -712,7 +776,7 @@ export default function ShachikuWireGame() {
                 <p className="text-[10px] font-bold tracking-widest text-cyan-300">SHACHIKU WIRE / LAST TRAIN SWING</p>
                 <h2 className="mt-2 text-2xl font-black text-white">社畜ワイヤー疾走</h2>
                 <p className="mt-2 text-xs leading-6 text-slate-300">
-                  頭上のアンカーにワイヤーを接続し、振り子の勢いで終電を目指せ。上昇角で離すとPERFECT RELEASE。
+                  画面を押して頭上のアンカーに接続、離してリリース。上昇角10°〜65°で離すとPERFECT RELEASE。緑の扇と「RELEASE!」表示が合図だ。
                 </p>
                 <div className="mt-4 space-y-2">
                   {COURSES.map((c) => (
@@ -732,7 +796,6 @@ export default function ShachikuWireGame() {
             <div
               className="relative overflow-hidden rounded-xl border-2 border-slate-800 bg-slate-950 shadow-2xl"
               onPointerDown={(e) => {
-                if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
                 if (e.button === 2) {
                   e.preventDefault();
                   triggerAirDash();
@@ -743,7 +806,6 @@ export default function ShachikuWireGame() {
                 }
               }}
               onPointerUp={(e) => {
-                if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
                 if (phase === 'playing') {
                   e.preventDefault();
                   releaseWire();
@@ -753,6 +815,45 @@ export default function ShachikuWireGame() {
               onContextMenu={(e) => e.preventDefault()}
               style={{ touchAction: 'none' }}
             >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-slate-950/95 px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400">DISTANCE</p>
+                    <p className="font-mono text-base font-black leading-tight text-cyan-300 sm:text-xl">
+                      {hud.distanceM.toLocaleString()}
+                      {Number.isFinite(hud.targetM) ? (
+                        <span className="text-[10px] text-slate-400"> / {hud.targetM}m</span>
+                      ) : (
+                        <span className="text-[10px]"> m</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400">SCORE</p>
+                    <p className="font-mono text-sm font-bold leading-tight text-amber-300">{hud.score.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400">COMBO</p>
+                    <p className="font-mono text-sm font-black leading-tight text-fuchsia-300">{hud.combo}x</p>
+                  </div>
+                </div>
+                <div className="hidden items-center gap-2 sm:flex">
+                  <div className="rounded border border-emerald-500/40 bg-emerald-950/50 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                    始末書トランポリン: {hud.safetyNets}回
+                  </div>
+                  <div className="rounded border border-cyan-500/40 bg-cyan-950/50 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-200">
+                    {hud.speedKmh} km/h
+                  </div>
+                  <div className={`rounded border px-2 py-0.5 text-[10px] font-bold ${
+                    hud.releaseAngle >= 10 && hud.releaseAngle <= 65
+                      ? 'border-emerald-400 bg-emerald-950/60 text-emerald-300'
+                      : 'border-slate-600 bg-slate-950/60 text-slate-300'
+                  }`}>
+                    {hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'RELEASE!' : `角度 ${hud.releaseAngle}°`}
+                  </div>
+                </div>
+              </div>
+
               <canvas
                 ref={canvasRef}
                 width={CANVAS_W}
@@ -760,55 +861,11 @@ export default function ShachikuWireGame() {
                 className="block aspect-[16/9] w-full cursor-pointer"
               />
 
-              {/* HUD */}
-              {phase === 'playing' && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-b from-black/80 via-black/35 to-transparent p-3">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400">DISTANCE</p>
-                      <p className="font-mono text-xl font-black text-cyan-300 sm:text-2xl">
-                        {hud.distanceM.toLocaleString()}
-                        {Number.isFinite(hud.targetM) ? (
-                          <span className="text-xs text-slate-400"> / {hud.targetM}m</span>
-                        ) : (
-                          <span className="text-xs"> m</span>
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400">SCORE</p>
-                      <p className="font-mono text-lg font-bold text-amber-300">{hud.score.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400">COMBO</p>
-                      <p className="font-mono text-lg font-black text-fuchsia-300">{hud.combo}x</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="rounded border border-emerald-500/40 bg-emerald-950/50 px-2.5 py-1 text-xs font-bold text-emerald-300">
-                      始末書トランポリン: {hud.safetyNets}回
-                    </div>
-                    <div className="rounded border border-cyan-500/40 bg-cyan-950/50 px-2.5 py-1 font-mono text-xs font-bold text-cyan-200">
-                      {hud.speedKmh} km/h
-                    </div>
-                    <div className={`rounded border px-2.5 py-1 text-xs font-bold ${
-                      hud.releaseAngle >= 10 && hud.releaseAngle <= 65
-                        ? 'border-emerald-400 bg-emerald-950/60 text-emerald-300'
-                        : 'border-slate-600 bg-slate-950/60 text-slate-300'
-                    }`}>
-                      {hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'RELEASE!' : `角度 ${hud.releaseAngle}°`}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Bottom Controls during Gameplay */}
               {phase === 'playing' && (
-                <div className="absolute inset-x-0 bottom-3 hidden items-center justify-between px-4 sm:flex">
+                <div className="hidden items-center justify-between gap-3 border-t border-slate-800 bg-slate-950/95 px-4 py-2 sm:flex">
                   <div className="pointer-events-none rounded-lg border border-slate-700 bg-black/75 px-3 py-1.5 text-xs text-slate-200">
-                    長押し / Space: <span className="font-bold text-cyan-300">光回線ワイヤー射出</span> ・ 上昇角(10°〜65°)で離すと{' '}
-                    <span className="font-bold text-amber-300">PERFECT RELEASE!</span>
+                    Space長押しで<span className="font-bold text-cyan-300">接続</span> / 離して<span className="font-bold text-amber-300">リリース</span>（緑の扇でPERFECT）
                   </div>
                   <button
                     type="button"
@@ -839,7 +896,7 @@ export default function ShachikuWireGame() {
                     社畜ワイヤー疾走：終電スイングアクション
                   </h2>
                   <p className="mt-2 max-w-lg text-xs leading-relaxed text-slate-300 sm:text-sm">
-                    ホールドで頭上のネオン看板やタワークレーンへ光回線ワイヤーを接続！振り子の遠心力で加速し、斜め上（10°〜65°）へ振り上がる瞬間に離してPERFECT RELEASEを決め、終電エクスプレスに飛び乗ろう。
+                    画面を押すと頭上のネオン看板やタワークレーンへ光回線ワイヤーを接続。振り子の遠心力で加速し、緑の扇が重なる斜め上（10°〜65°）で離してPERFECT RELEASEを決め、終電エクスプレスに飛び乗ろう。
                   </p>
                   <button
                     type="button"
@@ -880,36 +937,74 @@ export default function ShachikuWireGame() {
               )}
             </div>
             {phase === 'playing' && (
-              <div className="grid grid-cols-[1fr_auto] gap-2 sm:hidden">
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.setPointerCapture?.(e.pointerId);
-                    attachWire();
-                  }}
-                  onPointerUp={() => releaseWire()}
-                  onPointerCancel={() => releaseWire()}
-                  className="rounded-xl border-2 border-cyan-300 bg-cyan-500 px-4 py-3 text-sm font-black text-slate-950 active:scale-95"
-                  style={{ touchAction: 'none' }}
-                >
-                  ワイヤー（長押し）
-                </button>
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    triggerAirDash();
-                  }}
-                  disabled={hud.dashCharges <= 0}
-                  className={`rounded-xl border-2 px-4 py-3 text-sm font-black ${
-                    hud.dashCharges <= 0
-                      ? 'border-slate-700 bg-slate-900 text-slate-500'
-                      : 'border-amber-300 bg-amber-400 text-slate-950 active:scale-95'
-                  }`}
-                >
-                  ダッシュ {hud.dashCharges}
-                </button>
+              <div className="space-y-2 sm:hidden">
+                <div className="rounded-xl border border-cyan-500/40 bg-slate-900 px-3 py-2">
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className={hud.tethered ? (hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'text-green-300' : 'text-cyan-200') : hud.anchorReady ? 'text-cyan-300' : 'text-slate-400'}>
+                      {hud.tethered
+                        ? `上昇角 ${hud.releaseAngle}°`
+                        : hud.anchorReady
+                        ? 'アンカー接続可能'
+                        : 'アンカー圏外'}
+                    </span>
+                    <span className={hud.tethered && hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'text-green-300' : 'text-slate-400'}>
+                      {hud.tethered && hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'PERFECT!' : '10°〜65°でPERFECT'}
+                    </span>
+                  </div>
+                  <div className="relative mt-1.5 h-3 overflow-hidden rounded-full border border-slate-700 bg-slate-950">
+                    <div className="absolute inset-y-0 bg-green-500/30" style={{ left: '11.1%', width: '61.1%' }} />
+                    <div
+                      className={`absolute top-0 h-full w-0.5 ${hud.tethered && hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'bg-green-300' : 'bg-cyan-200'}`}
+                      style={{ left: `${Math.min(100, Math.max(0, (hud.releaseAngle / 90) * 100))}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[9px] font-bold text-slate-400">
+                    <span>始末書トランポリン {hud.safetyNets}回</span>
+                    <span>{hud.speedKmh} km/h</span>
+                    <span>コンボ {hud.combo}x</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.setPointerCapture?.(e.pointerId);
+                      attachWire();
+                    }}
+                    onPointerUp={() => releaseWire()}
+                    onPointerCancel={() => releaseWire()}
+                    className={`rounded-xl border-2 px-4 py-3 text-sm font-black text-slate-950 active:scale-95 ${
+                      hud.tethered && hud.releaseAngle >= 10 && hud.releaseAngle <= 65
+                        ? 'border-green-300 bg-green-400'
+                        : 'border-cyan-300 bg-cyan-500'
+                    }`}
+                    style={{ touchAction: 'none' }}
+                  >
+                    {hud.tethered
+                      ? hud.releaseAngle >= 10 && hud.releaseAngle <= 65
+                        ? '離してPERFECT!'
+                        : '離してリリース'
+                      : hud.anchorReady
+                      ? '押してワイヤー接続'
+                      : 'アンカー待ち'}
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerAirDash();
+                    }}
+                    disabled={hud.dashCharges <= 0}
+                    className={`rounded-xl border-2 px-4 py-3 text-sm font-black ${
+                      hud.dashCharges <= 0
+                        ? 'border-slate-700 bg-slate-900 text-slate-500'
+                        : 'border-amber-300 bg-amber-400 text-slate-950 active:scale-95'
+                    }`}
+                  >
+                    ダッシュ {hud.dashCharges}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -920,13 +1015,22 @@ export default function ShachikuWireGame() {
                 </p>
                 <h3 className="mt-1 text-xl font-black text-white">到達距離 {hud.distanceM.toLocaleString()} m</h3>
                 <p className="mt-1 text-xs text-slate-300">スコア {hud.score.toLocaleString()} / 最大コンボ {simRef.current.maxCombo}</p>
-                <button
-                  type="button"
-                  onClick={() => startCourse()}
-                  className="mt-3 w-full rounded-xl border-2 border-cyan-300 bg-cyan-500 px-4 py-3 text-sm font-black text-slate-950 active:scale-[0.98]"
-                >
-                  もう一度スイングする
-                </button>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startCourse()}
+                    className="rounded-xl border-2 border-cyan-300 bg-cyan-500 px-4 py-3 text-sm font-black text-slate-950 active:scale-[0.98]"
+                  >
+                    もう一度
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhase('title')}
+                    className="rounded-xl border-2 border-slate-600 bg-slate-800 px-4 py-3 text-sm font-black text-slate-200 active:scale-[0.98]"
+                  >
+                    コース変更
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -997,6 +1101,8 @@ function renderWireScene(
     sonicRings: SonicRing[];
     ribbon: RibbonPoint[];
     banners: WireBanner[];
+    swingTime: number;
+    shake: number;
   },
   course: CourseConfig
 ) {
@@ -1007,6 +1113,26 @@ function renderWireScene(
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   const camX = sim.x - 210;
+  const shakeX = sim.shake > 0 ? (Math.random() - 0.5) * sim.shake * 28 : 0;
+  const shakeY = sim.shake > 0 ? (Math.random() - 0.5) * sim.shake * 28 : 0;
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // Speed lines
+  const speed = Math.hypot(sim.vx, sim.vy);
+  if (speed > 480) {
+    const intensity = Math.min(0.26, (speed - 420) / 1300);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0.04, intensity)})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i++) {
+      const ly = (i * 71 + sim.x * 0.9) % CANVAS_H;
+      const lx = (i * 179 + sim.x * 1.7) % (CANVAS_W + 120);
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx - 60 - intensity * 120, ly + 3);
+      ctx.stroke();
+    }
+  }
 
   // Parallax Cyberpunk Neon Skyline
   for (let i = -1; i < 12; i++) {
@@ -1032,9 +1158,19 @@ function renderWireScene(
   ctx.lineTo(CANVAS_W, DANGER_Y);
   ctx.stroke();
 
+  if (sim.y > DANGER_Y - 96) {
+    const dangerAlpha = Math.min(0.3, (sim.y - (DANGER_Y - 96)) / 220);
+    ctx.fillStyle = `rgba(244, 63, 94, ${dangerAlpha})`;
+    ctx.fillRect(0, DANGER_Y - 66, CANVAS_W, 66);
+    ctx.fillStyle = '#fecdd3';
+    ctx.font = '900 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('DANGER: 落下注意', CANVAS_W / 2, DANGER_Y - 22);
+  }
+
   // Goal Last Train Express if near targetDist
   if (Number.isFinite(course.targetDist)) {
-    const goalPx = course.targetDist * 6 - camX;
+    const goalPx = START_X + course.targetDist * 6 - camX;
     if (goalPx > -200 && goalPx < CANVAS_W + 300) {
       ctx.fillStyle = '#facc15';
       ctx.fillRect(goalPx, 120, 220, 62);
@@ -1046,15 +1182,34 @@ function renderWireScene(
   }
 
   // Overhead Anchors
+  const bestAnchor = findBestAnchor(sim.x, sim.y, sim.anchors);
   for (const a of sim.anchors) {
     const sx = a.x - camX;
     if (sx < -80 || sx > CANVAS_W + 80) continue;
     const isActive = sim.tetheredTo?.id === a.id;
+    const isBest = !sim.tetheredTo && bestAnchor?.id === a.id;
+
+    if (isBest) {
+      const pulse = 18 + Math.sin(performance.now() / 180) * 4;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(103, 232, 249, 0.75)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath();
+      ctx.moveTo(sim.x - camX, sim.y);
+      ctx.lineTo(sx, a.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(sx, a.y, pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.translate(sx, a.y);
-    ctx.strokeStyle = isActive ? '#facc15' : course.accent;
-    ctx.lineWidth = isActive ? 3.5 : 2;
+    ctx.strokeStyle = isActive ? '#facc15' : isBest ? '#67e8f9' : course.accent;
+    ctx.lineWidth = isActive ? 3.5 : isBest ? 3 : 2;
     ctx.beginPath();
     ctx.arc(0, 0, isActive ? 16 : 12, 0, Math.PI * 2);
     ctx.stroke();
@@ -1063,6 +1218,12 @@ function renderWireScene(
     ctx.beginPath();
     ctx.arc(0, 0, 6, 0, Math.PI * 2);
     ctx.fill();
+    if (isBest) {
+      ctx.fillStyle = '#a5f3fc';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('HOLD', 0, -22);
+    }
     ctx.restore();
   }
 
@@ -1104,12 +1265,65 @@ function renderWireScene(
   if (sim.tetheredTo) {
     const ax = sim.tetheredTo.x - camX;
     const ay = sim.tetheredTo.y;
+    const upwardDeg = (Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI;
+    const inWindow = upwardDeg >= PERFECT_MIN && upwardDeg <= PERFECT_MAX;
+
     ctx.strokeStyle = '#22d3ee';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(px, py);
     ctx.lineTo(ax, ay);
     ctx.stroke();
+
+    // Release arc: green sector means PERFECT RELEASE
+    ctx.fillStyle = inWindow ? 'rgba(74, 222, 128, 0.2)' : 'rgba(34, 211, 238, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.arc(px, py, 64, (-PERFECT_MAX * Math.PI) / 180, (-PERFECT_MIN * Math.PI) / 180);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = inWindow ? '#4ade80' : 'rgba(34, 211, 238, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, py, 64, (-PERFECT_MAX * Math.PI) / 180, (-PERFECT_MIN * Math.PI) / 180);
+    ctx.stroke();
+
+    // Current velocity arrow
+    const velAngle = Math.atan2(sim.vy, Math.max(10, sim.vx));
+    ctx.strokeStyle = inWindow ? '#4ade80' : '#facc15';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + Math.cos(velAngle) * 78, py + Math.sin(velAngle) * 78);
+    ctx.stroke();
+
+    // Short trajectory preview
+    let tx = px;
+    let ty = py;
+    let tvx = sim.vx;
+    let tvy = sim.vy;
+    ctx.fillStyle = 'rgba(248, 250, 252, 0.6)';
+    for (let i = 0; i < 8; i++) {
+      const t = 0.055;
+      tvy += 640 * t;
+      tx += tvx * t;
+      ty += tvy * t;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.font = '900 17px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = inWindow ? '#4ade80' : '#f8fafc';
+    ctx.fillText(inWindow ? 'RELEASE!' : `${Math.round(upwardDeg)}°`, px, Math.max(34, py - 76));
+    if (sim.swingTime > MAX_TETHER_TIME - 1.4) {
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('ワイヤー限界', px, Math.max(50, py - 58));
+    }
+    ctx.restore();
   }
 
   // Sonic Rings
@@ -1152,20 +1366,21 @@ function renderWireScene(
   ctx.restore();
 
   // Floating Banners
-  let by = 92;
-  for (const b of sim.banners) {
+  let by = 155;
+  for (const b of sim.banners.slice(-2)) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, b.life);
-    ctx.font = '900 22px sans-serif';
+    ctx.font = '900 26px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = b.color;
     ctx.fillText(b.text, CANVAS_W / 2, by);
     if (b.sub) {
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = 'bold 14px sans-serif';
       ctx.fillStyle = '#f8fafc';
-      ctx.fillText(b.sub, CANVAS_W / 2, by + 18);
+      ctx.fillText(b.sub, CANVAS_W / 2, by + 22);
     }
     ctx.restore();
-    by += 42;
+    by += 48;
   }
+  ctx.restore();
 }
