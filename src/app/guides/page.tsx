@@ -10,6 +10,15 @@ const APP_URL = 'https://zatsudan-gacha.app';
 export const metadata: Metadata = {
   title: 'シーン別・雑談お題ガイド｜会議・1on1・飲み会・リモートワーク',
   description: '会議のアイスブレイク、1on1、リモートワーク、飲み会、会話が続かないときなど、シーン別に使える雑談お題ガイドをまとめました。質問例と会話を広げるコツを紹介します。',
+  keywords: [
+    '雑談 ガイド',
+    'アイスブレイク 質問',
+    '会議 雑談 ネタ',
+    '1on1 質問',
+    'リモートワーク 雑談',
+    '飲み会 話題',
+    'チームビルディング',
+  ],
   alternates: {
     canonical: '/guides',
   },

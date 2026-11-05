@@ -9,6 +9,16 @@ const APP_URL = 'https://zatsudan-gacha.app';
 export const metadata: Metadata = {
   title: '無料で使える便利ツール一覧｜プロフィール・診断・言い訳・駅名標',
   description: '推し活プロフィールメーカー、異世界転生ステータスカード、究極の言い訳ジェネレーター、駅名標メーカーなど、登録不要で使える無料Webツールを一覧で紹介します。スマホ対応。',
+  keywords: [
+    '無料 Webツール',
+    'プロフィールメーカー',
+    '異世界転生 診断',
+    '言い訳ジェネレーター',
+    '駅名標メーカー',
+    '画像作成 無料',
+    'SNS シェア',
+    'スマホ ツール',
+  ],
   alternates: {
     canonical: '/tools',
   },

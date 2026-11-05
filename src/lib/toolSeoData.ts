@@ -5,6 +5,7 @@ export type ToolSeoData = {
   name: string;
   description: string;
   image: string;
+  steps: { title: string; text: string }[];
   faqs: SeoFaq[];
   related: SeoRelated[];
 };
@@ -17,6 +18,11 @@ export const TOOL_SEO_DATA: Record<'profile' | 'isekai' | 'excuse' | 'station', 
     name: '推し活プロフィールメーカー',
     description: '推しの名前、好きなところ、出会いのきっかけ、名言などを入力して、オリジナルの推し紹介カードを作成できる無料ツールです。10種類のテンプレート、画像保存、テキストコピー、Xシェアに対応しています。',
     image: '/ogp.png',
+    steps: [
+      { title: 'テンプレートを選ぶ', text: '10種類のデザインから、推しの雰囲気に合うテンプレートを選びます。' },
+      { title: '推しの情報を入力・調整する', text: '名前、好きなところ、出会いのきっかけ、名言などを入力し、色やレイアウトを調整します。' },
+      { title: '画像保存・コピー・シェア', text: '完成したカードをPNG画像として保存するか、テキストをコピーしてSNSで共有します。' },
+    ],
     faqs: [
       { q: '推し活プロフィールメーカーは無料ですか？', a: 'はい。すべてのテンプレートと機能を無料で利用できます。会員登録やログインは不要です。' },
       { q: '入力した内容や画像はサーバーに送信されますか？', a: '入力内容と画像はブラウザ内で処理され、下書きとしてlocalStorageに保存されます。画像の生成もブラウザ内で行われ、サーバーには送信されません。' },
@@ -35,6 +41,11 @@ export const TOOL_SEO_DATA: Record<'profile' | 'isekai' | 'excuse' | 'station', 
     name: '異世界転生ステータスカード',
     description: '5つの質問に答えるだけで、異世界での職業・能力値・固有スキル・装備・レアリティを診断できる無料ツールです。画像保存、テキストコピー、SNSシェアに対応しています。',
     image: '/ogp.png',
+    steps: [
+      { title: '5つの質問に答える', text: '名前や性格、好みに関する質問に回答します。' },
+      { title: '異世界ステータスを診断する', text: '回答内容から職業・能力値・固有スキル・装備・レアリティが決定します。' },
+      { title: '結果を保存・シェアする', text: 'ステータスカードを画像として保存したり、テキストをコピーしてSNSで共有できます。' },
+    ],
     faqs: [
       { q: '異世界転生ステータスカードは無料ですか？', a: 'はい。診断・画像保存・テキストコピー・シェアをすべて無料で利用できます。' },
       { q: '診断結果は保存されますか？', a: '診断結果はページ上に表示され、画像として保存できます。サーバーには保存されません。' },
@@ -53,6 +64,11 @@ export const TOOL_SEO_DATA: Record<'profile' | 'isekai' | 'excuse' | 'station', 
     name: '究極の言い訳ジェネレーター',
     description: 'AIが、遅刻・納期遅れ・飲み会の断りなど、さまざまなシーンに合わせた言い訳を生成する無料ツールです。10種類の文体と詳細条件を選べ、生成履歴はブラウザに保存されます。',
     image: '/ogp.png',
+    steps: [
+      { title: 'シチュエーションを選ぶ', text: '遅刻、納期遅れ、飲み会の断りなどから、ピンチの場面を選びます。' },
+      { title: 'トーンと詳細を指定する', text: '10種類の文体から選び、相手や状況などの詳細情報を必要に応じて入力します。' },
+      { title: '言い訳を生成して使う', text: '生成された文章をコピーしたり、履歴に保存したりして、その場で活用します。' },
+    ],
     faqs: [
       { q: '言い訳ジェネレーターは無料ですか？', a: 'はい。AIによる言い訳生成を無料で利用できます。会員登録は不要です。' },
       { q: 'どんなトーン（文体）がありますか？', a: '真面目・ビジネス用、ユーモア・社畜風、異世界転生風、マッチョ風、ツンデレ風、文豪風、猫風、ラップ風、ギャル風、ランダムの10種類です。' },
@@ -71,6 +87,11 @@ export const TOOL_SEO_DATA: Record<'profile' | 'isekai' | 'excuse' | 'station', 
     name: '駅名標メーカー',
     description: '駅名・ローマ字・路線記号・駅番号・路線カラーを入力して、オリジナルの駅名標を作成できる無料ツールです。3種類のテンプレート、画像保存、Xシェアに対応しています。',
     image: '/ogp.png',
+    steps: [
+      { title: 'テンプレートを選ぶ', text: '定番ボード、サークルライン、ミニマルから好みのデザインを選びます。' },
+      { title: '駅名と路線情報を入力する', text: '駅名、ローマ字、路線記号、駅番号、路線カラーを入力してプレビューを確認します。' },
+      { title: '画像を保存・シェアする', text: '完成した駅名標をPNG画像として保存し、SNSや友達との共有に利用できます。' },
+    ],
     faqs: [
       { q: '駅名標メーカーは無料ですか？', a: 'はい。すべてのテンプレートと機能を無料で利用できます。登録は不要です。' },
       { q: '入力した内容はサーバーに送信されますか？', a: '入力内容はブラウザ内で処理され、画像生成もブラウザ内で行われます。サーバーには送信されません。' },
@@ -94,21 +115,39 @@ export function buildToolJsonLd(tool: ToolSeoData) {
     {
       '@context': 'https://schema.org',
       '@type': 'WebApplication',
+      '@id': `${url}#webapp`,
       name: tool.name,
       description: tool.description,
       url,
       image,
+      screenshot: image,
       applicationCategory: 'UtilitiesApplication',
       operatingSystem: 'Any',
       browserRequirements: 'JavaScript',
       inLanguage: 'ja-JP',
       isAccessibleForFree: true,
+      isPartOf: { '@id': `${APP_URL}/#website` },
+      featureList: tool.steps.map((step) => step.title),
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'JPY' },
       publisher: { '@id': `${APP_URL}/#organization` },
     },
     {
       '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: `${tool.name}の使い方`,
+      description: tool.description,
+      inLanguage: 'ja-JP',
+      step: tool.steps.map((step, index) => ({
+        '@type': 'HowToStep',
+        position: index + 1,
+        name: step.title,
+        text: step.text,
+      })),
+    },
+    {
+      '@context': 'https://schema.org',
       '@type': 'FAQPage',
+      '@id': `${url}#faq`,
       mainEntity: tool.faqs.map((faq) => ({
         '@type': 'Question',
         name: faq.q,

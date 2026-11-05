@@ -7,6 +7,7 @@ import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import { ShareButtons } from '@/components/ShareButtons';
 import { themeData } from '@/lib/themeData';
 import { themeCategories, themeCategoryBySlug } from '@/lib/themeCategories';
+import { guides } from '@/lib/guideData';
 
 const APP_URL = 'https://zatsudan-gacha.app';
 
@@ -38,6 +39,14 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   return {
     title,
     description,
+    keywords: [
+      `${category.name} 雑談`,
+      `${category.name} お題`,
+      `${category.name} アイスブレイク`,
+      '雑談テーマ',
+      '会議 雑談',
+      '1on1 質問',
+    ],
     alternates: {
       canonical: `/themes/${category.slug}`,
     },
@@ -45,6 +54,8 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       title: `${title}｜雑談テーマガチャ`,
       description,
       url,
+      siteName: '雑談テーマガチャ',
+      locale: 'ja_JP',
       type: 'website',
       images: [
         {
@@ -83,6 +94,35 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     ...themeCategories.slice(0, currentIndex),
   ].slice(0, 6);
 
+  const categoryFaqs = [
+    {
+      q: `「${category.name}」の雑談お題はいくつありますか？`,
+      a: `現在「${category.name}」カテゴリには${themes.length}問のお題を収録しています。会議のアイスブレイク、1on1、リモートワークの雑談などにご利用ください。`,
+    },
+    {
+      q: `「${category.name}」のお題はどんな場面で使えますか？`,
+      a: `${category.description} 会議の冒頭、チームの交流、研修のワークショップ、飲み会の話題づくりなど、会話のきっかけが必要な場面で使えます。`,
+    },
+    {
+      q: `「${category.name}」のお題は無料で使えますか？`,
+      a: 'はい。すべてのお題を無料で利用できます。ログインや会員登録は不要です。お題はタップしてコピーできます。',
+    },
+    {
+      q: 'スマートフォンでも使えますか？',
+      a: 'はい。スマートフォン・タブレット・PCのブラウザに対応しています。ガチャの抽選やお題のコピーもそのまま利用できます。',
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: categoryFaqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.q,
+      acceptedAnswer: { '@type': 'Answer', text: faq.a },
+    })),
+  };
+
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -114,11 +154,24 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     name: `${category.name}の雑談お題`,
     description: category.description,
     numberOfItems: themes.length,
+    itemListOrder: 'https://schema.org/ItemListOrderAscending',
     itemListElement: themes.map((theme, index) => ({
       '@type': 'ListItem',
       position: index + 1,
       name: theme,
     })),
+  };
+
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${APP_URL}/themes/${category.slug}#collection`,
+    name: `「${category.name}」の雑談お題`,
+    description: category.description,
+    url: `${APP_URL}/themes/${category.slug}`,
+    inLanguage: 'ja-JP',
+    isPartOf: { '@id': `${APP_URL}/#website` },
+    mainEntity: itemListJsonLd,
   };
 
   return (
@@ -129,7 +182,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(itemListJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(collectionJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
       />
 
       <div className="max-w-4xl mx-auto px-4 pt-6 pb-12">
@@ -223,6 +280,45 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                 <h3 className="font-bold text-sm mt-2 mb-1.5">{tip.title}</h3>
                 <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{tip.text}</p>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="category-faq-heading" className="mb-14">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">FAQ</p>
+          <h2 id="category-faq-heading" className="text-2xl font-black text-gray-900 dark:text-white mb-4">
+            「{category.name}」のお題についてよくある質問
+          </h2>
+          <div className="space-y-2">
+            {categoryFaqs.map((faq) => (
+              <details key={faq.q} className="group rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 text-sm font-bold">
+                  <span>{faq.q}</span>
+                  <span className="shrink-0 text-indigo-500 dark:text-indigo-400 transition-transform group-open:rotate-45" aria-hidden="true">＋</span>
+                </summary>
+                <p className="border-t border-gray-200 px-4 py-3 text-sm leading-7 text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                  {faq.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="related-guides-heading" className="mb-14">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <h2 id="related-guides-heading" className="text-2xl font-black text-gray-900 dark:text-white">
+              あわせて読みたいシーン別ガイド
+            </h2>
+            <Link href="/guides" className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+              ガイド一覧 →
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {guides.slice(0, 3).map((guide) => (
+              <Link key={guide.slug} href={`/guides/${guide.slug}`} className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500">
+                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{guide.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">{guide.description}</p>
+              </Link>
             ))}
           </div>
         </section>

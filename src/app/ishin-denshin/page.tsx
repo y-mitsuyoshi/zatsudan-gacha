@@ -10,6 +10,16 @@ const description =
 export const metadata: Metadata = {
   title: '以心伝心ゲーム｜4択で試す無料パーティーゲーム',
   description,
+  keywords: [
+    '以心伝心ゲーム',
+    'チームビルディング',
+    '会話ゲーム',
+    'アイスブレイク',
+    'オンサイト ゲーム',
+    'オフサイト ゲーム',
+    'チーム 相性',
+    '無料 パーティーゲーム',
+  ],
   alternates: {
     canonical: '/ishin-denshin',
   },

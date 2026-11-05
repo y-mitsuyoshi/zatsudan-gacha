@@ -11,15 +11,57 @@ import {
 } from '@/lib/themeCategories';
 import { guides } from '@/lib/guideData';
 
+const APP_URL = 'https://zatsudan-gacha.app';
+
 export const metadata: Metadata = {
   title: '雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選',
   description: `会議のアイスブレイクやリモートワークの雑談に困ったら「雑談テーマガチャ」。${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、ボタンひとつで会話のきっかけをランダム提案。無料・登録不要で使えます。`,
+  keywords: [
+    '雑談テーマガチャ',
+    '雑談 お題',
+    'アイスブレイク',
+    '会議 雑談',
+    '1on1 質問',
+    'リモートワーク 雑談',
+    'チームビルディング',
+    '飲み会 話題',
+    '会話のネタ',
+    '無料 お題ガチャ',
+  ],
+  authors: [{ name: '雑談テーマガチャ運営チーム' }],
+  creator: '雑談テーマガチャ',
+  publisher: '雑談テーマガチャ',
+  category: 'entertainment',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
   alternates: {
     canonical: '/',
   },
+  openGraph: {
+    title: '雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選',
+    description: `${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、会議・1on1・リモートワーク・飲み会に使える雑談ネタをランダム提案。登録不要・完全無料。`,
+    url: `${APP_URL}/`,
+    siteName: '雑談テーマガチャ',
+    locale: 'ja_JP',
+    type: 'website',
+    images: [{ url: `${APP_URL}/ogp.png`, width: 1200, height: 630, alt: '雑談テーマガチャ - 会議のアイスブレイクお題アプリ' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '雑談テーマガチャ｜会議のアイスブレイクに使えるお題を無料で抽選',
+    description: `${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題から、会議・1on1・リモートワークの雑談ネタをランダム提案。`,
+    images: [`${APP_URL}/ogp.png`],
+  },
 };
-
-const APP_URL = 'https://zatsudan-gacha.app';
 
 const useCases = [
   {
@@ -122,6 +164,15 @@ const faqs = [
   },
 ];
 
+const partyGameLinks = [
+  { title: '少数派ワード', href: '/minority-word', description: '少数派の言葉を見抜く会話ゲーム', mark: 'MINOR' },
+  { title: '以心伝心ゲーム', href: '/ishin-denshin', description: '同じ答えを狙うチームビルディング', mark: 'SYNC' },
+  { title: 'NGワード会議', href: '/ng-word', description: '禁句を言わず会議を乗り切る', mark: 'NG' },
+  { title: '禁句トーク', href: '/kinku-talk', description: '禁句なしでお題を説明するチーム対戦', mark: 'KINKU' },
+  { title: '社長の頭の中', href: '/rank-guess', description: '社長のランキングを予想するチームゲーム', mark: 'RANK' },
+  { title: '連想リレー', href: '/word-chain', description: '言葉をつないで高得点を狙う連想ゲーム', mark: 'CHAIN' },
+];
+
 const otherTools = [
   { title: '社畜人狼', description: '会社を舞台にした人狼ゲーム', href: '/shachiku-jinro', emoji: '🐺' },
   { title: '社畜すごろく', description: '定時退社を目指すすごろく', href: '/shachiku-sugoroku', emoji: '🏢' },
@@ -142,15 +193,19 @@ export default function Home() {
   const websiteJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
+    '@id': `${APP_URL}/#webapp`,
     name: '雑談テーマガチャ',
     alternateName: ['雑談ガチャ', 'お題ガチャ', '雑談お題ジェネレーター'],
     url: `${APP_URL}/`,
+    image: `${APP_URL}/ogp.png`,
+    screenshot: `${APP_URL}/ogp.png`,
     description: `会議のアイスブレイクやリモートワークの雑談に使える、${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題をランダムに提案する無料Webアプリ。`,
     applicationCategory: 'EntertainmentApplication',
     operatingSystem: 'Any',
     browserRequirements: 'JavaScript',
-    inLanguage: 'ja',
+    inLanguage: 'ja-JP',
     isAccessibleForFree: true,
+    isPartOf: { '@id': `${APP_URL}/#website` },
     offers: {
       '@type': 'Offer',
       price: '0',
@@ -165,11 +220,7 @@ export default function Home() {
       'AIによる深掘り質問の提案',
       '会議・1on1・飲み会などシーン別ガイド',
     ],
-    publisher: {
-      '@type': 'Organization',
-      name: '雑談テーマガチャ',
-      url: APP_URL,
-    },
+    publisher: { '@id': `${APP_URL}/#organization` },
   };
 
   const faqJsonLd = {
@@ -190,11 +241,39 @@ export default function Home() {
     '@type': 'ItemList',
     name: '雑談テーマガチャのカテゴリ一覧',
     numberOfItems: themeCategories.length,
+    itemListOrder: 'https://schema.org/ItemListOrderAscending',
     itemListElement: themeCategories.map((category, index) => ({
       '@type': 'ListItem',
       position: index + 1,
       name: `${category.name}の雑談お題`,
       url: `${APP_URL}/themes/${category.slug}`,
+    })),
+  };
+
+  const howToJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: '雑談テーマガチャの使い方',
+    description: 'カテゴリを選び、ガチャを回して、表示されたお題で会話を始めるまでの3ステップ。',
+    inLanguage: 'ja-JP',
+    step: [
+      { '@type': 'HowToStep', position: 1, name: 'カテゴリを選ぶ', text: '会議、1on1、飲み会など、場面に合ったカテゴリを選びます。すべてのテーマからランダムに選ぶこともできます。' },
+      { '@type': 'HowToStep', position: 2, name: 'ガチャを回す', text: 'ボタンを押すと、会話のきっかけになる雑談お題がランダムに表示されます。' },
+      { '@type': 'HowToStep', position: 3, name: '会話を広げる', text: 'お題をコピーして共有したり、AI深掘り質問で会話をさらに広げたりできます。' },
+    ],
+  };
+
+  const partyItemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'みんなで遊ぶパーティーゲーム',
+    numberOfItems: partyGameLinks.length,
+    itemListOrder: 'https://schema.org/ItemListOrderAscending',
+    itemListElement: partyGameLinks.map((game, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: game.title,
+      url: `${APP_URL}${game.href}`,
     })),
   };
 
@@ -211,6 +290,14 @@ export default function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(categoryJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(howToJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(partyItemListJsonLd) }}
       />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-100 via-white to-purple-100 dark:from-indigo-950/60 dark:via-slate-900 dark:to-purple-950/50 border-b border-white/60 dark:border-gray-800">
@@ -477,6 +564,40 @@ export default function Home() {
                   {faq.answer}
                 </p>
               </details>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="party-games-heading">
+          <p className="text-sm font-bold tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">PLAY TOGETHER</p>
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 id="party-games-heading" className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-3">
+                みんなで遊ぶパーティーゲーム
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                会社のオンサイト・オフサイト、懇親会、研修のアイスブレイクに。1台の端末を回して遊べる会話ゲームです。
+              </p>
+            </div>
+            <Link href="/games#party-games" className="shrink-0 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+              パーティーゲーム一覧を見る →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {partyGameLinks.map((game) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md transition-all"
+              >
+                <span className="font-label flex h-10 w-14 shrink-0 items-center justify-center border border-gray-200 bg-gray-50 text-[8px] font-bold tracking-tight text-indigo-600 dark:border-gray-700 dark:bg-gray-900 dark:text-indigo-300">
+                  {game.mark}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{game.title}</span>
+                  <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{game.description}</span>
+                </span>
+              </Link>
             ))}
           </div>
         </section>

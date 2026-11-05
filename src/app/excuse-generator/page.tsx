@@ -511,6 +511,7 @@ function ExcuseGeneratorContent() {
                 eyebrow="TOOL GUIDE"
                 title={`${tool.name}の使い方とFAQ`}
                 intro={tool.description}
+                steps={tool.steps}
                 faqs={tool.faqs}
                 related={tool.related}
                 breadcrumbs={[

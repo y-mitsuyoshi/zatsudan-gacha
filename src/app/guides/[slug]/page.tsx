@@ -29,6 +29,14 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
   return {
     title: guide.title,
     description: guide.description,
+    keywords: [
+      guide.title,
+      '雑談 お題',
+      'アイスブレイク',
+      '会議 雑談',
+      '1on1 質問',
+      'チームビルディング',
+    ],
     alternates: {
       canonical: `/guides/${guide.slug}`,
     },
@@ -36,6 +44,8 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
       title: `${guide.title}｜雑談テーマガチャ`,
       description: guide.description,
       url: `${APP_URL}/guides/${guide.slug}`,
+      siteName: '雑談テーマガチャ',
+      locale: 'ja_JP',
       type: 'article',
       images: [{ url: `${APP_URL}/ogp.png`, width: 1200, height: 630, alt: guide.title }],
     },
@@ -60,15 +70,19 @@ export default async function GuidePage({ params }: GuidePageProps) {
   const articleJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
+    '@id': `${APP_URL}/guides/${guide.slug}#article`,
     headline: guide.h1,
     description: guide.description,
-    mainEntityOfPage: `${APP_URL}/guides/${guide.slug}`,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${APP_URL}/guides/${guide.slug}` },
     image: `${APP_URL}/ogp.png`,
     inLanguage: 'ja-JP',
     datePublished: '2026-11-03',
-    dateModified: '2026-11-03',
-    author: { '@id': `${APP_URL}/#organization` },
-    publisher: { '@id': `${APP_URL}/#organization` },
+    dateModified: '2026-11-05',
+    articleSection: 'シーン別・雑談お題ガイド',
+    keywords: ['雑談', 'アイスブレイク', '会議', '1on1', guide.title],
+    author: { '@type': 'Organization', '@id': `${APP_URL}/#organization`, name: '雑談テーマガチャ運営チーム' },
+    publisher: { '@type': 'Organization', '@id': `${APP_URL}/#organization`, name: '雑談テーマガチャ', logo: { '@type': 'ImageObject', url: `${APP_URL}/favicon.png` } },
+    isPartOf: { '@id': `${APP_URL}/#website` },
   };
 
   const howToJsonLd = {
@@ -100,6 +114,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
+    '@id': `${APP_URL}/guides/${guide.slug}#faq`,
     mainEntity: guide.faqs.map((faq) => ({
       '@type': 'Question',
       name: faq.q,

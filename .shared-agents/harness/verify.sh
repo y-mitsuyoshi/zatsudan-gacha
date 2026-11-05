@@ -59,11 +59,14 @@ if (!notFound.includes('noindex')) process.exit(1);
 const gamePages = ['out/barricade-defense.html','out/shachiku-shooting.html','out/shachiku-spiral.html','out/shachiku-survivor.html','out/shachiku-jinro.html','out/shachiku-sugoroku.html','out/shachiku-catapult.html','out/shachiku-wire.html','out/shachiku-stack.html','out/mortgage-life.html'];
 if (gamePages.some((file) => !fs.readFileSync(file, 'utf8').includes('VideoGame'))) process.exit(1);
 const toolPages = ['out/profile-maker.html','out/isekai-status.html','out/excuse-generator.html','out/station-sign-maker.html'];
-if (toolPages.some((file) => !fs.readFileSync(file, 'utf8').includes('WebApplication'))) process.exit(1);
+if (toolPages.some((file) => !fs.readFileSync(file, 'utf8').includes('WebApplication') || !fs.readFileSync(file, 'utf8').includes('HowTo'))) process.exit(1);
 const guidePages = guides.map((g) => 'out/guides/' + g.slug + '.html');
-if (guidePages.some((file) => !fs.readFileSync(file, 'utf8').includes('HowTo'))) process.exit(1);
+if (guidePages.some((file) => !fs.readFileSync(file, 'utf8').includes('HowTo') || !fs.readFileSync(file, 'utf8').includes('FAQPage'))) process.exit(1);
 const partyPages = ['out/minority-word.html','out/ishin-denshin.html','out/ng-word.html','out/kinku-talk.html','out/rank-guess.html','out/word-chain.html'];
-if (partyPages.some((file) => !fs.readFileSync(file, 'utf8').includes('WebApplication') || !fs.readFileSync(file, 'utf8').includes('HowTo'))) process.exit(1);
+if (partyPages.some((file) => !fs.readFileSync(file, 'utf8').includes('VideoGame') || !fs.readFileSync(file, 'utf8').includes('WebApplication') || !fs.readFileSync(file, 'utf8').includes('HowTo') || !fs.readFileSync(file, 'utf8').includes('FAQPage'))) process.exit(1);
+if (!fs.readFileSync('out/index.html', 'utf8').includes('HowTo') || !fs.readFileSync('out/index.html', 'utf8').includes('FAQPage')) process.exit(1);
+const themePages = themeCategories.map((c) => 'out/themes/' + c.slug + '.html');
+if (themePages.some((file) => !fs.readFileSync(file, 'utf8').includes('FAQPage'))) process.exit(1);
 if (fs.readFileSync('out/index.html', 'utf8').includes('fonts.googleapis.com')) process.exit(1);
 console.log('OK: ' + (required.length + themeCategories.length + guides.length) + ' generated routes verified');
 "

@@ -396,11 +396,13 @@ export function buildGameJsonLd(game: GameSeoData) {
   const videoGame = {
     '@context': 'https://schema.org',
     '@type': 'VideoGame',
+    '@id': `${url}#videogame`,
     name: game.name,
     headline: game.h1,
     description: game.description,
     url,
     image,
+    screenshot: image,
     genre: game.genre,
     playMode: 'SinglePlayer',
     gamePlatform: ['Web browser', 'Desktop Web Browser', 'Mobile Web Browser'],
@@ -408,6 +410,7 @@ export function buildGameJsonLd(game: GameSeoData) {
     operatingSystem: 'Any',
     inLanguage: 'ja-JP',
     isAccessibleForFree: true,
+    isPartOf: { '@id': `${APP_URL}/#website` },
     offers: {
       '@type': 'Offer',
       price: '0',
@@ -420,10 +423,12 @@ export function buildGameJsonLd(game: GameSeoData) {
   const webApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
+    '@id': `${url}#webapp`,
     name: game.name,
     description: game.description,
     url,
     image,
+    screenshot: image,
     applicationCategory: 'GameApplication',
     browserRequirements: 'Requires HTML5 Canvas and JavaScript',
     operatingSystem: 'Any',
@@ -440,6 +445,7 @@ export function buildGameJsonLd(game: GameSeoData) {
   const howTo = {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
+    '@id': `${url}#howto`,
     name: `${game.name}の遊び方`,
     description: game.description,
     inLanguage: 'ja-JP',
@@ -454,6 +460,7 @@ export function buildGameJsonLd(game: GameSeoData) {
   const faqPage = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
+    '@id': `${url}#faq`,
     mainEntity: game.faqs.map((faq) => ({
       '@type': 'Question',
       name: faq.q,

@@ -9,6 +9,15 @@ const APP_URL = 'https://zatsudan-gacha.app';
 export const metadata: Metadata = {
   title: `雑談お題のカテゴリ一覧｜${themeCategories.length}カテゴリ・${totalThemeCount}問`,
   description: `趣味・旅行・仕事・食べ物・音楽・ゲームなど${themeCategories.length}カテゴリ、${totalThemeCount}以上の雑談お題を一覧で紹介。会議のアイスブレイク、1on1、リモートワークの雑談に合ったカテゴリを選べます。`,
+  keywords: [
+    '雑談 お題 カテゴリ',
+    '雑談テーマ 一覧',
+    'アイスブレイク お題',
+    '会議 雑談 ネタ',
+    '1on1 質問',
+    '飲み会 話題',
+    '無料 お題',
+  ],
   alternates: {
     canonical: '/themes',
   },
@@ -33,6 +42,13 @@ export const metadata: Metadata = {
     images: [`${APP_URL}/ogp.png`],
   },
 };
+
+const faqs = [
+  { q: '雑談お題は全部でいくつありますか？', a: `現在${themeCategories.length}カテゴリ・${totalThemeCount}以上のお題を収録しています。カテゴリページから一覧を確認でき、ガチャでランダムに選ぶこともできます。` },
+  { q: 'どのカテゴリから選べばいいですか？', a: '初対面なら「食べ物」「旅行」「休日・ライフスタイル」、チーム交流や1on1なら「価値観・性格」「仕事」「家族・友達」がおすすめです。迷ったら「すべてのテーマ」からランダムに選べます。' },
+  { q: 'カテゴリ別のお題は無料で使えますか？', a: 'はい。すべてのカテゴリ・お題を無料で利用できます。ログインや会員登録は不要で、お題はタップしてコピーできます。' },
+  { q: 'スマートフォンでも使えますか？', a: 'はい。スマートフォン・タブレット・PCのブラウザに対応しています。' },
+];
 
 const categoryTips = [
   {
@@ -81,16 +97,14 @@ export default function ThemesIndexPage() {
     '@type': 'CollectionPage',
     name: `雑談お題のカテゴリ一覧（${themeCategories.length}カテゴリ）`,
     description: `会議のアイスブレイクやリモートワークの雑談に使える${totalThemeCount}以上のお題をカテゴリ別に紹介しています。`,
+    '@id': `${APP_URL}/themes#collection`,
     url: `${APP_URL}/themes`,
-    inLanguage: 'ja',
-    isPartOf: {
-      '@type': 'WebApplication',
-      name: '雑談テーマガチャ',
-      url: `${APP_URL}/`,
-    },
+    inLanguage: 'ja-JP',
+    isPartOf: { '@id': `${APP_URL}/#website` },
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: themeCategories.length,
+      itemListOrder: 'https://schema.org/ItemListOrderAscending',
       itemListElement: themeCategories.map((category, index) => ({
         '@type': 'ListItem',
         position: index + 1,
@@ -98,6 +112,17 @@ export default function ThemesIndexPage() {
         url: `${APP_URL}/themes/${category.slug}`,
       })),
     },
+  };
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': `${APP_URL}/themes#faq`,
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.q,
+      acceptedAnswer: { '@type': 'Answer', text: faq.a },
+    })),
   };
 
   return (
@@ -109,6 +134,10 @@ export default function ThemesIndexPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(collectionJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
       />
 
       <div className="max-w-6xl mx-auto px-4 pt-6">
@@ -177,6 +206,22 @@ export default function ThemesIndexPage() {
                   })}
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+        <section aria-labelledby="themes-faq-heading" className="mt-14">
+          <h2 id="themes-faq-heading" className="text-2xl font-black text-gray-900 dark:text-white mb-4">
+            雑談お題のカテゴリについてよくある質問
+          </h2>
+          <div className="space-y-2">
+            {faqs.map((faq) => (
+              <details key={faq.q} className="group rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 text-sm font-bold">
+                  <span>{faq.q}</span>
+                  <span className="shrink-0 text-indigo-500 dark:text-indigo-400 transition-transform group-open:rotate-45" aria-hidden="true">＋</span>
+                </summary>
+                <p className="border-t border-gray-200 px-4 py-3 text-sm leading-7 text-gray-600 dark:border-gray-700 dark:text-gray-300">{faq.a}</p>
+              </details>
             ))}
           </div>
         </section>

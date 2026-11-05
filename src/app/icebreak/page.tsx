@@ -12,6 +12,15 @@ const APP_URL = 'https://zatsudan-gacha.app';
 export const metadata: Metadata = {
   title: '会議のアイスブレイクにおすすめの雑談お題30選',
   description: '会議の冒頭やリモートワークの雑談で使えるアイスブレイクのお題を30個厳選。初対面・チーム・1on1向けの質問例と、ランダムに選べる無料の雑談テーマガチャを紹介します。',
+  keywords: [
+    '会議 アイスブレイク',
+    'アイスブレイク お題',
+    '会議 雑談',
+    'リモートワーク 雑談',
+    '初対面 質問',
+    '1on1 質問',
+    'チームビルディング',
+  ],
   alternates: {
     canonical: '/icebreak',
   },
@@ -19,6 +28,8 @@ export const metadata: Metadata = {
     title: '会議のアイスブレイクにおすすめの雑談お題30選｜雑談テーマガチャ',
     description: '会議の冒頭やリモートワークの雑談で使えるアイスブレイクのお題を30個厳選。初対面・チーム・1on1向けの質問例を紹介します。',
     url: `${APP_URL}/icebreak`,
+    siteName: '雑談テーマガチャ',
+    locale: 'ja_JP',
     type: 'article',
     images: [
       {
