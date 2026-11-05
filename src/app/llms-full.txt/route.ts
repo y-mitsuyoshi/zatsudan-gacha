@@ -44,7 +44,7 @@ ${categorySections}
 - 社長の頭の中（ランキング予想） (${BASE_URL}/rank-guess): 社長のランキングを予想するチームゲーム
 - 連想リレー (${BASE_URL}/word-chain): 言葉をつないで高得点を狙う連想ゲーム
 
-## 収録Webツール一覧（全14種類・無料・登録不要）
+## 収録Webツール一覧（全24種類・無料・登録不要）
 
 - 文字数カウンター (${BASE_URL}/character-counter): 文字・行・単語・UTF-8バイト数を集計
 - JSON整形・検証 (${BASE_URL}/json-formatter): JSONの整形・圧縮・構文チェック
@@ -60,6 +60,16 @@ ${categorySections}
 - 異世界転生ステータスカード (${BASE_URL}/isekai-status): 異世界キャラクター診断
 - 究極の言い訳ジェネレーター (${BASE_URL}/excuse-generator): AIによる言い訳生成
 - 駅名標メーカー (${BASE_URL}/station-sign-maker): オリジナル駅名標を作成
+- 住宅ローン返済シミュレーター (${BASE_URL}/housing-loan-calculator): 月額返済・総利息・総支払額
+- 住宅購入費用シミュレーター (${BASE_URL}/home-purchase-cost): 初期費用・月間住居費
+- 賃貸vs購入 比較 (${BASE_URL}/rent-vs-buy): 賃貸と購入の総コスト比較
+- 住宅ローン控除 計算 (${BASE_URL}/housing-loan-deduction): 控除額の概算
+- 固定資産税・都市計画税 (${BASE_URL}/property-tax-calculator): 土地・建物の年間税額
+- 不動産売却の税金・手取り (${BASE_URL}/real-estate-sale-tax): 売却税・手取り・残債返済後
+- 坪・㎡・畳 変換 (${BASE_URL}/tsubo-converter): 面積変換と坪単価
+- 住宅ローン借入可能額 (${BASE_URL}/mortgage-borrowing-capacity): 年収からの借入可能額
+- 繰上返済効果 (${BASE_URL}/prepayment-simulator): 期間短縮・返済額軽減の比較
+- 複利・積立 資産形成 (${BASE_URL}/compound-interest-calculator): 複利・積立・税引後評価額
 
 ## 利用について
 

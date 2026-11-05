@@ -89,7 +89,7 @@ export function SeoContentSection({
       <JsonLd data={breadcrumbJsonLd ? [breadcrumbJsonLd, ...jsonLd] : jsonLd} />
       <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <nav aria-label="パンくずリスト" className={`mb-7 border-b ${ruleClass} pb-3 text-[11px] ${mutedClass}`}>
+          <nav aria-label="SEOコンテンツのパンくずリスト" className={`mb-7 border-b ${ruleClass} pb-3 text-[11px] ${mutedClass}`}>
             <ol className="flex flex-wrap items-center gap-1.5">
               {breadcrumbs.map((item, index) => (
                 <li key={`${item.label}-${index}`} className="flex items-center gap-1.5">
@@ -140,7 +140,7 @@ export function SeoContentSection({
             <ol className="mt-3 space-y-2">
               {steps.map((step, index) => (
                 <li key={step.title} className={`${cardClass} flex gap-3 p-4`}>
-                  <span className={`font-label flex h-7 w-7 shrink-0 items-center justify-center border text-[10px] font-bold ${isDark ? 'border-[#5a4b38] bg-[#26211a] text-[#dfb15b]' : 'border-[var(--line-strong)] bg-[var(--paper-muted)] text-[var(--accent)]'}`}>
+                  <span className={`font-label flex h-7 w-7 shrink-0 items-center justify-center border text-[10px] font-bold ${isDark ? 'border-[#5a4b38] bg-[#26211a] text-[#dfb15b]' : 'border-[var(--line-strong)] bg-[var(--paper-muted)] text-[var(--ink)]'}`}>
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <div>

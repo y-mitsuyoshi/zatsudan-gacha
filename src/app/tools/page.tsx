@@ -7,10 +7,19 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料で使える便利ツール一覧｜文字数・JSON・画像圧縮など全14ツール',
-  description: '文字数カウンター、JSON整形、URLエンコード、ハッシュ生成、パスワード生成、単位変換、BMI計算、ローン返済、画像圧縮、カラー変換など、登録不要で使える無料Webツール全14種類を紹介。スマホ対応。',
+  title: '無料で使える便利ツール一覧｜住宅・不動産・資産形成など全24ツール',
+  description: '住宅ローン、住宅購入費用、賃貸vs購入、固定資産税、売却税金、坪単価、借入可能額、繰上返済、複利積立など、住まいとお金の計算ツール10種類を追加。文字数・JSON・画像圧縮など全24ツールを無料公開中。',
   keywords: [
     '無料 Webツール',
+    '住宅ローン 計算',
+    '住宅購入 費用',
+    '賃貸 購入 比較',
+    '固定資産税 計算',
+    '不動産 売却 税金',
+    '坪単価 計算',
+    '借入可能額',
+    '繰上返済',
+    '複利 計算',
     '文字数カウンター',
     'JSON整形',
     'URLエンコード',
@@ -34,7 +43,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: '無料で使える便利ツール一覧',
-    description: '文字数カウント、JSON整形、画像圧縮、パスワード生成など、毎日使える実用ツールとクリエイティブツール全14種類。登録不要・スマホ対応。',
+    description: '住宅ローン、住宅購入費用、固定資産税、売却税金、坪単価、繰上返済、複利積立など住まいとお金のツール10種類。文字数・JSON・画像圧縮など全24ツール。登録不要・スマホ対応。',
     url: `${APP_URL}/tools`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -44,7 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '無料で使える便利ツール一覧',
-    description: '文字数カウント、JSON整形、画像圧縮、パスワード生成など、毎日使える実用ツールとクリエイティブツール全14種類。登録不要・スマホ対応。',
+    description: '住宅ローン、住宅購入費用、固定資産税、売却税金、坪単価、繰上返済、複利積立など住まいとお金のツール10種類。文字数・JSON・画像圧縮など全24ツール。登録不要・スマホ対応。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -139,14 +148,77 @@ const utilityTools = [
   },
 ];
 
-const allTools = [...creativeTools, ...utilityTools];
+const financeTools = [
+  {
+    name: '住宅ローン返済シミュレーター',
+    href: '/housing-loan-calculator',
+    tagline: '月額返済・利息・総支払額を試算',
+    description: '借入額・頭金・金利・期間・返済方式・ボーナス返済から、毎月の返済額、総利息、頭金込みの総支払額を試算。住宅購入の資金計画に役立ちます。',
+  },
+  {
+    name: '住宅購入費用シミュレーター',
+    href: '/home-purchase-cost',
+    tagline: '初期費用と月間住居費を把握',
+    description: '物件価格・頭金・仲介手数料・登記費用・税金・管理費・修繕積立金から、購入時の初期費用と毎月の住居費をまとめて試算します。',
+  },
+  {
+    name: '賃貸vs購入 比較シミュレーター',
+    href: '/rent-vs-buy',
+    tagline: '賃貸と購入の総コストを比較',
+    description: '家賃・更新料・購入価格・ローン・管理費・修繕費・売却想定価格から、一定期間の賃貸総支払額と購入の実質コストを比較します。',
+  },
+  {
+    name: '住宅ローン控除 計算シミュレーター',
+    href: '/housing-loan-deduction',
+    tagline: '年末残高から控除額を概算',
+    description: '年末ローン残高・住宅性能・控除率・控除期間・所得税額から、住宅ローン控除の年間控除額と期間合計を概算します。',
+  },
+  {
+    name: '固定資産税・都市計画税シミュレーター',
+    href: '/property-tax-calculator',
+    tagline: '土地・建物の年間税額を試算',
+    description: '土地・建物の固定資産税評価額、住宅用地特例、新築軽減、税率から、固定資産税と都市計画税の年間合計を概算します。',
+  },
+  {
+    name: '不動産売却の税金・手取りシミュレーター',
+    href: '/real-estate-sale-tax',
+    tagline: '売却時の税金と手取りを概算',
+    description: '売却価格・取得費・譲渡費用・所有期間・特別控除から、譲渡所得税・住民税・売却手取り・残債返済後の手残りを試算します。',
+  },
+  {
+    name: '坪・㎡・畳 変換＆坪単価計算',
+    href: '/tsubo-converter',
+    tagline: '面積と坪単価を相互変換',
+    description: '坪・㎡・畳を相互変換し、総額や坪単価・㎡単価も計算。地域差のある畳サイズも変更できる不動産面積ツールです。',
+  },
+  {
+    name: '住宅ローン借入可能額シミュレーター',
+    href: '/mortgage-borrowing-capacity',
+    tagline: '年収から無理のない借入額を試算',
+    description: '年収・返済負担率・金利・期間・頭金・既存借入から、住宅ローンの借入可能額と物件購入可能額の目安を計算します。',
+  },
+  {
+    name: '繰上返済効果シミュレーター',
+    href: '/prepayment-simulator',
+    tagline: '期間短縮・返済額軽減の効果を比較',
+    description: 'ローン残高・金利・残期間・繰上返済額から、期間短縮型と返済額軽減型の利息軽減効果と手数料込みのメリットを試算します。',
+  },
+  {
+    name: '複利・積立 資産形成シミュレーター',
+    href: '/compound-interest-calculator',
+    tagline: '毎月積立と複利効果を試算',
+    description: '初期資金・毎月積立・年利・期間・積立タイミング・税金から、複利運用の評価額、運用益、税引後評価額、年次推移を試算します。',
+  },
+];
+
+const allTools = [...creativeTools, ...utilityTools, ...financeTools];
 
 const faqs = [
-  { q: '紹介している14のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
+  { q: '紹介している24のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類、住まい・お金の計算ツール10種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
   { q: 'スマートフォンでも使えますか？', a: 'はい。各ツールはスマートフォンのブラウザに対応しています。' },
-  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
+  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類と住まい・お金の計算ツール10種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
   { q: '作成した画像はSNSで使えますか？', a: 'はい。プロフィールメーカー・駅名標メーカー・画像リサイズツールで作成した画像は、SNSの投稿やプロフィールに利用できます。' },
-  { q: 'オフラインでも使えますか？', a: '実用ツールはページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
+  { q: 'オフラインでも使えますか？', a: '実用ツールと住まい・お金の計算ツールは、ページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
 ];
 
 const jsonLd = [
@@ -210,19 +282,19 @@ export default function ToolsPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Tool Archive / 14 Titles</p>
+            <p className="paper-kicker">Tool Archive / 24 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で使える<br className="sm:hidden" />便利ツール
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              文字数カウント、JSON整形、画像圧縮、パスワード生成など、毎日使える実用ツール10種類。
-              さらにプロフィール作成・診断・言い訳・駅名標のクリエイティブツール4種類を収録しています。
+              文字数カウント、JSON整形、画像圧縮など毎日使える実用ツール10種類。
+              住宅ローン・不動産・資産形成の計算ツール10種類、クリエイティブツール4種類を収録しています。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
             <p className="font-label text-[9px] text-[var(--accent)]">Privacy Note</p>
             <p className="mt-2">
-              実用ツール10種類はすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
+              実用ツールと住まい・お金の計算ツールはすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
             </p>
           </div>
         </section>
@@ -237,6 +309,39 @@ export default function ToolsPage() {
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {utilityTools.map((tool, index) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="group border border-[var(--line)] bg-[var(--paper-strong)] p-5 transition-colors hover:border-[var(--accent)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-label text-[10px] text-[var(--accent)]">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="font-label text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]" aria-hidden="true">→</span>
+                </div>
+                <p className="font-label mt-5 text-[9px] text-[var(--ink-soft)]">{tool.tagline}</p>
+                <h3 className="font-editorial mt-2 text-2xl leading-snug">{tool.name}</h3>
+                <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">{tool.description}</p>
+                <span className="font-label mt-5 inline-flex text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                  Open tool →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="finance-tools-heading" className="mt-14" id="finance-tools">
+          <div className="flex items-end justify-between border-b border-[var(--line)] pb-3">
+            <div>
+              <p className="paper-kicker">Money &amp; Home</p>
+              <h2 id="finance-tools-heading" className="font-editorial mt-2 text-2xl">住まい・お金の計算ツール（10種類）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 10</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
+            住宅ローン、購入費用、賃貸との比較、税金、売却、借入可能額、繰上返済、資産形成まで。入力内容はブラウザ内だけで処理されます。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {financeTools.map((tool, index) => (
               <Link
                 key={tool.href}
                 href={tool.href}
@@ -289,7 +394,7 @@ export default function ToolsPage() {
 
         <SeoContentSection
           eyebrow="TOOL GUIDE"
-          title="14の無料Webツール"
+          title="24の無料Webツール"
           intro="用途に合わせて、気になるツールを選んでください。"
           faqs={faqs}
           related={[
