@@ -453,7 +453,7 @@ export default function ShachikuCatapultGame() {
     (lockedAngle: number, lockedPower: number) => {
       const up = saveRef.current.upgrades;
       const sim = simRef.current;
-      const isPerfect = lockedPower >= 95;
+      const isPerfect = lockedPower >= 88;
       sim.perfectLaunch = isPerfect;
 
       const tensionMult = 1 + (up.tension - 1) * 0.12;
@@ -617,7 +617,7 @@ export default function ShachikuCatapultGame() {
 
       // 1. Update gauges or physics
       if (curPhase === 'aim_angle') {
-        sim.angleDeg += sim.angleDir * 78 * dt;
+        sim.angleDeg += sim.angleDir * 62 * dt;
         if (sim.angleDeg >= 75) {
           sim.angleDeg = 75;
           sim.angleDir = -1;
@@ -627,7 +627,7 @@ export default function ShachikuCatapultGame() {
         }
         setAngleDeg(Math.round(sim.angleDeg));
       } else if (curPhase === 'aim_power') {
-        sim.powerPct += sim.powerDir * 135 * dt;
+        sim.powerPct += sim.powerDir * 118 * dt;
         if (sim.powerPct >= 100) {
           sim.powerPct = 100;
           sim.powerDir = -1;
@@ -838,7 +838,7 @@ export default function ShachikuCatapultGame() {
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          renderScene(ctx, sim, curPhase);
+          renderScene(ctx, sim, curPhase, 1 + (up.tension - 1) * 0.12);
         }
       }
 
@@ -906,21 +906,43 @@ export default function ShachikuCatapultGame() {
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
           {/* Left: Game Viewport */}
           <div className="flex flex-col gap-3">
+            {phase === 'title' && (
+              <div className="border border-stone-700 bg-stone-900 p-5 text-center sm:hidden">
+                <span className="rounded-full border border-amber-400/50 bg-amber-500/10 px-3 py-1 text-[10px] font-bold text-amber-300">
+                  18:00 定時退社エクストリーム物理ミニゲーム
+                </span>
+                <h2 className="mt-3 text-2xl font-black tracking-tight text-white">
+                  社畜ぶっとばし！定時退社カタパルト
+                </h2>
+                <p className="mt-2 text-xs leading-6 text-stone-300">
+                  角度とパワーを決めて大空へ。有給ジェットと急降下スタンプで10,000m先の南国リゾートを目指そう。
+                </p>
+                <button
+                  type="button"
+                  onClick={startLaunchSequence}
+                  className="mt-4 w-full rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-3.5 text-sm font-black text-stone-950 shadow-xl active:scale-[0.98]"
+                >
+                  発射準備をはじめる
+                </button>
+              </div>
+            )}
             <div
               className="relative overflow-hidden rounded-xl border-2 border-stone-800 bg-stone-950 shadow-2xl"
-              onMouseDown={() => {
-                if (phase === 'aim_angle' || phase === 'aim_power' || phase === 'flying') {
-                  handlePrimaryActionDown();
-                }
-              }}
-              onMouseUp={handlePrimaryActionUp}
-              onTouchStart={(e) => {
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
                 if (phase === 'aim_angle' || phase === 'aim_power' || phase === 'flying') {
                   e.preventDefault();
+                  e.currentTarget.setPointerCapture?.(e.pointerId);
                   handlePrimaryActionDown();
                 }
               }}
-              onTouchEnd={handlePrimaryActionUp}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                handlePrimaryActionUp();
+              }}
+              onPointerCancel={handlePrimaryActionUp}
+              onPointerLeave={() => handlePrimaryActionUp()}
+              style={{ touchAction: 'none' }}
             >
               <canvas
                 ref={canvasRef}
@@ -975,7 +997,7 @@ export default function ShachikuCatapultGame() {
                 <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center px-4">
                   <div className="rounded-xl border border-amber-400/60 bg-black/85 px-6 py-3 text-center shadow-xl">
                     <p className="text-xs font-bold tracking-wider text-amber-300">
-                      {phase === 'aim_angle' ? 'STEP 1: 発射アングル決定 (15°〜75°)' : 'STEP 2: カタパルト出力決定 (95%以上でPERFECT!)'}
+                      {phase === 'aim_angle' ? 'STEP 1: 発射アングル決定 (15°〜75°)' : 'STEP 2: カタパルト出力決定 (88%以上でPERFECT!)'}
                     </p>
                     <p className="mt-1 text-lg font-black text-white">
                       {phase === 'aim_angle'
@@ -988,18 +1010,14 @@ export default function ShachikuCatapultGame() {
 
               {/* Active Flight Controls */}
               {phase === 'flying' && (
-                <div className="absolute inset-x-0 bottom-3 flex items-center justify-between px-4">
+                <div className="absolute inset-x-0 bottom-3 hidden items-center justify-between px-4 sm:flex">
                   <div className="pointer-events-none rounded-lg border border-stone-700/80 bg-black/70 px-3 py-1.5 text-xs text-stone-200">
                     長押し / Spaceホールド: <span className="font-bold text-amber-300">有給ジェット噴射</span>
                   </div>
                   <button
                     type="button"
                     disabled={hudState.diveCooldown > 0 || hudState.altitude <= 3}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      triggerDiveStamp();
-                    }}
-                    onTouchStart={(e) => {
+                    onPointerDown={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
                       triggerDiveStamp();
@@ -1019,7 +1037,7 @@ export default function ShachikuCatapultGame() {
 
               {/* Title Overlay */}
               {phase === 'title' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center backdrop-blur-sm">
+                <div className="absolute inset-0 hidden flex-col items-center justify-center bg-black/75 p-6 text-center backdrop-blur-sm sm:flex">
                   <span className="rounded-full border border-amber-400/50 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
                     18:00 定時退社エクストリーム物理ミニゲーム
                   </span>
@@ -1041,7 +1059,7 @@ export default function ShachikuCatapultGame() {
 
               {/* Result Overlay */}
               {phase === 'result' && summary && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 p-5 text-center backdrop-blur-md">
+                <div className="absolute inset-0 hidden flex-col items-center justify-center bg-black/85 p-5 text-center backdrop-blur-md sm:flex">
                   <p className="text-xs font-bold tracking-widest text-amber-400">{summary.zoneReached}</p>
                   <h3 className="mt-1 text-2xl font-black text-white sm:text-3xl">
                     退社フライト完了：飛距離 {summary.distance.toLocaleString()} m
@@ -1087,6 +1105,63 @@ export default function ShachikuCatapultGame() {
                 </div>
               )}
             </div>
+
+            {phase === 'flying' && (
+              <div className="grid grid-cols-2 gap-2 sm:hidden">
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.setPointerCapture?.(e.pointerId);
+                    handlePrimaryActionDown();
+                  }}
+                  onPointerUp={handlePrimaryActionUp}
+                  onPointerCancel={handlePrimaryActionUp}
+                  className="rounded-xl border-2 border-amber-300 bg-amber-500 px-3 py-3 text-xs font-black text-stone-950 shadow-lg active:scale-95"
+                  style={{ touchAction: 'none' }}
+                >
+                  有給ジェット（長押し）
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    triggerDiveStamp();
+                  }}
+                  disabled={hudState.diveCooldown > 0 || hudState.altitude <= 3}
+                  className={`rounded-xl border-2 px-3 py-3 text-xs font-black shadow-lg ${
+                    hudState.diveCooldown > 0 || hudState.altitude <= 3
+                      ? 'border-stone-700 bg-stone-900 text-stone-500'
+                      : 'border-rose-300 bg-rose-600 text-white active:scale-95'
+                  }`}
+                >
+                  {hudState.diveCooldown > 0 ? `急降下 ${hudState.diveCooldown}s` : '急降下スタンプ'}
+                </button>
+              </div>
+            )}
+
+            {phase === 'result' && summary && (
+              <div className="border border-stone-700 bg-stone-900 p-4 text-center sm:hidden">
+                <p className="text-[10px] font-bold tracking-widest text-amber-400">{summary.zoneReached}</p>
+                <h3 className="mt-1 text-xl font-black text-white">
+                  飛距離 {summary.distance.toLocaleString()} m
+                </h3>
+                {summary.newRecord && <p className="mt-1 text-xs font-black text-rose-300">NEW RECORD!</p>}
+                <div className="mt-3 grid grid-cols-2 gap-2 text-left text-[11px]">
+                  <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">最大高度</p><p className="font-mono font-black text-sky-300">{summary.maxAltitude} m</p></div>
+                  <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">バウンド</p><p className="font-mono font-black text-emerald-300">{summary.bounces} 回</p></div>
+                  <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">残業粉砕</p><p className="font-mono font-black text-rose-300">{summary.shattered} 個</p></div>
+                  <div className="border border-stone-700 bg-stone-950 p-2"><p className="text-stone-400">獲得積立金</p><p className="font-mono font-black text-amber-300">+{summary.earnedCoins} G</p></div>
+                </div>
+                <button
+                  type="button"
+                  onClick={startLaunchSequence}
+                  className="mt-3 w-full rounded-xl border-2 border-amber-300 bg-amber-500 px-4 py-3 text-sm font-black text-stone-950 active:scale-[0.98]"
+                >
+                  もう一度ぶっとばす
+                </button>
+              </div>
+            )}
 
             {/* Field Guide Legend */}
             <div className="grid grid-cols-2 gap-2 rounded-xl border border-stone-800 bg-stone-900/60 p-3 text-xs sm:grid-cols-4">
@@ -1206,7 +1281,8 @@ function renderScene(
     particles: Particle[];
     banners: FloatingBanner[];
   },
-  phase: string
+  phase: string,
+  tensionMult: number
 ) {
   const zone = getZoneInfo(sim.x);
 
@@ -1309,10 +1385,32 @@ function renderScene(
       if (phase === 'aim_power') {
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
         ctx.fillRect(-50, -115, 120, 16);
-        ctx.fillStyle = sim.powerPct >= 95 ? '#f43f5e' : '#facc15';
+        ctx.fillStyle = sim.powerPct >= 88 ? '#f43f5e' : '#facc15';
         ctx.fillRect(-48, -113, (116 * sim.powerPct) / 100, 12);
       }
       ctx.restore();
+
+      // Approximate trajectory preview
+      const previewPower = phase === 'aim_power' ? sim.powerPct : 55;
+      const previewSpeed = 88 * tensionMult * Math.max(0.25, previewPower / 100);
+      let tx = 0;
+      let ty = 18;
+      let tvx = Math.cos(rad) * previewSpeed;
+      let tvy = Math.sin(rad) * previewSpeed;
+      for (let i = 0; i < 30; i++) {
+        const t = 0.09;
+        tvy -= 38 * t;
+        tx += tvx * t;
+        ty += tvy * t;
+        if (ty < 0) break;
+        const txScreen = worldToScreenX(tx);
+        const tyScreen = worldToScreenY(ty);
+        if (txScreen < -10 || txScreen > CANVAS_W + 10) break;
+        ctx.fillStyle = `rgba(250, 204, 21, ${Math.max(0.08, 0.52 - i * 0.015)})`;
+        ctx.beginPath();
+        ctx.arc(txScreen, tyScreen, Math.max(1.4, 3.6 - i * 0.07), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 

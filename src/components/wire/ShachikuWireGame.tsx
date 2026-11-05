@@ -192,6 +192,7 @@ export default function ShachikuWireGame() {
     swingProgress: 0,
     safetyNets: 1,
     speedKmh: 0,
+    releaseAngle: 0,
   });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -294,7 +295,7 @@ export default function ShachikuWireGame() {
         });
       }
 
-      sim.nextAnchorX += 235 + Math.random() * 45;
+      sim.nextAnchorX += 195 + Math.random() * 35;
     }
 
     sim.anchors = sim.anchors.filter((a) => a.x > sim.x - 500);
@@ -338,6 +339,7 @@ export default function ShachikuWireGame() {
         swingProgress: 0,
         safetyNets: 2,
         speedKmh: 65,
+        releaseAngle: 0,
       });
       setPhase('playing');
     },
@@ -355,9 +357,9 @@ export default function ShachikuWireGame() {
     for (const a of sim.anchors) {
       const dx = a.x - sim.x;
       const dy = a.y - sim.y;
-      if (dx > -60 && dx < 420 && dy < 40) {
+      if (dx > -80 && dx < 520 && dy < 70) {
         const dist = Math.hypot(dx, dy);
-        const score = Math.abs(dx - 135) + dist * 0.35;
+        const score = Math.abs(dx - 150) + dist * 0.3;
         if (score < bestScore) {
           bestScore = score;
           best = a;
@@ -385,14 +387,14 @@ export default function ShachikuWireGame() {
     sim.tetheredTo = null;
     // Check upward velocity angle: in screen coords, upward means vy < 0
     const upwardDeg = (Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI;
-    const isPerfect = upwardDeg >= 15 && upwardDeg <= 55 && sim.vx > 180;
+    const isPerfect = upwardDeg >= 10 && upwardDeg <= 65 && sim.vx > 150;
 
     if (isPerfect) {
       sim.combo += 1;
       sim.maxCombo = Math.max(sim.maxCombo, sim.combo);
       sim.perfectCount += 1;
-      sim.vx = Math.min(780, sim.vx * 1.24 + 95);
-      sim.vy = Math.min(-260, sim.vy * 1.18 - 75);
+      sim.vx = Math.min(820, sim.vx * 1.26 + 105);
+      sim.vy = Math.min(-280, sim.vy * 1.16 - 80);
       const pts = 250 * sim.combo;
       sim.score += pts;
 
@@ -521,7 +523,7 @@ export default function ShachikuWireGame() {
       const curCourse = courseRef.current;
 
       if (phaseRef.current === 'playing') {
-        const gravity = 690; // px/s^2 downward
+        const gravity = 640; // px/s^2 downward
 
         if (sim.tetheredTo) {
           const anchor = sim.tetheredTo;
@@ -650,6 +652,7 @@ export default function ShachikuWireGame() {
             swingProgress: sim.swingsCount % 3,
             safetyNets: sim.safetyNets,
             speedKmh: Math.round(Math.hypot(sim.vx, sim.vy) * 0.18),
+            releaseAngle: sim.tetheredTo ? Math.round((Math.atan2(-sim.vy, Math.max(10, sim.vx)) * 180) / Math.PI) : 0,
           });
         }
       }
@@ -704,29 +707,51 @@ export default function ShachikuWireGame() {
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           {/* Game Canvas Area */}
           <div className="flex flex-col gap-3">
+            {phase === 'title' && (
+              <div className="border border-slate-700 bg-slate-900 p-5 text-center sm:hidden">
+                <p className="text-[10px] font-bold tracking-widest text-cyan-300">SHACHIKU WIRE / LAST TRAIN SWING</p>
+                <h2 className="mt-2 text-2xl font-black text-white">社畜ワイヤー疾走</h2>
+                <p className="mt-2 text-xs leading-6 text-slate-300">
+                  頭上のアンカーにワイヤーを接続し、振り子の勢いで終電を目指せ。上昇角で離すとPERFECT RELEASE。
+                </p>
+                <div className="mt-4 space-y-2">
+                  {COURSES.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => startCourse(c.id)}
+                      className="w-full rounded-xl border border-cyan-400/60 bg-cyan-950/50 px-4 py-3 text-left text-sm font-black text-cyan-100 active:scale-[0.98]"
+                    >
+                      {c.name}
+                      <span className="mt-0.5 block text-[10px] font-normal text-cyan-300/80">{c.subtitle}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div
               className="relative overflow-hidden rounded-xl border-2 border-slate-800 bg-slate-950 shadow-2xl"
-              onMouseDown={(e) => {
+              onPointerDown={(e) => {
+                if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
                 if (e.button === 2) {
                   e.preventDefault();
                   triggerAirDash();
-                } else if (phase === 'playing') {
+                } else if (e.button === 0 && phase === 'playing') {
+                  e.preventDefault();
+                  e.currentTarget.setPointerCapture?.(e.pointerId);
                   attachWire();
                 }
               }}
-              onMouseUp={() => {
-                if (phase === 'playing') releaseWire();
-              }}
-              onContextMenu={(e) => e.preventDefault()}
-              onTouchStart={(e) => {
+              onPointerUp={(e) => {
+                if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
                 if (phase === 'playing') {
                   e.preventDefault();
-                  attachWire();
+                  releaseWire();
                 }
               }}
-              onTouchEnd={() => {
-                if (phase === 'playing') releaseWire();
-              }}
+              onPointerCancel={() => releaseWire()}
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ touchAction: 'none' }}
             >
               <canvas
                 ref={canvasRef}
@@ -767,25 +792,28 @@ export default function ShachikuWireGame() {
                     <div className="rounded border border-cyan-500/40 bg-cyan-950/50 px-2.5 py-1 font-mono text-xs font-bold text-cyan-200">
                       {hud.speedKmh} km/h
                     </div>
+                    <div className={`rounded border px-2.5 py-1 text-xs font-bold ${
+                      hud.releaseAngle >= 10 && hud.releaseAngle <= 65
+                        ? 'border-emerald-400 bg-emerald-950/60 text-emerald-300'
+                        : 'border-slate-600 bg-slate-950/60 text-slate-300'
+                    }`}>
+                      {hud.releaseAngle >= 10 && hud.releaseAngle <= 65 ? 'RELEASE!' : `角度 ${hud.releaseAngle}°`}
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Bottom Controls during Gameplay */}
               {phase === 'playing' && (
-                <div className="absolute inset-x-0 bottom-3 flex items-center justify-between px-4">
+                <div className="absolute inset-x-0 bottom-3 hidden items-center justify-between px-4 sm:flex">
                   <div className="pointer-events-none rounded-lg border border-slate-700 bg-black/75 px-3 py-1.5 text-xs text-slate-200">
-                    長押し / Space: <span className="font-bold text-cyan-300">光回線ワイヤー射出</span> ・ 上昇角(15°〜55°)で離すと{' '}
+                    長押し / Space: <span className="font-bold text-cyan-300">光回線ワイヤー射出</span> ・ 上昇角(10°〜65°)で離すと{' '}
                     <span className="font-bold text-amber-300">PERFECT RELEASE!</span>
                   </div>
                   <button
                     type="button"
                     disabled={hud.dashCharges <= 0}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      triggerAirDash();
-                    }}
-                    onTouchStart={(e) => {
+                    onPointerDown={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
                       triggerAirDash();
@@ -803,7 +831,7 @@ export default function ShachikuWireGame() {
 
               {/* Title Overlay */}
               {phase === 'title' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 p-6 text-center backdrop-blur-sm">
+                <div className="absolute inset-0 hidden flex-col items-center justify-center bg-black/80 p-6 text-center backdrop-blur-sm sm:flex">
                   <span className="rounded-full border border-cyan-400/50 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-300">
                     振り子物理×高速ワイヤースイングアクション
                   </span>
@@ -811,7 +839,7 @@ export default function ShachikuWireGame() {
                     社畜ワイヤー疾走：終電スイングアクション
                   </h2>
                   <p className="mt-2 max-w-lg text-xs leading-relaxed text-slate-300 sm:text-sm">
-                    ホールドで頭上のネオン看板やタワークレーンへ光回線ワイヤーを接続！振り子の遠心力で加速し、斜め上（15°〜55°）へ振り上がる瞬間に離してPERFECT RELEASEを決め、終電エクスプレスに飛び乗ろう。
+                    ホールドで頭上のネオン看板やタワークレーンへ光回線ワイヤーを接続！振り子の遠心力で加速し、斜め上（10°〜65°）へ振り上がる瞬間に離してPERFECT RELEASEを決め、終電エクスプレスに飛び乗ろう。
                   </p>
                   <button
                     type="button"
@@ -825,7 +853,7 @@ export default function ShachikuWireGame() {
 
               {/* Cleared / Gameover Overlay */}
               {(phase === 'cleared' || phase === 'gameover') && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 p-6 text-center backdrop-blur-md">
+                <div className="absolute inset-0 hidden flex-col items-center justify-center bg-black/85 p-6 text-center backdrop-blur-md sm:flex">
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-black ${
                       phase === 'cleared' ? 'bg-emerald-500 text-slate-950' : 'bg-rose-600 text-white'
@@ -851,11 +879,61 @@ export default function ShachikuWireGame() {
                 </div>
               )}
             </div>
+            {phase === 'playing' && (
+              <div className="grid grid-cols-[1fr_auto] gap-2 sm:hidden">
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.setPointerCapture?.(e.pointerId);
+                    attachWire();
+                  }}
+                  onPointerUp={() => releaseWire()}
+                  onPointerCancel={() => releaseWire()}
+                  className="rounded-xl border-2 border-cyan-300 bg-cyan-500 px-4 py-3 text-sm font-black text-slate-950 active:scale-95"
+                  style={{ touchAction: 'none' }}
+                >
+                  ワイヤー（長押し）
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    triggerAirDash();
+                  }}
+                  disabled={hud.dashCharges <= 0}
+                  className={`rounded-xl border-2 px-4 py-3 text-sm font-black ${
+                    hud.dashCharges <= 0
+                      ? 'border-slate-700 bg-slate-900 text-slate-500'
+                      : 'border-amber-300 bg-amber-400 text-slate-950 active:scale-95'
+                  }`}
+                >
+                  ダッシュ {hud.dashCharges}
+                </button>
+              </div>
+            )}
+
+            {(phase === 'cleared' || phase === 'gameover') && (
+              <div className="border border-slate-700 bg-slate-900 p-4 text-center sm:hidden">
+                <p className={`text-xs font-black ${phase === 'cleared' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {phase === 'cleared' ? 'LAST TRAIN BOARDED!' : 'MISSED THE TRAIN...'}
+                </p>
+                <h3 className="mt-1 text-xl font-black text-white">到達距離 {hud.distanceM.toLocaleString()} m</h3>
+                <p className="mt-1 text-xs text-slate-300">スコア {hud.score.toLocaleString()} / 最大コンボ {simRef.current.maxCombo}</p>
+                <button
+                  type="button"
+                  onClick={() => startCourse()}
+                  className="mt-3 w-full rounded-xl border-2 border-cyan-300 bg-cyan-500 px-4 py-3 text-sm font-black text-slate-950 active:scale-[0.98]"
+                >
+                  もう一度スイングする
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right Sidebar: Course Select & Techniques */}
           <aside className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-900/80 p-4">
-            <div>
+            <div className="hidden sm:block">
               <h3 className="border-b border-slate-800 pb-2 text-sm font-black text-cyan-300">コース選択（全3コース）</h3>
               <div className="mt-3 space-y-2.5">
                 {COURSES.map((c) => {
@@ -894,7 +972,7 @@ export default function ShachikuWireGame() {
             <div className="border-t border-slate-800 pt-3 text-xs leading-relaxed text-slate-300">
               <h4 className="font-black text-amber-300">ハイスピード攻略ガイド</h4>
               <ul className="mt-2 space-y-1.5 text-[11px] text-slate-400">
-                <li>・振り子の最下点を通過し、斜め上（15°〜55°）へ上がる瞬間に離すとPERFECT RELEASEで超加速します。</li>
+                <li>・振り子の最下点を通過し、斜め上（10°〜65°）へ上がる瞬間に離すとPERFECT RELEASEで超加速します。</li>
                 <li>・黄金のWi-Fiリングを通過するとスピードとコンボ倍率が即座にアップします。</li>
                 <li>・3回スイングするごとに「緊急エアダッシュ」が1回チャージされます。</li>
               </ul>

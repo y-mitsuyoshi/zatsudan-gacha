@@ -155,7 +155,7 @@ export default function Lobby({ onStart }: LobbyProps) {
                   maxLength={10}
                   onKeyDown={(e) => e.key === 'Enter' && handleStart()}
                 />
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {['佐藤', '菊池', '監査役'].map((preset) => (
                     <button
                       key={preset}
