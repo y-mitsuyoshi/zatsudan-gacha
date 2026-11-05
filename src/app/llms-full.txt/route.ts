@@ -44,7 +44,7 @@ ${categorySections}
 - 社長の頭の中（ランキング予想） (${BASE_URL}/rank-guess): 社長のランキングを予想するチームゲーム
 - 連想リレー (${BASE_URL}/word-chain): 言葉をつないで高得点を狙う連想ゲーム
 
-## 収録Webツール一覧（全34種類・無料・登録不要）
+## 収録Webツール一覧（全49種類・無料・登録不要）
 
 - 文字数カウンター (${BASE_URL}/character-counter): 文字・行・単語・UTF-8バイト数を集計
 - JSON整形・検証 (${BASE_URL}/json-formatter): JSONの整形・圧縮・構文チェック
@@ -80,6 +80,21 @@ ${categorySections}
 - 主要都市間距離計算 (${BASE_URL}/city-distance): 主要都市の大円距離と方角
 - 緯度経度距離・方位計算 (${BASE_URL}/coordinate-distance): 2地点の距離・方位・中点
 - 世界時差クロック (${BASE_URL}/world-timezone): 主要都市の現在時刻・時差・昼夜
+- ロジスティック回帰分析 (${BASE_URL}/logistic-regression): 二値アウトカムを予測するロジスティック回帰。オッズ比・混同行列
+- 主成分分析 (${BASE_URL}/principal-component-analysis): 多次元データの主成分分析。固有値・寄与率・負荷量・スコア
+- 重回帰分析 (${BASE_URL}/multiple-regression): 複数の説明変数から目的変数を予測。係数・p値・VIF・残差
+- 分位点回帰分析 (${BASE_URL}/quantile-regression): 外れ値に頑健な分位点回帰。切片・傾き・疑似R1
+- マルチレベル分析 (${BASE_URL}/multilevel-analysis): グループ構造を考慮したランダム切片モデル。ICCと分散成分
+- 因子分析 (${BASE_URL}/factor-analysis): 相関行列からの因子抽出とバリマックス回転。負荷量・共通性
+- クラスター分析 (${BASE_URL}/cluster-analysis): k-meansによるクラスタリング。中心・慣性・シルエット
+- ブール代数分析（QCA） (${BASE_URL}/boolean-analysis): 真理表・整合性・被覆率・最小十分条件を分析
+- t検定 (${BASE_URL}/t-test): 1標本・2標本・対応ありt検定。p値・信頼区間・効果量
+- 最尤推定 (${BASE_URL}/maximum-likelihood): 正規・指数・ポアソン分布の最尤推定。AIC/BIC・信頼区間
+- 共分散構造分析（媒介分析） (${BASE_URL}/covariance-structure-analysis): X→M→Yの直接・間接効果を推定。Sobel検定・パス図
+- 相関分析 (${BASE_URL}/correlation-analysis): 多変数の相関行列・p値・ヒートマップ・散布図
+- 分散分析（ANOVA） (${BASE_URL}/anova): 一元配置ANOVA。F値・p値・効果量・多重比較
+- 時系列分析 (${BASE_URL}/time-series-analysis): 移動平均・指数平滑・トレンド・ACF・予測
+- 生存分析（Kaplan-Meier） (${BASE_URL}/survival-analysis): 生存曲線・中央生存時間・リスク表・ログランク検定
 
 ## 利用について
 

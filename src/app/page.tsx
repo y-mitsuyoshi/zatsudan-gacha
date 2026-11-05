@@ -609,6 +609,9 @@ export default function Home() {
               <Link href="/tools#stats-tools" className="text-sm font-bold text-[var(--accent)] hover:underline">
                 統計・地図ツールを見る →
               </Link>
+              <Link href="/tools#regression-stats" className="text-sm font-bold text-[var(--accent)] hover:underline">
+                高度な統計分析を見る →
+              </Link>
               <Link href="/games" className="text-sm font-bold text-[var(--accent)] hover:underline">
                 無料ゲーム一覧を見る →
               </Link>

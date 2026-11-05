@@ -22,6 +22,8 @@ const toolLinks: FooterLink[] = [
   { label: '実用ツール', href: '/tools#utility-tools', note: '10種類' },
   { label: '住まい・お金', href: '/tools#finance-tools', note: '10種類' },
   { label: '統計・データ分析', href: '/tools#stats-tools', note: `${SITE_COUNTS.statisticsTools}種類` },
+  { label: '回帰・時系列', href: '/tools#regression-stats', note: `${SITE_COUNTS.regressionStatsTools}種類` },
+  { label: '多変量・検定', href: '/tools#multivariate-stats', note: `${SITE_COUNTS.multivariateStatsTools}種類` },
   { label: '地図・距離・時差', href: '/tools#map-tools', note: `${SITE_COUNTS.mapTools}種類` },
   { label: '都道府県ランキング', href: '/prefecture-ranking', note: '47都道府県' },
   { label: '主要都市間距離', href: '/city-distance', note: '簡易マップ' },

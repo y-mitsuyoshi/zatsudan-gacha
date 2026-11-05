@@ -7,8 +7,8 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料で使える便利ツール一覧｜統計・地図・住宅・実用など全34ツール',
-  description: '都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップ、都市間距離、緯度経度、世界時差など統計・地図ツール10種類を追加。住宅・お金、実用、クリエイティブを含む全34ツールを無料公開中。',
+  title: '無料で使える便利ツール一覧｜統計・地図・住宅・実用など全49ツール',
+  description: '重回帰、ロジスティック回帰、主成分分析、因子分析、クラスター分析、t検定、ANOVA、時系列、生存分析など高度な統計ツール15種類を追加。基本統計・地図・住宅・実用・クリエイティブを含む全49ツールを無料公開中。',
   keywords: [
     '無料 Webツール',
     '住宅ローン 計算',
@@ -45,6 +45,15 @@ export const metadata: Metadata = {
     '都市間 距離',
     '緯度経度 距離',
     '世界時差',
+    '重回帰分析',
+    'ロジスティック回帰',
+    '主成分分析',
+    '因子分析',
+    'クラスター分析',
+    't検定',
+    '分散分析',
+    '時系列分析',
+    '生存分析',
     'スマホ ツール',
   ],
   alternates: {
@@ -52,7 +61,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: '無料で使える便利ツール一覧',
-    description: '都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップ、都市間距離、緯度経度、世界時差など統計・地図ツール10種類。住まい・お金、実用、クリエイティブを含む全34ツール。登録不要・スマホ対応。',
+    description: '重回帰、ロジスティック回帰、主成分分析、因子分析、クラスター分析、t検定、ANOVA、時系列、生存分析など高度な統計ツール15種類。基本統計・地図・住宅・実用・クリエイティブを含む全49ツール。登録不要・スマホ対応。',
     url: `${APP_URL}/tools`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -62,7 +71,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '無料で使える便利ツール一覧',
-    description: '都道府県統計、標準偏差、相関、偏差値、グラフ、ヒートマップ、都市間距離、緯度経度、世界時差など統計・地図ツール10種類。住まい・お金、実用、クリエイティブを含む全34ツール。登録不要・スマホ対応。',
+    description: '重回帰、ロジスティック回帰、主成分分析、因子分析、クラスター分析、t検定、ANOVA、時系列、生存分析など高度な統計ツール15種類。基本統計・地図・住宅・実用・クリエイティブを含む全49ツール。登録不要・スマホ対応。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -265,7 +274,104 @@ const statsTools = [
   },
 ];
 
+const advancedRegressionTools = [
+  {
+    name: '重回帰分析',
+    href: '/multiple-regression',
+    tagline: '複数の説明変数から目的変数を予測',
+    description: 'CSVで目的変数と2〜8個の説明変数を入力し、回帰係数・標準誤差・t値・p値・R²・VIF・残差プロットをブラウザ内で確認できます。',
+  },
+  {
+    name: 'ロジスティック回帰分析',
+    href: '/logistic-regression',
+    tagline: '0/1の結果を確率で予測',
+    description: '二値の目的変数と複数の説明変数から、オッズ比・95%信頼区間・McFadden R²・混同行列を計算する分類モデルです。',
+  },
+  {
+    name: '分位点回帰分析',
+    href: '/quantile-regression',
+    tagline: '中央値や上位分位点の関係を推定',
+    description: '外れ値の影響を受けにくい分位点回帰で、選んだ分位点における切片・傾き・疑似R¹を推定。散布図に回帰直線を表示します。',
+  },
+  {
+    name: 'マルチレベル分析',
+    href: '/multilevel-analysis',
+    tagline: 'グループ差を考慮したランダム切片モデル',
+    description: '学校・店舗・チームなどのグループ構造を考慮し、ICC・グループ間分散・グループ内分散・固定効果を確認できます。',
+  },
+  {
+    name: '共分散構造分析（媒介分析）',
+    href: '/covariance-structure-analysis',
+    tagline: 'X→M→Yの直接・間接効果を可視化',
+    description: 'X・M・Yの3変数から媒介モデルを推定し、パス係数・間接効果・Sobel検定・媒介率をパス図とともに表示します。',
+  },
+  {
+    name: '時系列分析',
+    href: '/time-series-analysis',
+    tagline: '移動平均・指数平滑・自己相関・予測',
+    description: '時系列データの移動平均、指数平滑、線形トレンド、差分、ACFを計算し、次3期の予測をSVGグラフで表示します。',
+  },
+  {
+    name: '生存分析（Kaplan-Meier）',
+    href: '/survival-analysis',
+    tagline: '打ち切りデータの生存曲線を推定',
+    description: '時間・イベント・グループのCSVからKaplan-Meier曲線、中央生存時間、リスク表、2群のログランク検定を計算します。',
+  },
+];
+
+const advancedMultivariateTools = [
+  {
+    name: '主成分分析',
+    href: '/principal-component-analysis',
+    tagline: '多次元データを少ない主成分に圧縮',
+    description: '2〜8変数を標準化し、固有値・寄与率・累積寄与率・負荷量・主成分スコアを計算。PC1/PC2の散布図も表示します。',
+  },
+  {
+    name: '因子分析',
+    href: '/factor-analysis',
+    tagline: '観測変数の背後にある共通因子を推定',
+    description: '相関行列から因子を抽出し、バリマックス回転後の負荷量・共通性・独自性・寄与率を確認できる探索的因子分析ツールです。',
+  },
+  {
+    name: 'クラスター分析',
+    href: '/cluster-analysis',
+    tagline: 'k-meansで類似サンプルをグループ化',
+    description: '2〜6変数のデータを標準化し、k-meansクラスタリングを実行。クラスター中心、サイズ、慣性、シルエットスコアを表示します。',
+  },
+  {
+    name: 'ブール代数分析（QCA）',
+    href: '/boolean-analysis',
+    tagline: '条件の組み合わせと結果の関係を分析',
+    description: '0/1の条件と結果から真理表を作成し、整合性・被覆率・必要条件・最小十分条件をQCAの考え方で整理します。',
+  },
+  {
+    name: 't検定',
+    href: '/t-test',
+    tagline: '1標本・2標本・対応ありの平均差',
+    description: '1標本、Student/Welchの2標本、対応ありt検定に対応。t値・自由度・p値・信頼区間・Cohenのdを計算します。',
+  },
+  {
+    name: '分散分析（ANOVA）',
+    href: '/anova',
+    tagline: '3群以上の平均差をまとめて検定',
+    description: 'グループ別のCSVから一元配置ANOVAを実行し、F値・p値・η²・ω²・群平均・多重比較の目安を表示します。',
+  },
+  {
+    name: '最尤推定',
+    href: '/maximum-likelihood',
+    tagline: '正規・指数・ポアソン分布のパラメータ推定',
+    description: 'データから分布パラメータを最尤推定し、対数尤度・AIC・BIC・標準誤差・信頼区間・当てはめグラフを表示します。',
+  },
+  {
+    name: '相関分析',
+    href: '/correlation-analysis',
+    tagline: '多変数の相関行列とp値を確認',
+    description: '2〜8変数の相関行列、p値、最も強い正負のペア、選択した2変数の散布図を表示。相関と因果の違いも確認できます。',
+  },
+];
+
 const mapTools = [
+
   {
     name: '主要都市間距離計算',
     href: '/city-distance',
@@ -286,7 +392,7 @@ const mapTools = [
   },
 ];
 
-const allTools = [...creativeTools, ...utilityTools, ...financeTools, ...statsTools, ...mapTools];
+const allTools = [...creativeTools, ...utilityTools, ...financeTools, ...statsTools, ...advancedRegressionTools, ...advancedMultivariateTools, ...mapTools];
 
 function ToolSection({
   id,
@@ -338,11 +444,12 @@ function ToolSection({
 }
 
 const faqs = [
-  { q: '紹介している34のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類、住まい・お金の計算ツール10種類、統計ツール7種類、地図・距離ツール3種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
+  { q: '紹介している49のツールは無料ですか？', a: 'はい。クリエイティブツール4種類、実用ツール10種類、住まい・お金の計算ツール10種類、基本統計ツール7種類、高度な統計ツール15種類、地図・距離ツール3種類のすべてを無料で利用できます。会員登録やログインは不要です。' },
+  { q: '高度な統計分析はどんなツールがありますか？', a: '重回帰、ロジスティック回帰、分位点回帰、マルチレベル分析、共分散構造分析（媒介分析）、主成分分析、因子分析、クラスター分析、QCA、t検定、ANOVA、最尤推定、相関分析、時系列分析、生存分析の15種類を収録しています。' },
   { q: 'スマートフォンでも使えますか？', a: 'はい。各ツールはスマートフォンのブラウザに対応しています。' },
-  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類、住まい・お金の計算ツール10種類、統計ツール7種類、地図・距離ツール3種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
+  { q: '入力した内容はサーバーに送信されますか？', a: '実用ツール10種類、住まい・お金の計算ツール10種類、基本統計ツール7種類、高度な統計ツール15種類、地図・距離ツール3種類はすべてブラウザ内で処理され、入力内容をサーバーへ送信しません。プロフィールと駅名標もブラウザ内処理です。言い訳ジェネレーターのみ、文章生成のため入力内容がOpenCode Go APIに送信されます。' },
   { q: '作成した画像はSNSで使えますか？', a: 'はい。プロフィールメーカー・駅名標メーカー・画像リサイズツールで作成した画像は、SNSの投稿やプロフィールに利用できます。' },
-  { q: 'オフラインでも使えますか？', a: '実用ツール、住まい・お金の計算ツール、統計ツール、地図・距離ツールは、ページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
+  { q: 'オフラインでも使えますか？', a: '実用ツール、住まい・お金の計算ツール、基本統計・高度な統計ツール、地図・距離ツールは、ページを読み込んだ後、ブラウザ内で計算・変換が完結します。AI言い訳生成のみインターネット接続が必要です。' },
 ];
 
 const jsonLd = [
@@ -406,19 +513,19 @@ export default function ToolsPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Tool Archive / 34 Titles</p>
+            <p className="paper-kicker">Tool Archive / 49 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で使える<br className="sm:hidden" />便利ツール
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
               文字数カウント、JSON整形、画像圧縮など毎日使える実用ツール10種類。
-              住まい・お金の計算10種類、統計・データ分析7種類、地図・距離・時差3種類、クリエイティブ4種類を収録しています。
+              住まい・お金の計算10種類、基本統計7種類、高度な統計15種類、地図・距離・時差3種類、クリエイティブ4種類を収録しています。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
             <p className="font-label text-[9px] text-[var(--accent)]">Privacy Note</p>
             <p className="mt-2">
-              実用・住まい・お金・統計・地図ツールはすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
+              実用・住まい・お金・基本統計・高度な統計・地図ツールはすべてブラウザ内で処理。入力内容をサーバーへ送信しません。言い訳ジェネレーターのみ、文章生成のため入力を外部AI APIへ送信します。
             </p>
           </div>
         </section>
@@ -450,6 +557,24 @@ export default function ToolsPage() {
         />
 
         <ToolSection
+          id="regression-stats"
+          eyebrow="Regression & Prediction"
+          title="回帰・予測・時系列ツール（7種類）"
+          range="01 — 07"
+          tools={advancedRegressionTools}
+          intro="重回帰、ロジスティック回帰、分位点回帰、マルチレベル、媒介分析、時系列、生存時間まで。目的に合わせてモデルを選べます。"
+        />
+
+        <ToolSection
+          id="multivariate-stats"
+          eyebrow="Multivariate & Inference"
+          title="多変量・検定・分類ツール（8種類）"
+          range="01 — 08"
+          tools={advancedMultivariateTools}
+          intro="主成分、因子、クラスター、QCA、t検定、ANOVA、最尤推定、相関行列を収録。データの構造を多角的に確認できます。"
+        />
+
+        <ToolSection
           id="map-tools"
           eyebrow="Maps & Distance"
           title="地図・距離・時差ツール（3種類）"
@@ -468,7 +593,7 @@ export default function ToolsPage() {
 
         <SeoContentSection
           eyebrow="TOOL GUIDE"
-          title="34の無料Webツール"
+          title="49の無料Webツール"
           intro="用途に合わせて、気になるツールを選んでください。"
           faqs={faqs}
           related={[

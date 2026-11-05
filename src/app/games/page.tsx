@@ -382,7 +382,7 @@ export default function GamesPage() {
               <h2 id="tools-heading" className="font-editorial mt-2 text-2xl">作って遊べるクリエイティブツール</h2>
             </div>
             <Link href="/tools" className="font-label text-[9px] text-[var(--accent)] hover:underline">
-              全34ツールを見る →
+              全49ツールを見る →
             </Link>
           </div>
           <div className="mt-4 grid gap-x-6 sm:grid-cols-2">
@@ -408,7 +408,7 @@ export default function GamesPage() {
           intro="1分で遊べる爽快アクションから、じっくり戦略を練るローグライク、みんなで盛り上がるパーティーゲームまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[
-            { href: '/tools', label: '無料ツール一覧', description: '実用・統計・地図・クリエイティブの全34ツール' },
+            { href: '/tools', label: '無料ツール一覧', description: '実用・統計・地図・クリエイティブの全49ツール' },
             { href: '/guides', label: 'シーン別・雑談ガイド', description: '会議や1on1の話題を探す' },
           ]}
         />

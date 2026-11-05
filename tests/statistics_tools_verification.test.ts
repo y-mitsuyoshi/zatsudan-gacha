@@ -60,7 +60,7 @@ describe('Statistics and map tools', () => {
       assert.ok(city.lon >= -180 && city.lon <= 180);
       assert.doesNotThrow(() => new Intl.DateTimeFormat('en-US', { timeZone: city.timeZone }).format(new Date()));
     }
-    assert.equal(SITE_COUNTS.tools, 34);
+    assert.equal(SITE_COUNTS.tools, 49);
   });
 
   it('registers every tool in the hub, sitemap, llms, footer, and harness', () => {
@@ -79,6 +79,6 @@ describe('Statistics and map tools', () => {
     }
     assert.ok(footer.includes('/tools#stats-tools'));
     assert.ok(footer.includes('/tools#map-tools'));
-    assert.ok(llmsFull.includes('全34種類'));
+    assert.ok(llmsFull.includes('全49種類'));
   });
 });
