@@ -156,6 +156,11 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [フリーセル（完全情報トランプパズル）](${BASE_URL}/freecell)
 - [大富豪（大貧民・AI 4人対戦）](${BASE_URL}/daifugo)
 - [テキサスホールデム・ポーカー](${BASE_URL}/texas-holdem)
+- [星屑のアトリエ（星片収集＆錬成エンジンビルド盤ゲーム）](${BASE_URL}/stellar-atelier)
+- [群島開拓記（海域タイル配置＆航路ネットワーク盤ゲーム）](${BASE_URL}/archipelago-cartographer)
+- [深海サルベージ：酸素限界の遺跡探査（深海チキンレース盤ゲーム）](${BASE_URL}/abyssal-salvage)
+- [からくりバザール：歯車都市の競売人（同時入札オークション盤ゲーム）](${BASE_URL}/automatons-bazaar)
+- [サイコロ港町（ダイス・ハーバー）：出目で育つ交易都市](${BASE_URL}/dice-harbor)
 `;
 
   return new Response(body, {

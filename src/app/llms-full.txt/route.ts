@@ -25,7 +25,7 @@ export function GET() {
 
 ${categorySections}
 
-## 収録ブラウザゲーム一覧（全34作品・無料・登録不要）
+## 収録ブラウザゲーム一覧（全39作品・無料・登録不要）
 
 - 社畜通勤サバイバー (${BASE_URL}/barricade-defense): 満員ラッシュを突破する3Dゲートシューティング
 - 社畜サバイバー (${BASE_URL}/shachiku-survivor): 18時まで生き残る10分ホードサバイバル
@@ -61,6 +61,11 @@ ${categorySections}
 - フリーセル (${BASE_URL}/freecell): 52枚すべてが最初から見える完全情報思考型トランプパズル
 - 大富豪（大貧民） (${BASE_URL}/daifugo): 革命・8切り・階段・都落ち・スペ3返し対応のAI 4人対戦トランプゲーム
 - テキサスホールデム・ポーカー (${BASE_URL}/texas-holdem): プリフロップからリバーまでの駆け引きとリアルタイム勝率表示を備えたAI 4人対戦ポーカー
+- 星屑のアトリエ (${BASE_URL}/stellar-atelier): 5色の星片トークンを集めて錬成レシピを開発し恒久割引エンジンと星座パトロンを獲得する拡大再生産ボードゲーム
+- 群島開拓記 (${BASE_URL}/archipelago-cartographer): 海域タイルを回転・配置して珊瑚航路・群島・古代灯台を繋ぎ測量ブイで得点するタイル配置ボードゲーム
+- 深海サルベージ：酸素限界の遺跡探査 (${BASE_URL}/abyssal-salvage): 5種の深海ハザード重複による強制浮上リスクと期待値を計算しながら遺物を持ち帰るチキンレースボードゲーム
+- からくりバザール：歯車都市の競売人 (${BASE_URL}/automatons-bazaar): 1〜10の金貨カードでバッティング（同額無効）を読み合いからくり遺物とセットボーナスを競り落とす同時入札ボードゲーム
+- サイコロ港町（ダイス・ハーバー） (${BASE_URL}/dice-harbor): 1ダイス/2ダイスの出目で全員の施設が連動発動し4大港湾モニュメント建設を競う街づくりエンジンビルドボードゲーム
 
 ## 収録Webツール一覧（全49種類・無料・登録不要）
 
@@ -88,7 +93,7 @@ ${categorySections}
 - 住宅ローン借入可能額 (${BASE_URL}/mortgage-borrowing-capacity): 年収からの借入可能額
 - 繰上返済効果 (${BASE_URL}/prepayment-simulator): 期間短縮・返済額軽減の比較
 - 複利・積立 資産形成 (${BASE_URL}/compound-interest-calculator): 複利・積立・税引後評価額
-- 都道府県統計ランキング (${BASE_URL}/prefecture-ranking): 人口・面積・人口密度のランキング比較
+- 都道府県統計ランキング (${BASE_URL}/prefecture-ranking): 人口・気候・経済・住居・医療・文化観光の6ジャンル全36指標ランキング・日本地図ヒートマップ・2指標散布図・偏差値レーダー比較
 - 都道府県統計クイズ (${BASE_URL}/prefecture-quiz): 統計データから学ぶ5問クイズ
 - 標準偏差・分散計算 (${BASE_URL}/standard-deviation): 平均・分散・標準偏差・変動係数
 - 相関係数・散布図 (${BASE_URL}/correlation-coefficient): 相関係数・決定係数・回帰直線

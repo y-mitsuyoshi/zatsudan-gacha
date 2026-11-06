@@ -15,6 +15,11 @@ const BOARD_GAMES = [
   { slug: 'nine-mens-morris', componentPath: 'src/components/board/nine-mens-morris/NineMensMorrisGame.tsx' },
   { slug: 'hex-board', componentPath: 'src/components/board/hex-board/HexBoardGame.tsx' },
   { slug: 'dots-and-boxes', componentPath: 'src/components/board/dots-and-boxes/DotsAndBoxesGame.tsx' },
+  { slug: 'stellar-atelier', componentPath: 'src/components/board/stellar-atelier/StellarAtelierGame.tsx' },
+  { slug: 'archipelago-cartographer', componentPath: 'src/components/board/archipelago-cartographer/ArchipelagoCartographerGame.tsx' },
+  { slug: 'abyssal-salvage', componentPath: 'src/components/board/abyssal-salvage/AbyssalSalvageGame.tsx' },
+  { slug: 'automatons-bazaar', componentPath: 'src/components/board/automatons-bazaar/AutomatonsBazaarGame.tsx' },
+  { slug: 'dice-harbor', componentPath: 'src/components/board/dice-harbor/DiceHarborGame.tsx' },
 ];
 
 const CARD_GAMES = [
@@ -42,12 +47,13 @@ describe('Board and Card games', () => {
       assert.ok(page.includes('canonical:') && page.includes(game.slug), `${pagePath} has wrong canonical`);
       assert.ok(page.includes('openGraph') && page.includes('twitter'), `${pagePath} needs OGP metadata`);
       assert.ok(component.includes("'use client'") || component.includes('"use client"'), `${game.componentPath} must be a client component`);
-      assert.ok(!/オセロ|Othello/i.test(page), `${pagePath} must not use trademarked name Othello`);
-      assert.ok(!/オセロ|Othello/i.test(component), `${game.componentPath} must not use trademarked name Othello`);
+      const forbiddenTrademarks = /オセロ|Othello|カタン|カルカソンヌ|宝石の煌き|Splendor|Carcassonne|インカの黄金|海底探険|街コロ|Machi Koro|ハゲタカのえじき|すごろくや/i;
+      assert.ok(!forbiddenTrademarks.test(page), `${pagePath} must not use trademarked board game names`);
+      assert.ok(!forbiddenTrademarks.test(component), `${game.componentPath} must not use trademarked board game names`);
     }
   });
 
-  it('registers all 13 board and card games in hub, sitemap, llms, footer, and harness', () => {
+  it('registers all 18 board and card games in hub, sitemap, llms, footer, and harness', () => {
     const hub = read('src/app/games/page.tsx');
     const sitemap = read('src/app/sitemap.ts');
     const llms = read('src/app/llms.txt/route.ts');
@@ -65,7 +71,7 @@ describe('Board and Card games', () => {
     assert.ok(hub.includes('id="card-games"'));
     assert.ok(footer.includes('/games#board-games'));
     assert.ok(footer.includes('/games#card-games'));
-    assert.equal(SITE_COUNTS.boardGames, 8);
+    assert.equal(SITE_COUNTS.boardGames, 13);
     assert.equal(SITE_COUNTS.cardGames, 5);
   });
 });

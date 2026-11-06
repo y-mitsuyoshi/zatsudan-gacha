@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PREFECTURE_STATS, JAPAN_CITIES, WORLD_CITIES } from '../src/lib/statsData';
+import { FULL_PREFECTURE_STATS, GENRE_META, METRIC_DEFINITIONS } from '../src/lib/prefectureStatsCatalog';
 import { SITE_COUNTS } from '../src/lib/siteCounts';
 
 const ROOT = path.resolve(__dirname, '..');
@@ -52,6 +53,16 @@ describe('Statistics and map tools', () => {
     assert.equal(new Set(PREFECTURE_STATS.map((pref) => pref.name)).size, 47);
     assert.ok(PREFECTURE_STATS.every((pref) => pref.population > 0 && pref.area > 0));
     assert.ok(PREFECTURE_STATS.reduce((sum, pref) => sum + pref.population, 0) > 120_000_000);
+    assert.equal(FULL_PREFECTURE_STATS.length, 47);
+    assert.equal(GENRE_META.length, 6);
+    assert.equal(METRIC_DEFINITIONS.length, 36);
+    assert.equal(new Set(FULL_PREFECTURE_STATS.map((p) => `${p.mapCol},${p.mapRow}`)).size, 47);
+    for (const def of METRIC_DEFINITIONS) {
+      assert.ok(
+        FULL_PREFECTURE_STATS.every((p) => Number.isFinite(p[def.key])),
+        `Metric ${def.key} must be finite for all 47 prefectures`,
+      );
+    }
     assert.ok(JAPAN_CITIES.length >= 40);
     assert.ok(JAPAN_CITIES.every((city) => city.lat >= 20 && city.lat <= 46 && city.lon >= 122 && city.lon <= 154));
     assert.ok(WORLD_CITIES.length >= 15);

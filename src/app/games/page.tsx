@@ -8,9 +8,9 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
+  title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全39作品',
   description:
-    '社畜ゲーム10作品、定番ボードゲーム8作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーションラボ5作品を完全無料で公開中。リバーシ3D、立体四目並べ、五目並べ、ソリティア、大富豪、重力オービット、ボール増殖などスマホ・PC対応、登録不要。',
+    '社畜ゲーム10作品、現代＆定番ボードゲーム13作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーションラボ5作品を完全無料で公開中。星屑のアトリエ、群島開拓記、深海サルベージ、からくりバザール、サイコロ港町、リバーシ3D、ソリティア、大富豪などスマホ・PC対応、登録不要。',
   keywords: [
     '無料ブラウザゲーム',
     'ボードゲーム 無料',
@@ -28,9 +28,9 @@ export const metadata: Metadata = {
     canonical: '/games',
   },
   openGraph: {
-    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
+    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全39作品',
     description:
-      '社畜アクション、3Dリバーシ・立体四目並べ・五目並べ・マンカラ等の定番ボードゲーム、ソリティア・大富豪・ポーカー等のトランプゲーム、パーティーゲーム、本格物理シミュレーションまで全34作品を無料公開。',
+      '社畜アクション、拡大再生産・タイル配置・チキンレース・競り・街づくりなどの現代ボードゲーム＆3D古典盤13作品、トランプ5作品、パーティー6作品、本格物理シミュレーション5作品まで全39作品を無料公開。',
     url: `${APP_URL}/games`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
+    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全39作品',
     description:
-      '社畜アクション、3Dリバーシ・立体四目並べ・五目並べ・マンカラ等の定番ボードゲーム、ソリティア・大富豪・ポーカー等のトランプゲーム、パーティーゲーム、本格物理シミュレーションまで全34作品を無料公開。',
+      '社畜アクション、拡大再生産・タイル配置・チキンレース・競り・街づくりなどの現代ボードゲーム＆3D古典盤13作品、トランプ5作品、パーティー6作品、本格物理シミュレーション5作品まで全39作品を無料公開。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -253,6 +253,56 @@ const simulationGames = [
 
 const boardGames = [
   {
+    name: '星屑のアトリエ（Stellar Atelier）',
+    href: '/stellar-atelier',
+    mark: 'GEM',
+    cover: 'bg-[#1e1b4b]',
+    genre: '拡大再生産・宝石錬成エンジンビルド',
+    tagline: '星片を集めて恒久割引エンジンを築け',
+    description:
+      '5色の星片トークンと虹結晶を集めて錬成レシピを開発！開発したレシピが生み出す恒久属性ボーナスで高ランク天球儀を次々とタダ同然で錬成し、星座パトロンを招いて15名声星を競う現代エンジンビルド盤ゲーム。',
+  },
+  {
+    name: '群島開拓記（Archipelago Cartographer）',
+    href: '/archipelago-cartographer',
+    mark: 'TILE',
+    cover: 'bg-[#0f4c5c]',
+    genre: '海域タイル配置＆航路ネットワーク開拓',
+    tagline: 'タイルを回して航路と群島を繋ぎブイを置け',
+    description:
+      '毎ターン引いた海域タイルを回転させて9×9の海図へ配置し、珊瑚航路・群島陸地・古代灯台へ測量ブイを派遣。航路や島を完成させて高得点＆ブイ回収を狙う本格タイル配置ボードゲーム。',
+  },
+  {
+    name: '深海サルベージ：酸素限界の遺跡探査',
+    href: '/abyssal-salvage',
+    mark: 'DIVE',
+    cover: 'bg-[#082f49]',
+    genre: '深海チキンレース＆リスク確率管理',
+    tagline: 'さらに潜るか、母艦へ帰還するか',
+    description:
+      '5種類の深海ハザードの2枚目がめくれる前に母艦へ引き返すチキンレース！残り山札からの強制浮上（バースト）確率と単独帰還ボーナス期待値をリアルタイム計算しながら3回の潜水で最高スコアを目指そう。',
+  },
+  {
+    name: 'からくりバザール：歯車都市の競売人',
+    href: '/automatons-bazaar',
+    mark: 'BID',
+    cover: 'bg-[#451a03]',
+    genre: '同時入札オークション＆バッティング心理戦',
+    tagline: '同額入札は無効！1〜10の金貨を使い切れ',
+    description:
+      '1〜10の使い切り金貨カードで行う同時公開オークション。他プレイヤーと同じ金額を出すと「バッティング無効」になるルールのもと、相手の手札カウンティング表を見ながら名作からくりとセットボーナスを競り落とせ。',
+  },
+  {
+    name: 'サイコロ港町（ダイス・ハーバー）',
+    href: '/dice-harbor',
+    mark: 'DICE',
+    cover: 'bg-[#1d4ed8]',
+    genre: 'ダイス連動・街づくり拡大再生産',
+    tagline: '誰のターンでも出目で施設が連鎖発動！',
+    description:
+      'サイコロの出目に応じて全員の一次産業（青）・自分の商業（緑）・通行料徴収（赤）・ギルド（紫）が連鎖発動！1ダイスと2ダイスの期待収益シミュレーターを活用し、4大港湾モニュメントの完成を競う街づくりボードゲーム。',
+  },
+  {
     name: 'リバーシ（3D / 2D 戦略盤）',
     href: '/reversi',
     mark: '8×8',
@@ -395,9 +445,9 @@ const creativeTools = [
 ];
 
 const faqs = [
-  { q: '紹介している34のゲーム・シミュレーターはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、定番ボードゲーム8作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品の全34作品をブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
+  { q: '紹介している39のゲーム・シミュレーターはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、現代＆定番ボードゲーム13作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品の全39作品をブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
   { q: 'スマートフォンでもPCでも遊べますか？', a: 'はい。各ゲームはスマートフォンのタッチ操作と、PCのマウス・キーボード操作の両方に最適化されています。' },
-  { q: 'ボードゲームやトランプゲームは1人でも遊べますか？', a: 'はい。リバーシ・立体四目並べ・五目並べ・マンカラ・チェッカー・ナインメンズモリス・ヘックス・ドット＆ボックスはすべてAI対戦（難易度3段階）と1台での2人対戦の両方に対応しています。トランプ5作品もすべて1人で今すぐ遊べます。' },
+  { q: 'ボードゲームやトランプゲームは1人でも遊べますか？', a: 'はい。現代ボードゲーム5作品（星屑のアトリエ・群島開拓記・深海サルベージ・からくりバザール・サイコロ港町）および定番ボードゲーム8作品はすべてAI対戦と2人対戦に対応しています。トランプ5作品もすべて1人で今すぐ遊べます。' },
   { q: '会社のオンサイト・オフサイトで使えるゲームはどれですか？', a: '「少数派ワード」「以心伝心ゲーム」「NGワード会議」「禁句トーク」「ランキング予想」「連想リレー」がおすすめです。1台の端末を回して遊べるため、懇親会や研修のアイスブレイクにも使えます。' },
   { q: '物理シミュレーション5作品はゲームですか？', a: 'スコアを競うゲームではなく、倍増時間や重力スイングバイ軌道、連鎖伝播速度、安息角、気泡合体などを定量グラフとプリセットで観察・実験できる物理シミュレーションラボです。' },
 ];
@@ -408,8 +458,8 @@ const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
-    description: '社畜ゲーム10作品、定番ボードゲーム8作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
+    name: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全39作品',
+    description: '社畜ゲーム10作品、現代＆定番ボードゲーム13作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
     url: `${APP_URL}/games`,
     inLanguage: 'ja-JP',
     mainEntity: {
@@ -464,12 +514,12 @@ export default function GamesPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Game Archive / 34 Titles</p>
+            <p className="paper-kicker">Game Archive / 39 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で遊べる<br className="sm:hidden" />ゲーム一覧
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              社畜アクション＆人生シミュレーション10作品、世界中で愛される古典・数学ボードゲーム8作品、定番トランプゲーム5作品、みんなで盛り上がるパーティーゲーム6作品、定量グラフ付きの物理シミュレーションラボ5作品の全34作品を収録。
+              社畜アクション＆人生シミュレーション10作品、拡大再生産・タイル配置・チキンレース・競り・街づくりなどの現代ボードゲーム＆古典盤13作品、定番トランプゲーム5作品、みんなで盛り上がるパーティーゲーム6作品、定量グラフ付きの物理シミュレーションラボ5作品の全39作品を収録。
               すべて完全オリジナル実装・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
             </p>
           </div>
@@ -478,7 +528,7 @@ export default function GamesPage() {
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               <a href="#game-list-heading" className="underline hover:text-[var(--accent)]">社畜ゲーム(10)</a>
               <span>・</span>
-              <a href="#board-games" className="underline hover:text-[var(--accent)]">ボードゲーム(8)</a>
+              <a href="#board-games" className="underline hover:text-[var(--accent)]">ボードゲーム(13)</a>
               <span>・</span>
               <a href="#card-games" className="underline hover:text-[var(--accent)]">トランプ(5)</a>
               <span>・</span>
@@ -529,13 +579,13 @@ export default function GamesPage() {
         <section id="board-games" className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="board-games-heading">
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--line)] pb-3">
             <div>
-              <p className="paper-kicker">CLASSIC &amp; MATHEMATICAL BOARD GAMES</p>
-              <h2 id="board-games-heading" className="font-editorial mt-2 text-2xl">定番・頭脳ボードゲーム（8作品）</h2>
+              <p className="paper-kicker">MODERN EURO &amp; CLASSIC BOARD GAMES</p>
+              <h2 id="board-games-heading" className="font-editorial mt-2 text-2xl">現代ボードゲーム＆定番頭脳盤（13作品）</h2>
             </div>
-            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 08</span>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 13</span>
           </div>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
-            パブリックドメインの伝統盤面ゲームと数学者考案のトポロジーゲームを、Three.js 3D/2DビューとAI 3段階対戦・2人パス＆プレイ対応で収録。
+            拡大再生産エンジンビルド、海域タイル配置、深海チキンレース、同時入札オークション、ダイス街づくりなどの現代ボードゲーム5作品と、Three.js 3D/2D対応の古典・数学ボードゲーム8作品を収録。すべてAI対戦＆ローカル対戦に対応しています。
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {boardGames.map((game, index) => (
@@ -705,7 +755,7 @@ export default function GamesPage() {
 
         <SeoContentSection
           eyebrow="GAME GUIDE"
-          title="34の無料ブラウザゲーム＆物理シミュレーションラボ"
+          title="39の無料ブラウザゲーム＆物理シミュレーションラボ"
           intro="1分で遊べる爽快社畜アクションから、3D対応の伝統ボードゲーム、定番トランプ、みんなで盛り上がるパーティーゲーム、倍増時間や重力軌道を実測できる物理シミュレーションラボまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[

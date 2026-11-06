@@ -1,8 +1,8 @@
 export const SITE_COUNTS = {
-  games: 34,
+  games: 39,
   partyGames: 6,
   simulationGames: 5,
-  boardGames: 8,
+  boardGames: 13,
   cardGames: 5,
   tools: 49,
   statisticsTools: 7,
