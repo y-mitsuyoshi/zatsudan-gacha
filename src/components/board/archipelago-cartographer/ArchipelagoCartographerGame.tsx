@@ -319,13 +319,14 @@ function cloneBoard(board: (PlacedTile | null)[][]): (PlacedTile | null)[][] {
   );
 }
 
-function createShuffledDeck(): TileTemplate[] {
+function createDeck(randomize = true): TileTemplate[] {
   const list: TileTemplate[] = [];
   for (const tpl of TILE_CATALOG) {
     for (let i = 0; i < tpl.count; i++) {
       list.push({ ...tpl, edges: [...tpl.edges] });
     }
   }
+  if (!randomize) return list;
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = list[i];
@@ -333,6 +334,10 @@ function createShuffledDeck(): TileTemplate[] {
     list[j] = tmp;
   }
   return list;
+}
+
+function createShuffledDeck(): TileTemplate[] {
+  return createDeck(true);
 }
 
 /**
@@ -1424,7 +1429,7 @@ export default function ArchipelagoCartographerGame() {
   }, [bgmOn]);
 
   const [board, setBoard] = useState<(PlacedTile | null)[][]>(() => createInitialBoard());
-  const [deck, setDeck] = useState<TileTemplate[]>(() => createShuffledDeck());
+  const [deck, setDeck] = useState<TileTemplate[]>(() => createDeck(false));
   const [turn, setTurn] = useState<PlayerId>(1);
   const [phase, setPhase] = useState<TurnPhase>('place_tile');
   const [rotation, setRotation] = useState<Rotation>(0);
@@ -1444,6 +1449,11 @@ export default function ArchipelagoCartographerGame() {
   const [popups, setPopups] = useState<ScorePopup[]>([]);
   const [hint, setHint] = useState<HintRecommendation | null>(null);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+
+  // Keep the first paint deterministic for hydration, then randomize.
+  useEffect(() => {
+    setDeck(createDeck(true));
+  }, []);
 
   const { playRotate, playPlaceTile, playBeacon, playCompleteBonus } = useSoundEffects(soundOn);
 
@@ -1794,22 +1804,22 @@ export default function ArchipelagoCartographerGame() {
   }, [humanSide, mode, p1Total, p2Total, phase]);
 
   return (
-    <div className="min-h-screen bg-[#06101e] text-slate-100 select-none">
+    <div className="tabletop-page min-h-screen overflow-x-hidden select-none">
       {/* Top Header */}
-      <header className="border-b border-sky-500/20 bg-[#081526]/95 backdrop-blur">
+      <header className="tabletop-header sticky top-0 z-30">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-sky-400/50 hover:text-sky-200"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs"
             >
               ← 無料ゲーム一覧へ
             </Link>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-sky-400">
+              <p className="tabletop-kicker">
                 NAUTICAL TILE PLACEMENT / 9×9 ARCHIPELAGO CHART
               </p>
-              <h2 className="text-sm font-black sm:text-lg">
+              <h2 className="tabletop-title text-base sm:text-lg">
                 群島開拓記（Archipelago Cartographer）
               </h2>
             </div>
@@ -1819,10 +1829,8 @@ export default function ArchipelagoCartographerGame() {
             <button
               type="button"
               onClick={() => setBgmOn((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
-                bgmOn
-                  ? 'border-sky-400/60 bg-sky-500/20 text-sky-200'
-                  : 'border-white/15 bg-white/[0.05] text-slate-300 hover:border-sky-400/50'
+              className={`tabletop-button min-h-11 px-3 text-xs ${
+                bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
               {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
@@ -1830,7 +1838,7 @@ export default function ArchipelagoCartographerGame() {
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-sky-400/50"
+              className="tabletop-button min-h-11 px-3 text-xs"
             >
               {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
             </button>
@@ -1844,29 +1852,29 @@ export default function ArchipelagoCartographerGame() {
         {/* Left Column: Scoreboard & 9x9 Ocean Map Grid */}
         <div className="flex flex-col gap-3">
           {/* Score & Beacon Supply Bar */}
-          <div className="rounded-2xl border border-sky-500/20 bg-[#0a192f]/90 p-3 shadow-lg">
+          <div className="tabletop-panel p-3">
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:items-center">
               {/* Player 1 Card */}
               <div
-                className={`rounded-xl border p-2.5 transition ${
+                className={`rounded-md border p-2.5 transition ${
                   turn === 1 && phase !== 'game_over'
-                    ? 'border-amber-400/70 bg-amber-500/10'
-                    : 'border-white/10 bg-black/25'
+                    ? 'border-[var(--table-accent)] bg-[#c99555]/12'
+                    : 'bg-[var(--table-panel-soft)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-xs font-black text-amber-300">
-                    <span className="inline-block h-3 w-3 rounded-full bg-amber-400 ring-2 ring-white/60" />
+                  <span className="flex items-center gap-1.5 text-xs font-black text-[var(--table-accent-strong)]">
+                    <span className="inline-block h-3 w-3 rounded-full bg-[var(--table-accent)] ring-2 ring-[var(--table-line-strong)]" />
                     琥珀船団（先手・{mode === 'cpu' ? (humanSide === 1 ? 'あなた' : 'CPU') : 'P1'}）
                   </span>
-                  <span className="font-mono text-xl font-black text-white">{p1Total} 点</span>
+                  <span className="font-mono text-xl font-black text-[var(--table-ink)]">{p1Total} 点</span>
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-300">
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[var(--table-muted)]">
                   <span>
                     航路:{scores[1].route} / 群島:{scores[1].island} / 灯台:{scores[1].lighthouse}
                     {scores[1].incomplete > 0 ? ` / 未完:${scores[1].incomplete}` : ''}
                   </span>
-                  <span className="font-bold text-amber-200">
+                  <span className="font-bold text-[var(--table-accent-strong)]">
                     残りブイ: {'●'.repeat(beaconsLeft[1])}
                     {'○'.repeat(INITIAL_BEACONS - beaconsLeft[1])} ({beaconsLeft[1]})
                   </span>
@@ -1874,22 +1882,22 @@ export default function ArchipelagoCartographerGame() {
               </div>
 
               {/* Center Status Pill */}
-              <div className="flex flex-col items-center justify-center rounded-xl border border-sky-400/25 bg-sky-950/40 px-3 py-2 text-center">
-                <span className="text-[11px] font-bold text-sky-300">
-                  残り海図タイル: <strong className="font-mono text-sm text-white">{deck.length}</strong> / 28枚
+              <div className="tabletop-panel-soft flex flex-col items-center justify-center px-3 py-2 text-center">
+                <span className="text-[11px] font-bold text-[var(--table-muted)]">
+                  残り海図タイル: <strong className="font-mono text-sm text-[var(--table-ink)]">{deck.length}</strong> / 28枚
                 </span>
                 {phase === 'game_over' ? (
-                  <span className="mt-0.5 text-xs font-black text-amber-300">{winnerBanner}</span>
+                  <span className="mt-0.5 text-xs font-black text-[var(--table-accent-strong)]">{winnerBanner}</span>
                 ) : isCpuTurn ? (
-                  <span className="mt-0.5 text-xs font-black text-sky-200">
+                  <span className="mt-0.5 text-xs font-black text-[#9db8c8]">
                     CPUが海図を測量中...
                   </span>
                 ) : phase === 'place_beacon' ? (
-                  <span className="mt-0.5 text-xs font-black text-emerald-300">
+                  <span className="mt-0.5 text-xs font-black text-[#9dc4af]">
                     手順2：測量ブイを配置するか温存を選択
                   </span>
                 ) : (
-                  <span className="mt-0.5 text-xs font-black text-sky-100">
+                  <span className="mt-0.5 text-xs font-black text-[#9db8c8]">
                     手順1：タイルを回転して緑枠の海域へ配置（候補 {validCells.length} 箇所）
                   </span>
                 )}
@@ -1897,25 +1905,25 @@ export default function ArchipelagoCartographerGame() {
 
               {/* Player 2 Card */}
               <div
-                className={`rounded-xl border p-2.5 transition ${
+                className={`rounded-md border p-2.5 transition ${
                   turn === 2 && phase !== 'game_over'
-                    ? 'border-pink-400/70 bg-pink-500/10'
-                    : 'border-white/10 bg-black/25'
+                    ? 'border-[#8a4f61] bg-[#8a4f61]/12'
+                    : 'bg-[var(--table-panel-soft)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-xs font-black text-pink-300">
-                    <span className="inline-block h-3 w-3 rounded-full bg-pink-500 ring-2 ring-white/60" />
+                  <span className="flex items-center gap-1.5 text-xs font-black text-[#d9a19b]">
+                    <span className="inline-block h-3 w-3 rounded-full bg-[#8a4f61] ring-2 ring-[var(--table-line-strong)]" />
                     珊瑚船団（後手・{mode === 'cpu' ? (humanSide === 2 ? 'あなた' : 'CPU') : 'P2'}）
                   </span>
-                  <span className="font-mono text-xl font-black text-white">{p2Total} 点</span>
+                  <span className="font-mono text-xl font-black text-[var(--table-ink)]">{p2Total} 点</span>
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-300">
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[var(--table-muted)]">
                   <span>
                     航路:{scores[2].route} / 群島:{scores[2].island} / 灯台:{scores[2].lighthouse}
                     {scores[2].incomplete > 0 ? ` / 未完:${scores[2].incomplete}` : ''}
                   </span>
-                  <span className="font-bold text-pink-200">
+                  <span className="font-bold text-[#d9a19b]">
                     残りブイ: {'●'.repeat(beaconsLeft[2])}
                     {'○'.repeat(INITIAL_BEACONS - beaconsLeft[2])} ({beaconsLeft[2]})
                   </span>
@@ -1924,7 +1932,7 @@ export default function ArchipelagoCartographerGame() {
             </div>
 
             {statusBanner && (
-              <div className="mt-2 rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-center text-xs font-bold text-amber-200">
+              <div className="tabletop-panel-soft mt-2 border-[var(--table-accent)] px-3 py-1.5 text-center text-xs font-bold text-[var(--table-accent-strong)]">
                 {statusBanner}
               </div>
             )}
@@ -1932,13 +1940,13 @@ export default function ArchipelagoCartographerGame() {
 
           {/* Phase 2 Beacon Action Banner (shown right above the board when placing a beacon) */}
           {phase === 'place_beacon' && pendingCoord && (
-            <div className="rounded-2xl border border-emerald-400/50 bg-emerald-950/60 p-3 shadow-lg">
+            <div className="tabletop-panel border-[#315d4e] p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs font-black text-emerald-300">
+                  <p className="text-xs font-black text-[#9dc4af]">
                     📍 測量ブイ（開拓コマ）配置フェーズ — {formatCoord(pendingCoord[0], pendingCoord[1])}
                   </p>
-                  <p className="text-[11px] text-slate-200">
+                  <p className="text-[11px] text-[var(--table-ink)]">
                     配置したタイル上の未占有エリアにブイを1個置くか、置かずにブイを温存できます。
                   </p>
                 </div>
@@ -1956,7 +1964,7 @@ export default function ArchipelagoCartographerGame() {
                           opt.label
                         )
                       }
-                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow transition hover:bg-emerald-400"
+                      className="tabletop-button-primary min-h-11 px-3 text-xs"
                     >
                       {opt.label}に配置
                       {opt.willCompleteImmediately
@@ -1969,7 +1977,7 @@ export default function ArchipelagoCartographerGame() {
                     onClick={() =>
                       finalizeTurnWithBeacon(board, pendingCoord[0], pendingCoord[1], null, null)
                     }
-                    className="rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20"
+                    className="tabletop-button min-h-11 px-3 text-xs"
                   >
                     ブイを置かずに確定（温存）
                   </button>
@@ -1979,9 +1987,9 @@ export default function ArchipelagoCartographerGame() {
           )}
 
           {/* 9x9 Ocean Map Grid */}
-          <div className="relative overflow-hidden rounded-2xl border border-sky-500/25 bg-[#071527] p-2 sm:p-3.5 shadow-2xl">
+          <div className="tabletop-board-frame relative overflow-hidden p-2 sm:p-3.5">
             {/* Column Headers (A - I) */}
-            <div className="mb-1 grid grid-cols-[22px_repeat(9,minmax(0,1fr))] gap-1 text-center text-[10px] font-bold text-sky-300/70">
+            <div className="mb-1 grid grid-cols-[22px_repeat(9,minmax(0,1fr))] gap-1 text-center text-[10px] font-bold text-[var(--table-muted)]">
               <span />
               {COL_LABELS.map((col) => (
                 <span key={col}>{col}</span>
@@ -1990,7 +1998,7 @@ export default function ArchipelagoCartographerGame() {
 
             <div className="grid grid-cols-[22px_minmax(0,1fr)] gap-1">
               {/* Row Headers (1 - 9) */}
-              <div className="grid grid-rows-9 gap-1 text-center text-[10px] font-bold text-sky-300/70">
+              <div className="grid grid-rows-9 gap-1 text-center text-[10px] font-bold text-[var(--table-muted)]">
                 {ROW_LABELS.map((row) => (
                   <span key={row} className="flex items-center justify-center">
                     {row}
@@ -1999,7 +2007,7 @@ export default function ArchipelagoCartographerGame() {
               </div>
 
               {/* 9x9 Cells */}
-              <div className="grid aspect-square w-full grid-cols-9 grid-rows-9 gap-1 rounded-xl border border-sky-500/20 bg-[#040d1a] p-1">
+              <div className="grid aspect-square w-full grid-cols-9 grid-rows-9 gap-1 rounded-md border border-[var(--table-line)] bg-[#0b1116] p-1">
                 {board.map((row, r) =>
                   row.map((cell, c) => {
                     const isValid = phase === 'place_tile' && !isCpuTurn && validCellSet.has(`${r},${c}`);
@@ -2024,13 +2032,13 @@ export default function ArchipelagoCartographerGame() {
                         className={`relative aspect-square overflow-hidden rounded-md transition ${
                           cell
                             ? isPending
-                              ? 'ring-2 ring-emerald-400 shadow-lg'
-                              : 'border border-sky-500/20'
+                              ? 'ring-2 ring-emerald-400 '
+                              : 'border border-[#3f5f78]/20'
                             : isValid
                             ? isHintCell
-                              ? 'cursor-pointer border-2 border-amber-400 bg-amber-500/20 shadow-[0_0_12px_rgba(251,191,36,0.45)]'
-                              : 'cursor-pointer border-2 border-emerald-400/75 bg-emerald-500/15 hover:bg-emerald-500/30'
-                            : 'border border-white/[0.05] bg-[#061224]/70'
+                              ? 'cursor-pointer border-2 border-[var(--table-accent)] bg-[#c99555]/16 '
+                              : 'cursor-pointer border-2 border-[#315d4e]/75 bg-[#315d4e]/22 hover:bg-[#315d4e]/28'
+                            : 'border border-[var(--table-line)] bg-[#111a20]'
                         }`}
                       >
                         {cell ? (
@@ -2067,8 +2075,8 @@ export default function ArchipelagoCartographerGame() {
                           />
                         ) : isValid ? (
                           <div className="flex h-full w-full flex-col items-center justify-center">
-                            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                            <span className="mt-0.5 text-[9px] font-bold text-emerald-200/80">
+                            <span className="h-2 w-2 rounded-full bg-[#4f806b]" />
+                            <span className="mt-0.5 text-[9px] font-bold text-[#9dc4af]/80">
                               {formatCoord(r, c)}
                             </span>
                           </div>
@@ -2076,7 +2084,7 @@ export default function ArchipelagoCartographerGame() {
 
                         {/* Coordinate Watermark on Placed Tiles */}
                         {cell && (
-                          <span className="pointer-events-none absolute bottom-0.5 right-1 text-[8px] font-bold text-white/55 drop-shadow">
+                          <span className="pointer-events-none absolute bottom-0.5 right-1 text-[8px] font-bold text-[#f4ead8]/55 drop-shadow">
                             {formatCoord(r, c)}
                           </span>
                         )}
@@ -2093,7 +2101,7 @@ export default function ArchipelagoCartographerGame() {
                 {popups.map((p) => (
                   <div
                     key={p.id}
-                    className="rounded-full border border-amber-300 bg-slate-950/90 px-4 py-1.5 text-xs font-black text-amber-300 shadow-xl"
+                    className="rounded-full border border-[var(--table-accent)] bg-[var(--table-bg-deep)] px-4 py-1.5 text-xs font-black text-[var(--table-accent-strong)] "
                   >
                     🎉 {formatCoord(p.r, p.c)}: {p.text}
                   </div>
@@ -2106,19 +2114,19 @@ export default function ArchipelagoCartographerGame() {
         {/* Right Column: Current Tile Controller, Rules & Move Log */}
         <div className="flex flex-col gap-3">
           {/* Current Nautical Tile & Rotation Box */}
-          <div className="rounded-2xl border border-sky-500/25 bg-[#0a192f]/90 p-3.5 shadow-lg">
+          <div className="tabletop-panel p-3.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black tracking-wider text-sky-300">
+              <h3 className="tabletop-title text-sm">
                 🧭 現在の海域タイル（山札残り {deck.length} 枚）
               </h3>
-              <span className="rounded-md bg-sky-500/20 px-2 py-0.5 font-mono text-[11px] font-bold text-sky-200">
+              <span className="rounded-md bg-[#3f5f78]/18 px-2 py-0.5 font-mono text-[11px] font-bold text-[#9db8c8]">
                 回転角: {rotation}°
               </span>
             </div>
 
             {currentTemplate && phase !== 'game_over' ? (
               <div className="mt-3 flex items-center gap-3.5">
-                <div className="h-28 w-28 shrink-0 overflow-hidden rounded-xl border-2 border-sky-400/50 bg-[#061325] shadow-inner">
+                <div className="h-28 w-28 shrink-0 overflow-hidden rounded-md border-2 border-[var(--table-line-strong)] bg-[var(--table-bg-deep)]">
                   <NauticalTileSvg
                     edges={currentRotatedEdges}
                     center={currentTemplate.center}
@@ -2128,15 +2136,15 @@ export default function ArchipelagoCartographerGame() {
                 </div>
 
                 <div className="flex flex-1 flex-col gap-1.5">
-                  <p className="text-sm font-black text-white">{currentTemplate.name}</p>
-                  <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-300">
+                  <p className="text-sm font-black text-[var(--table-ink)]">{currentTemplate.name}</p>
+                  <div className="grid grid-cols-2 gap-1 text-[11px] text-[var(--table-muted)]">
                     <span>北: {terrainLabel(currentRotatedEdges[0])}</span>
                     <span>東: {terrainLabel(currentRotatedEdges[1])}</span>
                     <span>南: {terrainLabel(currentRotatedEdges[2])}</span>
                     <span>西: {terrainLabel(currentRotatedEdges[3])}</span>
                   </div>
                   {currentTemplate.center !== 'none' && (
-                    <span className="inline-block w-fit rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                    <span className="inline-block w-fit rounded bg-[#c99555]/16 px-2 py-0.5 text-[10px] font-bold text-[var(--table-accent-strong)]">
                       中央特性:{' '}
                       {currentTemplate.center === 'lighthouse'
                         ? '古代灯台（周囲8マス完成で最大11点）'
@@ -2154,7 +2162,7 @@ export default function ArchipelagoCartographerGame() {
                         playRotate();
                         setRotation((prev) => (((prev + 90) % 360) as Rotation));
                       }}
-                      className="rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-black text-slate-950 transition hover:bg-sky-400 disabled:opacity-40"
+                      className="tabletop-button-primary min-h-11 px-3 text-xs disabled:opacity-40"
                     >
                       ↻ 90°回転（Rキー）
                     </button>
@@ -2162,7 +2170,7 @@ export default function ArchipelagoCartographerGame() {
                       type="button"
                       disabled={phase !== 'place_tile' || isCpuTurn}
                       onClick={handleRequestHint}
-                      className="rounded-lg border border-amber-400/50 bg-amber-500/15 px-2.5 py-1.5 text-xs font-bold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
+                      className="tabletop-button min-h-11 px-3 text-xs text-[var(--table-accent-strong)] disabled:opacity-40"
                     >
                       💡 AIヒント
                     </button>
@@ -2170,34 +2178,34 @@ export default function ArchipelagoCartographerGame() {
                 </div>
               </div>
             ) : (
-              <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-center">
-                <p className="text-sm font-black text-amber-200">{winnerBanner}</p>
-                <p className="mt-1 text-xs text-slate-300">
+              <div className="tabletop-panel-soft mt-3 border-[var(--table-accent)] p-3 text-center">
+                <p className="text-sm font-black text-[var(--table-accent-strong)]">{winnerBanner}</p>
+                <p className="mt-1 text-xs text-[var(--table-muted)]">
                   全28枚の海域タイル開拓が完了し、未完成エリアのボーナス集計が行われました。
                 </p>
               </div>
             )}
 
             {hint && phase === 'place_tile' && (
-              <div className="mt-2.5 rounded-xl border border-amber-400/40 bg-amber-500/15 p-2.5 text-xs text-amber-100">
-                <p className="font-black text-amber-300">💡 航海士AIの推奨手:</p>
+              <div className="tabletop-panel-soft mt-2.5 border-[var(--table-accent)] p-2.5 text-xs text-[var(--table-accent-strong)]">
+                <p className="font-black text-[var(--table-accent-strong)]">💡 航海士AIの推奨手:</p>
                 <p className="mt-0.5">{hint.reason}</p>
               </div>
             )}
           </div>
 
           {/* Mode & Difficulty Settings */}
-          <div className="rounded-2xl border border-sky-500/20 bg-[#0a192f]/90 p-3.5 shadow-lg">
-            <h3 className="text-xs font-black tracking-wider text-sky-300">⚙️ 対戦モード・設定</h3>
+          <div className="tabletop-panel p-3.5">
+            <h3 className="tabletop-title text-sm">⚙️ 対戦モード・設定</h3>
 
             <div className="mt-2.5 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => startNewGame('cpu', difficulty, humanSide)}
-                className={`rounded-lg py-1.5 text-xs font-black transition ${
+                className={`min-h-11 rounded-md text-xs font-black transition ${
                   mode === 'cpu'
-                    ? 'bg-sky-500 text-slate-950'
-                    : 'border border-white/15 bg-white/[0.04] text-slate-300 hover:text-white'
+                    ? 'tabletop-button-primary'
+                    : 'tabletop-button border-transparent bg-transparent'
                 }`}
               >
                 🤖 CPU対戦
@@ -2205,10 +2213,10 @@ export default function ArchipelagoCartographerGame() {
               <button
                 type="button"
                 onClick={() => startNewGame('pvp', difficulty, humanSide)}
-                className={`rounded-lg py-1.5 text-xs font-black transition ${
+                className={`min-h-11 rounded-md text-xs font-black transition ${
                   mode === 'pvp'
-                    ? 'bg-sky-500 text-slate-950'
-                    : 'border border-white/15 bg-white/[0.04] text-slate-300 hover:text-white'
+                    ? 'tabletop-button-primary'
+                    : 'tabletop-button border-transparent bg-transparent'
                 }`}
               >
                 👥 1台で2人対戦
@@ -2229,10 +2237,10 @@ export default function ArchipelagoCartographerGame() {
                       key={key}
                       type="button"
                       onClick={() => startNewGame('cpu', key, humanSide)}
-                      className={`rounded-lg py-1 text-xs font-bold transition ${
+                      className={`min-h-11 rounded-md text-xs font-bold transition ${
                         difficulty === key
-                          ? 'bg-emerald-500 text-slate-950 font-black'
-                          : 'border border-white/15 bg-white/[0.04] text-slate-300'
+                          ? 'tabletop-button-primary'
+                          : 'tabletop-button border-transparent bg-transparent'
                       }`}
                     >
                       {label}
@@ -2244,10 +2252,10 @@ export default function ArchipelagoCartographerGame() {
                   <button
                     type="button"
                     onClick={() => startNewGame('cpu', difficulty, 1)}
-                    className={`rounded-lg py-1 text-xs font-bold transition ${
+                    className={`min-h-11 rounded-md text-xs font-bold transition ${
                       humanSide === 1
-                        ? 'bg-amber-400 text-slate-950 font-black'
-                        : 'border border-white/15 bg-white/[0.04] text-slate-300'
+                        ? 'tabletop-button-primary'
+                        : 'tabletop-button border-transparent bg-transparent'
                     }`}
                   >
                     先手（琥珀船団）で開始
@@ -2255,10 +2263,10 @@ export default function ArchipelagoCartographerGame() {
                   <button
                     type="button"
                     onClick={() => startNewGame('cpu', difficulty, 2)}
-                    className={`rounded-lg py-1 text-xs font-bold transition ${
+                    className={`min-h-11 rounded-md text-xs font-bold transition ${
                       humanSide === 2
-                        ? 'bg-pink-400 text-slate-950 font-black'
-                        : 'border border-white/15 bg-white/[0.04] text-slate-300'
+                        ? 'tabletop-button-primary'
+                        : 'tabletop-button border-transparent bg-transparent'
                     }`}
                   >
                     後手（珊瑚船団）で開始
@@ -2270,31 +2278,31 @@ export default function ArchipelagoCartographerGame() {
             <button
               type="button"
               onClick={() => startNewGame(mode, difficulty, humanSide)}
-              className="mt-2.5 w-full rounded-lg border border-sky-400/40 bg-sky-500/15 py-1.5 text-xs font-black text-sky-200 transition hover:bg-sky-500/25"
+              className="tabletop-button-primary mt-2.5 min-h-11 w-full text-xs"
             >
               🔄 新しい海図で最初から対局
             </button>
           </div>
 
           {/* Scoring Reference Card */}
-          <div className="rounded-2xl border border-sky-500/20 bg-[#0a192f]/90 p-3.5 text-xs shadow-lg">
-            <h3 className="font-black tracking-wider text-sky-300">
+          <div className="tabletop-panel p-3.5 text-xs">
+            <h3 className="tabletop-title text-sm">
               📐 得点と測量ブイ回収ルール
             </h3>
-            <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-slate-300">
+            <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-[var(--table-muted)]">
               <li>
-                <strong className="text-sky-200">1. 辺の一致配置:</strong> 上下左右に隣接するタイルの辺（
-                <span className="text-amber-300">珊瑚航路</span> /{' '}
-                <span className="text-emerald-300">群島陸地</span> /{' '}
-                <span className="text-sky-300">外洋</span>）がすべて一致するマスにのみ配置できます。
+                <strong className="text-[#9db8c8]">1. 辺の一致配置:</strong> 上下左右に隣接するタイルの辺（
+                <span className="text-[var(--table-accent-strong)]">珊瑚航路</span> /{' '}
+                <span className="text-[#9dc4af]">群島陸地</span> /{' '}
+                <span className="text-[#9db8c8]">外洋</span>）がすべて一致するマスにのみ配置できます。
               </li>
               <li>
-                <strong className="text-emerald-300">2. 測量ブイ（各5個）:</strong>{' '}
+                <strong className="text-[#9dc4af]">2. 測量ブイ（各5個）:</strong>{' '}
                 配置したタイルの未占有エリアにブイを1個置けます。エリアが完成すると即座に得点し、
-                <strong className="text-amber-200">ブイが手元に戻ります</strong>。
+                <strong className="text-[var(--table-accent-strong)]">ブイが手元に戻ります</strong>。
               </li>
               <li>
-                <strong className="text-amber-300">3. 完成ボーナス:</strong>
+                <strong className="text-[var(--table-accent-strong)]">3. 完成ボーナス:</strong>
                 <div className="mt-0.5 grid grid-cols-1 gap-0.5 pl-2 text-[10.5px]">
                   <span>・珊瑚航路（両端閉鎖・環状）: 1タイル2点（未完1点）</span>
                   <span>・群島陸地（全周閉鎖）: 1タイル3点＋交易港⚓2点（未完1点）</span>
@@ -2305,33 +2313,33 @@ export default function ArchipelagoCartographerGame() {
           </div>
 
           {/* Move Log */}
-          <div className="rounded-2xl border border-sky-500/20 bg-[#0a192f]/90 p-3.5 shadow-lg">
-            <h3 className="text-xs font-black tracking-wider text-sky-300">📜 航海測量ログ</h3>
+          <div className="tabletop-panel p-3.5">
+            <h3 className="tabletop-title text-sm">📜 航海測量ログ</h3>
             <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1 text-[11px]">
               {moveLogs.length === 0 ? (
-                <p className="text-slate-400">
+                <p className="text-[var(--table-muted)]">
                   中央E5の「王立基準港」に隣接する緑枠マスをタップして最初の海域タイルを配置しましょう。
                 </p>
               ) : (
                 moveLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="rounded-lg border border-white/10 bg-black/25 px-2.5 py-1.5"
+                    className="tabletop-panel-soft border-[var(--table-line)] px-2.5 py-1.5"
                   >
                     <div className="flex items-center justify-between">
                       <span
                         className={`font-black ${
-                          log.player === 1 ? 'text-amber-300' : 'text-pink-300'
+                          log.player === 1 ? 'text-[var(--table-accent-strong)]' : 'text-[#d9a19b]'
                         }`}
                       >
                         #{log.turn} {log.player === 1 ? '琥珀船団(P1)' : '珊瑚船団(P2)'} → {log.coord}
                       </span>
-                      <span className="text-[10px] text-slate-400">{log.tileName}</span>
+                      <span className="text-[10px] text-[var(--table-muted)]">{log.tileName}</span>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-slate-300">
+                    <div className="mt-0.5 flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-[var(--table-muted)]">
                       <span>{log.beaconText}</span>
                       {log.scoredText && (
-                        <span className="font-bold text-emerald-300">★ {log.scoredText}</span>
+                        <span className="font-bold text-[#9dc4af]">★ {log.scoredText}</span>
                       )}
                     </div>
                   </div>

@@ -71,10 +71,10 @@ const EMBLEM_META: Record<
   astro: {
     name: '天文時計ギルド',
     shortName: '天文時計',
-    color: 'text-amber-300',
-    border: 'border-amber-400/50',
-    bg: 'bg-amber-950/40',
-    badge: 'bg-amber-500/20 text-amber-200 border-amber-400/40',
+    color: 'text-[var(--table-accent-strong)]',
+    border: 'border-[var(--table-accent)]/50',
+    bg: 'bg-[#c99555]/10',
+    badge: 'bg-[#c99555]/16 text-[var(--table-accent-strong)] border-[var(--table-accent)]/40',
   },
   steam: {
     name: '蒸気機関ギルド',
@@ -87,18 +87,18 @@ const EMBLEM_META: Record<
   automata: {
     name: '自動人形ギルド',
     shortName: '自動人形',
-    color: 'text-cyan-300',
-    border: 'border-cyan-400/50',
-    bg: 'bg-cyan-950/40',
-    badge: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/40',
+    color: 'text-[#9db8c8]',
+    border: 'border-[#3f5f78]/50',
+    bg: 'bg-[#142330]',
+    badge: 'bg-[#3f5f78]/18 text-[#9db8c8] border-[#3f5f78]/40',
   },
   compass: {
     name: '飛行羅針盤ギルド',
     shortName: '飛行羅針盤',
-    color: 'text-emerald-300',
-    border: 'border-emerald-400/50',
-    bg: 'bg-emerald-950/40',
-    badge: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40',
+    color: 'text-[#9dc4af]',
+    border: 'border-[#315d4e]/50',
+    bg: 'bg-[#315d4e]/16',
+    badge: 'bg-[#315d4e]/22 text-[#9dc4af] border-[#315d4e]/40',
   },
 };
 
@@ -305,7 +305,7 @@ export function calculatePlayerScore(player: MerchantPlayer): PlayerScoreBreakdo
   };
 }
 
-function buildAuctionDeck(): AuctionLot[] {
+function buildAuctionDeck(randomize = true): AuctionLot[] {
   // Always build a balanced 10-round deck:
   // 2 artifacts of each of the 4 emblems (8 artifacts total) + 2 scrap lots = 10 rounds
   const byEmblem: Record<GuildEmblem, AuctionLot[]> = {
@@ -325,15 +325,18 @@ function buildAuctionDeck(): AuctionLot[] {
     return copy;
   };
 
+  const pick = <T,>(arr: T[]): T[] =>
+    (randomize ? shuffle(arr) : [...arr]).slice(0, 2);
+
   const chosen: AuctionLot[] = [
-    ...shuffle(byEmblem.astro).slice(0, 2),
-    ...shuffle(byEmblem.steam).slice(0, 2),
-    ...shuffle(byEmblem.automata).slice(0, 2),
-    ...shuffle(byEmblem.compass).slice(0, 2),
-    ...shuffle(scraps).slice(0, 2),
+    ...pick(byEmblem.astro),
+    ...pick(byEmblem.steam),
+    ...pick(byEmblem.automata),
+    ...pick(byEmblem.compass),
+    ...pick(scraps),
   ];
 
-  return shuffle(chosen);
+  return randomize ? shuffle(chosen) : chosen;
 }
 
 function createInitialPlayers(): MerchantPlayer[] {
@@ -344,8 +347,8 @@ function createInitialPlayers(): MerchantPlayer[] {
       title: '新進気鋭の歯車競売人',
       isHuman: true,
       persona: 'human',
-      accent: 'text-amber-300',
-      badgeBg: 'border-amber-400/50 bg-amber-500/15 text-amber-200',
+      accent: 'text-[var(--table-accent-strong)]',
+      badgeBg: 'border-[var(--table-accent)]/50 bg-[#c99555]/12 text-[var(--table-accent-strong)]',
       remainingBids: [...INITIAL_HAND],
       wonLots: [],
       lastBid: null,
@@ -356,8 +359,8 @@ function createInitialPlayers(): MerchantPlayer[] {
       title: '時計塔の大富豪（高点狙い）',
       isHuman: false,
       persona: 'highroller',
-      accent: 'text-rose-300',
-      badgeBg: 'border-rose-400/50 bg-rose-500/15 text-rose-200',
+      accent: 'text-[#d9a19b]',
+      badgeBg: 'border-[#9f4540]/50 bg-[#9f4540]/18 text-[#d9a19b]',
       remainingBids: [...INITIAL_HAND],
       wonLots: [],
       lastBid: null,
@@ -368,8 +371,8 @@ function createInitialPlayers(): MerchantPlayer[] {
       title: '飛空商会令嬢（セット重視）',
       isHuman: false,
       persona: 'collector',
-      accent: 'text-cyan-300',
-      badgeBg: 'border-cyan-400/50 bg-cyan-500/15 text-cyan-200',
+      accent: 'text-[#9db8c8]',
+      badgeBg: 'border-[#3f5f78]/50 bg-[#3f5f78]/16 text-[#9db8c8]',
       remainingBids: [...INITIAL_HAND],
       wonLots: [],
       lastBid: null,
@@ -380,8 +383,8 @@ function createInitialPlayers(): MerchantPlayer[] {
       title: '奇術発明家（バッティング裏かき）',
       isHuman: false,
       persona: 'trickster',
-      accent: 'text-emerald-300',
-      badgeBg: 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200',
+      accent: 'text-[#9dc4af]',
+      badgeBg: 'border-[#315d4e]/50 bg-[#315d4e]/22 text-[#9dc4af]',
       remainingBids: [...INITIAL_HAND],
       wonLots: [],
       lastBid: null,
@@ -554,7 +557,7 @@ function LotEmblemSvg({
         height={size}
         viewBox="0 0 64 64"
         fill="none"
-        className="drop-shadow-[0_2px_8px_rgba(244,63,94,0.45)]"
+        className="drop-"
       >
         <circle cx="32" cy="32" r="26" fill="#2a0a12" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="5 3" />
         <path
@@ -576,7 +579,7 @@ function LotEmblemSvg({
         height={size}
         viewBox="0 0 64 64"
         fill="none"
-        className="drop-shadow-[0_2px_8px_rgba(251,191,36,0.45)]"
+        className="drop-"
       >
         <circle cx="32" cy="32" r="26" fill="#271a05" stroke="#fbbf24" strokeWidth="2.5" />
         <ellipse cx="32" cy="32" rx="22" ry="10" transform="rotate(-25 32 32)" stroke="#fde68a" strokeWidth="1.8" />
@@ -594,7 +597,7 @@ function LotEmblemSvg({
         height={size}
         viewBox="0 0 64 64"
         fill="none"
-        className="drop-shadow-[0_2px_8px_rgba(249,115,22,0.45)]"
+        className="drop-"
       >
         <circle cx="32" cy="32" r="25" fill="#2a1205" stroke="#fb923c" strokeWidth="2.5" />
         <circle cx="32" cy="32" r="15" fill="#431407" stroke="#fdba74" strokeWidth="2.2" strokeDasharray="6 4" />
@@ -611,7 +614,7 @@ function LotEmblemSvg({
         height={size}
         viewBox="0 0 64 64"
         fill="none"
-        className="drop-shadow-[0_2px_8px_rgba(34,211,238,0.45)]"
+        className="drop-"
       >
         <circle cx="32" cy="32" r="26" fill="#062229" stroke="#22d3ee" strokeWidth="2.5" />
         <path
@@ -634,7 +637,7 @@ function LotEmblemSvg({
       height={size}
       viewBox="0 0 64 64"
       fill="none"
-      className="drop-shadow-[0_2px_8px_rgba(52,211,153,0.45)]"
+      className=""
     >
       <circle cx="32" cy="32" r="26" fill="#04261c" stroke="#34d399" strokeWidth="2.5" />
       <polygon points="32,12 38,32 32,52 26,32" fill="#10b981" stroke="#a7f3d0" strokeWidth="1.8" />
@@ -645,7 +648,7 @@ function LotEmblemSvg({
 }
 
 export default function AutomatonsBazaarGame() {
-  const [deck, setDeck] = useState<AuctionLot[]>(() => buildAuctionDeck());
+  const [deck, setDeck] = useState<AuctionLot[]>(() => buildAuctionDeck(false));
   const [roundIndex, setRoundIndex] = useState<number>(0); // 0 to 9
   const [carryOverLots, setCarryOverLots] = useState<AuctionLot[]>([]);
   const [players, setPlayers] = useState<MerchantPlayer[]>(() => createInitialPlayers());
@@ -655,6 +658,11 @@ export default function AutomatonsBazaarGame() {
   const [soundOn, setSoundOn] = useState<boolean>(true);
   const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [showAnalyzer, setShowAnalyzer] = useState<boolean>(true);
+
+  // Deterministic first paint for hydration; shuffle the lots after mount.
+  useEffect(() => {
+    setDeck(buildAuctionDeck(true));
+  }, []);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -1066,23 +1074,23 @@ export default function AutomatonsBazaarGame() {
   const isCurrentScrap = netLotPoints < 0;
 
   return (
-    <div className="min-h-screen bg-[#120d08] text-amber-50 selection:bg-amber-500/30">
+    <div className="tabletop-page min-h-screen overflow-x-hidden select-none">
       {/* Top Steampunk Header */}
-      <header className="sticky top-0 z-30 border-b border-amber-500/25 bg-[#16100a]/95 backdrop-blur-md">
+      <header className="tabletop-header sticky top-0 z-30">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-3">
             <Link
               href="/games"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-950/40 px-2.5 py-1.5 text-xs font-bold text-amber-200 transition hover:border-amber-300 hover:bg-amber-900/50"
+              className="tabletop-button inline-flex min-h-11 items-center gap-1.5 px-3 text-xs"
             >
               <span>←</span>
               <span>ゲーム一覧</span>
             </Link>
             <div>
-              <p className="text-[10px] font-black tracking-[0.2em] text-amber-400/80 uppercase">
+              <p className="tabletop-kicker">
                 CLOCKWORK SIMULTANEOUS AUCTION &amp; SET COLLECTION
               </p>
-              <h2 className="text-sm font-black tracking-tight text-amber-50 sm:text-base">
+              <h2 className="tabletop-title text-base sm:text-lg">
                 からくりバザール：歯車都市の競売人
               </h2>
             </div>
@@ -1092,10 +1100,8 @@ export default function AutomatonsBazaarGame() {
             <button
               type="button"
               onClick={() => setShowAnalyzer((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
-                showAnalyzer
-                  ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
-                  : 'border-white/15 bg-white/[0.04] text-stone-300'
+              className={`tabletop-button min-h-11 px-3 text-xs ${
+                showAnalyzer ? 'tabletop-chip-active' : ''
               }`}
             >
               {showAnalyzer ? '⚙ 競売参謀 AI ON' : '⚙ 競売参謀 AI OFF'}
@@ -1103,10 +1109,8 @@ export default function AutomatonsBazaarGame() {
             <button
               type="button"
               onClick={() => setBgmOn((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
-                bgmOn
-                  ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
-                  : 'border-amber-500/25 bg-amber-950/30 text-stone-300 hover:border-amber-400/60'
+              className={`tabletop-button min-h-11 px-3 text-xs ${
+                bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
               {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
@@ -1114,14 +1118,14 @@ export default function AutomatonsBazaarGame() {
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-amber-500/25 bg-amber-950/30 px-2.5 py-1.5 text-xs font-bold text-amber-100 transition hover:border-amber-400/60"
+              className="tabletop-button min-h-11 px-3 text-xs"
             >
               {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
             </button>
             <button
               type="button"
               onClick={handleNewMatch}
-              className="rounded-lg border border-amber-400/40 bg-amber-500/20 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/30"
+              className="tabletop-button-primary min-h-11 px-3 text-xs"
             >
               新規オークション
             </button>
@@ -1135,20 +1139,20 @@ export default function AutomatonsBazaarGame() {
         {/* Left Column: Auction Stage, Bidding Hand, Resolution */}
         <div className="flex flex-col gap-4">
           {/* Round Progress Track */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#1b130c]/95 p-3 shadow-lg">
+          <div className="tabletop-panel p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="rounded-md border border-amber-400/40 bg-amber-500/20 px-2.5 py-0.5 font-mono text-xs font-black text-amber-200">
+                <span className="rounded-md border border-[var(--table-accent)]/40 bg-[#c99555]/16 px-2.5 py-0.5 font-mono text-xs font-black text-[var(--table-accent-strong)]">
                   {isMatchFinished ? 'FINAL RESULT' : `ROUND ${roundIndex + 1} / ${deck.length}`}
                 </span>
-                <span className="text-xs font-bold text-amber-200/80">
+                <span className="text-xs font-bold text-[var(--table-accent-strong)]/80">
                   {isMatchFinished
                     ? '全10ラウンドの競売が完了しました！'
                     : '手札の1〜10金貨は1回使い切り！同額入札（バッティング）は無効化されます'}
                 </span>
               </div>
               {carryOverLots.length > 0 && (
-                <span className="animate-pulse rounded-full border border-rose-400/50 bg-rose-500/20 px-3 py-0.5 text-xs font-black text-rose-200">
+                <span className=" rounded-full border border-[#9f4540]/50 bg-[#9f4540]/20 px-3 py-0.5 text-xs font-black text-[#d9a19b]">
                   🔥 キャリーオーバー中（+{carryOverLots.length}品累積）
                 </span>
               )}
@@ -1164,16 +1168,16 @@ export default function AutomatonsBazaarGame() {
                     key={lot.id}
                     className={`flex flex-col items-center justify-center rounded-lg border py-1 text-[10px] font-black transition ${
                       isCurrent
-                        ? 'border-amber-300 bg-amber-500/30 text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.35)]'
+                        ? 'border-[var(--table-accent)] bg-[#c99555]/22 text-[var(--table-ink)] '
                         : isPast
-                          ? 'border-amber-500/15 bg-black/40 text-stone-500'
-                          : 'border-amber-500/20 bg-amber-950/25 text-amber-200/70'
+                          ? 'border-[var(--table-line-strong)]/15 bg-black/20 text-[var(--table-muted)]'
+                          : 'border-[var(--table-line-strong)]/20 bg-[#c99555]/10 text-[var(--table-accent-strong)]/70'
                     }`}
                   >
                     <span>R{idx + 1}</span>
                     <span
                       className={
-                        lot.kind === 'scrap' ? 'text-rose-400' : 'text-amber-300'
+                        lot.kind === 'scrap' ? 'text-[#d9a19b]' : 'text-[var(--table-accent-strong)]'
                       }
                     >
                       {lot.basePoints > 0 ? `+${lot.basePoints}` : lot.basePoints}
@@ -1187,31 +1191,29 @@ export default function AutomatonsBazaarGame() {
           {/* Active Auction Lot Stage OR Final Podium */}
           {!isMatchFinished && currentLot ? (
             <div
-              className={`relative overflow-hidden rounded-2xl border p-4 shadow-xl transition sm:p-5 ${
-                isCurrentScrap
-                  ? 'border-rose-500/50 bg-gradient-to-br from-[#2a0d14] via-[#1c0c10] to-[#14090c]'
-                  : 'border-amber-400/45 bg-gradient-to-br from-[#281b0e] via-[#1d140b] to-[#140e08]'
+              className={`tabletop-panel relative overflow-hidden border-2 p-4 sm:p-5 ${
+                isCurrentScrap ? 'border-[#9f4540]' : 'border-[var(--table-accent)]'
               }`}
             >
               {/* Rule Banner */}
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+              <div className="tabletop-divider mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5">
                 <div className="flex items-center gap-2">
                   <span
                     className={`rounded-md px-2.5 py-0.5 text-xs font-black ${
                       isCurrentScrap
-                        ? 'bg-rose-500 text-white'
-                        : 'bg-amber-400 text-stone-950'
+                        ? 'bg-[#9f4540] text-[var(--table-ink)]'
+                        : 'bg-[var(--table-accent)] text-[#1b120b]'
                     }`}
                   >
                     {isCurrentScrap ? '⚠ 暴走スクラップ回（逆競り）' : '👑 名匠からくり出品ロット'}
                   </span>
-                  <span className="text-xs font-bold text-amber-100/90">
+                  <span className="text-xs font-bold text-[var(--table-accent-strong)]/90">
                     {isCurrentScrap
                       ? '【単独最低額】を出した商人がマイナス品を引き取ります（同額は相殺回避）'
                       : '【単独最高額】を出した商人が落札します（同額はバッティング無効！）'}
                   </span>
                 </div>
-                <span className="font-mono text-xs font-bold text-amber-300/80">
+                <span className="font-mono text-xs font-bold text-[var(--table-accent-strong)]/80">
                   一斉公開オークション
                 </span>
               </div>
@@ -1232,10 +1234,10 @@ export default function AutomatonsBazaarGame() {
                   return (
                     <div
                       key={lot.id}
-                      className={`flex flex-col justify-between gap-4 rounded-xl border p-3.5 sm:flex-row sm:items-center ${
+                      className={`flex flex-col justify-between gap-4 rounded-md border p-3.5 sm:flex-row sm:items-center ${
                         lot.kind === 'scrap'
-                          ? 'border-rose-400/40 bg-rose-950/30'
-                          : 'border-amber-400/35 bg-black/35'
+                          ? 'border-[#9f4540] bg-[#9f4540]/12'
+                          : 'tabletop-panel-soft border-[var(--table-accent)]'
                       }`}
                     >
                       <div className="flex items-center gap-3.5">
@@ -1245,7 +1247,7 @@ export default function AutomatonsBazaarGame() {
                         <div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             {idx < lotsAtStake.length - 1 && (
-                              <span className="rounded bg-amber-500/25 px-1.5 py-0.5 text-[10px] font-black text-amber-200">
+                              <span className="rounded bg-[#c99555]/20 px-1.5 py-0.5 text-[10px] font-black text-[var(--table-accent-strong)]">
                                 前回キャリーオーバー品
                               </span>
                             )}
@@ -1256,43 +1258,43 @@ export default function AutomatonsBazaarGame() {
                                 ⚙ {emblemInfo.name}
                               </span>
                             ) : (
-                              <span className="rounded-full border border-rose-400/50 bg-rose-500/20 px-2.5 py-0.5 text-[11px] font-black text-rose-200">
+                              <span className="rounded-full border border-[#9f4540]/50 bg-[#9f4540]/20 px-2.5 py-0.5 text-[11px] font-black text-[#d9a19b]">
                                 💥 負債スクラップ
                               </span>
                             )}
-                            <span className="text-xs font-semibold text-amber-200/70">
+                            <span className="text-xs font-semibold text-[var(--table-accent-strong)]/70">
                               {lot.subtitle}
                             </span>
                           </div>
-                          <h3 className="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">
+                          <h3 className="mt-1 text-lg font-black tracking-tight text-[var(--table-ink)] sm:text-xl">
                             {lot.name}
                           </h3>
-                          <p className="mt-0.5 text-xs leading-relaxed text-amber-100/75">
+                          <p className="mt-0.5 text-xs leading-relaxed text-[var(--table-accent-strong)]/75">
                             {lot.lore}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 flex-row items-center justify-between gap-2 border-t border-white/10 pt-2.5 sm:flex-col sm:items-end sm:border-t-0 sm:pt-0">
+                      <div className="flex shrink-0 flex-row items-center justify-between gap-2 border-t border-[var(--table-line)] pt-2.5 sm:flex-col sm:items-end sm:border-t-0 sm:pt-0">
                         <div className="text-right">
-                          <span className="block text-[10px] font-bold tracking-wider text-amber-200/70 uppercase">
+                          <span className="block text-[10px] font-bold tracking-wider text-[var(--table-accent-strong)]/70 uppercase">
                             基本評価値
                           </span>
                           <span
                             className={`font-mono text-2xl font-black sm:text-3xl ${
-                              lot.basePoints >= 0 ? 'text-amber-300' : 'text-rose-400'
+                              lot.basePoints >= 0 ? 'text-[var(--table-accent-strong)]' : 'text-[#d9a19b]'
                             }`}
                           >
                             {lot.basePoints > 0 ? `+${lot.basePoints}` : lot.basePoints} pt
                           </span>
                         </div>
                         {lot.emblem && (
-                          <div className="rounded-lg border border-amber-400/30 bg-amber-500/15 px-2.5 py-1 text-right text-[11px]">
-                            <span className="text-amber-200/80">
+                          <div className="rounded-lg border border-[var(--table-accent)]/30 bg-[#c99555]/12 px-2.5 py-1 text-right text-[11px]">
+                            <span className="text-[var(--table-accent-strong)]/80">
                               現在所持: <strong>{humanCountOfEmblem}個</strong>
                             </span>
                             {nextBonusDelta > 0 && (
-                              <span className="ml-1.5 font-black text-emerald-300">
+                              <span className="ml-1.5 font-black text-[#9dc4af]">
                                 （獲得でセット+{nextBonusDelta}pt!）
                               </span>
                             )}
@@ -1306,17 +1308,17 @@ export default function AutomatonsBazaarGame() {
 
               {/* Round Resolution Reveal Box OR Human Bid Selector */}
               {roundResolution ? (
-                <div className="mt-4 rounded-xl border border-amber-300/40 bg-black/55 p-4">
+                <div className="tabletop-panel-soft mt-4 border-[var(--table-accent)] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="text-sm font-black text-amber-200">
+                    <h4 className="text-sm font-black text-[var(--table-accent-strong)]">
                       🔔 第{roundResolution.round}ラウンド 一斉公開結果
                     </h4>
-                    <span className="rounded-full border border-amber-400/40 bg-amber-500/20 px-3 py-0.5 text-xs font-black text-amber-200">
+                    <span className="rounded-full border border-[var(--table-accent)]/40 bg-[#c99555]/16 px-3 py-0.5 text-xs font-black text-[var(--table-accent-strong)]">
                       {roundResolution.isCarryOver ? '全員相殺・キャリーオーバー' : '落札確定'}
                     </span>
                   </div>
 
-                  <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-amber-100 sm:text-sm">
+                  <p className="tabletop-panel-soft mt-2 border-[var(--table-line)] px-3 py-2 text-xs font-bold text-[var(--table-ink)] sm:text-sm">
                     {roundResolution.summaryText}
                   </p>
 
@@ -1325,24 +1327,24 @@ export default function AutomatonsBazaarGame() {
                     {roundResolution.entries.map((entry) => (
                       <div
                         key={entry.playerId}
-                        className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
+                        className={`flex flex-col items-center justify-center rounded-md border p-3 text-center transition ${
                           entry.isWinner
                             ? isCurrentScrap
-                              ? 'border-rose-400 bg-rose-950/60 shadow-[0_0_15px_rgba(244,63,94,0.35)]'
-                              : 'border-amber-300 bg-amber-500/25 shadow-[0_0_15px_rgba(251,191,36,0.35)]'
+                              ? 'border-[#9f4540] bg-[#9f4540]/18 '
+                              : 'border-[var(--table-accent)] bg-[#c99555]/20 '
                             : entry.isCancelled
-                              ? 'border-rose-500/40 bg-stone-900/80 opacity-75'
-                              : 'border-white/15 bg-white/[0.04]'
+                              ? 'border-[#9f4540]/40 bg-[var(--table-panel)] opacity-75'
+                              : 'border-[var(--table-line)] bg-[var(--table-panel-soft)]'
                         }`}
                       >
-                        <span className="text-xs font-bold text-amber-100">{entry.playerName}</span>
+                        <span className="text-xs font-bold text-[var(--table-accent-strong)]">{entry.playerName}</span>
                         <span
                           className={`my-1 font-mono text-2xl font-black ${
                             entry.isCancelled
-                              ? 'text-rose-400 line-through'
+                              ? 'text-[#d9a19b] line-through'
                               : entry.isWinner
-                                ? 'text-amber-300'
-                                : 'text-stone-200'
+                                ? 'text-[var(--table-accent-strong)]'
+                                : 'text-[var(--table-ink)]'
                           }`}
                         >
                           {entry.bid} 金貨
@@ -1351,11 +1353,11 @@ export default function AutomatonsBazaarGame() {
                           className={`rounded px-2 py-0.5 text-[10px] font-black ${
                             entry.isWinner
                               ? isCurrentScrap
-                                ? 'bg-rose-500 text-white'
-                                : 'bg-amber-400 text-stone-950'
+                                ? 'bg-[#9f4540] text-[var(--table-ink)]'
+                                : 'bg-[var(--table-accent)] text-[#1b120b]'
                               : entry.isCancelled
-                                ? 'bg-rose-500/25 text-rose-300'
-                                : 'bg-white/10 text-stone-300'
+                                ? 'bg-[#9f4540]/22 text-[#d9a19b]'
+                                : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)]'
                           }`}
                         >
                           {entry.isWinner
@@ -1374,7 +1376,7 @@ export default function AutomatonsBazaarGame() {
                     <button
                       type="button"
                       onClick={handleAdvanceRound}
-                      className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 px-5 py-2.5 text-sm font-black text-stone-950 shadow-lg transition hover:brightness-110 sm:w-auto"
+                      className="tabletop-button-primary min-h-11 w-full px-5 text-sm sm:w-auto"
                     >
                       {roundIndex + 1 >= deck.length
                         ? '🏆 最終決算スコアボードへ進む'
@@ -1383,19 +1385,19 @@ export default function AutomatonsBazaarGame() {
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl border border-amber-400/30 bg-[#140e08]/90 p-3.5 sm:p-4">
+                <div className="tabletop-panel-soft mt-4 p-3.5 sm:p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-xs font-black tracking-wider text-amber-300 uppercase sm:text-sm">
+                      <h4 className="text-xs font-black tracking-wider text-[var(--table-accent-strong)] uppercase sm:text-sm">
                         🪙 あなたの入札手札（残り {humanPlayer.remainingBids.length} 枚・使い切り）
                       </h4>
-                      <p className="text-[11px] text-amber-100/70">
+                      <p className="text-[11px] text-[var(--table-accent-strong)]/70">
                         金貨カードを選んで「一斉公開で入札する」を押してください（数字ボタンダブルタップでも即入札可能）
                       </p>
                     </div>
                     {bestRecommendation && showAnalyzer && (
-                      <div className="rounded-lg border border-emerald-400/40 bg-emerald-950/50 px-2.5 py-1 text-xs font-bold text-emerald-200">
-                        💡 参謀推奨: <strong className="text-emerald-300">{bestRecommendation.bid}金貨</strong>（{bestRecommendation.tag}）
+                      <div className="rounded-lg border border-[#315d4e]/40 bg-[#315d4e]/18 px-2.5 py-1 text-xs font-bold text-[#9dc4af]">
+                        💡 参謀推奨: <strong className="text-[#9dc4af]">{bestRecommendation.bid}金貨</strong>（{bestRecommendation.tag}）
                       </div>
                     )}
                   </div>
@@ -1422,18 +1424,18 @@ export default function AutomatonsBazaarGame() {
                               setSelectedBid(coin);
                             }
                           }}
-                          className={`group relative flex flex-col items-center justify-center rounded-xl border py-2.5 transition ${
+                          className={`group relative flex min-h-14 flex-col items-center justify-center rounded-md border py-2.5 transition ${
                             !isAvailable
-                              ? 'cursor-not-allowed border-stone-800 bg-stone-950/50 text-stone-700 opacity-45'
+                              ? 'cursor-not-allowed border-[var(--table-line)] bg-[var(--table-bg-deep)] text-[var(--table-muted)] opacity-45'
                               : isSelected
-                                ? ' -translate-y-1 border-amber-300 bg-gradient-to-b from-amber-400 to-amber-600 text-stone-950 shadow-[0_6px_18px_rgba(251,191,36,0.45)]'
+                                ? 'tabletop-button-primary -translate-y-1'
                                 : isRecommended && showAnalyzer
-                                  ? 'border-emerald-400/70 bg-emerald-950/40 text-amber-100 hover:-translate-y-0.5 hover:border-emerald-300'
-                                  : 'border-amber-500/35 bg-amber-950/35 text-amber-100 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-900/40'
+                                  ? 'border-[#315d4e] bg-[#315d4e]/16 text-[#9dc4af] hover:-translate-y-0.5'
+                                  : 'tabletop-button border-[var(--table-line-strong)] text-[var(--table-ink)] hover:-translate-y-0.5'
                           }`}
                         >
                           {isRecommended && isAvailable && showAnalyzer && (
-                            <span className="absolute -top-2 rounded-full bg-emerald-400 px-1.5 py-0.2 text-[9px] font-black text-stone-950">
+                            <span className="absolute -top-2 rounded-full bg-[#4f806b] px-1.5 py-0.2 text-[9px] font-black text-[#1b120b]">
                               推奨
                             </span>
                           )}
@@ -1441,10 +1443,10 @@ export default function AutomatonsBazaarGame() {
                           <span
                             className={`text-[9px] font-bold ${
                               !isAvailable
-                                ? 'text-stone-600'
+                                ? 'text-[var(--table-muted)]'
                                 : isSelected
-                                  ? 'text-stone-900'
-                                  : 'text-amber-300/75'
+                                  ? 'text-[#1b120b]'
+                                  : 'text-[var(--table-accent-strong)]/75'
                             }`}
                           >
                             {!isAvailable
@@ -1460,24 +1462,24 @@ export default function AutomatonsBazaarGame() {
 
                   {/* Selected Bid Detail & Action Button */}
                   <div className="mt-3.5 flex flex-col items-stretch justify-between gap-2.5 sm:flex-row sm:items-center">
-                    <div className="text-xs text-amber-100/85">
+                    <div className="text-xs text-[var(--table-accent-strong)]/85">
                       {selectedBid !== null ? (
                         (() => {
                           const rec = bidRecommendations.find((r) => r.bid === selectedBid);
                           return rec ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded bg-amber-400/20 px-2 py-0.5 font-mono font-black text-amber-200">
+                              <span className="rounded bg-[#c99555]/16 px-2 py-0.5 font-mono font-black text-[var(--table-accent-strong)]">
                                 選択中: {selectedBid} ソヴリン金貨
                               </span>
-                              <span className="text-emerald-300 font-bold">
+                              <span className="text-[#9dc4af] font-bold">
                                 [{rec.tag}] 落札/回避期待 {rec.winProbability}%・被り率 {rec.collisionRisk}%
                               </span>
-                              <span className="text-amber-100/70">{rec.reason}</span>
+                              <span className="text-[var(--table-accent-strong)]/70">{rec.reason}</span>
                             </div>
                           ) : null;
                         })()
                       ) : (
-                        <span className="text-amber-200/70">
+                        <span className="text-[var(--table-accent-strong)]/70">
                           👆 上の1〜10金貨カードから、このラウンドで入札する1枚を選択してください
                         </span>
                       )}
@@ -1487,10 +1489,10 @@ export default function AutomatonsBazaarGame() {
                       type="button"
                       disabled={selectedBid === null}
                       onClick={() => selectedBid !== null && handlePlaceBid(selectedBid)}
-                      className={`shrink-0 rounded-xl px-5 py-2.5 text-sm font-black transition ${
+                      className={`min-h-11 shrink-0 rounded-md px-5 text-sm font-black transition ${
                         selectedBid !== null
-                          ? 'bg-gradient-to-r from-amber-400 via-amber-300 to-orange-400 text-stone-950 shadow-[0_0_20px_rgba(251,191,36,0.4)] hover:brightness-110'
-                          : 'cursor-not-allowed border border-amber-500/20 bg-stone-900 text-stone-500'
+                          ? 'tabletop-button-primary'
+                          : 'tabletop-button cursor-not-allowed opacity-50'
                       }`}
                     >
                       {selectedBid !== null
@@ -1503,20 +1505,20 @@ export default function AutomatonsBazaarGame() {
             </div>
           ) : (
             /* Final Result Podium */
-            <div className="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-[#2b1d0f] via-[#1c130a] to-[#120c07] p-5 shadow-2xl">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-400/25 pb-3">
+            <div className="tabletop-panel border-2 border-[var(--table-accent)] p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--table-accent)]/25 pb-3">
                 <div>
-                  <span className="text-xs font-black tracking-widest text-amber-400 uppercase">
+                  <span className="tabletop-kicker">
                     GRAND CLOCKWORK BAZAAR FINALE
                   </span>
-                  <h3 className="text-xl font-black text-white sm:text-2xl">
+                  <h3 className="tabletop-title text-xl sm:text-2xl">
                     🏆 歯車都市の競売会 最終決算ランキング
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={handleNewMatch}
-                  className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 text-xs font-black text-stone-950 shadow-lg transition hover:brightness-110"
+                  className="tabletop-button-primary min-h-11 px-4 text-xs"
                 >
                   🔄 新しいデッキで再戦する
                 </button>
@@ -1528,41 +1530,41 @@ export default function AutomatonsBazaarGame() {
                   return (
                     <div
                       key={p.id}
-                      className={`flex flex-col justify-between gap-3 rounded-xl border p-3.5 sm:flex-row sm:items-center ${
+                      className={`flex flex-col justify-between gap-3 rounded-md border p-3.5 sm:flex-row sm:items-center ${
                         idx === 0
-                          ? 'border-amber-300 bg-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.25)]'
+                          ? 'border-[var(--table-accent)] bg-[#c99555]/16 '
                           : p.isHuman
-                            ? 'border-amber-400/40 bg-amber-950/40'
-                            : 'border-white/10 bg-black/40'
+                            ? 'border-[var(--table-accent)]/40 bg-[#c99555]/10'
+                            : 'border-[var(--table-line)] bg-black/20'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-sm font-black ${
                             idx === 0
-                              ? 'bg-amber-400 text-stone-950'
+                              ? 'bg-[var(--table-accent)] text-[#1b120b]'
                               : idx === 1
-                                ? 'bg-stone-300 text-stone-950'
+                                ? 'bg-[#d8c6a8] text-[#1b120b]'
                                 : idx === 2
-                                  ? 'bg-amber-700 text-amber-100'
-                                  : 'bg-stone-800 text-stone-400'
+                                  ? 'bg-amber-700 text-[var(--table-accent-strong)]'
+                                  : 'bg-[var(--table-panel-raised)] text-[var(--table-muted)]'
                           }`}
                         >
                           {idx + 1}位
                         </span>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-black text-white">{p.name}</span>
-                            <span className="text-xs text-amber-200/70">{p.title}</span>
+                            <span className="font-black text-[var(--table-ink)]">{p.name}</span>
+                            <span className="text-xs text-[var(--table-accent-strong)]/70">{p.title}</span>
                           </div>
-                          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-amber-100/80">
+                          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-[var(--table-accent-strong)]/80">
                             <span>基本品: +{sc.artifactPoints}pt</span>
                             <span>スクラップ: {sc.scrapPenalty}pt</span>
-                            <span className="text-emerald-300">
+                            <span className="text-[#9dc4af]">
                               同紋章セットボーナス: +{sc.setBonusPoints}pt
                             </span>
                             {sc.grandMasterBonus > 0 && (
-                              <span className="font-black text-amber-300">
+                              <span className="font-black text-[var(--table-accent-strong)]">
                                 ★4種コンプリート大賞: +{sc.grandMasterBonus}pt
                               </span>
                             )}
@@ -1571,10 +1573,10 @@ export default function AutomatonsBazaarGame() {
                       </div>
 
                       <div className="text-right">
-                        <span className="font-mono text-2xl font-black text-amber-300">
+                        <span className="font-mono text-2xl font-black text-[var(--table-accent-strong)]">
                           {sc.totalScore} pt
                         </span>
-                        <span className="block text-[10px] text-amber-200/60">
+                        <span className="block text-[10px] text-[var(--table-accent-strong)]/60">
                           落札数 {p.wonLots.length}品
                         </span>
                       </div>
@@ -1586,16 +1588,16 @@ export default function AutomatonsBazaarGame() {
           )}
 
           {/* 4 Guild Merchants Inventory & Set Synergy Grid */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#19120b]/95 p-4 shadow-lg">
+          <div className="tabletop-panel p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-black text-amber-200">
+              <h3 className="tabletop-title text-sm">
                 🏛 4大商人ギルドの獲得コレクション＆セットボーナス状況
               </h3>
-              <div className="flex flex-wrap gap-2 text-[11px] font-bold text-amber-200/80">
-                <span className="rounded border border-amber-400/30 bg-amber-950/40 px-2 py-0.5">
+              <div className="flex flex-wrap gap-2 text-[11px] font-bold text-[var(--table-accent-strong)]/80">
+                <span className="rounded border border-[var(--table-accent)]/30 bg-[#c99555]/10 px-2 py-0.5">
                   同紋章2個: +3pt / 3個: +8pt / 4個: +15pt
                 </span>
-                <span className="rounded border border-emerald-400/30 bg-emerald-950/40 px-2 py-0.5 text-emerald-200">
+                <span className="rounded border border-[#315d4e]/30 bg-[#315d4e]/16 px-2 py-0.5 text-[#9dc4af]">
                   4紋章すべて1個以上: 大工房ボーナス +10pt
                 </span>
               </div>
@@ -1607,23 +1609,23 @@ export default function AutomatonsBazaarGame() {
                 return (
                   <div
                     key={p.id}
-                    className={`rounded-xl border p-3 ${
+                    className={`rounded-md border p-3 ${
                       p.isHuman
-                        ? 'border-amber-400/45 bg-amber-950/25'
-                        : 'border-white/10 bg-black/35'
+                        ? 'border-[var(--table-accent)]/45 bg-[#c99555]/10'
+                        : 'border-[var(--table-line)] bg-black/20'
                     }`}
                   >
-                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <div className="flex items-center justify-between border-b border-[var(--table-line)] pb-2">
                       <div>
                         <span className={`text-sm font-black ${p.accent}`}>{p.name}</span>
-                        <span className="ml-1.5 text-[11px] text-amber-100/60">{p.title}</span>
+                        <span className="ml-1.5 text-[11px] text-[var(--table-accent-strong)]/60">{p.title}</span>
                       </div>
                       <div className="text-right">
-                        <span className="font-mono text-lg font-black text-white">
+                        <span className="font-mono text-lg font-black text-[var(--table-ink)]">
                           {sc.totalScore} pt
                         </span>
                         {sc.setBonusPoints + sc.grandMasterBonus > 0 && (
-                          <span className="ml-1.5 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-black text-emerald-300">
+                          <span className="ml-1.5 rounded bg-[#315d4e]/22 px-1.5 py-0.5 text-[10px] font-black text-[#9dc4af]">
                             ボーナス+{sc.setBonusPoints + sc.grandMasterBonus}
                           </span>
                         )}
@@ -1642,17 +1644,17 @@ export default function AutomatonsBazaarGame() {
                             className={`rounded-lg border px-2 py-1.5 text-center ${
                               count > 0
                                 ? `${meta.border} ${meta.bg}`
-                                : 'border-white/5 bg-black/30 opacity-60'
+                                : 'border-[var(--table-line)] bg-black/20 opacity-60'
                             }`}
                           >
                             <span className={`block text-[10px] font-bold ${meta.color}`}>
                               {meta.shortName}
                             </span>
-                            <span className="font-mono text-sm font-black text-white">
+                            <span className="font-mono text-sm font-black text-[var(--table-ink)]">
                               {count}個
                             </span>
                             {bonus > 0 && (
-                              <span className="block text-[9px] font-black text-emerald-300">
+                              <span className="block text-[9px] font-black text-[#9dc4af]">
                                 +{bonus}pt
                               </span>
                             )}
@@ -1664,15 +1666,15 @@ export default function AutomatonsBazaarGame() {
                     {/* Won Lots List */}
                     <div className="mt-2 flex flex-wrap gap-1">
                       {p.wonLots.length === 0 ? (
-                        <span className="text-[11px] text-stone-500">まだ落札品はありません</span>
+                        <span className="text-[11px] text-[var(--table-muted)]">まだ落札品はありません</span>
                       ) : (
                         p.wonLots.map((lot) => (
                           <span
                             key={lot.id}
                             className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${
                               lot.kind === 'scrap'
-                                ? 'border-rose-500/40 bg-rose-950/60 text-rose-200'
-                                : 'border-amber-400/30 bg-amber-950/50 text-amber-100'
+                                ? 'border-[#9f4540]/40 bg-[#9f4540]/18 text-[#d9a19b]'
+                                : 'border-[var(--table-accent)]/30 bg-[#c99555]/10 text-[var(--table-accent-strong)]'
                             }`}
                           >
                             {lot.name} ({lot.basePoints > 0 ? `+${lot.basePoints}` : lot.basePoints})
@@ -1690,29 +1692,29 @@ export default function AutomatonsBazaarGame() {
         {/* Right Column: Complete Information Card-Counting Matrix & Collision Risk Analyzer */}
         <div className="flex flex-col gap-4">
           {/* Card-Counting Matrix */}
-          <div className="rounded-2xl border border-amber-400/35 bg-[#19120b]/95 p-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-amber-500/20 pb-2.5">
+          <div className="tabletop-panel p-4">
+            <div className="flex items-center justify-between border-b border-[var(--table-line-strong)]/20 pb-2.5">
               <div>
-                <span className="text-[10px] font-black tracking-widest text-amber-400 uppercase">
+                <span className="text-[10px] font-black tracking-widest text-[var(--table-accent)] uppercase">
                   COMPLETE INFORMATION COUNTER
                 </span>
-                <h3 className="text-sm font-black text-white">
+                <h3 className="tabletop-title text-sm">
                   📊 全プレイヤー残り手札カウンティング表
                 </h3>
               </div>
-              <span className="rounded-md border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+              <span className="rounded-md border border-[var(--table-accent)]/30 bg-[#c99555]/12 px-2 py-0.5 text-[10px] font-bold text-[var(--table-accent-strong)]">
                 公開情報
               </span>
             </div>
 
-            <p className="mt-2 text-[11px] leading-relaxed text-amber-100/75">
+            <p className="mt-2 text-[11px] leading-relaxed text-[var(--table-accent-strong)]/75">
               全員が同じ「1〜10」の金貨カードからスタートし、一度使ったカードは復活しません。ライバルがどの高額カードを温存しているかが一目で分かります。
             </p>
 
             <div className="mt-3 overflow-x-auto">
               <table className="w-full border-collapse text-center text-xs">
                 <thead>
-                  <tr className="border-b border-white/10 text-[11px] text-amber-200/80">
+                  <tr className="border-b border-[var(--table-line)] text-[11px] text-[var(--table-accent-strong)]/80">
                     <th className="py-1.5 text-left font-bold">競売人</th>
                     {INITIAL_HAND.map((c) => (
                       <th key={c} className="px-1 py-1.5 font-mono font-black">
@@ -1721,9 +1723,9 @@ export default function AutomatonsBazaarGame() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[var(--table-line)]">
                   {players.map((p) => (
-                    <tr key={p.id} className="hover:bg-white/[0.02]">
+                    <tr key={p.id} className="hover:bg-[var(--table-panel-soft)]">
                       <td className={`py-2 pr-2 text-left text-[11px] font-black ${p.accent}`}>
                         {p.isHuman ? 'あなた' : p.name}
                       </td>
@@ -1736,11 +1738,11 @@ export default function AutomatonsBazaarGame() {
                               className={`inline-flex h-6 w-6 items-center justify-center rounded font-mono text-[11px] font-black ${
                                 held
                                   ? p.isHuman
-                                    ? 'border border-amber-400/50 bg-amber-500/25 text-amber-100'
-                                    : 'border border-white/15 bg-white/10 text-stone-100'
+                                    ? 'border border-[var(--table-accent)]/50 bg-[#c99555]/20 text-[var(--table-accent-strong)]'
+                                    : 'border border-[var(--table-line)] bg-[var(--table-panel-soft)] text-[var(--table-ink)]'
                                   : wasLastPlayed
-                                    ? 'border border-rose-400/50 bg-rose-950/60 text-rose-300 line-through'
-                                    : 'bg-black/40 text-stone-700'
+                                    ? 'border border-[#9f4540]/50 bg-[#9f4540]/18 text-[#d9a19b] line-through'
+                                    : 'bg-black/20 text-[var(--table-muted)]'
                               }`}
                               title={
                                 held
@@ -1760,18 +1762,18 @@ export default function AutomatonsBazaarGame() {
             </div>
 
             {/* Number scarcity summary */}
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/35 p-2.5 text-[11px]">
-              <span className="font-bold text-amber-300">🔍 単独確定カード（あなただけが保持）: </span>
+            <div className="mt-3 rounded-md border border-[var(--table-line)] bg-black/20 p-2.5 text-[11px]">
+              <span className="font-bold text-[var(--table-accent-strong)]">🔍 単独確定カード（あなただけが保持）: </span>
               {(() => {
                 const uniqueToHuman = humanPlayer.remainingBids.filter((c) =>
                   players.filter((p) => !p.isHuman).every((ai) => !ai.remainingBids.includes(c))
                 );
                 return uniqueToHuman.length > 0 ? (
-                  <span className="font-mono font-black text-emerald-300">
+                  <span className="font-mono font-black text-[#9dc4af]">
                     {uniqueToHuman.map((c) => `[${c}金貨]`).join(' ')}（バッティング確率 0%！）
                   </span>
                 ) : (
-                  <span className="text-stone-400">現在なし（AIと所持カードが重なっています）</span>
+                  <span className="text-[var(--table-muted)]">現在なし（AIと所持カードが重なっています）</span>
                 );
               })()}
             </div>
@@ -1779,13 +1781,13 @@ export default function AutomatonsBazaarGame() {
 
           {/* Collision Risk & Recommended Bid Analyzer */}
           {showAnalyzer && !isMatchFinished && !roundResolution && (
-            <div className="rounded-2xl border border-emerald-500/30 bg-[#111c17]/95 p-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-emerald-400/20 pb-2">
+            <div className="tabletop-panel p-4">
+              <div className="flex items-center justify-between border-b border-[#315d4e]/20 pb-2">
                 <div>
-                  <span className="text-[10px] font-black tracking-widest text-emerald-400 uppercase">
+                  <span className="text-[10px] font-black tracking-widest text-[#9dc4af] uppercase">
                     COLLISION RISK &amp; EV ANALYZER
                   </span>
-                  <h3 className="text-sm font-black text-white">
+                  <h3 className="tabletop-title text-sm">
                     🧠 バッティング確率＆推奨入札アナライザー
                   </h3>
                 </div>
@@ -1803,36 +1805,36 @@ export default function AutomatonsBazaarGame() {
                         playSound('coin');
                         setSelectedBid(rec.bid);
                       }}
-                      className={`flex w-full items-center justify-between rounded-xl border p-2.5 text-left transition ${
+                      className={`flex w-full items-center justify-between rounded-md border p-2.5 text-left transition ${
                         selectedBid === rec.bid
-                          ? 'border-amber-300 bg-amber-500/20'
+                          ? 'border-[var(--table-accent)] bg-[#c99555]/16'
                           : i === 0
-                            ? 'border-emerald-400/45 bg-emerald-950/40 hover:bg-emerald-900/40'
-                            : 'border-white/10 bg-black/30 hover:bg-white/[0.05]'
+                            ? 'border-[#315d4e]/45 bg-[#315d4e]/16 hover:bg-[#315d4e]/22'
+                            : 'border-[var(--table-line)] bg-black/20 hover:bg-[var(--table-panel-soft)]'
                       }`}
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-black text-amber-300">
+                          <span className="font-mono text-sm font-black text-[var(--table-accent-strong)]">
                             {rec.bid} ソヴリン金貨
                           </span>
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
                               i === 0
-                                ? 'bg-emerald-400 text-stone-950'
-                                : 'bg-white/10 text-amber-100'
+                                ? 'bg-[#4f806b] text-[#1b120b]'
+                                : 'bg-[var(--table-panel-soft)] text-[var(--table-accent-strong)]'
                             }`}
                           >
                             {rec.tag}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-[11px] text-stone-300">{rec.reason}</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--table-muted)]">{rec.reason}</p>
                       </div>
                       <div className="shrink-0 pl-2 text-right font-mono text-[11px]">
-                        <div className="font-black text-emerald-300">
+                        <div className="font-black text-[#9dc4af]">
                           {isCurrentScrap ? `被弾 ${rec.winProbability}%` : `勝率 ${rec.winProbability}%`}
                         </div>
-                        <div className="text-rose-300">被り {rec.collisionRisk}%</div>
+                        <div className="text-[#d9a19b]">被り {rec.collisionRisk}%</div>
                       </div>
                     </button>
                   ))}
@@ -1841,24 +1843,24 @@ export default function AutomatonsBazaarGame() {
           )}
 
           {/* Round History Log */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#19120b]/95 p-4 shadow-lg">
-            <h3 className="text-sm font-black text-amber-200">📜 競売ラウンド履歴</h3>
+          <div className="tabletop-panel p-4">
+            <h3 className="tabletop-title text-sm">📜 競売ラウンド履歴</h3>
             <div className="mt-2.5 max-h-56 space-y-2 overflow-y-auto pr-1">
               {history.length === 0 ? (
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-[var(--table-muted)]">
                   まだ履歴はありません。第1ラウンドの入札を開始してください。
                 </p>
               ) : (
                 history.map((h) => (
                   <div
                     key={h.round}
-                    className="rounded-xl border border-white/10 bg-black/35 p-2.5 text-xs"
+                    className="rounded-md border border-[var(--table-line)] bg-black/20 p-2.5 text-xs"
                   >
-                    <div className="flex items-center justify-between font-bold text-amber-200">
+                    <div className="flex items-center justify-between font-bold text-[var(--table-accent-strong)]">
                       <span>
                         R{h.round}: {h.lotsAtStake.map((l) => l.name).join(' ＋ ')}
                       </span>
-                      <span className="font-mono text-[11px] text-amber-300">
+                      <span className="font-mono text-[11px] text-[var(--table-accent-strong)]">
                         {h.isCarryOver ? '全員相殺' : `${h.winnerName} (${h.winningBid}金貨)`}
                       </span>
                     </div>
@@ -1868,10 +1870,10 @@ export default function AutomatonsBazaarGame() {
                           key={e.playerId}
                           className={`rounded px-1.5 py-0.5 font-mono ${
                             e.isWinner
-                              ? 'bg-amber-400/25 font-black text-amber-200'
+                              ? 'bg-[#c99555]/20 font-black text-[var(--table-accent-strong)]'
                               : e.isCancelled
-                                ? 'bg-rose-950/60 text-rose-300 line-through'
-                                : 'bg-white/5 text-stone-400'
+                                ? 'bg-[#9f4540]/18 text-[#d9a19b] line-through'
+                                : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)]'
                           }`}
                         >
                           {e.playerName.replace('（工房主）', '')}:{e.bid}

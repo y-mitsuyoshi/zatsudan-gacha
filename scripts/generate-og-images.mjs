@@ -532,8 +532,14 @@ async function main() {
 
     fs.mkdirSync(path.dirname(imageFilePath), { recursive: true });
     const customMortgageCover = path.resolve('public/assets/mortgage_cover_v2.png');
+    const customHoldemCover = path.resolve('public/assets/holdem/ogp_cover.png');
     if (route === '/mortgage-life' && fs.existsSync(customMortgageCover)) {
       await sharp(customMortgageCover)
+        .resize(1200, 630, { fit: 'cover' })
+        .png({ compressionLevel: 9 })
+        .toFile(imageFilePath);
+    } else if (route === '/texas-holdem' && fs.existsSync(customHoldemCover)) {
+      await sharp(customHoldemCover)
         .resize(1200, 630, { fit: 'cover' })
         .png({ compressionLevel: 9 })
         .toFile(imageFilePath);

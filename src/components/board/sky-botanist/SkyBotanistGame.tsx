@@ -78,10 +78,10 @@ interface GameSnapshot {
 }
 
 const DEW_META: Record<DewType, { label: string; emoji: string; badge: string }> = {
-  sun: { label: '太陽雫', emoji: '☀️', badge: 'bg-amber-500/20 text-amber-200 border-amber-400/40' },
-  rain: { label: '雨露', emoji: '💧', badge: 'bg-sky-500/20 text-sky-200 border-sky-400/40' },
-  star: { label: '星砂', emoji: '✨', badge: 'bg-purple-500/20 text-purple-200 border-purple-400/40' },
-  leaf: { label: '翠葉', emoji: '🌿', badge: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40' },
+  sun: { label: '太陽雫', emoji: '☀️', badge: 'bg-[#3a2a1c] text-[#dfb06d] border-[#6b543d]' },
+  rain: { label: '雨露', emoji: '💧', badge: 'bg-[#182530] text-[#a9c8da] border-[#3f5f78]' },
+  star: { label: '星砂', emoji: '✨', badge: 'bg-[#282033] text-[#cbb5dc] border-[#5b4668]' },
+  leaf: { label: '翠葉', emoji: '🌿', badge: 'bg-[#14211b] text-[#a9cdb7] border-[#315d4e]' },
 };
 
 const HABITAT_META: Record<
@@ -99,24 +99,24 @@ const HABITAT_META: Record<
     name: '森林ビオトープ',
     actionName: '森林を稼働（霊水獲得＋右→左連鎖）',
     sub: '霊水を生み出す樹冠層',
-    theme: 'border-emerald-500/40 bg-emerald-950/35',
-    headerBg: 'from-emerald-900/80 to-teal-950/80',
+    theme: 'border-[#315d4e] bg-[#14211b]',
+    headerBg: 'from-[#1b2b24] to-[#14211b]',
     baseRewards: ['霊水+1', '霊水+1', '霊水+2', '霊水+2', '霊水+3', '霊水+3'],
   },
   waterside: {
     name: '水辺ビオトープ',
     actionName: '水辺を稼働（種子育成＋右→左連鎖）',
     sub: '生命の種子（各1点＆植栽コスト）を宿す泉層',
-    theme: 'border-cyan-500/40 bg-cyan-950/35',
-    headerBg: 'from-cyan-900/80 to-sky-950/80',
+    theme: 'border-[#3f5f78] bg-[#131d24]',
+    headerBg: 'from-[#1a2a34] to-[#131d24]',
     baseRewards: ['種子+1', '種子+2', '種子+2', '種子+3', '種子+3', '種子+4'],
   },
   sky: {
     name: '天空ビオトープ',
     actionName: '天空を稼働（植物探査＋右→左連鎖）',
     sub: '浮遊温室から新種カードを引き寄せる雲海層',
-    theme: 'border-indigo-500/40 bg-indigo-950/35',
-    headerBg: 'from-indigo-900/80 to-purple-950/80',
+    theme: 'border-[#5b4668] bg-[#201a24]',
+    headerBg: 'from-[#2a2130] to-[#201a24]',
     baseRewards: ['探査1枚', '探査1枚+雫1', '探査2枚', '探査2枚+雫1', '探査3枚', '探査3枚+雫1'],
   },
 };
@@ -843,31 +843,36 @@ export default function SkyBotanistGame() {
   const currentGoal = game.seasonGoals[game.seasonIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-emerald-950/90 to-slate-950 text-slate-100 pb-16">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-slate-950/80 border-b border-emerald-500/20 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+    <div className="tabletop-page pb-16">
+      <header className="tabletop-header sticky top-0 z-30">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
-              href="/"
-              className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-medium text-emerald-300 border border-emerald-500/30 transition"
+              href="/games"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-[13px]"
             >
-              ← ボードゲーム一覧
+              ← ゲーム一覧
             </Link>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-200">
-                🌿 天空の植物園 — Sky Botanist
-              </h1>
-              <p className="text-xs text-slate-400">3層ビオトープと右→左の連鎖能力で育てる生態系エンジン構築ボードゲーム</p>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tabletop-kicker">Sky Botanist</span>
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
+                  {SEASON_NAMES[game.seasonIndex]}・残り {game.turnsRemaining[game.activePlayerIndex]} 手
+                </span>
+              </div>
+              <h1 className="tabletop-title truncate text-lg sm:text-xl">天空の植物園</h1>
+              <p className="tabletop-muted hidden text-[13px] sm:block">
+                3層ビオトープと右→左の連鎖で育てる生態系エンジン構築
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <select
               aria-label="対戦モード選択"
               value={mode}
               onChange={(e) => handleReset(e.target.value as GameMode)}
-              className="bg-slate-900 border border-emerald-500/40 rounded-lg px-2.5 py-1.5 text-xs text-emerald-100"
+              className="tabletop-button min-h-11 cursor-pointer px-2.5 text-xs text-[#f4ead8]"
             >
               <option value="cpu2">2人対戦 (vs 連鎖AI)</option>
               <option value="cpu3">3人対戦 (vs 連鎖AI・巨木AI)</option>
@@ -880,7 +885,7 @@ export default function SkyBotanistGame() {
               type="button"
               onClick={handleUndo}
               disabled={history.length === 0}
-              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs border border-slate-600 transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs disabled:pointer-events-none disabled:opacity-40"
             >
               ↩ 1手戻す
             </button>
@@ -889,18 +894,16 @@ export default function SkyBotanistGame() {
               type="button"
               onClick={handleShowHint}
               disabled={activePlayer.isAi || game.finished}
-              className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs border border-amber-400/40 transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs text-[#dfb06d] disabled:pointer-events-none disabled:opacity-40"
             >
-              💡 AI推奨手ヒント
+              💡 ヒント
             </button>
 
             <button
               type="button"
               onClick={() => setBgmEnabled((v) => !v)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs border transition ${
-                bgmEnabled
-                  ? 'bg-emerald-600/30 text-emerald-200 border-emerald-400'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                bgmEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🎵 BGM {bgmEnabled ? 'ON' : 'OFF'}
@@ -909,10 +912,8 @@ export default function SkyBotanistGame() {
             <button
               type="button"
               onClick={() => setSfxEnabled((v) => !v)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs border transition ${
-                sfxEnabled
-                  ? 'bg-teal-600/30 text-teal-200 border-teal-400'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                sfxEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🔊 効果音 {sfxEnabled ? 'ON' : 'OFF'}
@@ -921,37 +922,36 @@ export default function SkyBotanistGame() {
             <button
               type="button"
               onClick={() => handleReset(mode)}
-              className="px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 text-rose-200 text-xs border border-rose-500/30 transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#e3b6ad]"
             >
-              新規開園
+              ↻ 新規開園
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 pt-4 space-y-4">
+      <div className="mx-auto max-w-7xl space-y-4 px-3 py-4 sm:px-6">
         {/* Season Banner & Goals */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-3 bg-slate-900/75 border border-emerald-500/30 rounded-2xl p-4 shadow-xl">
-          <div className="lg:col-span-5 flex flex-col justify-between gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+        <section className="tabletop-panel grid grid-cols-1 gap-3 p-3.5 sm:p-4 lg:grid-cols-12">
+          <div className="flex flex-col justify-between gap-2 lg:col-span-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 items-center px-2.5 text-[11px] font-bold">
                 {SEASON_NAMES[game.seasonIndex]}
               </span>
-              <span className="text-xs text-slate-300">
-                残りアクション手番:{' '}
-                <strong className="text-amber-300 text-sm">{game.turnsRemaining[game.activePlayerIndex]}</strong> 手
+              <span className="text-xs text-[#b9a88f]">
+                残り手番 <strong className="text-sm text-[#dfb06d]">{game.turnsRemaining[game.activePlayerIndex]}</strong> 手
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-amber-500/30">
-              <div className="text-xs text-amber-300 font-semibold">
-                🏆 今季の生態系目標：【{currentGoal.title}】
+            <div className="tabletop-panel-soft border-l-2 border-l-[#c99555] p-2.5">
+              <div className="text-xs font-bold text-[#dfb06d]">
+                今季の生態系目標：{currentGoal.title}
               </div>
-              <div className="text-xs text-slate-300 mt-0.5">{currentGoal.desc}</div>
+              <div className="mt-0.5 text-xs leading-relaxed text-[#c9b79d]">{currentGoal.desc}</div>
             </div>
           </div>
 
           {/* Player Score Tabs */}
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:col-span-7">
             {game.players.map((pl, idx) => {
               const bd = calculateScoreBreakdown(pl);
               const isTurn = idx === game.activePlayerIndex && !game.finished;
@@ -961,20 +961,20 @@ export default function SkyBotanistGame() {
                   key={pl.id}
                   type="button"
                   onClick={() => setViewedPlayerIdx(idx)}
-                  className={`text-left p-2.5 rounded-xl border transition relative ${
+                  className={`relative min-h-[76px] rounded-md border p-2.5 text-left transition ${
                     isViewed
-                      ? 'bg-emerald-900/50 border-emerald-400 shadow-lg'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-600'
+                      ? 'border-[#c99555] bg-[#3a2a1c]'
+                      : 'border-[#4d3d2d] bg-[#2a211a] hover:border-[#6b543d]'
                   }`}
                 >
                   {isTurn && (
-                    <span className="absolute -top-2 right-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-400 text-slate-950">
+                    <span className="absolute -top-2 right-2 rounded-sm bg-[#c99555] px-1.5 py-0.5 text-[10px] font-bold text-[#1b120b]">
                       手番中
                     </span>
                   )}
-                  <div className="text-xs font-bold truncate text-slate-100">{pl.name}</div>
-                  <div className="text-lg font-extrabold text-amber-300 mt-0.5">{bd.total} ★</div>
-                  <div className="flex flex-wrap gap-1 mt-1 text-[11px] text-slate-300">
+                  <div className="truncate text-xs font-bold text-[#f4ead8]">{pl.name}</div>
+                  <div className="mt-0.5 text-lg font-extrabold text-[#dfb06d]">{bd.total} ★</div>
+                  <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-[#c9b79d]">
                     <span>☀️{pl.dew.sun}</span>
                     <span>💧{pl.dew.rain}</span>
                     <span>✨{pl.dew.star}</span>
@@ -989,9 +989,9 @@ export default function SkyBotanistGame() {
 
         {/* Hint Banner */}
         {hintText && (
-          <div className="bg-amber-950/80 border border-amber-400/50 text-amber-100 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between">
-            <span>💡 <strong>主任植物学者の助言:</strong> {hintText}</span>
-            <button type="button" onClick={() => setHintText(null)} className="text-amber-300 hover:underline ml-4">
+          <div className="tabletop-panel-soft flex flex-wrap items-center justify-between gap-2 border-l-2 border-l-[#c99555] px-3.5 py-2.5 text-xs text-[#e8dcc8]">
+            <span>💡 <strong className="text-[#dfb06d]">主任植物学者の助言：</strong>{hintText}</span>
+            <button type="button" onClick={() => setHintText(null)} className="min-h-11 px-2 text-[#dfb06d] hover:underline">
               閉じる
             </button>
           </div>
@@ -999,17 +999,17 @@ export default function SkyBotanistGame() {
 
         {/* Finished Modal Banner */}
         {game.finished && (
-          <section className="bg-gradient-to-r from-emerald-900/90 via-teal-900/90 to-amber-900/90 border-2 border-amber-400 rounded-2xl p-5 shadow-2xl">
-            <h2 className="text-xl font-bold text-amber-200 mb-3">👑 最終生態系スコア結果発表</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <section className="tabletop-panel border-[#6b543d] p-4 sm:p-5">
+            <h2 className="tabletop-title mb-3 text-lg sm:text-xl">👑 最終生態系スコア結果発表</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[...game.players]
                 .map((pl) => ({ pl, bd: calculateScoreBreakdown(pl) }))
                 .sort((a, b) => b.bd.total - a.bd.total)
                 .map(({ pl, bd }, rank) => (
-                  <div key={pl.id} className="bg-slate-950/80 border border-amber-300/40 rounded-xl p-3">
-                    <div className="text-xs text-amber-300 font-bold">第{rank + 1}位 — {pl.name}</div>
-                    <div className="text-2xl font-extrabold text-white my-1">{bd.total} 点</div>
-                    <div className="text-xs text-slate-300 space-y-0.5">
+                  <div key={pl.id} className="tabletop-panel-soft p-3">
+                    <div className="text-xs font-bold text-[#dfb06d]">第{rank + 1}位 — {pl.name}</div>
+                    <div className="my-1 text-2xl font-extrabold text-[#f4ead8]">{bd.total} 点</div>
+                    <div className="space-y-0.5 text-xs text-[#c9b79d]">
                       <div>🌿 植物素点: {bd.cardPts}点</div>
                       <div>🌰 生命の種子: {bd.seedPts}点</div>
                       <div>🍂 腐葉堆肥: {bd.compostPts}点</div>
@@ -1024,17 +1024,17 @@ export default function SkyBotanistGame() {
 
         {/* 3 Habitat Biotope Rows */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-emerald-200">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <h2 className="tabletop-title text-sm sm:text-base">
               🏞️ {viewedPlayer.name} の3層ビオトープ個人ボード
               {selectedCard && !activePlayer.isAi && (
-                <span className="ml-2 text-xs text-amber-300 font-normal">
-                  （植栽先ビオトープを選択してください: 「{selectedCard.name}」）
+                <span className="ml-2 text-xs font-normal text-[#dfb06d]">
+                  （植栽先を選択：「{selectedCard.name}」）
                 </span>
               )}
             </h2>
-            <span className="text-xs text-slate-400">
-              ※不足している霊水は任意の霊水2個で1個分に代替可能 / 列2〜5には盤面の種子コストが必要です
+            <span className="text-[11px] text-[#b9a88f]">
+              不足霊水は任意の2個で代替可 / 列2〜5には盤面の種子コストが必要
             </span>
           </div>
 
@@ -1050,31 +1050,31 @@ export default function SkyBotanistGame() {
             return (
               <div
                 key={habitat}
-                className={`rounded-2xl border p-3.5 transition-all ${meta.theme} ${
-                  chainHighlight === habitat ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/20' : ''
+                className={`rounded-lg border p-3 transition-all sm:p-3.5 ${meta.theme} ${
+                  chainHighlight === habitat ? 'ring-1 ring-[#c99555]' : ''
                 }`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">{meta.name}</span>
-                      <span className="text-xs text-slate-300">（{meta.sub}）</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-[#f4ead8]">{meta.name}</span>
+                      <span className="text-[11px] text-[#b9a88f]">（{meta.sub}）</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {selectedCard && viewedPlayerIdx === game.activePlayerIndex && (
                       <button
                         type="button"
                         disabled={!canPlantHere || game.finished}
                         onClick={() => selectedCardIdx !== null && executePlantAction(selectedCardIdx, habitat)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                        className={`min-h-11 rounded-md px-3 text-xs font-bold transition ${
                           canPlantHere
-                            ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md'
-                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            ? 'tabletop-button-primary'
+                            : 'cursor-not-allowed border border-[#4d3d2d] bg-[#2a211a] text-[#7f7261]'
                         }`}
                       >
-                        🌱 この層に「{selectedCard.name}」を植える
+                        🌱 この層に植える
                       </button>
                     )}
 
@@ -1082,7 +1082,7 @@ export default function SkyBotanistGame() {
                       type="button"
                       disabled={activePlayer.isAi || viewedPlayerIdx !== game.activePlayerIndex || game.finished}
                       onClick={() => executeActivateRow(habitat)}
-                      className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 text-slate-950 font-bold text-xs shadow-md transition"
+                      className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#dfb06d] disabled:pointer-events-none disabled:opacity-40"
                     >
                       ⚡ {meta.actionName}
                     </button>
@@ -1090,48 +1090,48 @@ export default function SkyBotanistGame() {
                 </div>
 
                 {/* 5 Columns */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
                   {rowSlots.map((slot, colIdx) => {
                     const seedReq = COLUMN_SEED_COST[colIdx];
                     return (
                       <div
                         key={colIdx}
-                        className={`min-h-[138px] rounded-xl border p-2.5 flex flex-col justify-between relative ${
+                        className={`relative flex min-h-[138px] flex-col justify-between rounded-md border p-2.5 ${
                           slot
-                            ? 'bg-slate-900/90 border-emerald-400/50 shadow-inner'
-                            : 'bg-slate-950/45 border-dashed border-slate-700/80'
+                            ? 'border-[#6b543d] bg-[#241c15]'
+                            : 'border-dashed border-[#4d3d2d] bg-[#171310]'
                         }`}
                       >
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 border-b border-slate-800 pb-1">
-                          <span>第{colIdx + 1}列 (←連鎖順)</span>
-                          <span>{seedReq > 0 ? `種子コスト:${seedReq}🌰` : '種子コスト:0'}</span>
+                        <div className="flex items-center justify-between border-b border-[#4d3d2d] pb-1 text-[10px] text-[#9c8d78]">
+                          <span>第{colIdx + 1}列（←連鎖順）</span>
+                          <span>{seedReq > 0 ? `種子 ${seedReq}🌰` : '種子 0'}</span>
                         </div>
 
                         {slot ? (
                           <div className="my-1 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-xs">
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#dfb06d]">
                                 <FloraSvgIcon type={slot.card.iconType} className="w-4 h-4 shrink-0" />
                                 <span className="truncate">{slot.card.name}</span>
                               </div>
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-xs">
+                              <span className="shrink-0 rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-1.5 py-0.5 text-xs font-bold text-[#dfb06d]">
                                 {slot.card.points}★
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-300 leading-snug">{slot.card.abilityDesc}</p>
-                            <div className="flex items-center justify-between pt-1 text-[11px]">
-                              <span className="text-cyan-300 font-semibold">
-                                🌰 種子: {slot.seeds}/{slot.card.seedCap}
+                            <p className="text-[11px] leading-snug text-[#c9b79d]">{slot.card.abilityDesc}</p>
+                            <div className="flex flex-wrap items-center justify-between gap-1 pt-1 text-[11px]">
+                              <span className="font-semibold text-[#a9cdb7]">
+                                🌰 種子 {slot.seeds}/{slot.card.seedCap}
                               </span>
                               {slot.compost > 0 && (
-                                <span className="text-amber-300 font-semibold">🍂 堆肥: +{slot.compost}</span>
+                                <span className="font-semibold text-[#dfb06d]">🍂 堆肥 +{slot.compost}</span>
                               )}
                             </div>
                           </div>
                         ) : (
-                          <div className="my-auto text-center text-xs text-slate-500 py-4">
+                          <div className="my-auto py-4 text-center text-[11px] text-[#8b7d69]">
                             空きスロット
-                            <div className="text-[10px] text-emerald-400/80 mt-1">
+                            <div className="mt-1 text-[10px] text-[#a9cdb7]">
                               稼働報酬: {meta.baseRewards[colIdx]}
                             </div>
                           </div>
@@ -1146,31 +1146,34 @@ export default function SkyBotanistGame() {
         </section>
 
         {/* Hand & Greenhouse Tray & Logs */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Active Player Hand */}
-          <div className="lg:col-span-8 bg-slate-900/75 border border-emerald-500/30 rounded-2xl p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h3 className="text-sm font-bold text-emerald-200">
-                🃏 {activePlayer.name} の手札 ({activePlayer.hand.length}枚) — カードをクリックしてビオトープに植栽
+          <div className="tabletop-panel p-3.5 sm:p-4 lg:col-span-8">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="tabletop-title text-sm">
+                🃏 {activePlayer.name} の手札（{activePlayer.hand.length}枚）
+                <span className="ml-2 font-sans text-[11px] font-normal text-[#b9a88f]">
+                  カードを選んでビオトープに植栽
+                </span>
               </h3>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 {(Object.keys(DEW_META) as DewType[]).map((d) => (
-                  <span key={d} className={`px-2 py-0.5 rounded-full border ${DEW_META[d].badge}`}>
+                  <span key={d} className={`inline-flex min-h-7 items-center gap-1 rounded-full border px-2 text-[11px] ${DEW_META[d].badge}`}>
                     {DEW_META[d].emoji} {DEW_META[d].label}: <strong>{activePlayer.dew[d]}</strong>
                   </span>
                 ))}
-                <span className="px-2 py-0.5 rounded-full border bg-cyan-500/20 text-cyan-200 border-cyan-400/40">
+                <span className="inline-flex min-h-7 items-center gap-1 rounded-full border border-[#315d4e] bg-[#14211b] px-2 text-[11px] text-[#a9cdb7]">
                   🌰 盤面種子: <strong>{totalSeedsOnBoard(activePlayer)}</strong>
                 </span>
               </div>
             </div>
 
             {activePlayer.hand.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-400">
-                手札がありません。「天空を稼働」アクションで新しい幻想植物カードを探査しましょう！
+              <div className="py-8 text-center text-xs text-[#b9a88f]">
+                手札がありません。「天空を稼働」アクションで新しい幻想植物カードを探査しましょう。
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
                 {activePlayer.hand.map((card, idx) => {
                   const isSel = selectedCardIdx === idx;
                   const affordableHabitats = card.habitats.filter((h) => canAffordCard(activePlayer, card, h).ok);
@@ -1178,50 +1181,50 @@ export default function SkyBotanistGame() {
                     <div
                       key={`${card.id}_${idx}`}
                       onClick={() => !activePlayer.isAi && setSelectedCardIdx(isSel ? null : idx)}
-                      className={`cursor-pointer rounded-xl border p-3 transition flex flex-col justify-between ${
+                      className={`flex cursor-pointer flex-col justify-between rounded-md border p-3 transition ${
                         isSel
-                          ? 'bg-emerald-900/70 border-amber-400 ring-2 ring-amber-400/60'
+                          ? 'border-[#c99555] bg-[#3a2a1c] ring-1 ring-[#c99555]'
                           : affordableHabitats.length > 0
-                          ? 'bg-slate-950/80 border-emerald-500/40 hover:border-emerald-400'
-                          : 'bg-slate-950/50 border-slate-800 opacity-75'
+                          ? 'border-[#4d3d2d] bg-[#241c15] hover:border-[#6b543d]'
+                          : 'border-[#3a2e23] bg-[#1d1712] opacity-70'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-200">
-                            <FloraSvgIcon type={card.iconType} className="w-4 h-4 text-emerald-400 shrink-0" />
-                            <span>{card.name}</span>
+                          <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#e8dcc8]">
+                            <FloraSvgIcon type={card.iconType} className="w-4 h-4 shrink-0 text-[#a9cdb7]" />
+                            <span className="truncate">{card.name}</span>
                           </div>
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-xs">
+                          <span className="shrink-0 rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-1.5 py-0.5 text-xs font-bold text-[#dfb06d]">
                             {card.points}点
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1 mt-1.5 text-[11px]">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
                           {(Object.entries(card.cost) as [DewType, number][]).map(([d, amt]) => (
-                            <span key={d} className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200">
+                            <span key={d} className="rounded-sm border border-[#4d3d2d] bg-[#2a211a] px-1.5 py-0.5 text-[#d8cbb8]">
                               {DEW_META[d].emoji}×{amt}
                             </span>
                           ))}
-                          <span className="ml-auto text-slate-400">種子上限:{card.seedCap}</span>
+                          <span className="ml-auto text-[#9c8d78]">種子上限 {card.seedCap}</span>
                         </div>
 
-                        <div className="flex flex-wrap gap-1 mt-1.5">
+                        <div className="mt-1.5 flex flex-wrap gap-1">
                           {card.habitats.map((h) => (
                             <span
                               key={h}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-600/30"
+                              className="rounded-sm border border-[#315d4e] bg-[#14211b] px-1.5 py-0.5 text-[10px] text-[#a9cdb7]"
                             >
                               {HABITAT_META[h].name.replace('ビオトープ', '')}
                             </span>
                           ))}
                         </div>
 
-                        <p className="text-[11px] text-slate-300 mt-2 leading-snug">{card.abilityDesc}</p>
+                        <p className="mt-2 text-[11px] leading-snug text-[#c9b79d]">{card.abilityDesc}</p>
                       </div>
 
                       {isSel && affordableHabitats.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-slate-800 flex flex-wrap gap-1">
+                        <div className="mt-2 flex flex-wrap gap-1 border-t border-[#4d3d2d] pt-2">
                           {affordableHabitats.map((h) => (
                             <button
                               key={h}
@@ -1230,7 +1233,7 @@ export default function SkyBotanistGame() {
                                 e.stopPropagation();
                                 executePlantAction(idx, h);
                               }}
-                              className="flex-1 py-1 px-2 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[11px]"
+                              className="tabletop-button-primary min-h-11 flex-1 px-2 text-[11px]"
                             >
                               {HABITAT_META[h].name.replace('ビオトープ', '')}に植える
                             </button>
@@ -1245,31 +1248,34 @@ export default function SkyBotanistGame() {
           </div>
 
           {/* Greenhouse Tray & Logs */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="bg-slate-900/75 border border-emerald-500/30 rounded-2xl p-4">
-              <h3 className="text-xs font-bold text-indigo-300 mb-2">
-                🔭 浮遊温室トレイ（天空稼働時に優先獲得 / 山札残り {game.deck.length}枚）
+          <div className="space-y-4 lg:col-span-4">
+            <div className="tabletop-panel p-3.5 sm:p-4">
+              <h3 className="tabletop-title mb-2 text-sm">
+                🔭 浮遊温室トレイ
+                <span className="ml-2 font-sans text-[11px] font-normal text-[#b9a88f]">
+                  天空稼働時に優先獲得 / 山札残り {game.deck.length}枚
+                </span>
               </h3>
               <div className="space-y-1.5">
                 {game.tray.map((c, i) => (
                   <div
                     key={`${c.id}_tray_${i}`}
-                    className="p-2 rounded-lg bg-slate-950/70 border border-indigo-500/30 flex items-center justify-between text-xs"
+                    className="tabletop-panel-soft flex items-center justify-between p-2 text-xs"
                   >
                     <div>
-                      <div className="font-semibold text-indigo-200">{c.name} ({c.points}★)</div>
-                      <div className="text-[11px] text-slate-400">{c.abilityDesc}</div>
+                      <div className="font-semibold text-[#e8dcc8]">{c.name}（{c.points}★）</div>
+                      <div className="text-[11px] leading-relaxed text-[#b9a88f]">{c.abilityDesc}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-900/75 border border-emerald-500/30 rounded-2xl p-4">
-              <h3 className="text-xs font-bold text-emerald-300 mb-2">📜 植物園の観察記録ログ</h3>
-              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 text-xs text-slate-300">
+            <div className="tabletop-panel p-3.5 sm:p-4">
+              <h3 className="tabletop-title mb-2 text-sm">📜 植物園の観察記録ログ</h3>
+              <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs text-[#c9b79d]">
                 {game.logs.slice(0, 10).map((lg, idx) => (
-                  <div key={idx} className="p-1.5 rounded bg-slate-950/60 border border-slate-800/80">
+                  <div key={idx} className="tabletop-panel-soft p-1.5 leading-relaxed">
                     {lg}
                   </div>
                 ))}

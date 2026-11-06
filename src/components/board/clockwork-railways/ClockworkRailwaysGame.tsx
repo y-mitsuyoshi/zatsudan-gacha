@@ -822,8 +822,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '⛏️',
     primeDesc: '主任枠（無料）：「石炭+3」または「石炭+2 ＆ 金貨+1」を獲得',
     overtimeDesc: '残業枠（金貨1枚）：「石炭+2」を獲得',
-    accentClass: 'from-stone-900/95 to-amber-950/70',
-    borderClass: 'border-amber-500/45',
+    accentClass: 'from-[#2a211a] to-[#1d1712]',
+    borderClass: 'border-[#6b543d]',
   },
   {
     id: 'steel_foundry',
@@ -833,8 +833,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '🔥',
     primeDesc: '主任枠（無料）：「鋼鉄+2」または「石炭1消費 → 鋼鉄+3」を精錬',
     overtimeDesc: '残業枠（金貨1枚）：「鋼鉄+2」を獲得',
-    accentClass: 'from-orange-950/90 to-stone-900/90',
-    borderClass: 'border-orange-500/45',
+    accentClass: 'from-[#2f1b19] to-[#1d1712]',
+    borderClass: 'border-[#6b3a36]',
   },
   {
     id: 'locomotive_works',
@@ -844,8 +844,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '🚂',
     primeDesc: '主任枠（無料）：鋼鉄-1割引で「蒸気機関出力Lv」を強化（Lv.3で4人目の機関士解放！）',
     overtimeDesc: '残業枠（金貨1枚）：通常コストで「蒸気機関出力Lv」を1段階強化',
-    accentClass: 'from-sky-950/90 to-slate-900/90',
-    borderClass: 'border-sky-400/45',
+    accentClass: 'from-[#182530] to-[#131d24]',
+    borderClass: 'border-[#3f5f78]',
   },
   {
     id: 'railway_construction',
@@ -855,8 +855,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '🛤️',
     primeDesc: '主任枠（無料）：隣接都市間に「鉄路リンク」を最大2区間敷設（1区間目の石炭コスト-1割引）',
     overtimeDesc: '残業枠（金貨1枚）：隣接都市間に「鉄路リンク」を最大2区間敷設（通常コスト）',
-    accentClass: 'from-emerald-950/90 to-stone-900/90',
-    borderClass: 'border-emerald-400/45',
+    accentClass: 'from-[#14211b] to-[#131d24]',
+    borderClass: 'border-[#315d4e]',
   },
   {
     id: 'freight_exchange',
@@ -866,8 +866,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '📦',
     primeDesc: '主任枠（無料）：「特急輸送指令書」の獲得 ＆ 接続済み鉄路での「貨物輸送（名声＆金貨獲得）」＋ボーナス金貨+1',
     overtimeDesc: '残業枠（金貨1枚）：「特急輸送指令書」の獲得 ＆ 接続済み鉄路での「貨物輸送」を実行',
-    accentClass: 'from-purple-950/90 to-stone-900/90',
-    borderClass: 'border-purple-400/45',
+    accentClass: 'from-[#282033] to-[#1d1712]',
+    borderClass: 'border-[#5b4668]',
   },
   {
     id: 'central_bank',
@@ -877,8 +877,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '🕰️',
     primeDesc: '主任枠（無料）：「金貨+4 ＆ 名声+1★」を獲得し、「次ラウンド先手懐中時計」を確保！',
     overtimeDesc: '残業枠（金貨1枚）：差し引き「金貨+3 ＆ 石炭+1」を獲得',
-    accentClass: 'from-yellow-950/90 to-stone-900/90',
-    borderClass: 'border-yellow-400/45',
+    accentClass: 'from-[#3a2a1c] to-[#241c15]',
+    borderClass: 'border-[#6b543d]',
   },
   {
     id: 'grand_expo',
@@ -888,8 +888,8 @@ export const FACILITIES: FacilityMeta[] = [
     icon: '🏛️',
     primeDesc: '主任枠（無料）：資材を奉納して「産業勲章（+6〜+9★）」を獲得＋主任ボーナス名声+1★',
     overtimeDesc: '残業枠（金貨1枚）：資材を奉納して「産業勲章（+6〜+9★）」を獲得',
-    accentClass: 'from-rose-950/90 to-stone-900/90',
-    borderClass: 'border-rose-400/45',
+    accentClass: 'from-[#35201e] to-[#241c15]',
+    borderClass: 'border-[#6b3a36]',
   },
 ];
 
@@ -899,28 +899,28 @@ export const FACILITIES: FacilityMeta[] = [
 
 const PLAYER_PALETTES = [
   {
-    colorHex: '#f59e0b',
+    colorHex: '#d9a75f',
     colorName: '琥珀ブラス',
-    badgeClass: 'bg-amber-500/25 text-amber-200 border-amber-400/60',
-    borderClass: 'border-amber-400',
+    badgeClass: 'bg-[#3a2a1c] text-[#dfb06d] border-[#6b543d]',
+    borderClass: 'border-[#c99555]',
   },
   {
-    colorHex: '#38bdf8',
+    colorHex: '#7fa7c0',
     colorName: '蒼鋼スチーム',
-    badgeClass: 'bg-sky-500/25 text-sky-200 border-sky-400/60',
-    borderClass: 'border-sky-400',
+    badgeClass: 'bg-[#182530] text-[#a9c8da] border-[#3f5f78]',
+    borderClass: 'border-[#3f5f78]',
   },
   {
-    colorHex: '#34d399',
+    colorHex: '#7fae95',
     colorName: '翠銅エメラルド',
-    badgeClass: 'bg-emerald-500/25 text-emerald-200 border-emerald-400/60',
-    borderClass: 'border-emerald-400',
+    badgeClass: 'bg-[#14211b] text-[#a9cdb7] border-[#315d4e]',
+    borderClass: 'border-[#315d4e]',
   },
   {
-    colorHex: '#fb7185',
+    colorHex: '#c98d86',
     colorName: '紅鉄クリムゾン',
-    badgeClass: 'bg-rose-500/25 text-rose-200 border-rose-400/60',
-    borderClass: 'border-rose-400',
+    badgeClass: 'bg-[#241615] text-[#e0a9a2] border-[#6b3a36]',
+    borderClass: 'border-[#6b3a36]',
   },
 ];
 
@@ -1992,69 +1992,64 @@ export default function ClockworkRailwaysGame() {
   }, [state.players]);
 
   return (
-    <div className="min-h-screen bg-[#0c0907] text-amber-50 selection:bg-amber-500/30">
-      {/* Top Navigation & Audio/Mode Controls */}
-      <header className="sticky top-0 z-30 border-b border-amber-500/30 bg-[#140e0a]/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5">
-          <div className="flex items-center gap-3">
+    <div className="tabletop-page pb-16">
+      <header className="tabletop-header sticky top-0 z-30">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-amber-500/40 bg-amber-950/50 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-900/70"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-[13px]"
             >
-              ← 無料ゲーム一覧
+              ← ゲーム一覧
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🚂</span>
-                <span className="font-serif text-base font-bold tracking-wide text-amber-200 sm:text-lg">
-                  蒸気機関の鉄路王
-                </span>
-                <span className="hidden rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300 md:inline-block">
-                  Clockwork Railways
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tabletop-kicker">Clockwork Railways</span>
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
+                  第 {state.round} / {state.maxRounds} 期
                 </span>
               </div>
-              <p className="text-[11px] text-amber-200/70">
-                機関士ワーカー配置＆12都市・22路線の蒸気大陸ネットワーク開拓盤ゲーム
+              <h2 className="tabletop-title truncate text-lg sm:text-xl">蒸気機関の鉄路王</h2>
+              <p className="tabletop-muted hidden text-[13px] sm:block">
+                機関士ワーカー配置と12都市・22路線の鉄路ネットワーク開拓
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* Mode Switcher */}
-            <div className="flex items-center rounded-lg border border-amber-500/35 bg-black/40 p-0.5 text-xs">
-              {([2, 3, 4] as const).map((cnt) => (
-                <button
-                  key={`cpu-${cnt}`}
-                  type="button"
-                  onClick={() => handleNewGame('cpu', cnt)}
-                  className={`rounded-md px-2.5 py-1 font-semibold transition ${
-                    gameMode === 'cpu' && playerCount === cnt
-                      ? 'bg-amber-500 text-stone-950 shadow'
-                      : 'text-amber-200/80 hover:text-amber-100'
-                  }`}
-                >
-                  CPU {cnt}人
-                </button>
-              ))}
+            {([2, 3, 4] as const).map((cnt) => (
               <button
+                key={`cpu-${cnt}`}
                 type="button"
-                onClick={() => handleNewGame('pvp', 2)}
-                className={`rounded-md px-2.5 py-1 font-semibold transition ${
-                  gameMode === 'pvp'
-                    ? 'bg-amber-500 text-stone-950 shadow'
-                    : 'text-amber-200/80 hover:text-amber-100'
+                onClick={() => handleNewGame('cpu', cnt)}
+                className={`inline-flex min-h-11 items-center px-2.5 text-xs font-semibold transition ${
+                  gameMode === 'cpu' && playerCount === cnt
+                    ? 'tabletop-chip tabletop-chip-active border font-bold'
+                    : 'tabletop-chip'
                 }`}
               >
-                1台2人対戦
+                CPU {cnt}人
               </button>
-            </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => handleNewGame('pvp', 2)}
+              className={`inline-flex min-h-11 items-center px-2.5 text-xs font-semibold transition ${
+                gameMode === 'pvp'
+                  ? 'tabletop-chip tabletop-chip-active border font-bold'
+                  : 'tabletop-chip'
+              }`}
+            >
+              1台2人
+            </button>
 
             {/* Undo */}
             <button
               type="button"
               onClick={handleUndo}
               disabled={history.length === 0}
-              className="rounded-lg border border-amber-400/40 bg-amber-950/60 px-2.5 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-900/70 disabled:opacity-40"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs disabled:pointer-events-none disabled:opacity-40"
             >
               ↩ 1手戻す
             </button>
@@ -2063,10 +2058,8 @@ export default function ClockworkRailwaysGame() {
             <button
               type="button"
               onClick={() => setShowHint((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                showHint
-                  ? 'border-emerald-400/60 bg-emerald-950/70 text-emerald-200'
-                  : 'border-stone-600 bg-stone-900 text-stone-300'
+              className={`inline-flex min-h-11 items-center px-2.5 text-xs font-semibold transition ${
+                showHint ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🧭 AI推奨ナビ {showHint ? 'ON' : 'OFF'}
@@ -2076,10 +2069,8 @@ export default function ClockworkRailwaysGame() {
             <button
               type="button"
               onClick={toggleBgm}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                bgmEnabled
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100'
-                  : 'border-amber-500/30 bg-stone-900/80 text-amber-200/70'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                bgmEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🎵 BGM {bgmEnabled ? 'ON' : 'OFF'}
@@ -2089,10 +2080,8 @@ export default function ClockworkRailwaysGame() {
             <button
               type="button"
               onClick={() => setSfxEnabled((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                sfxEnabled
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100'
-                  : 'border-amber-500/30 bg-stone-900/80 text-amber-200/70'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                sfxEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🔊 効果音 {sfxEnabled ? 'ON' : 'OFF'}
@@ -2103,99 +2092,99 @@ export default function ClockworkRailwaysGame() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl space-y-5 px-4 py-5">
+      <div className="mx-auto max-w-7xl space-y-4 px-3 py-4 sm:px-6">
         {/* Round Banner & Player Dashboards */}
-        <section className="rounded-2xl border border-amber-500/35 bg-gradient-to-r from-[#1c130d] via-[#22170f] to-[#17100b] p-4 shadow-xl">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/20 pb-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-1 text-sm font-bold text-amber-200">
-                🕰️ 第 {state.round} / {state.maxRounds} 期（蒸気産業革命期）
+        <section className="tabletop-panel p-3.5 sm:p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 items-center px-2.5 text-[11px] font-bold">
+                🕰️ 第 {state.round} / {state.maxRounds} 期
               </span>
-              <span className="text-xs text-amber-200/85">
+              <span className="text-xs text-[#b9a88f]">
                 現在の手番：
-                <strong className="ml-1 text-amber-300">{currentPlayer.name}</strong>
+                <strong className="ml-1 text-[#dfb06d]">{currentPlayer.name}</strong>
                 {!currentPlayer.isHuman && (
-                  <span className="ml-2 animate-pulse rounded bg-sky-500/20 px-2 py-0.5 text-[11px] text-sky-300">
-                    AI思考中...
+                  <span className="ml-2 rounded-sm border border-[#4d3d2d] bg-[#2a211a] px-2 py-0.5 text-[11px] text-[#b9a88f]">
+                    AI思考中…
                   </span>
                 )}
               </span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-amber-200/80">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[#b9a88f]">
               <span>
-                ⏱️ 次ラウンド先手懐中時計：
-                <strong className="ml-1 text-amber-300">
+                ⏱️ 次ラウンド先手：
+                <strong className="ml-1 text-[#dfb06d]">
                   {state.players[state.nextFirstPlayerIndex]?.name}
                 </strong>
               </span>
               <button
                 type="button"
                 onClick={() => handleNewGame(gameMode, playerCount)}
-                className="rounded-lg border border-amber-500/40 bg-amber-950/60 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-900/70"
+                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs font-semibold text-[#e3b6ad]"
               >
-                🔄 新規対局
+                ↻ 新規対局
               </button>
             </div>
           </div>
 
           {/* Players Grid */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             {state.players.map((p, idx) => {
               const isCurrent = idx === state.currentPlayerIndex && !state.gameOver;
               const engineSpec = ENGINE_LEVELS[p.engineLv];
               return (
                 <div
                   key={p.id}
-                  className={`rounded-xl border p-3 transition ${
+                  className={`rounded-md border p-3 transition ${
                     isCurrent
-                      ? 'border-amber-400 bg-amber-950/45 shadow-lg shadow-amber-500/10 ring-1 ring-amber-400/60'
-                      : 'border-amber-500/25 bg-black/35'
+                      ? 'border-[#c99555] bg-[#2a211a] ring-1 ring-[#c99555]'
+                      : 'tabletop-panel-soft'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span
-                        className="inline-block h-3.5 w-3.5 rounded-full border border-white/40"
+                        className="inline-block h-3.5 w-3.5 rounded-full border border-[#6b543d]"
                         style={{ backgroundColor: p.colorHex }}
                       />
-                      <span className="text-xs font-bold text-amber-100">{p.name}</span>
+                      <span className="text-xs font-bold text-[#e8dcc8]">{p.name}</span>
                     </div>
-                    <span className="rounded-full border border-yellow-400/50 bg-yellow-500/20 px-2.5 py-0.5 text-xs font-extrabold text-yellow-200">
+                    <span className="tabletop-chip inline-flex min-h-6 items-center px-2 text-[11px] font-bold">
                       ★ {p.prestige} 名声
                     </span>
                   </div>
 
                   {/* Resources & Workers */}
                   <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-center text-[11px]">
-                    <div className="rounded-lg border border-stone-600/60 bg-stone-900/80 px-1.5 py-1">
-                      <div className="text-stone-400">⛏️石炭</div>
-                      <div className="font-bold text-amber-100">{p.coal}</div>
+                    <div className="rounded-sm border border-[#6b543d] bg-[#2a211a] px-1.5 py-1">
+                      <div className="text-[#b9a88f]">⛏️石炭</div>
+                      <div className="font-bold text-[#dfb06d]">{p.coal}</div>
                     </div>
-                    <div className="rounded-lg border border-sky-500/35 bg-sky-950/50 px-1.5 py-1">
-                      <div className="text-sky-300/80">🔩鋼鉄</div>
-                      <div className="font-bold text-sky-100">{p.steel}</div>
+                    <div className="rounded-sm border border-[#3f5f78] bg-[#182530] px-1.5 py-1">
+                      <div className="text-[#a9c8da]">🔩鋼鉄</div>
+                      <div className="font-bold text-[#d6e4ed]">{p.steel}</div>
                     </div>
-                    <div className="rounded-lg border border-yellow-500/35 bg-yellow-950/50 px-1.5 py-1">
-                      <div className="text-yellow-300/80">🪙金貨</div>
-                      <div className="font-bold text-yellow-100">{p.gold}</div>
+                    <div className="rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-1.5 py-1">
+                      <div className="text-[#c99555]">🪙金貨</div>
+                      <div className="font-bold text-[#f0d9ae]">{p.gold}</div>
                     </div>
-                    <div className="rounded-lg border border-emerald-500/35 bg-emerald-950/50 px-1.5 py-1">
-                      <div className="text-emerald-300/80">👷機関士</div>
-                      <div className="font-bold text-emerald-100">
+                    <div className="rounded-sm border border-[#315d4e] bg-[#14211b] px-1.5 py-1">
+                      <div className="text-[#a9cdb7]">👷機関士</div>
+                      <div className="font-bold text-[#cfe4d8]">
                         {p.availableWorkers}/{p.totalWorkers}
                       </div>
                     </div>
                   </div>
 
                   {/* Steam Engine Output & Network Stats */}
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-amber-200/80">
-                    <span className="rounded bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-200">
-                      🚂 蒸気機関出力 Lv.{p.engineLv}（毎期:炭+{engineSpec.incomeCoal}
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#b9a88f]">
+                    <span className="rounded-sm border border-[#4d3d2d] bg-[#241c15] px-2 py-0.5 font-semibold text-[#d8cbb8]">
+                      🚂 機関出力 Lv.{p.engineLv}（毎期 炭+{engineSpec.incomeCoal}
                       {engineSpec.incomeSteel > 0 ? `/鋼+${engineSpec.incomeSteel}` : ''}/金+
                       {engineSpec.incomeGold}）
                     </span>
                     <span>
-                      🛤️ 鉄路 {p.ownedRoutes.length}本 / 📜 契約達成 {p.completedContracts.length}件
+                      🛤️ 鉄路 {p.ownedRoutes.length}本 / 📜 契約 {p.completedContracts.length}件
                     </span>
                   </div>
                 </div>
@@ -2206,41 +2195,41 @@ export default function ClockworkRailwaysGame() {
 
         {/* Game Over Victory Modal Banner */}
         {state.gameOver && (
-          <section className="rounded-2xl border-2 border-yellow-400 bg-gradient-to-r from-amber-950 via-yellow-950/90 to-amber-950 p-5 shadow-2xl">
+          <section className="tabletop-panel space-y-4 border-[#6b543d] p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-yellow-300">
-                  GRAND STEAM INDUSTRIAL REVOLUTION COMPLETED
-                </div>
-                <h2 className="mt-1 text-xl font-extrabold text-yellow-100 sm:text-2xl">
+                <span className="tabletop-kicker !text-[11px]">
+                  Grand Steam Industrial Revolution Completed
+                </span>
+                <h2 className="tabletop-title mt-1 text-xl sm:text-2xl">
                   🏆 第6期終了！優勝：{rankedPlayers[0]?.name}（最終名声 ★{rankedPlayers[0]?.prestige}）
                 </h2>
-                <p className="mt-1 text-xs text-amber-200/90">
+                <p className="mt-1 text-xs text-[#c9b79d]">
                   残余資材ボーナス（合計4個につき+1★）および最大鉄路網ボーナス（+3★）を加算した最終順位です。
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => handleNewGame(gameMode, playerCount)}
-                className="rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-extrabold text-stone-950 shadow-lg transition hover:bg-yellow-300"
+                className="tabletop-button-primary inline-flex min-h-11 items-center px-5 text-sm font-bold"
               >
                 🚂 もう一度対局する
               </button>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {rankedPlayers.map((p, rank) => (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-yellow-400/40 bg-black/45 p-3 text-xs"
+                  className="tabletop-panel-soft p-3 text-xs"
                 >
-                  <div className="font-bold text-yellow-200">
+                  <div className="font-bold text-[#dfb06d]">
                     第{rank + 1}位：{p.name}
                   </div>
-                  <div className="mt-1 text-base font-extrabold text-white">
+                  <div className="mt-1 text-base font-bold text-[#f4ead8]">
                     ★ {p.prestige} 名声点
                   </div>
-                  <div className="mt-1 text-amber-200/80">
-                    敷設鉄路 {p.ownedRoutes.length}本 / 機関出力 Lv.{p.engineLv} / 契約達成{' '}
+                  <div className="mt-1 text-[11px] text-[#b9a88f]">
+                    敷設鉄路 {p.ownedRoutes.length}本 / 機関出力 Lv.{p.engineLv} / 契約{' '}
                     {p.completedContracts.length}件 / 勲章 {p.claimedMedals.length}個
                   </div>
                 </div>
@@ -2251,20 +2240,20 @@ export default function ClockworkRailwaysGame() {
 
         {/* AI Recommended Move Bar */}
         {showHint && currentPlayer.isHuman && !state.gameOver && (
-          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-400/45 bg-emerald-950/35 px-4 py-3">
+          <section className="tabletop-panel-soft flex flex-wrap items-center justify-between gap-3 border-l-2 border-l-[#315d4e] px-3.5 py-3">
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
-                <span>🧭 AI推奨アクションナビ（期待値トップ手）</span>
-                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-200">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#a9cdb7]">
+                <span>🧭 AI推奨アクション（期待値トップ手）</span>
+                <span className="rounded-sm border border-[#315d4e] bg-[#14211b] px-2 py-0.5 text-[11px] text-[#cfe4d8]">
                   推奨：{recommendedMove.title}
                 </span>
               </div>
-              <p className="text-xs text-emerald-100/90">{recommendedMove.reason}</p>
+              <p className="text-xs text-[#c9b79d]">{recommendedMove.reason}</p>
             </div>
             <button
               type="button"
               onClick={handleApplyRecommendedMove}
-              className="rounded-lg border border-emerald-300/60 bg-emerald-500/25 px-3 py-1.5 text-xs font-bold text-emerald-100 transition hover:bg-emerald-500/40"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs font-bold text-[#a9cdb7]"
             >
               この推奨施設を選択
             </button>
@@ -2272,34 +2261,34 @@ export default function ClockworkRailwaysGame() {
         )}
 
         {/* Main 2-Column Layout: Left = Interactive SVG Steampunk Map, Right = 7 Guild Action Board & Execution Panel */}
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           {/* PART B: Interactive SVG Steampunk Continent Map (7 cols) */}
           <div className="space-y-4 xl:col-span-7">
-            <div className="rounded-2xl border border-amber-500/40 bg-[#140e0a] p-4 shadow-xl">
+            <div className="tabletop-panel p-3.5 sm:p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-sm font-bold text-amber-200 sm:text-base">
+                  <h2 className="tabletop-title text-sm sm:text-base">
                     🗺️ 蒸気大陸鉄路マップ（12都市・22路線）
                   </h2>
-                  <p className="text-[11px] text-amber-200/75">
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[#b9a88f]">
                     路線をクリックすると「4. 大陸鉄道敷設局」の敷設対象として直接選択できます。金枠の都市は現在の手番プレイヤーの「特急輸送指令書」の目的地です。
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                  <span className="rounded border border-stone-500/50 bg-stone-800/80 px-2 py-0.5 text-stone-200">
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="tabletop-chip inline-flex min-h-6 items-center px-2">
                     平原軌道: 炭1+鋼1 (+2★)
                   </span>
-                  <span className="rounded border border-sky-400/50 bg-sky-950/80 px-2 py-0.5 text-sky-200">
+                  <span className="tabletop-chip inline-flex min-h-6 items-center px-2">
                     大河鉄橋: 鋼2+金1 (+3★)
                   </span>
-                  <span className="rounded border border-orange-400/50 bg-orange-950/80 px-2 py-0.5 text-orange-200">
+                  <span className="tabletop-chip inline-flex min-h-6 items-center px-2">
                     山岳隧道: 炭2+鋼2 (+4★)
                   </span>
                 </div>
               </div>
 
               {/* SVG Continent Map */}
-              <div className="relative overflow-hidden rounded-xl border border-amber-500/35 bg-[#0d0906]">
+              <div className="tabletop-board-frame relative overflow-hidden">
                 <svg
                   viewBox="0 0 980 560"
                   className="h-auto w-full select-none"
@@ -2548,18 +2537,18 @@ export default function ClockworkRailwaysGame() {
               {/* Active Player's Express Delivery Contracts & Expo Medals Bar */}
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 {/* Active Player Contracts */}
-                <div className="rounded-xl border border-purple-400/35 bg-purple-950/25 p-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-purple-200">
-                      📜 {currentPlayer.name} の所持「特急輸送指令書」
+                <div className="tabletop-panel-soft border-l-2 border-l-[#5b4668] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <h3 className="text-xs font-bold text-[#e8dcc8]">
+                      📜 特急輸送指令書
                     </h3>
-                    <span className="text-[11px] text-purple-300">
-                      達成済み: {currentPlayer.completedContracts.length}件
+                    <span className="text-[11px] text-[#b9a88f]">
+                      達成済み {currentPlayer.completedContracts.length}件
                     </span>
                   </div>
                   <div className="mt-2 space-y-2">
                     {currentPlayer.activeContracts.length === 0 ? (
-                      <p className="text-xs text-purple-200/70">
+                      <p className="text-xs leading-relaxed text-[#8b7d69]">
                         現在所持している指令書はありません。「5. 中央貨物取引所」で新規受注できます。
                       </p>
                     ) : (
@@ -2573,38 +2562,38 @@ export default function ClockworkRailwaysGame() {
                         return (
                           <div
                             key={c.id}
-                            className={`rounded-lg border p-2 text-xs ${
+                            className={`rounded-md border p-2 text-xs ${
                               ready
-                                ? 'border-emerald-400 bg-emerald-950/50 text-emerald-100'
-                                : 'border-purple-400/30 bg-black/40 text-purple-100'
+                                ? 'border-[#315d4e] bg-[#14211b] text-[#cfe4d8]'
+                                : 'border-[#5b4668] bg-[#241c15] text-[#d8cbb8]'
                             }`}
                           >
-                            <div className="flex items-center justify-between font-bold">
+                            <div className="flex flex-wrap items-center justify-between gap-1 font-bold">
                               <span>
-                                {c.title}（要:出力Lv.{c.minEngineLv}）
+                                {c.title}（要 出力Lv.{c.minEngineLv}）
                               </span>
-                              <span className="text-yellow-300">
+                              <span className="text-[#dfb06d]">
                                 +{c.rewardPrestige}★ / +{c.rewardGold}金
                               </span>
                             </div>
-                            <div className="mt-1 flex items-center justify-between text-[11px]">
+                            <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-[11px]">
                               <span>
                                 📍 {CITY_MAP[c.fromCity].shortName} ➔{' '}
                                 {CITY_MAP[c.toCity].shortName}
                               </span>
                               <span
-                                className={`rounded px-1.5 py-0.5 font-semibold ${
+                                className={`rounded-sm border px-1.5 py-0.5 font-semibold ${
                                   ready
-                                    ? 'bg-emerald-500 text-stone-950'
+                                    ? 'border-[#315d4e] bg-[#315d4e] text-[#f4ead8]'
                                     : dist !== null
-                                      ? 'bg-amber-500/30 text-amber-200'
-                                      : 'bg-stone-800 text-stone-300'
+                                      ? 'border-[#6b543d] bg-[#3a2a1c] text-[#dfb06d]'
+                                      : 'border-[#4d3d2d] bg-[#241c15] text-[#9c8d78]'
                                 }`}
                               >
                                 {ready
-                                  ? '✅ 輸送可能！（5.貨物取引所で達成）'
+                                  ? '✅ 輸送可能（貨物取引所で達成）'
                                   : dist !== null
-                                    ? `鉄路開通済（要:機関出力Lv.${c.minEngineLv}）`
+                                    ? `鉄路開通済（要 機関出力Lv.${c.minEngineLv}）`
                                     : '鉄路未接続'}
                               </span>
                             </div>
@@ -2616,9 +2605,9 @@ export default function ClockworkRailwaysGame() {
                 </div>
 
                 {/* Grand Expo Medals Overview */}
-                <div className="rounded-xl border border-rose-400/35 bg-rose-950/25 p-3">
-                  <h3 className="text-xs font-bold text-rose-200">
-                    🏛️ 万国博覧会・産業勲章（早い者勝ちの名声マイルストーン）
+                <div className="tabletop-panel-soft border-l-2 border-l-[#6b3a36] p-3">
+                  <h3 className="text-xs font-bold text-[#e8dcc8]">
+                    🏛️ 万国博覧会・産業勲章
                   </h3>
                   <div className="mt-2 space-y-1.5">
                     {state.expoMedals.map((m) => {
@@ -2627,22 +2616,22 @@ export default function ClockworkRailwaysGame() {
                       return (
                         <div
                           key={m.id}
-                          className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-[11px] ${
+                          className={`flex flex-wrap items-center justify-between gap-1 rounded-md border px-2.5 py-1.5 text-[11px] ${
                             holder
-                              ? 'border-stone-700 bg-stone-900/50 opacity-65'
-                              : 'border-rose-400/35 bg-black/40'
+                              ? 'border-[#3a2e23] bg-[#1d1712] opacity-65'
+                              : 'border-[#6b3a36] bg-[#241615]'
                           }`}
                         >
                           <div>
-                            <div className="font-bold text-rose-100">
+                            <div className="font-bold text-[#e8dcc8]">
                               {m.title}{' '}
-                              <span className="text-yellow-300">(+{m.prestige}★)</span>
+                              <span className="text-[#dfb06d]">(+{m.prestige}★)</span>
                             </div>
-                            <div className="text-rose-200/75">{m.subtitle}</div>
+                            <div className="text-[#9c8d78]">{m.subtitle}</div>
                           </div>
                           <div>
                             {holder ? (
-                              <span className="rounded bg-stone-800 px-2 py-0.5 font-bold text-amber-300">
+                              <span className="rounded-sm border border-[#4d3d2d] bg-[#2a211a] px-2 py-0.5 font-bold text-[#dfb06d]">
                                 {holder.name} 獲得済
                               </span>
                             ) : (
@@ -2652,7 +2641,7 @@ export default function ClockworkRailwaysGame() {
                                   setSelectedFacility('grand_expo');
                                   setSelectedMedalId(m.id);
                                 }}
-                                className="rounded border border-rose-400/50 bg-rose-500/20 px-2 py-0.5 font-semibold text-rose-200 hover:bg-rose-500/35"
+                                className="tabletop-button inline-flex min-h-11 items-center px-3 text-[11px] font-semibold"
                               >
                                 選択
                               </button>
@@ -2669,20 +2658,20 @@ export default function ClockworkRailwaysGame() {
 
           {/* PART A: The 7 Industrial Guild Facilities & Worker Placement Execution Panel (5 cols) */}
           <div className="space-y-4 xl:col-span-5">
-            <div className="rounded-2xl border border-amber-500/40 bg-[#140e0a] p-4 shadow-xl">
+            <div className="tabletop-panel p-3.5 sm:p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-bold text-amber-200 sm:text-base">
-                    ⚙️ 7大ギルド施設（機関士ワーカー配置ボード）
+                  <h2 className="tabletop-title text-sm sm:text-base">
+                    ⚙️ 7大ギルド施設
                   </h2>
-                  <p className="text-[11px] text-amber-200/75">
-                    各施設には先着1名の「主任枠（無料・高出力）」と、後からでも金貨1枚の追加で入れる「残業枠」があります。
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[#b9a88f]">
+                    先着1名の「主任枠（無料・高出力）」と、金貨1枚で入れる「残業枠」があります。
                   </p>
                 </div>
               </div>
 
               {/* 7 Facilities List */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {FACILITIES.map((fac) => {
                   const primeOccupant = state.placements.find(
                     (w) => w.facilityId === fac.id && w.slotType === 'prime'
@@ -2700,32 +2689,30 @@ export default function ClockworkRailwaysGame() {
                         setSelectedFacility(fac.id);
                         triggerSfx('click');
                       }}
-                      className={`cursor-pointer rounded-xl border bg-gradient-to-r p-3 transition ${
-                        fac.accentClass
-                      } ${
+                      className={`cursor-pointer rounded-md border bg-gradient-to-r p-3 transition ${fac.accentClass} ${
                         isSelected
-                          ? 'border-amber-300 ring-2 ring-amber-400/60'
+                          ? 'border-[#c99555] ring-1 ring-[#c99555]'
                           : fac.borderClass
                       }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="text-base">{fac.icon}</span>
-                          <span className="text-xs font-extrabold text-amber-100 sm:text-sm">
+                          <span className="text-xs font-bold text-[#f4ead8] sm:text-sm">
                             {fac.number}. {fac.name}
                           </span>
                           {isRecommended && showHint && (
-                            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-extrabold text-stone-950">
+                            <span className="tabletop-chip tabletop-chip-active inline-flex min-h-6 items-center px-2 text-[10px] font-bold">
                               AI推奨
                             </span>
                           )}
                         </div>
 
                         {/* Slot Occupancy Badges */}
-                        <div className="flex items-center gap-1.5 text-[11px]">
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                           {primeOccupant ? (
                             <span
-                              className="rounded-md border border-white/30 px-2 py-0.5 font-bold text-stone-950"
+                              className="rounded-sm border border-[#4d3d2d] px-2 py-0.5 font-bold text-[#1b120b]"
                               style={{
                                 backgroundColor:
                                   state.players[primeOccupant.playerId]?.colorHex,
@@ -2734,19 +2721,19 @@ export default function ClockworkRailwaysGame() {
                               主任枠: {state.players[primeOccupant.playerId]?.name.slice(0, 6)}
                             </span>
                           ) : (
-                            <span className="rounded-md border border-emerald-400/60 bg-emerald-950/80 px-2 py-0.5 font-bold text-emerald-200">
+                            <span className="rounded-sm border border-[#315d4e] bg-[#14211b] px-2 py-0.5 font-bold text-[#a9cdb7]">
                               🟢 主任枠 空き（無料）
                             </span>
                           )}
-                          <span className="rounded-md border border-amber-400/40 bg-black/50 px-2 py-0.5 text-amber-200">
+                          <span className="rounded-sm border border-[#6b543d] bg-[#241c15] px-2 py-0.5 text-[#dfb06d]">
                             残業枠(要1金): {overtimeOccupants.length}名
                           </span>
                         </div>
                       </div>
 
-                      <div className="mt-1.5 text-[11px] text-amber-100/85">
+                      <div className="mt-1.5 text-[11px] leading-relaxed text-[#d8cbb8]">
                         <div>・{fac.primeDesc}</div>
-                        <div className="text-amber-200/65">・{fac.overtimeDesc}</div>
+                        <div className="text-[#9c8d78]">・{fac.overtimeDesc}</div>
                       </div>
                     </div>
                   );
@@ -2754,15 +2741,15 @@ export default function ClockworkRailwaysGame() {
               </div>
 
               {/* Action Execution Configuration Box */}
-              <div className="mt-4 rounded-xl border-2 border-amber-400/60 bg-[#1c130d] p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-extrabold text-amber-200 sm:text-sm">
-                    🛠️ 選択中の配置先：{FACILITIES.find((f) => f.id === selectedFacility)?.name}
+              <div className="mt-4 rounded-md border border-[#6b543d] bg-[#1d1712] p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-xs font-bold text-[#e8dcc8] sm:text-sm">
+                    🛠️ 配置先：{FACILITIES.find((f) => f.id === selectedFacility)?.name}
                   </h3>
-                  <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+                  <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-bold">
                     {isPrimeSlotAvailable(state.placements, selectedFacility)
-                      ? '主任枠（追加金貨0）で実行'
-                      : '残業枠（追加コスト: 金貨1枚）で実行'}
+                      ? '主任枠（追加金貨0）'
+                      : '残業枠（金貨1枚）'}
                   </span>
                 </div>
 
@@ -2774,10 +2761,10 @@ export default function ClockworkRailwaysGame() {
                         <button
                           type="button"
                           onClick={() => setCoalChoice('coal3')}
-                          className={`rounded-lg border px-3 py-1.5 font-bold ${
+                          className={`min-h-11 rounded-md border px-3 font-bold transition ${
                             coalChoice === 'coal3'
-                              ? 'border-amber-300 bg-amber-500 text-stone-950'
-                              : 'border-amber-500/40 bg-black/40 text-amber-200'
+                              ? 'border-[#c99555] bg-[#c99555] text-[#1b120b]'
+                              : 'tabletop-button text-[11px]'
                           }`}
                         >
                           ⛏️ 石炭 +3 を受け取る
@@ -2785,13 +2772,13 @@ export default function ClockworkRailwaysGame() {
                         <button
                           type="button"
                           onClick={() => setCoalChoice('coal2gold1')}
-                          className={`rounded-lg border px-3 py-1.5 font-bold ${
+                          className={`min-h-11 rounded-md border px-3 font-bold transition ${
                             coalChoice === 'coal2gold1'
-                              ? 'border-amber-300 bg-amber-500 text-stone-950'
-                              : 'border-amber-500/40 bg-black/40 text-amber-200'
+                              ? 'border-[#c99555] bg-[#c99555] text-[#1b120b]'
+                              : 'tabletop-button text-[11px]'
                           }`}
                         >
-                          ⛏️ 石炭 +2 ＆ 🪙 金貨 +1 を受け取る
+                          ⛏️ 石炭 +2 ＆ 🪙 金貨 +1
                         </button>
                       </div>
                     )}
@@ -2802,10 +2789,10 @@ export default function ClockworkRailwaysGame() {
                         <button
                           type="button"
                           onClick={() => setSteelChoice('steel2')}
-                          className={`rounded-lg border px-3 py-1.5 font-bold ${
+                          className={`min-h-11 rounded-md border px-3 font-bold transition ${
                             steelChoice === 'steel2'
-                              ? 'border-amber-300 bg-amber-500 text-stone-950'
-                              : 'border-amber-500/40 bg-black/40 text-amber-200'
+                              ? 'border-[#c99555] bg-[#c99555] text-[#1b120b]'
+                              : 'tabletop-button text-[11px]'
                           }`}
                         >
                           🔩 鋼鉄 +2 を受け取る（無料）
@@ -2813,19 +2800,19 @@ export default function ClockworkRailwaysGame() {
                         <button
                           type="button"
                           onClick={() => setSteelChoice('convert3')}
-                          className={`rounded-lg border px-3 py-1.5 font-bold ${
+                          className={`min-h-11 rounded-md border px-3 font-bold transition ${
                             steelChoice === 'convert3'
-                              ? 'border-amber-300 bg-amber-500 text-stone-950'
-                              : 'border-amber-500/40 bg-black/40 text-amber-200'
+                              ? 'border-[#c99555] bg-[#c99555] text-[#1b120b]'
+                              : 'tabletop-button text-[11px]'
                           }`}
                         >
-                          🔥 石炭1を消費して 鋼鉄 +3 を精錬
+                          🔥 石炭1を消費して 鋼鉄 +3
                         </button>
                       </div>
                     )}
 
                   {selectedFacility === 'locomotive_works' && (
-                    <div className="rounded-lg border border-sky-400/40 bg-sky-950/35 p-2.5 text-sky-100">
+                    <div className="rounded-md border border-[#3f5f78] bg-[#182530] p-2.5 text-[#d6e4ed]">
                       {currentPlayer.engineLv >= 5 ? (
                         <div>既に最高出力（Lv.5）に達しています。</div>
                       ) : (
@@ -2846,10 +2833,10 @@ export default function ClockworkRailwaysGame() {
                               <div className="font-bold">
                                 次段階：{nextSpec.name}（名声+{nextSpec.upgradePrestigeGain}★）
                               </div>
-                              <div className="mt-1">
+                              <div className="mt-1 text-[11px]">
                                 必要コスト：鋼鉄 {reqSteel}個 ＆ 金貨 {reqGold}枚
                                 {nextSpec.level === 3 &&
-                                  ' ／ 🎁 4人目の機関士ワーカーが即座に解放！'}
+                                  ' ／ 🎁 4人目の機関士ワーカーが即座に解放'}
                               </div>
                             </div>
                           );
@@ -2861,13 +2848,13 @@ export default function ClockworkRailwaysGame() {
                   {selectedFacility === 'railway_construction' && (
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-[11px] text-amber-200/80">
-                          第1敷設区間（マップ上の路線クリックでも選択可能）：
+                        <label className="block text-[11px] text-[#b9a88f]">
+                          第1敷設区間（マップ上の路線クリックでも選択可能）
                         </label>
                         <select
                           value={selectedRouteId}
                           onChange={(e) => setSelectedRouteId(e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-amber-500/50 bg-stone-900 px-2.5 py-1.5 text-xs text-amber-100"
+                          className="tabletop-button mt-1 min-h-11 w-full px-2.5 text-xs text-[#f4ead8]"
                         >
                           {CONTINENT_ROUTES.filter((r) =>
                             isRouteUnclaimed(state.players, r.id)
@@ -2886,13 +2873,13 @@ export default function ClockworkRailwaysGame() {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] text-amber-200/80">
-                          第2敷設区間（任意・2区間同時敷設する場合のみ選択）：
+                        <label className="block text-[11px] text-[#b9a88f]">
+                          第2敷設区間（任意・2区間同時敷設する場合のみ選択）
                         </label>
                         <select
                           value={secondRouteId}
                           onChange={(e) => setSecondRouteId(e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-amber-500/40 bg-stone-900 px-2.5 py-1.5 text-xs text-amber-100"
+                          className="tabletop-button mt-1 min-h-11 w-full px-2.5 text-xs text-[#f4ead8]"
                         >
                           <option value="">（1区間のみ敷設する）</option>
                           {CONTINENT_ROUTES.filter(
@@ -2918,13 +2905,13 @@ export default function ClockworkRailwaysGame() {
                   {selectedFacility === 'freight_exchange' && (
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-[11px] text-amber-200/80">
-                          新規受注する「特急輸送指令書」（上限3枚まで）：
+                        <label className="block text-[11px] text-[#b9a88f]">
+                          新規受注する「特急輸送指令書」（上限3枚まで）
                         </label>
                         <select
                           value={selectedContractToTake}
                           onChange={(e) => setSelectedContractToTake(e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-purple-400/50 bg-stone-900 px-2.5 py-1.5 text-xs text-amber-100"
+                          className="tabletop-button mt-1 min-h-11 w-full px-2.5 text-xs text-[#f4ead8]"
                         >
                           <option value="">（新規指令書を受注しない）</option>
                           {state.contractMarket.map((c) => (
@@ -2938,13 +2925,13 @@ export default function ClockworkRailwaysGame() {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] text-amber-200/80">
-                          達成する「特急輸送指令書」（未選択時はローカル貨物運行 +2★・+2金）：
+                        <label className="block text-[11px] text-[#b9a88f]">
+                          達成する「特急輸送指令書」（未選択時はローカル貨物運行 +2★・+2金）
                         </label>
                         <select
                           value={selectedContractToFulfill}
                           onChange={(e) => setSelectedContractToFulfill(e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-emerald-400/50 bg-stone-900 px-2.5 py-1.5 text-xs text-amber-100"
+                          className="tabletop-button mt-1 min-h-11 w-full px-2.5 text-xs text-[#f4ead8]"
                         >
                           <option value="">
                             （ローカル定期貨物便を運行：+{currentPlayer.ownedRoutes.length > 0 ? 2 : 1}★・+2金）
@@ -2963,13 +2950,13 @@ export default function ClockworkRailwaysGame() {
 
                   {selectedFacility === 'grand_expo' && (
                     <div>
-                      <label className="block text-[11px] text-amber-200/80">
-                        奉納して獲得する「万国博覧会・産業勲章」：
+                      <label className="block text-[11px] text-[#b9a88f]">
+                        奉納して獲得する「万国博覧会・産業勲章」
                       </label>
                       <select
                         value={selectedMedalId}
                         onChange={(e) => setSelectedMedalId(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-rose-400/50 bg-stone-900 px-2.5 py-1.5 text-xs text-amber-100"
+                        className="tabletop-button mt-1 min-h-11 w-full px-2.5 text-xs text-[#f4ead8]"
                       >
                         {state.expoMedals
                           .filter((m) => m.claimedBy === null)
@@ -2997,7 +2984,7 @@ export default function ClockworkRailwaysGame() {
                         medalId: selectedMedalId,
                       })
                     }
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 py-2.5 text-sm font-extrabold text-stone-950 shadow-lg transition hover:brightness-110 disabled:opacity-40"
+                    className="tabletop-button-primary w-full min-h-11 text-sm font-bold disabled:opacity-40"
                   >
                     👷 機関士ワーカーを配置してアクション実行
                   </button>
@@ -3006,15 +2993,15 @@ export default function ClockworkRailwaysGame() {
             </div>
 
             {/* Action Log */}
-            <div className="rounded-2xl border border-amber-500/30 bg-[#140e0a] p-4">
-              <h3 className="text-xs font-bold text-amber-200">
-                📖 大陸鉄道年代記（アクション履歴ログ）
+            <div className="tabletop-panel p-3.5 sm:p-4">
+              <h3 className="tabletop-title text-sm">
+                📖 大陸鉄道年代記
               </h3>
-              <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs text-amber-100/85">
+              <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs text-[#c9b79d]">
                 {state.logs.slice(0, 18).map((log, i) => (
                   <div
                     key={`log-${i}`}
-                    className="rounded-lg border border-amber-500/15 bg-black/35 px-2.5 py-1.5"
+                    className="tabletop-panel-soft px-2.5 py-1.5 leading-relaxed"
                   >
                     {log}
                   </div>

@@ -25,7 +25,7 @@ export const HAZARDS: Record<HazardType, HazardMeta> = {
     name: '熱水噴出',
     subtitle: '超高温ブラックスモーカー',
     color: '#fb7185',
-    border: 'border-rose-500/60',
+    border: 'border-[#9f4540]/60',
     bg: 'from-rose-950/80 to-orange-950/60',
   },
   jellyfish: {
@@ -33,7 +33,7 @@ export const HAZARDS: Record<HazardType, HazardMeta> = {
     name: '巨大発光クラゲ',
     subtitle: '生体神経パルス放電',
     color: '#c084fc',
-    border: 'border-purple-500/60',
+    border: 'border-[#6a4a66]/60',
     bg: 'from-purple-950/80 to-fuchsia-950/60',
   },
   collapse: {
@@ -41,7 +41,7 @@ export const HAZARDS: Record<HazardType, HazardMeta> = {
     name: '海溝崩落',
     subtitle: '深海プレート地滑り',
     color: '#fbbf24',
-    border: 'border-amber-500/60',
+    border: 'border-[var(--table-line-strong)]/60',
     bg: 'from-amber-950/80 to-yellow-950/60',
   },
   vortex: {
@@ -49,7 +49,7 @@ export const HAZARDS: Record<HazardType, HazardMeta> = {
     name: '強潮流渦',
     subtitle: '乱流メイルシュトローム',
     color: '#38bdf8',
-    border: 'border-sky-500/60',
+    border: 'border-[#3f5f78]/60',
     bg: 'from-sky-950/80 to-blue-950/60',
   },
   magnetic: {
@@ -57,7 +57,7 @@ export const HAZARDS: Record<HazardType, HazardMeta> = {
     name: '高圧磁気嵐',
     subtitle: '地磁気異常・計器狂い',
     color: '#34d399',
-    border: 'border-emerald-500/60',
+    border: 'border-[#315d4e]/60',
     bg: 'from-emerald-950/80 to-teal-950/60',
   },
 };
@@ -133,7 +133,7 @@ function createInitialPilots(): DiverPilot[] {
       isHuman: true,
       personality: 'human',
       accent: '#22d3ee',
-      badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+      badgeBg: 'bg-[#3f5f78]/18 text-[#9db8c8] border-[#3f5f78]/40',
       vaultScore: 0,
       bagScore: 0,
       status: 'diving',
@@ -147,7 +147,7 @@ function createInitialPilots(): DiverPilot[] {
       isHuman: false,
       personality: 'cautious',
       accent: '#34d399',
-      badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+      badgeBg: 'bg-[#315d4e]/22 text-[#9dc4af] border-[#315d4e]/40',
       vaultScore: 0,
       bagScore: 0,
       status: 'diving',
@@ -161,7 +161,7 @@ function createInitialPilots(): DiverPilot[] {
       isHuman: false,
       personality: 'greedy',
       accent: '#fbbf24',
-      badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+      badgeBg: 'bg-[#c99555]/16 text-[var(--table-accent-strong)] border-[var(--table-line-strong)]/40',
       vaultScore: 0,
       bagScore: 0,
       status: 'diving',
@@ -346,7 +346,7 @@ class SonarAudioEngine {
 function CardArtworkSvg({ card, isFatal }: { card: AbyssalCard; isFatal?: boolean }) {
   if (card.kind === 'core') {
     return (
-      <svg viewBox="0 0 80 80" className="w-12 h-12 mx-auto drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
+      <svg viewBox="0 0 80 80" className="w-12 h-12 mx-auto drop-">
         <defs>
           <radialGradient id={`coreGrad-${card.id}`} cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#fef08a" />
@@ -368,7 +368,7 @@ function CardArtworkSvg({ card, isFatal }: { card: AbyssalCard; isFatal?: boolea
 
   if (card.kind === 'relic') {
     return (
-      <svg viewBox="0 0 80 80" className="w-12 h-12 mx-auto drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+      <svg viewBox="0 0 80 80" className="w-12 h-12 mx-auto drop-">
         <defs>
           <linearGradient id={`relicGrad-${card.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#67e8f9" />
@@ -522,11 +522,17 @@ export default function AbyssalSalvageGame() {
   const [logs, setLogs] = useState<string[]>([
     '深海探査母艦「ノーチラス・アーク」が海溝直上に到着。全3回の潜水で最も多くの遺物ポイントを母艦金庫へ持ち帰った操縦士が勝利します。',
   ]);
-  const [bestRecord, setBestRecord] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    const saved = window.localStorage.getItem('abyssal_salvage_best_score');
-    return saved ? parseInt(saved, 10) || 0 : 0;
-  });
+  const [bestRecord, setBestRecord] = useState<number>(0);
+
+  // Load the saved record only after mount so SSR and hydration match.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('abyssal_salvage_best_score');
+      if (saved) setBestRecord(parseInt(saved, 10) || 0);
+    } catch {
+      // localStorage can be unavailable in private browsing modes.
+    }
+  }, []);
 
   // Add log message helper
   const pushLog = useCallback((msg: string) => {
@@ -1058,59 +1064,47 @@ export default function AbyssalSalvageGame() {
   }, [pilots]);
 
   return (
-    <section className="relative min-h-screen bg-gradient-to-b from-[#030914] via-[#06152d] to-[#02060d] text-slate-100 pb-16 overflow-x-hidden">
-      {/* Ambient Deep-Sea Sonar Grid Background */}
-      <div
-        className="pointer-events-none fixed inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 50% 20%, rgba(34,211,238,0.18), transparent 60%), linear-gradient(rgba(14,116,144,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(14,116,144,0.14) 1px, transparent 1px)',
-          backgroundSize: '100% 100%, 40px 40px, 40px 40px',
-        }}
-      />
-
+    <section className="tabletop-page relative min-h-screen overflow-x-hidden pb-16">
       {/* Top Navigation & Telemetry Header */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-[#040d1d]/85 border-b border-cyan-500/25">
+      <header className="tabletop-header sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
               href="/games"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/30 text-xs font-medium text-cyan-200 transition"
+              className="tabletop-button inline-flex min-h-11 items-center gap-1.5 px-3 text-xs"
             >
               <span>←</span>
               <span>ゲーム一覧</span>
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="text-[11px] font-mono uppercase tracking-widest text-cyan-400">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#3f5f78] " />
+                <span className="tabletop-kicker">
                   ABYSSAL SALVAGE // DEEP TRENCH SONAR
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
+              <h2 className="tabletop-title text-base sm:text-lg">
                 深海サルベージ：酸素限界の遺跡探査
               </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="px-3 py-1 rounded-lg bg-cyan-950/70 border border-cyan-500/30 text-xs">
-              <span className="text-slate-400 mr-1.5">潜水ラウンド:</span>
-              <span className="font-mono font-bold text-cyan-300">
+            <div className="tabletop-stat px-3 py-1.5 text-xs">
+              <span className="text-[var(--table-muted)] mr-1.5">潜水ラウンド:</span>
+              <span className="font-mono font-bold text-[#9db8c8]">
                 第 {currentDive} / {TOTAL_DIVES} 潜水
               </span>
             </div>
-            <div className="px-3 py-1 rounded-lg bg-amber-950/50 border border-amber-500/30 text-xs hidden sm:block">
-              <span className="text-slate-400 mr-1.5">自己ベスト金庫記録:</span>
-              <span className="font-mono font-bold text-amber-300">{bestRecord} pt</span>
+            <div className="tabletop-stat hidden px-3 py-1.5 text-xs sm:block">
+              <span className="text-[var(--table-muted)] mr-1.5">自己ベスト金庫記録:</span>
+              <span className="font-mono font-bold text-[var(--table-accent-strong)]">{bestRecord} pt</span>
             </div>
             <button
               type="button"
               onClick={() => setBgmOn((v) => !v)}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
-                bgmOn
-                  ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
+              className={`tabletop-button min-h-11 px-3 text-xs ${
+                bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
               {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
@@ -1118,7 +1112,7 @@ export default function AbyssalSalvageGame() {
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-200 transition"
+              className="tabletop-button min-h-11 px-3 text-xs"
               aria-label={muted ? '効果音をオンにする' : '効果音をミュートする'}
             >
               {muted ? '🔇 消音中' : '🔊 ソナー音ON'}
@@ -1126,7 +1120,7 @@ export default function AbyssalSalvageGame() {
             <button
               type="button"
               onClick={startNewExpedition}
-              className="px-3 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-400/40 text-xs font-semibold text-cyan-200 transition"
+              className="tabletop-button min-h-11 px-3 text-xs"
             >
               新規作戦リセット
             </button>
@@ -1140,25 +1134,25 @@ export default function AbyssalSalvageGame() {
         {/* Left / Center Column: Command Controls, Trench Path & Diver Status (8 cols) */}
         <div className="lg:col-span-8 space-y-5">
           {/* Primary Decision Console */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-900/95 via-[#071936]/95 to-slate-950/95 border border-cyan-500/35 shadow-[0_0_35px_rgba(6,182,212,0.12)] p-5">
+          <div className="tabletop-panel border-[#3f5f78] p-5">
             {phase === 'ready' && (
               <div className="text-center py-4 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-medium">
+                <div className="tabletop-chip px-3 py-1 text-xs font-medium">
                   深海チキンレース＆確率リスク管理ボードゲーム
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white">
+                <h3 className="tabletop-title text-xl sm:text-2xl">
                   全3回の潜水で最大の深海遺物を母艦金庫へ持ち帰れ！
                 </h3>
-                <p className="text-sm text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                  各深度で4名の操縦士が同時に<strong className="text-cyan-300">「さらに潜行する」</strong>か
-                  <strong className="text-amber-300">「母艦へ帰還する」</strong>かを決断します。
-                  同じ種類の<strong className="text-rose-400">深海災害カードが2枚</strong>出る前に帰還すれば、調査バッグの遺物と海溝に残った端数（単独帰還なら古代コアも！）をすべて母艦金庫へ確定格納できます。
+                <p className="text-sm text-[var(--table-muted)] max-w-2xl mx-auto leading-relaxed">
+                  各深度で4名の操縦士が同時に<strong className="text-[#9db8c8]">「さらに潜行する」</strong>か
+                  <strong className="text-[var(--table-accent-strong)]">「母艦へ帰還する」</strong>かを決断します。
+                  同じ種類の<strong className="text-[#d9a19b]">深海災害カードが2枚</strong>出る前に帰還すれば、調査バッグの遺物と海溝に残った端数（単独帰還なら古代コアも！）をすべて母艦金庫へ確定格納できます。
                 </p>
                 <div className="pt-2">
                   <button
                     type="button"
                     onClick={() => startDive(1)}
-                    className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-base shadow-[0_0_25px_rgba(34,211,238,0.45)] transition transform hover:scale-[1.02]"
+                    className="tabletop-button-primary min-h-12 px-8 text-base"
                   >
                     🚀 第1潜水を開始する（ハッチ開放）
                   </button>
@@ -1168,27 +1162,27 @@ export default function AbyssalSalvageGame() {
 
             {phase === 'deciding' && (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="tabletop-divider flex flex-wrap items-center justify-between gap-2 border-b pb-3">
                   <div>
-                    <span className="text-xs font-mono uppercase tracking-wider text-cyan-400">
+                    <span className="text-xs font-mono uppercase tracking-wider text-[#9db8c8]">
                       CURRENT DEPTH: {pathCards.length}00m // ACTIVE DIVERS: {sonarStats.activeDiversCount}名
                     </span>
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="tabletop-title text-lg">
                       {playerPilot.status === 'diving'
                         ? `深度 ${(pathCards.length + 1) * 100}m への進退を決断してください`
                         : 'あなたは母艦へ帰還済みです（残存AI操縦士の潜行を観測中…）'}
                     </h3>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
-                    <div className="px-3 py-1.5 rounded-lg bg-slate-900 border border-cyan-500/30">
-                      <span className="text-slate-400">あなたの未格納バッグ: </span>
-                      <span className="font-mono font-bold text-cyan-300 text-sm">
+                    <div className="tabletop-stat px-3 py-1.5">
+                      <span className="text-[var(--table-muted)]">あなたの未格納バッグ: </span>
+                      <span className="font-mono font-bold text-[#9db8c8] text-sm">
                         {playerPilot.bagScore} pt
                       </span>
                     </div>
-                    <div className="px-3 py-1.5 rounded-lg bg-slate-900 border border-amber-500/30">
-                      <span className="text-slate-400">海溝残留端数＋コア: </span>
-                      <span className="font-mono font-bold text-amber-300 text-sm">
+                    <div className="tabletop-stat px-3 py-1.5">
+                      <span className="text-[var(--table-muted)]">海溝残留端数＋コア: </span>
+                      <span className="font-mono font-bold text-[var(--table-accent-strong)] text-sm">
                         +{sonarStats.pathRemainderTotal + sonarStats.pathCoreTotal} pt
                       </span>
                     </div>
@@ -1200,13 +1194,13 @@ export default function AbyssalSalvageGame() {
                     <button
                       type="button"
                       onClick={() => handlePlayerDecision('dive')}
-                      className="group relative flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-cyan-500/25 via-sky-600/20 to-blue-900/40 hover:from-cyan-500/35 hover:to-blue-800/50 border-2 border-cyan-400/60 shadow-[0_0_20px_rgba(34,211,238,0.2)] transition"
+                      className="group relative flex min-h-24 flex-col items-center justify-center rounded-md border-2 border-[#3f5f78] bg-[#3f5f78]/14 p-4 transition hover:bg-[#3f5f78]/22"
                     >
-                      <span className="text-base sm:text-lg font-extrabold text-cyan-200 group-hover:text-white flex items-center gap-2">
+                      <span className="text-base sm:text-lg font-extrabold text-[#9db8c8] group-hover:text-[var(--table-ink)] flex items-center gap-2">
                         <span>⏬</span>
                         <span>さらに潜行する（DIVE DEEPER）</span>
                       </span>
-                      <span className="text-xs text-cyan-300/80 mt-1">
+                      <span className="text-xs text-[#9db8c8]/80 mt-1">
                         次の深度カードをめくる｜続行期待値 {sonarStats.expectedContinueBagValue.toFixed(1)} pt（バースト率{' '}
                         {sonarStats.burstProbability.toFixed(1)}%）
                       </span>
@@ -1216,17 +1210,17 @@ export default function AbyssalSalvageGame() {
                       type="button"
                       disabled={pathCards.length === 0}
                       onClick={() => handlePlayerDecision('return')}
-                      className={`group relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition ${
+                      className={`group relative flex min-h-24 flex-col items-center justify-center rounded-md border-2 p-4 transition ${
                         pathCards.length === 0
-                          ? 'bg-slate-900/50 border-slate-800 text-slate-600 cursor-not-allowed'
-                          : 'bg-gradient-to-br from-amber-500/25 via-orange-600/20 to-amber-950/40 hover:from-amber-500/35 hover:to-amber-900/50 border-amber-400/60 shadow-[0_0_20px_rgba(251,191,36,0.2)]'
+                          ? 'tabletop-panel cursor-not-allowed border-[var(--table-line)] text-[var(--table-muted)]'
+                          : 'border-[var(--table-accent)] bg-[#c99555]/14 hover:bg-[#c99555]/22'
                       }`}
                     >
-                      <span className="text-base sm:text-lg font-extrabold text-amber-200 group-hover:text-white flex items-center gap-2">
+                      <span className="text-base sm:text-lg font-extrabold text-[var(--table-accent-strong)] group-hover:text-[var(--table-ink)] flex items-center gap-2">
                         <span>⚓</span>
                         <span>母艦へ帰還する（RETURN TO SUB）</span>
                       </span>
-                      <span className="text-xs text-amber-300/85 mt-1">
+                      <span className="text-xs text-[var(--table-accent-strong)]/85 mt-1">
                         {pathCards.length === 0
                           ? '最初の深度では帰還できません'
                           : `単独帰還なら確定 +${sonarStats.guaranteedReturnScore} pt（バッグ${playerPilot.bagScore} + 端数${sonarStats.pathRemainderTotal} + コア${sonarStats.pathCoreTotal}）`}
@@ -1234,14 +1228,14 @@ export default function AbyssalSalvageGame() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between bg-slate-900/80 border border-cyan-500/30 rounded-xl px-4 py-3">
-                    <span className="text-sm text-cyan-200 animate-pulse">
+                  <div className="tabletop-panel-soft flex items-center justify-between border-[#3f5f78] px-4 py-3">
+                    <span className="text-sm text-[#9db8c8] ">
                       📡 残存AIダイバーが深度 {(pathCards.length + 1) * 100}m を探査中…
                     </span>
                     <button
                       type="button"
                       onClick={() => handlePlayerDecision('return')}
-                      className="px-4 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-xs font-semibold text-cyan-200"
+                      className="tabletop-button min-h-11 px-4 text-xs"
                     >
                       即時ステップ送り ⏭
                     </button>
@@ -1253,18 +1247,18 @@ export default function AbyssalSalvageGame() {
             {phase === 'roundEnd' && (
               <div className="text-center py-3 space-y-4">
                 {abortHazard ? (
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-300 text-xs font-bold">
+                  <div className="tabletop-chip border-[#9f4540] px-4 py-1.5 text-xs font-bold text-[#d9a19b]">
                     🚨 緊急浮上（バースト）発生：{HAZARDS[abortHazard].name}（2枚目）
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-bold">
+                  <div className="tabletop-chip border-[#315d4e] px-4 py-1.5 text-xs font-bold text-[#9dc4af]">
                     ✅ 第{currentDive}潜水 全員帰還完了
                   </div>
                 )}
-                <h3 className="text-xl font-bold text-white">
+                <h3 className="tabletop-title text-xl">
                   第{currentDive}潜水が終了しました（残り {TOTAL_DIVES - currentDive} 潜水）
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
+                <p className="text-xs sm:text-sm text-[var(--table-muted)] max-w-xl mx-auto">
                   {abortHazard
                     ? `2枚目の『${HAZARDS[abortHazard].name}』が引き当てられたため強制浮上となり、逃げ遅れた操縦士の未格納バッグは0ptとなりました。発動した災害カード1枚は海溝デッキから永久排除されます。`
                     : '全操縦士が無事に母艦へ帰還し、獲得した遺物を金庫へロックしました。次の潜水ではさらに高価値な古代コアが海溝デッキに追加されます！'}
@@ -1272,7 +1266,7 @@ export default function AbyssalSalvageGame() {
                 <button
                   type="button"
                   onClick={() => startDive(currentDive + 1)}
-                  className="px-7 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-extrabold text-sm shadow-[0_0_20px_rgba(34,211,238,0.4)] transition"
+                  className="tabletop-button-primary min-h-11 px-7 text-sm"
                 >
                   🌊 第{currentDive + 1}潜水へ進む（古代コア +{CORE_BY_DIVE[currentDive + 1]?.value ?? 12}pt 追加）
                 </button>
@@ -1281,25 +1275,25 @@ export default function AbyssalSalvageGame() {
 
             {phase === 'gameOver' && (
               <div className="text-center py-4 space-y-4">
-                <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
+                <div className="tabletop-chip border-[var(--table-accent)] px-4 py-1.5 text-xs font-bold text-[var(--table-accent-strong)]">
                   🏆 全3潜水 最終サルベージ結果発表
                 </div>
-                <h3 className="text-2xl font-extrabold text-white">
+                <h3 className="tabletop-title text-2xl">
                   優勝：{rankedPilots[0]?.name}（母艦金庫 {rankedPilots[0]?.vaultScore} pt）
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-w-2xl mx-auto pt-1">
                   {rankedPilots.map((p, idx) => (
                     <div
                       key={p.id}
-                      className={`p-3 rounded-xl border ${
+                      className={`p-3 rounded-md border ${
                         idx === 0
-                          ? 'bg-amber-950/40 border-amber-400/60'
-                          : 'bg-slate-900/80 border-slate-800'
+                          ? 'border-[var(--table-accent)] bg-[#c99555]/10'
+                          : 'tabletop-panel-soft'
                       }`}
                     >
-                      <div className="text-xs text-slate-400">第{idx + 1}位</div>
-                      <div className="font-bold text-sm text-white mt-0.5">{p.name}</div>
-                      <div className="font-mono text-lg font-extrabold text-cyan-300 mt-1">
+                      <div className="text-xs text-[var(--table-muted)]">第{idx + 1}位</div>
+                      <div className="font-bold text-sm text-[var(--table-ink)] mt-0.5">{p.name}</div>
+                      <div className="font-mono text-lg font-extrabold text-[#9db8c8] mt-1">
                         {p.vaultScore} pt
                       </div>
                     </div>
@@ -1309,7 +1303,7 @@ export default function AbyssalSalvageGame() {
                   <button
                     type="button"
                     onClick={startNewExpedition}
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-extrabold text-sm shadow-lg transition"
+                    className="tabletop-button-primary min-h-11 px-8 text-sm"
                   >
                     🔄 もう一度深海サルベージに挑戦する
                   </button>
@@ -1326,52 +1320,52 @@ export default function AbyssalSalvageGame() {
               return (
                 <div
                   key={pilot.id}
-                  className={`rounded-xl p-4 border transition ${
+                  className={`rounded-md border p-4 transition ${
                     pilot.isHuman
-                      ? 'bg-slate-900/95 border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.1)]'
-                      : 'bg-slate-900/80 border-slate-800'
+                      ? 'tabletop-panel border-[var(--table-accent)]'
+                      : 'tabletop-panel'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-base text-white">{pilot.name}</span>
+                        <span className="font-bold text-base text-[var(--table-ink)]">{pilot.name}</span>
                         <span className={`text-[11px] px-2 py-0.5 rounded-full border ${pilot.badgeBg}`}>
                           {pilot.roleTitle}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 mt-1.5 leading-snug">{pilot.thoughtText}</p>
+                      <p className="text-xs text-[var(--table-muted)] mt-1.5 leading-snug">{pilot.thoughtText}</p>
                     </div>
                     <span
                       className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-md border ${
                         isWarn
-                          ? 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+                          ? 'border-[#9f4540] bg-[#9f4540]/20 text-[#d9a19b]'
                           : isDocked
-                          ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
-                          : 'bg-cyan-950/80 border-cyan-500/50 text-cyan-300'
+                          ? 'bg-[#315d4e]/20 border-[#315d4e]/50 text-[#9dc4af]'
+                          : 'border-[#3f5f78] bg-[#3f5f78]/14 text-[#9db8c8]'
                       }`}
                     >
                       {isWarn ? '🚨 緊急浮上' : isDocked ? '⚓ 母艦帰還済' : '🤿 潜行中'}
                     </span>
                   </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-slate-800/90 flex items-center justify-between text-xs">
+                  <div className="tabletop-divider mt-3 flex items-center justify-between border-t pt-2.5 text-xs">
                     <div className="flex items-center gap-4">
                       <div>
-                        <span className="text-slate-400">母艦金庫(確定): </span>
-                        <span className="font-mono font-bold text-amber-300 text-sm">
+                        <span className="text-[var(--table-muted)]">母艦金庫(確定): </span>
+                        <span className="font-mono font-bold text-[var(--table-accent-strong)] text-sm">
                           {pilot.vaultScore} pt
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400">調査バッグ(未格納): </span>
-                        <span className="font-mono font-bold text-cyan-300 text-sm">
+                        <span className="text-[var(--table-muted)]">調査バッグ(未格納): </span>
+                        <span className="font-mono font-bold text-[#9db8c8] text-sm">
                           {pilot.bagScore} pt
                         </span>
                       </div>
                     </div>
                     {pilot.roundHistory.length > 0 && (
-                      <div className="text-[11px] font-mono text-slate-400">
+                      <div className="text-[11px] font-mono text-[var(--table-muted)]">
                         各回: [{pilot.roundHistory.map(( pts) => `${pts}`).join(' / ')}]
                       </div>
                     )}
@@ -1382,24 +1376,24 @@ export default function AbyssalSalvageGame() {
           </div>
 
           {/* Abyssal Trench Revealed Card Trail (`深海海溝ルート`) */}
-          <div className="rounded-2xl bg-slate-900/90 border border-cyan-500/25 p-5 space-y-4">
+          <div className="tabletop-panel space-y-4 border-[#3f5f78] p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <h3 className="tabletop-title flex items-center gap-2 text-base">
                   <span>🗺️</span>
                   <span>深海海溝探査ルート（めくられた深度カード履歴）</span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[var(--table-muted)]">
                   山分けで割り切れなかった「海溝端数ポイント」と「古代コア」は帰還する操縦士が回収します。
                 </p>
               </div>
-              <div className="text-xs font-mono text-cyan-300">
+              <div className="text-xs font-mono text-[#9db8c8]">
                 残存デッキ枚数: {diveDeck.length} 枚
               </div>
             </div>
 
             {pathCards.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-cyan-500/30 bg-slate-950/60 py-10 text-center text-sm text-slate-400">
+              <div className="tabletop-panel-soft rounded-md border-dashed border-[#3f5f78] py-10 text-center text-sm text-[var(--table-muted)]">
                 まだ深度カードがめくられていません。「さらに潜行する」を選択すると深度100mのカードが公開されます。
               </div>
             ) : (
@@ -1417,27 +1411,25 @@ export default function AbyssalSalvageGame() {
                   return (
                     <div
                       key={`${card.id}-${idx}`}
-                      className={`relative rounded-xl p-3 border bg-gradient-to-b transition ${
+                      className={`relative rounded-md border p-3 ${
                         card.kind === 'core'
-                          ? 'from-amber-950/80 to-slate-950 border-amber-400/70 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                          ? 'tabletop-panel border-[var(--table-accent)]'
                           : card.kind === 'relic'
-                          ? 'from-cyan-950/75 to-slate-950 border-cyan-500/45'
+                          ? 'tabletop-panel border-[#3f5f78]'
                           : priorSameHazard
-                          ? 'from-rose-950/90 to-red-950 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.45)]'
-                          : `${hazardMeta?.bg ?? 'from-slate-900 to-slate-950'} ${
-                              hazardMeta?.border ?? 'border-rose-500/50'
-                            }`
+                          ? 'tabletop-panel border-2 border-[#9f4540]'
+                          : 'tabletop-panel border-[#9f4540]'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-300 mb-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-[var(--table-muted)] mb-1.5">
                         <span>DEPTH {depthMeters}m</span>
                         {card.kind === 'relic' && (
-                          <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold">
+                          <span className="px-1.5 py-0.5 rounded bg-[#3f5f78]/18 text-[#9db8c8] font-bold">
                             価値 {card.value}pt
                           </span>
                         )}
                         {card.kind === 'core' && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-200 font-bold">
+                          <span className="px-1.5 py-0.5 rounded bg-[#c99555]/20 text-[var(--table-accent-strong)] font-bold">
                             単独 +{card.value}pt
                           </span>
                         )}
@@ -1445,8 +1437,8 @@ export default function AbyssalSalvageGame() {
                           <span
                             className={`px-1.5 py-0.5 rounded font-bold ${
                               priorSameHazard
-                                ? 'bg-rose-600 text-white'
-                                : 'bg-amber-500/25 text-amber-300'
+                                ? 'bg-[#9f4540] text-[var(--table-ink)]'
+                                : 'bg-[#c99555]/20 text-[var(--table-accent-strong)]'
                             }`}
                           >
                             {priorSameHazard ? '🚨 2枚目バースト' : '⚠️ 第1警報'}
@@ -1457,33 +1449,33 @@ export default function AbyssalSalvageGame() {
                       <CardArtworkSvg card={card} isFatal={Boolean(priorSameHazard)} />
 
                       <div className="mt-2 text-center">
-                        <div className="text-xs font-bold text-white truncate" title={card.name}>
+                        <div className="text-xs font-bold text-[var(--table-ink)] truncate" title={card.name}>
                           {card.name}
                         </div>
                         {card.kind === 'relic' && (
                           <div className="mt-1 text-[11px] font-mono">
                             {card.remainderOnPath > 0 ? (
-                              <span className="inline-block px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-semibold">
+                              <span className="inline-block px-2 py-0.5 rounded-full bg-[#c99555]/16 border border-[var(--table-accent)]/40 text-[var(--table-accent-strong)] font-semibold">
                                 海溝端数: +{card.remainderOnPath}pt
                               </span>
                             ) : (
-                              <span className="text-slate-400">端数なし (0pt)</span>
+                              <span className="text-[var(--table-muted)]">端数なし (0pt)</span>
                             )}
                           </div>
                         )}
                         {card.kind === 'core' && (
                           <div className="mt-1 text-[11px] font-mono">
                             {card.coreAvailable ? (
-                              <span className="inline-block px-2 py-0.5 rounded-full bg-amber-400/25 border border-amber-300/60 text-amber-200 font-bold">
+                              <span className="inline-block px-2 py-0.5 rounded-full bg-[#c99555]/20 border border-[var(--table-accent)]/60 text-[var(--table-accent-strong)] font-bold">
                                 未回収: 単独帰還で+{card.value}pt
                               </span>
                             ) : (
-                              <span className="text-slate-400">回収済み</span>
+                              <span className="text-[var(--table-muted)]">回収済み</span>
                             )}
                           </div>
                         )}
                         {isHazard && hazardMeta && (
-                          <div className="mt-1 text-[11px] text-slate-300">{hazardMeta.subtitle}</div>
+                          <div className="mt-1 text-[11px] text-[var(--table-muted)]">{hazardMeta.subtitle}</div>
                         )}
                       </div>
                     </div>
@@ -1496,21 +1488,21 @@ export default function AbyssalSalvageGame() {
 
         {/* Right Column: Real-Time Probability & EV HUD (`深海ソナー確率アナライザー`) + Logs (4 cols) */}
         <div className="lg:col-span-4 space-y-5">
-          <div className="rounded-2xl bg-slate-900/95 border border-cyan-500/35 p-5 space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.1)]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="tabletop-panel space-y-4 p-5">
+            <div className="tabletop-divider flex items-center justify-between border-b pb-3">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#9db8c8]">
                   REAL-TIME PROBABILITY & EV HUD
                 </span>
-                <h3 className="text-base font-bold text-white">深海ソナー確率アナライザー</h3>
+                <h3 className="tabletop-title text-base">深海ソナー確率アナライザー</h3>
               </div>
               <span
                 className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
                   sonarStats.recommendation === '帰還推奨'
-                    ? 'bg-rose-500/20 border-rose-500/50 text-rose-300'
+                    ? 'border-[#9f4540] bg-[#9f4540]/20 text-[#d9a19b]'
                     : sonarStats.recommendation === '警戒水域'
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                    : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                    ? 'bg-[#c99555]/16 border-[var(--table-line-strong)]/50 text-[var(--table-accent-strong)]'
+                    : 'bg-[#315d4e]/22 border-[#315d4e]/50 text-[#9dc4af]'
                 }`}
               >
                 AI判定: {sonarStats.recommendation}
@@ -1521,15 +1513,15 @@ export default function AbyssalSalvageGame() {
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-300">次の深度で強制浮上（バースト）する確率</span>
-                  <span className="font-mono font-bold text-rose-400">
+                  <span className="text-[var(--table-muted)]">次の深度で強制浮上（バースト）する確率</span>
+                  <span className="font-mono font-bold text-[#d9a19b]">
                     {sonarStats.burstProbability.toFixed(1)}% ({sonarStats.burstCardsCount}/
                     {sonarStats.totalRemaining}枚)
                   </span>
                 </div>
-                <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div className="w-full h-2.5 rounded-full bg-[var(--table-panel-raised)] overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-300"
+                    className="h-full bg-[#9f4540] transition-all duration-300"
                     style={{ width: `${Math.min(100, sonarStats.burstProbability)}%` }}
                   />
                 </div>
@@ -1537,15 +1529,15 @@ export default function AbyssalSalvageGame() {
 
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-300">安全に遺物・コアを引き当てる確率</span>
-                  <span className="font-mono font-bold text-cyan-300">
+                  <span className="text-[var(--table-muted)]">安全に遺物・コアを引き当てる確率</span>
+                  <span className="font-mono font-bold text-[#9db8c8]">
                     {sonarStats.safeRelicProbability.toFixed(1)}% ({sonarStats.safeRelicCount}/
                     {sonarStats.totalRemaining}枚)
                   </span>
                 </div>
-                <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div className="w-full h-2.5 rounded-full bg-[var(--table-panel-raised)] overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-300"
+                    className="h-full bg-[#315d4e] transition-all duration-300"
                     style={{ width: `${Math.min(100, sonarStats.safeRelicProbability)}%` }}
                   />
                 </div>
@@ -1554,31 +1546,31 @@ export default function AbyssalSalvageGame() {
 
             {/* EV vs Guaranteed Return Comparison Box */}
             <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <div className="p-3 rounded-xl bg-slate-950/90 border border-amber-500/30">
-                <div className="text-[11px] text-slate-400">帰還時の確定持ち帰り(単独)</div>
-                <div className="font-mono text-lg font-extrabold text-amber-300 mt-0.5">
+              <div className="tabletop-stat border-[var(--table-accent)] p-3">
+                <div className="text-[11px] text-[var(--table-muted)]">帰還時の確定持ち帰り(単独)</div>
+                <div className="font-mono text-lg font-extrabold text-[var(--table-accent-strong)] mt-0.5">
                   {sonarStats.guaranteedReturnScore} pt
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-[var(--table-muted)] mt-0.5">
                   バッグ{playerPilot.bagScore} + 残留{sonarStats.pathRemainderTotal + sonarStats.pathCoreTotal}
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/90 border border-cyan-500/30">
-                <div className="text-[11px] text-slate-400">潜行続行の期待値 (EV)</div>
-                <div className="font-mono text-lg font-extrabold text-cyan-300 mt-0.5">
+              <div className="tabletop-stat border-[#3f5f78] p-3">
+                <div className="text-[11px] text-[var(--table-muted)]">潜行続行の期待値 (EV)</div>
+                <div className="font-mono text-lg font-extrabold text-[#9db8c8] mt-0.5">
                   {sonarStats.expectedContinueBagValue.toFixed(1)} pt
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-[var(--table-muted)] mt-0.5">
                   生存率 {(100 - sonarStats.burstProbability).toFixed(0)}% × 次深度期待加算
                 </div>
               </div>
             </div>
 
             {/* Visual Tracker of the 5 Hazard Types (`安全 / ⚠️リーチ / 排除済み`) */}
-            <div className="pt-2 border-t border-slate-800 space-y-2">
-              <div className="text-xs font-bold text-slate-200 flex items-center justify-between">
+            <div className="tabletop-divider space-y-2 border-t pt-2">
+              <div className="text-xs font-bold text-[var(--table-ink)] flex items-center justify-between">
                 <span>5大深海災害トラッカー（初期各3枚）</span>
-                <span className="text-[11px] font-normal text-slate-400">2枚目出現で即バースト</span>
+                <span className="text-[11px] font-normal text-[var(--table-muted)]">2枚目出現で即バースト</span>
               </div>
               <div className="space-y-1.5">
                 {HAZARD_ORDER.map((hType) => {
@@ -1592,10 +1584,10 @@ export default function AbyssalSalvageGame() {
                   return (
                     <div
                       key={hType}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${
+                      className={`flex items-center justify-between rounded-md border px-3 py-2 text-xs ${
                         isWarned
-                          ? 'bg-rose-950/60 border-rose-500/60 text-rose-200'
-                          : 'bg-slate-950/70 border-slate-800 text-slate-300'
+                          ? 'border-[#9f4540] bg-[#9f4540]/18 text-[#d9a19b]'
+                          : 'tabletop-panel-soft text-[var(--table-muted)]'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -1606,17 +1598,17 @@ export default function AbyssalSalvageGame() {
                         <span className="font-semibold">{meta.name}</span>
                       </div>
                       <div className="flex items-center gap-2 font-mono text-[11px]">
-                        <span className="text-slate-400">山札残:{remainingInDeck}</span>
+                        <span className="text-[var(--table-muted)]">山札残:{remainingInDeck}</span>
                         {removedCount > 0 && (
-                          <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                          <span className="px-1.5 py-0.5 rounded bg-[var(--table-panel-raised)] text-[var(--table-muted)]">
                             排除済:{removedCount}
                           </span>
                         )}
                         <span
                           className={`px-2 py-0.5 rounded font-bold ${
                             isWarned
-                              ? 'bg-rose-500/30 text-rose-300 border border-rose-400/50'
-                              : 'bg-emerald-500/15 text-emerald-300'
+                              ? 'bg-[#9f4540]/25 text-[#d9a19b] border border-[#9f4540]/50'
+                              : 'bg-[#315d4e]/22 text-[#9dc4af]'
                           }`}
                         >
                           {isWarned ? '⚠️ リーチ' : '安全'}
@@ -1630,15 +1622,15 @@ export default function AbyssalSalvageGame() {
           </div>
 
           {/* Sonar Action Log */}
-          <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-2.5">
-            <h3 className="text-xs font-mono uppercase tracking-wider text-cyan-400">
+          <div className="tabletop-panel space-y-2.5 p-4">
+            <h3 className="tabletop-kicker">
               SONAR TELEMETRY LOG // 探査通信ログ
             </h3>
             <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 text-xs">
               {logs.map((entry, idx) => (
                 <div
                   key={idx}
-                  className="p-2 rounded-lg bg-slate-950/80 border border-slate-800/80 text-slate-300 leading-relaxed"
+                  className="tabletop-panel-soft p-2 leading-relaxed text-[var(--table-muted)]"
                 >
                   {entry}
                 </div>

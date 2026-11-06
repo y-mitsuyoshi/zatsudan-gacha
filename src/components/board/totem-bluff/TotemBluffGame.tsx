@@ -90,8 +90,8 @@ const AI_PERSONAS: Record<
     name: '罠師ゾルタン',
     title: '初手から仮面を仕掛けてブラフで誘う策士',
     desc: '早い段階で災厄の仮面を混ぜ、あえて強気な発掘宣言で相手を自爆へと誘導するトリックスター。',
-    color: 'from-purple-500/30 to-fuchsia-900/40 border-purple-400/50',
-    accentHex: '#c084fc',
+    color: 'from-[#2a2130] to-[#1d1712] border-[#5b4668]',
+    accentHex: '#c4a3d4',
     quotes: {
       start: [
         'ふふ…私の祭壇、めくってみるかい？',
@@ -143,8 +143,8 @@ const AI_PERSONAS: Record<
     name: '強気の発掘家エレナ',
     title: '太陽盤を重ねて一気に高ビッドを狙う勝負師',
     desc: '自分の祭壇に太陽の黄金盤を厚く積み上げ、一気に高枚数ビッドで王冠獲得を狙うアグレッシブタイプ。',
-    color: 'from-amber-500/30 to-orange-900/40 border-amber-400/50',
-    accentHex: '#fbbf24',
+    color: 'from-[#3a2a1c] to-[#241c15] border-[#6b543d]',
+    accentHex: '#dfb06d',
     quotes: {
       start: [
         '度胸試しなら負けないわ！ 黄金盤を掘り当ててみせる！',
@@ -196,8 +196,8 @@ const AI_PERSONAS: Record<
     name: '慎重派の学者セオドア',
     title: '相手の枚数と残りディスク数から確率を計算する分析派',
     desc: '各プレイヤーの残り枚数と積み重ねられた山の期待値を冷静に計算し、勝率の高い場面でのみ勝負する頭脳派。',
-    color: 'from-cyan-500/30 to-teal-900/40 border-cyan-400/50',
-    accentHex: '#38bdf8',
+    color: 'from-[#182530] to-[#131d24] border-[#3f5f78]',
+    accentHex: '#a9c8da',
     quotes: {
       start: [
         '盤面の枚数と確率はすべて記録していますよ。',
@@ -248,10 +248,10 @@ const AI_PERSONAS: Record<
 };
 
 const PASS_PLAY_COLORS = [
-  { color: 'from-amber-500/30 to-yellow-900/40 border-amber-400/50', accentHex: '#f59e0b' },
-  { color: 'from-purple-500/30 to-fuchsia-900/40 border-purple-400/50', accentHex: '#c084fc' },
-  { color: 'from-cyan-500/30 to-teal-900/40 border-cyan-400/50', accentHex: '#38bdf8' },
-  { color: 'from-emerald-500/30 to-green-900/40 border-emerald-400/50', accentHex: '#34d399' },
+  { color: 'from-[#3a2a1c] to-[#241c15] border-[#6b543d]', accentHex: '#dfb06d' },
+  { color: 'from-[#35201e] to-[#211514] border-[#6b3a36]', accentHex: '#d99a92' },
+  { color: 'from-[#14211b] to-[#101915] border-[#315d4e]', accentHex: '#a9cdb7' },
+  { color: 'from-[#182530] to-[#131d24] border-[#3f5f78]', accentHex: '#a9c8da' },
 ];
 
 // ============================================================================
@@ -706,8 +706,8 @@ function buildPlayers(mode: GameMode, passPlayCount: number): PlayerState[] {
     name: 'あなた（挑戦者）',
     title: '黄金円卓の探求者',
     isAi: false,
-    color: 'from-emerald-500/30 to-teal-900/40 border-emerald-400/50',
-    accentHex: '#34d399',
+    color: 'from-[#14211b] to-[#101915] border-[#315d4e]',
+    accentHex: '#a9cdb7',
     hand: createInitialHand(0),
     stack: [],
     lostCount: 0,
@@ -1695,84 +1695,74 @@ export default function TotemBluffGame() {
   return (
     <section
       aria-label="仮面の円卓（Totem Bluff）ゲーム盤面"
-      className="relative min-h-screen bg-gradient-to-b from-[#0b0908] via-[#17120e] to-[#090706] text-stone-100 selection:bg-amber-500/30"
+      className="tabletop-page pb-16"
     >
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 border-b border-amber-500/20 bg-[#120e0b]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
+      <header className="tabletop-header sticky top-0 z-30">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/games"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-950/40 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-900/60"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-[13px]"
             >
               ← ゲーム一覧
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-extrabold tracking-wide text-amber-300 sm:text-xl">
-                  🎭 仮面の円卓
-                </span>
-                <span className="hidden rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 sm:inline-block">
-                  Totem Bluff
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tabletop-kicker">Totem Bluff</span>
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
+                  第{round}ラウンド
                 </span>
               </div>
-              <p className="text-[11px] text-stone-400">
-                太陽の黄金盤（☀️×3）と災厄の仮面（🎭×1）を重ねる心理ブラフ＆度胸試し入札ボードゲーム
+              <h2 className="tabletop-title truncate text-lg sm:text-xl">仮面の円卓</h2>
+              <p className="tabletop-muted hidden text-[13px] sm:block">
+                黄金盤と災厄の仮面を重ねる、心理ブラフ＆度胸試し
               </p>
             </div>
           </div>
 
           {/* Mode & Audio Controls */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* Mode Switcher */}
-            <div className="flex items-center rounded-xl border border-stone-700/80 bg-stone-900/90 p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => startNewGame('cpu_4', passPlayCount)}
-                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
-                  gameMode === 'cpu_4'
-                    ? 'bg-amber-500 text-stone-950 shadow'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-              >
-                CPU 4人円卓
-              </button>
-              <button
-                type="button"
-                onClick={() => startNewGame('cpu_3', passPlayCount)}
-                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
-                  gameMode === 'cpu_3'
-                    ? 'bg-amber-500 text-stone-950 shadow'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-              >
-                CPU 3人円卓
-              </button>
-              <button
-                type="button"
-                onClick={() => startNewGame('pass_play', passPlayCount)}
-                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
-                  gameMode === 'pass_play'
-                    ? 'bg-amber-500 text-stone-950 shadow'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-              >
-                1台で2〜4人対戦
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => startNewGame('cpu_4', passPlayCount)}
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                gameMode === 'cpu_4' ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
+              }`}
+            >
+              CPU 4人円卓
+            </button>
+            <button
+              type="button"
+              onClick={() => startNewGame('cpu_3', passPlayCount)}
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                gameMode === 'cpu_3' ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
+              }`}
+            >
+              CPU 3人円卓
+            </button>
+            <button
+              type="button"
+              onClick={() => startNewGame('pass_play', passPlayCount)}
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                gameMode === 'pass_play' ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
+              }`}
+            >
+              1台で2〜4人対戦
+            </button>
 
             {gameMode === 'pass_play' && (
-              <div className="flex items-center gap-1 rounded-xl border border-amber-500/30 bg-stone-900/90 px-2 py-1 text-xs">
-                <span className="text-stone-400">人数:</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-[#b9a88f]">人数</span>
                 {[2, 3, 4].map((cnt) => (
                   <button
                     key={cnt}
                     type="button"
                     onClick={() => startNewGame('pass_play', cnt)}
-                    className={`rounded px-2 py-0.5 font-bold ${
+                    className={`inline-flex min-h-11 items-center px-2.5 text-[11px] font-bold transition ${
                       passPlayCount === cnt
-                        ? 'bg-amber-400 text-stone-950'
-                        : 'text-stone-300 hover:bg-stone-800'
+                        ? 'tabletop-chip tabletop-chip-active border'
+                        : 'tabletop-chip'
                     }`}
                   >
                     {cnt}人
@@ -1785,10 +1775,8 @@ export default function TotemBluffGame() {
             <button
               type="button"
               onClick={handleToggleBgm}
-              className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                bgmOn
-                  ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                  : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                bgmOn ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🎵 BGM {bgmOn ? 'ON' : 'OFF'}
@@ -1798,10 +1786,8 @@ export default function TotemBluffGame() {
             <button
               type="button"
               onClick={handleToggleSfx}
-              className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                sfxOn
-                  ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
-                  : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                sfxOn ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🔊 効果音 {sfxOn ? 'ON' : 'OFF'}
@@ -1811,7 +1797,7 @@ export default function TotemBluffGame() {
             <button
               type="button"
               onClick={() => setShowRulesModal(true)}
-              className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/20"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs"
             >
               📖 ルール・役一覧
             </button>
@@ -1820,39 +1806,39 @@ export default function TotemBluffGame() {
             <button
               type="button"
               onClick={() => startNewGame(gameMode, passPlayCount)}
-              className="rounded-xl border border-stone-700 bg-stone-800/90 px-3 py-1.5 text-xs font-semibold text-stone-200 transition hover:bg-stone-700"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#e3b6ad]"
             >
-              🔄 最初から
+              ↻ 最初から
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Grid */}
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-12">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-3 py-4 sm:px-6 lg:grid-cols-12">
         {/* Left/Center 8 Columns: Round Table Arena + Action Controls */}
         <div className="space-y-5 lg:col-span-8">
           {/* Status Banner */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-stone-900/95 via-amber-950/40 to-stone-900/95 p-4 shadow-xl">
+          <div className="tabletop-panel p-3.5 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="rounded-xl bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 ring-1 ring-amber-400/40">
-                  ROUND {round}
+              <div className="flex items-start gap-3">
+                <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 shrink-0 items-center px-2.5 text-[11px] font-bold">
+                  第 {round} ラウンド
                 </span>
                 <div>
-                  <h2 className="text-sm font-bold text-amber-100 sm:text-base">
+                  <h2 className="tabletop-title text-sm sm:text-base">
                     {phase === 'initial_placement' &&
-                      '① 初期配置フェーズ：祭壇マットに最初の石盤を1枚伏せます'}
+                      '① 初期配置：祭壇マットに最初の石盤を1枚伏せます'}
                     {phase === 'placing_or_bidding' &&
                       `② 配置または挑戦宣言：${activeTurnPlayer?.name ?? ''} の手番`}
                     {phase === 'bidding_auction' &&
-                      `③ 発掘枚数の競りフェーズ：現在最高宣言「${currentBid}枚」（${challengerPlayer?.name ?? ''}）`}
+                      `③ 発掘枚数の競り：現在最高宣言「${currentBid}枚」（${challengerPlayer?.name ?? ''}）`}
                     {phase === 'revealing' &&
-                      `④ 運命の発掘めくりフェーズ：挑戦者 ${challengerPlayer?.name ?? ''} （${revealedSafeCount} / ${currentBid}枚成功）`}
-                    {phase === 'round_summary' && 'ラウンド決着！結果を確認して次へ進みます'}
-                    {phase === 'game_over' && '🏆 決着！仮面の円卓の覇者が決定しました！'}
+                      `④ 発掘めくり：挑戦者 ${challengerPlayer?.name ?? ''}（${revealedSafeCount} / ${currentBid}枚成功）`}
+                    {phase === 'round_summary' && 'ラウンド決着。結果を確認して次へ進みます'}
+                    {phase === 'game_over' && '🏆 決着！仮面の円卓の覇者が決定しました'}
                   </h2>
-                  <p className="text-xs text-stone-300">
+                  <p className="mt-1 text-[13px] leading-relaxed text-[#b9a88f]">
                     {phase === 'initial_placement' &&
                       '手元の4枚（☀️太陽の黄金盤3枚・🎭災厄の仮面1枚）から最初の1枚を選んで祭壇に伏せてください。'}
                     {phase === 'placing_or_bidding' &&
@@ -1860,22 +1846,22 @@ export default function TotemBluffGame() {
                     {phase === 'bidding_auction' &&
                       '前の宣言より多い枚数を「競り上げる（レイズ）」か、「パスして降りる」かを選択します。'}
                     {phase === 'revealing' &&
-                      'ルール：挑戦者は必ず「自分自身の祭壇の山」を上からすべてめくり、その後で他プレイヤーの山の一番上を1枚ずつクリックして発掘します！'}
+                      '挑戦者は必ず「自分自身の祭壇の山」を上からすべてめくり、その後で他プレイヤーの山の一番上を1枚ずつクリックして発掘します。'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 rounded-xl border border-stone-700/80 bg-stone-950/80 px-3.5 py-2 text-xs">
+              <div className="tabletop-panel-soft flex items-center gap-4 px-3.5 py-2 text-xs">
                 <div>
-                  <span className="block text-[10px] text-stone-400">場の総石盤数</span>
-                  <span className="text-base font-extrabold text-amber-300">
+                  <span className="block text-[10px] text-[#9c8d78]">場の総石盤数</span>
+                  <span className="text-base font-bold text-[#dfb06d]">
                     {totalDiscsOnTable} 枚
                   </span>
                 </div>
-                <div className="h-6 w-px bg-stone-800" />
+                <div className="h-6 w-px bg-[#4d3d2d]" />
                 <div>
-                  <span className="block text-[10px] text-stone-400">現在の宣言枚数</span>
-                  <span className="text-base font-extrabold text-rose-300">
+                  <span className="block text-[10px] text-[#9c8d78]">現在の宣言枚数</span>
+                  <span className="text-base font-bold text-[#e0a9a2]">
                     {currentBid > 0 ? `${currentBid} 枚` : '未宣言'}
                   </span>
                 </div>
@@ -1884,7 +1870,7 @@ export default function TotemBluffGame() {
           </div>
 
           {/* Round Table Altar Mats Grid */}
-          <div className="relative rounded-3xl border border-amber-500/25 bg-[radial-gradient(circle_at_center,#291d12_0%,#120d0a_72%)] p-5 shadow-2xl">
+          <div className="relative rounded-lg border border-[#5a4631] bg-[radial-gradient(circle_at_center,#291d12_0%,#120d0a_72%)] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.28)] sm:p-4">
             {/* Decorative Ancient Sun Circle in Center */}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-10">
               <SunGoldDiscSvg size={280} />
@@ -1915,13 +1901,13 @@ export default function TotemBluffGame() {
                 return (
                   <div
                     key={p.id}
-                    className={`relative flex flex-col justify-between rounded-2xl border bg-gradient-to-br p-4 transition-all duration-300 ${
+                    className={`relative flex flex-col justify-between rounded-lg border bg-gradient-to-br p-3.5 transition-all duration-300 ${
                       p.color
                     } ${
                       p.eliminated
                         ? 'opacity-45 grayscale'
                         : isCurrentTurn
-                          ? 'ring-2 ring-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.28)]'
+                          ? 'ring-1 ring-[#c99555]'
                           : ''
                     }`}
                   >
@@ -1936,40 +1922,40 @@ export default function TotemBluffGame() {
                           />
                           <div>
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-sm font-extrabold text-white">
+                              <span className="text-sm font-bold text-[#f4ead8]">
                                 {p.name}
                               </span>
                               {isCurrentTurn && (
-                                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-extrabold text-stone-950">
+                                <span className="inline-flex min-h-6 items-center rounded-sm bg-[#c99555] px-2 text-[10px] font-bold text-[#1b120b]">
                                   手番
                                 </span>
                               )}
                               {isChallenger && (
-                                <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                                <span className="inline-flex min-h-6 items-center rounded-sm bg-[#6b3a36] px-2 text-[10px] font-bold text-[#f4ead8]">
                                   🔥 挑戦者 ({currentBid}枚)
                                 </span>
                               )}
                               {p.passed && (
-                                <span className="rounded-full bg-stone-700 px-2 py-0.5 text-[10px] font-bold text-stone-300">
+                                <span className="tabletop-chip inline-flex min-h-6 items-center px-2 text-[10px] font-bold">
                                   PASS
                                 </span>
                               )}
                               {p.eliminated && (
-                                <span className="rounded-full bg-red-900/80 px-2 py-0.5 text-[10px] font-bold text-red-200">
+                                <span className="inline-flex min-h-6 items-center rounded-sm border border-[#6b3a36] bg-[#241615] px-2 text-[10px] font-bold text-[#e0a9a2]">
                                   脱落
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-stone-300">{p.title}</p>
+                            <p className="text-[11px] text-[#b9a88f]">{p.title}</p>
                           </div>
                         </div>
 
                         {/* Crown Status (Altar Mat Mode) */}
                         <div
-                          className={`flex items-center gap-1 rounded-xl border px-2.5 py-1 text-xs font-extrabold ${
+                          className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold ${
                             p.crowns >= 1
-                              ? 'border-yellow-300 bg-yellow-400/20 text-yellow-200 shadow-[0_0_12px_rgba(250,204,21,0.35)]'
-                              : 'border-stone-700 bg-stone-900/70 text-stone-400'
+                              ? 'border-[#6b543d] bg-[#3a2a1c] text-[#dfb06d]'
+                              : 'border-[#4d3d2d] bg-[#241c15] text-[#9c8d78]'
                           }`}
                           title="太陽の王冠（2個先取で勝利）"
                         >
@@ -1979,26 +1965,26 @@ export default function TotemBluffGame() {
                       </div>
 
                       {/* Speech Bubble */}
-                      <div className="mt-2.5 rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs italic text-amber-100/95">
+                      <div className="mt-2.5 rounded-md border border-[#4d3d2d] bg-[#1d1712] px-3 py-2 text-xs italic text-[#d8cbb8]">
                         「{p.speech}」
                       </div>
                     </div>
 
                     {/* Altar Mat & Stacked Stone Discs */}
-                    <div className="my-3 flex flex-col items-center justify-center rounded-xl border border-amber-500/25 bg-black/40 p-3">
-                      <div className="mb-2 flex w-full items-center justify-between text-[11px] text-stone-300">
+                    <div className="my-3 flex flex-col items-center justify-center rounded-md border border-[#4d3d2d] bg-[#171310] p-3">
+                      <div className="mb-2 flex w-full flex-wrap items-center justify-between gap-1 text-[11px] text-[#b9a88f]">
                         <span>
-                          🪨 祭壇の山：<strong>{p.stack.length}枚</strong>
+                          🪨 祭壇の山：<strong className="text-[#e8dcc8]">{p.stack.length}枚</strong>
                           {unrevealedInStack > 0 && `（未公開 ${unrevealedInStack}枚）`}
                         </span>
-                        <span className="text-amber-300/90">
-                          手札残：<strong>{p.hand.length}枚</strong> / 総所持：
-                          <strong>{p.hand.length + p.stack.length}枚</strong>
+                        <span className="text-[#c99555]">
+                          手札残：<strong className="text-[#e8dcc8]">{p.hand.length}枚</strong> / 総所持：
+                          <strong className="text-[#e8dcc8]">{p.hand.length + p.stack.length}枚</strong>
                         </span>
                       </div>
 
                       {p.stack.length === 0 ? (
-                        <div className="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-stone-700 text-xs text-stone-500">
+                        <div className="flex h-20 w-full items-center justify-center rounded-md border border-dashed border-[#4d3d2d] text-[11px] text-[#8b7d69]">
                           祭壇マット（まだ石盤が伏せられていません）
                         </div>
                       ) : (
@@ -2026,7 +2012,7 @@ export default function TotemBluffGame() {
                                 ) : (
                                   <StoneBackDiscSvg size={54} />
                                 )}
-                                <span className="mt-1 rounded bg-stone-900/90 px-1.5 py-0.5 text-[10px] font-bold text-stone-300">
+                                <span className="mt-1 rounded-sm bg-[#241c15] px-1.5 py-0.5 text-[10px] font-bold text-[#c9b79d]">
                                   {idx + 1}段目
                                   {disc.revealed
                                     ? disc.type === 'sun'
@@ -2047,30 +2033,30 @@ export default function TotemBluffGame() {
                         <button
                           type="button"
                           onClick={() => handleRevealTopDisc(p.id)}
-                          className="mt-2.5 w-full rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 px-4 py-2 text-xs font-extrabold text-stone-950 shadow-lg transition hover:brightness-110"
+                          className="tabletop-button-primary mt-2.5 min-h-11 w-full px-4 text-xs font-bold"
                         >
                           {p.id === highestBidderId
                             ? `✨ 自分の祭壇の最上段をめくる（残り${unrevealedInStack}枚）`
-                            : `🔍 ${p.name} の祭壇の最上段をめくる！（推定安全率 ${safeProbPct}%）`}
+                            : `🔍 ${p.name} の祭壇の最上段をめくる（推定安全率 ${safeProbPct}%）`}
                         </button>
                       )}
                     </div>
 
                     {/* Footer stats */}
-                    <div className="flex items-center justify-between text-[11px] text-stone-400">
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#9c8d78]">
                       <span>
-                        永久ロスト: <strong className="text-rose-400">{p.lostCount}枚</strong>
+                        永久ロスト：<strong className="text-[#e0a9a2]">{p.lostCount}枚</strong>
                       </span>
                       {!p.eliminated && p.stack.length > 0 && (
                         <span>
-                          最上段の推定☀️安全率:{' '}
+                          最上段の☀️安全率：{' '}
                           <strong
                             className={
                               safeProbPct >= 75
-                                ? 'text-emerald-300'
+                                ? 'text-[#a9cdb7]'
                                 : safeProbPct >= 50
-                                  ? 'text-amber-300'
-                                  : 'text-rose-300'
+                                  ? 'text-[#dfb06d]'
+                                  : 'text-[#e0a9a2]'
                             }
                           >
                             {safeProbPct}%
@@ -2090,40 +2076,40 @@ export default function TotemBluffGame() {
           phase !== 'revealing' &&
           phase !== 'round_summary' &&
           phase !== 'game_over' ? (
-            <div className="rounded-2xl border-2 border-amber-400/60 bg-stone-950/95 p-6 text-center shadow-2xl">
-              <p className="text-xs font-bold uppercase tracking-widest text-amber-400">
-                PASS &amp; PLAY PRIVACY SHIELD
+            <div className="tabletop-panel border-[#6b543d] p-5 text-center sm:p-6">
+              <p className="tabletop-kicker !text-[11px]">
+                Pass &amp; Play Privacy Shield
               </p>
-              <h3 className="mt-1 text-lg font-extrabold text-white">
+              <h3 className="tabletop-title mt-1 text-lg">
                 次は「{controlledPlayer.name}」の手番です
               </h3>
-              <p className="mt-1 text-xs text-stone-300">
+              <p className="mt-1 text-xs leading-relaxed text-[#c9b79d]">
                 他のプレイヤーに手札（太陽盤・災厄の仮面）が見えない状態で下のボタンを押してください。
               </p>
               <button
                 type="button"
                 onClick={() => setPassCurtainOpen(false)}
-                className="mt-4 rounded-xl bg-amber-400 px-6 py-2.5 text-sm font-extrabold text-stone-950 shadow hover:bg-amber-300"
+                className="tabletop-button-primary mt-4 inline-flex min-h-11 items-center px-5 text-sm font-bold"
               >
                 👁️ {controlledPlayer.name} の手札を表示して操作する
               </button>
             </div>
           ) : (
             /* Player Hand & Action Command Deck */
-            <div className="rounded-2xl border border-amber-500/35 bg-stone-900/95 p-5 shadow-xl">
+            <div className="tabletop-panel space-y-4 p-3.5 sm:p-4">
               {/* Round Summary Banner */}
               {phase === 'round_summary' && roundOutcome && (
                 <div
-                  className={`mb-4 rounded-2xl border p-4 ${
+                  className={`rounded-md border p-3.5 ${
                     roundOutcome.type === 'success'
-                      ? 'border-amber-400 bg-amber-500/15 text-amber-100'
-                      : 'border-rose-500 bg-rose-950/40 text-rose-100'
+                      ? 'border-[#6b543d] bg-[#3a2a1c] text-[#f4ead8]'
+                      : 'border-[#6b3a36] bg-[#241615] text-[#e0a9a2]'
                   }`}
                 >
-                  <h3 className="text-base font-extrabold">
+                  <h3 className="text-base font-bold">
                     {roundOutcome.type === 'success'
-                      ? '👑 発掘チャレンジ大成功！太陽の王冠を獲得！'
-                      : '💥 災厄の仮面が出現！発掘チャレンジ失敗…'}
+                      ? '👑 発掘チャレンジ大成功！太陽の王冠を獲得'
+                      : '💥 災厄の仮面が出現。発掘チャレンジ失敗…'}
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed">
                     {roundOutcome.summaryText}
@@ -2131,7 +2117,7 @@ export default function TotemBluffGame() {
                   <button
                     type="button"
                     onClick={handleStartNextRound}
-                    className="mt-3 rounded-xl bg-amber-400 px-5 py-2 text-xs font-extrabold text-stone-950 shadow hover:bg-amber-300"
+                    className="tabletop-button-primary mt-3 inline-flex min-h-11 items-center px-4 text-xs font-bold"
                   >
                     次のラウンドへ進む →
                   </button>
@@ -2140,31 +2126,30 @@ export default function TotemBluffGame() {
 
               {/* Game Over Banner */}
               {phase === 'game_over' && winnerId !== null && (
-                <div className="mb-4 rounded-2xl border-2 border-yellow-400 bg-gradient-to-r from-amber-950/80 via-yellow-900/40 to-amber-950/80 p-5 text-center shadow-2xl">
+                <div className="rounded-md border border-[#6b543d] bg-[#3a2a1c] p-4 text-center sm:p-5">
                   <div className="text-3xl">👑🏆👑</div>
-                  <h3 className="mt-1 text-xl font-extrabold text-yellow-300">
+                  <h3 className="tabletop-title mt-1 text-xl text-[#dfb06d]">
                     {players[winnerId]?.name} の勝利！
                   </h3>
-                  <p className="mt-1 text-xs text-stone-200">{winReason}</p>
+                  <p className="mt-1 text-xs text-[#c9b79d]">{winReason}</p>
                   <button
                     type="button"
                     onClick={() => startNewGame(gameMode, passPlayCount)}
-                    className="mt-4 rounded-xl bg-yellow-400 px-6 py-2.5 text-sm font-extrabold text-stone-950 shadow-lg hover:bg-yellow-300"
+                    className="tabletop-button-primary mt-4 inline-flex min-h-11 items-center px-5 text-sm font-bold"
                   >
-                    🔄 もう一度『仮面の円卓』を遊ぶ
+                    ↻ もう一度『仮面の円卓』を遊ぶ
                   </button>
                 </div>
               )}
 
               {/* Active Hand & Phase Controls */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-3">
                 <div>
-                  <span className="text-xs font-bold text-amber-300">
-                    🎴 {controlledPlayer.name} の手札ディスク（残り {controlledPlayer.hand.length}{' '}
-                    枚）
+                  <span className="text-xs font-bold text-[#dfb06d]">
+                    🎴 {controlledPlayer.name} の手札（残り {controlledPlayer.hand.length}枚）
                   </span>
-                  <p className="text-[11px] text-stone-400">
-                    自分の祭壇に伏せた石盤の中身：
+                  <p className="mt-0.5 text-[11px] text-[#b9a88f]">
+                    祭壇に伏せた石盤：
                     {controlledPlayer.stack.length === 0
                       ? ' なし'
                       : controlledPlayer.stack
@@ -2178,14 +2163,14 @@ export default function TotemBluffGame() {
                 {!isHumanTurnToAct &&
                   phase !== 'round_summary' &&
                   phase !== 'game_over' && (
-                    <span className="animate-pulse rounded-lg bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300">
-                      ⏳ AIプレイヤーが思考・行動中…
+                    <span className="rounded-md border border-[#4d3d2d] bg-[#2a211a] px-3 py-1 text-[11px] font-bold text-[#b9a88f]">
+                      ⏳ AIプレイヤーが思考中…
                     </span>
                   )}
               </div>
 
               {/* Hand Disc Buttons */}
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {controlledPlayer.hand.map((disc) => {
                   const isSun = disc.type === 'sun';
                   const canPlace =
@@ -2204,25 +2189,25 @@ export default function TotemBluffGame() {
                           handleStackDisc(controlledPlayer.id, disc.id);
                         }
                       }}
-                      className={`group flex flex-col items-center rounded-2xl border p-3 text-center transition ${
+                      className={`group flex min-h-[132px] flex-col items-center rounded-md border p-3 text-center transition ${
                         isSun
-                          ? 'border-amber-400/50 bg-amber-950/30 hover:border-amber-300 hover:bg-amber-900/40'
-                          : 'border-rose-500/50 bg-rose-950/30 hover:border-rose-400 hover:bg-rose-900/40'
-                      } ${!canPlace ? 'cursor-not-allowed opacity-50' : 'cursor-pointer shadow-md'}`}
+                          ? 'border-[#6b543d] bg-[#2a211a] hover:border-[#c99555] hover:bg-[#3a2a1c]'
+                          : 'border-[#6b3a36] bg-[#241615] hover:border-[#a9665e] hover:bg-[#2f1b19]'
+                      } ${!canPlace ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                     >
                       {isSun ? <SunGoldDiscSvg size={56} /> : <CursedMaskDiscSvg size={56} />}
                       <span
-                        className={`mt-2 text-xs font-extrabold ${
-                          isSun ? 'text-amber-200' : 'text-rose-200'
+                        className={`mt-2 text-xs font-bold ${
+                          isSun ? 'text-[#dfb06d]' : 'text-[#e0a9a2]'
                         }`}
                       >
                         {isSun ? '☀️ 太陽の黄金盤' : '🎭 災厄の仮面'}
                       </span>
-                      <span className="mt-0.5 text-[10px] text-stone-400">
+                      <span className="mt-0.5 text-[10px] text-[#9c8d78]">
                         {isSun ? 'セーフ（発掘成功）' : 'アウト（踏むと爆発）'}
                       </span>
                       {canPlace && (
-                        <span className="mt-2 rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white group-hover:bg-amber-400 group-hover:text-stone-950">
+                        <span className="mt-2 rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-2.5 py-1 text-[10px] font-bold text-[#dfb06d] group-hover:bg-[#c99555] group-hover:text-[#1b120b]">
                           {phase === 'initial_placement'
                             ? 'この1枚を伏せる'
                             : '祭壇に重ねて伏せる'}
@@ -2232,7 +2217,7 @@ export default function TotemBluffGame() {
                   );
                 })}
                 {controlledPlayer.hand.length === 0 && (
-                  <div className="col-span-full rounded-xl border border-dashed border-stone-700 py-4 text-center text-xs text-stone-400">
+                  <div className="col-span-full rounded-md border border-dashed border-[#4d3d2d] py-4 text-center text-xs text-[#8b7d69]">
                     手札の石盤はすべて祭壇マットに配置済みです（発掘チャレンジ宣言を行ってください）。
                   </div>
                 )}
@@ -2240,16 +2225,16 @@ export default function TotemBluffGame() {
 
               {/* Bidding Controls (Open Bid or Raise/Pass) */}
               {(phase === 'placing_or_bidding' || phase === 'bidding_auction') && (
-                <div className="mt-5 rounded-2xl border border-amber-400/30 bg-black/40 p-4">
+                <div className="tabletop-panel-soft p-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-xs font-extrabold text-amber-300">
+                      <h4 className="text-xs font-bold text-[#dfb06d]">
                         📣{' '}
                         {phase === 'placing_or_bidding'
-                          ? 'アクション②：発掘チャレンジを宣言する（競りを開始）'
-                          : `発掘枚数の競り上げ（現在最高：${currentBid}枚 / 場：${totalDiscsOnTable}枚）`}
+                          ? '発掘チャレンジを宣言（競りを開始）'
+                          : `発掘枚数の競り上げ（現在最高 ${currentBid}枚 / 場 ${totalDiscsOnTable}枚）`}
                       </h4>
-                      <p className="text-[11px] text-stone-400">
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-[#b9a88f]">
                         {phase === 'placing_or_bidding'
                           ? '石盤を重ねる代わりに、場の石盤のうち何枚連続で「☀️ 太陽の黄金盤」をめくれるか宣言できます。'
                           : '現在の宣言枚数より高い枚数を宣言するか、パスして競りから降ります。'}
@@ -2258,7 +2243,7 @@ export default function TotemBluffGame() {
 
                     <div className="flex flex-wrap items-center gap-2">
                       {/* Bid Number Selector */}
-                      <div className="flex items-center gap-1 rounded-xl border border-stone-700 bg-stone-900 px-2 py-1">
+                      <div className="flex items-center gap-1 rounded-md border border-[#4d3d2d] bg-[#241c15] px-2 py-1">
                         <button
                           type="button"
                           disabled={
@@ -2274,11 +2259,11 @@ export default function TotemBluffGame() {
                               )
                             )
                           }
-                          className="rounded px-2 py-1 text-xs font-bold text-stone-200 hover:bg-stone-800 disabled:opacity-30"
+                          className="min-h-11 rounded px-3 text-sm font-bold text-[#e8dcc8] hover:bg-[#3a2a1c] disabled:opacity-30"
                         >
                           −
                         </button>
-                        <span className="min-w-[4.5rem] text-center text-sm font-extrabold text-amber-300">
+                        <span className="min-w-[4.5rem] text-center text-sm font-bold text-[#dfb06d]">
                           {selectedBidInput} 枚
                         </span>
                         <button
@@ -2291,7 +2276,7 @@ export default function TotemBluffGame() {
                               Math.min(totalDiscsOnTable, v + 1)
                             )
                           }
-                          className="rounded px-2 py-1 text-xs font-bold text-stone-200 hover:bg-stone-800 disabled:opacity-30"
+                          className="min-h-11 rounded px-3 text-sm font-bold text-[#e8dcc8] hover:bg-[#3a2a1c] disabled:opacity-30"
                         >
                           ＋
                         </button>
@@ -2304,10 +2289,10 @@ export default function TotemBluffGame() {
                         onClick={() =>
                           handleDeclareOrRaiseBid(controlledPlayer.id, selectedBidInput)
                         }
-                        className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 text-xs font-extrabold text-stone-950 shadow transition hover:brightness-110 disabled:opacity-40"
+                        className="tabletop-button-primary inline-flex min-h-11 items-center px-4 text-xs font-bold disabled:opacity-40"
                       >
                         🔥 {selectedBidInput}枚で
-                        {phase === 'placing_or_bidding' ? '発掘宣言！' : '競り上げる！'}
+                        {phase === 'placing_or_bidding' ? '発掘宣言' : '競り上げる'}
                       </button>
 
                       {/* Pass Button (only during bidding_auction) */}
@@ -2316,7 +2301,7 @@ export default function TotemBluffGame() {
                           type="button"
                           disabled={!isHumanTurnToAct}
                           onClick={() => handlePassBid(controlledPlayer.id)}
-                          className="rounded-xl border border-stone-600 bg-stone-800 px-4 py-2 text-xs font-bold text-stone-200 transition hover:bg-stone-700 disabled:opacity-40"
+                          className="tabletop-button inline-flex min-h-11 items-center px-4 text-xs font-bold disabled:opacity-40"
                         >
                           🛡️ パスして降りる
                         </button>
@@ -2332,20 +2317,20 @@ export default function TotemBluffGame() {
         {/* Right 4 Columns: Live Bluff & Safe-Flip Probability HUD + Battle Log */}
         <aside className="space-y-5 lg:col-span-4">
           {/* Live Bluff & Safe-Flip Probability Analyzer */}
-          <div className="rounded-2xl border border-amber-500/30 bg-stone-900/95 p-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
-              <h3 className="text-xs font-extrabold tracking-wide text-amber-300">
-                📊 リアルタイム安全発掘確率＆相手の手札残数メーター
+          <div className="tabletop-panel p-3.5 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-2.5">
+              <h3 className="tabletop-title text-sm">
+                📊 安全発掘確率＆手札残数
               </h3>
-              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+              <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-bold">
                 確率アナライザー
               </span>
             </div>
 
             {/* Overall Safe Flip Meter */}
-            <div className="mt-3 rounded-xl border border-stone-800 bg-stone-950/90 p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-stone-400">
+            <div className="tabletop-panel-soft mt-3 p-3">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-[#b9a88f]">
                   目標宣言枚数（
                   {phase === 'bidding_auction' || phase === 'revealing'
                     ? `${currentBid}枚`
@@ -2353,30 +2338,30 @@ export default function TotemBluffGame() {
                   ）の推定安全率
                 </span>
                 <span
-                  className={`text-base font-extrabold ${
+                  className={`text-base font-bold ${
                     probabilitySummary.overallSafePct >= 70
-                      ? 'text-emerald-400'
+                      ? 'text-[#a9cdb7]'
                       : probabilitySummary.overallSafePct >= 40
-                        ? 'text-amber-300'
-                        : 'text-rose-400'
+                        ? 'text-[#dfb06d]'
+                        : 'text-[#e0a9a2]'
                   }`}
                 >
                   {probabilitySummary.overallSafePct}%
                 </span>
               </div>
-              <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-stone-800">
+              <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-[#171310]">
                 <div
                   className={`h-full transition-all duration-300 ${
                     probabilitySummary.overallSafePct >= 70
-                      ? 'bg-emerald-400'
+                      ? 'bg-[#4f7f68]'
                       : probabilitySummary.overallSafePct >= 40
-                        ? 'bg-amber-400'
-                        : 'bg-rose-500'
+                        ? 'bg-[#c99555]'
+                        : 'bg-[#9f4540]'
                   }`}
                   style={{ width: `${probabilitySummary.overallSafePct}%` }}
                 />
               </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-stone-300">
+              <p className="mt-2 text-[11px] leading-relaxed text-[#c9b79d]">
                 {probabilitySummary.advice}
               </p>
             </div>
@@ -2389,26 +2374,26 @@ export default function TotemBluffGame() {
                 return (
                   <div
                     key={p.id}
-                    className="rounded-xl border border-stone-800/90 bg-stone-950/60 p-2.5 text-xs"
+                    className="tabletop-panel-soft p-2.5 text-xs"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-stone-200">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-bold text-[#e8dcc8]">
                         {p.name} {p.crowns > 0 ? '👑' : ''}
                       </span>
-                      <span className="text-[11px] text-stone-400">
-                        所持 <strong className="text-amber-300">{totalOwned}枚</strong>（手札
+                      <span className="text-[11px] text-[#b9a88f]">
+                        所持 <strong className="text-[#dfb06d]">{totalOwned}枚</strong>（手札
                         {p.hand.length} / 場{p.stack.length}）
                       </span>
                     </div>
                     <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                      <span className="text-stone-400">山の一番上が☀️太陽盤の確率</span>
+                      <span className="text-[#9c8d78]">山の一番上が☀️太陽盤の確率</span>
                       <span
                         className={`font-bold ${
                           topSafePct >= 75
-                            ? 'text-emerald-300'
+                            ? 'text-[#a9cdb7]'
                             : topSafePct >= 50
-                              ? 'text-amber-300'
-                              : 'text-rose-300'
+                              ? 'text-[#dfb06d]'
+                              : 'text-[#e0a9a2]'
                         }`}
                       >
                         {p.stack.length > 0 ? `${topSafePct}%` : '未配置'}
@@ -2421,46 +2406,46 @@ export default function TotemBluffGame() {
           </div>
 
           {/* Round-Table AI Personalities Guide */}
-          <div className="rounded-2xl border border-stone-800 bg-stone-900/90 p-4 shadow-xl">
-            <h3 className="text-xs font-extrabold text-amber-300">
-              🗿 円卓のAIパーソナリティ特徴
+          <div className="tabletop-panel p-3.5 sm:p-4">
+            <h3 className="tabletop-title text-sm">
+              🗿 円卓のAIパーソナリティ
             </h3>
-            <div className="mt-2.5 space-y-2 text-[11px] text-stone-300">
-              <div className="rounded-lg border border-purple-500/30 bg-purple-950/20 p-2">
-                <strong className="text-purple-300">罠師ゾルタン：</strong>
+            <div className="mt-2.5 space-y-2 text-[11px] text-[#c9b79d]">
+              <div className="tabletop-panel-soft border-l-2 border-l-[#5b4668] p-2">
+                <strong className="text-[#c4a3d4]">罠師ゾルタン：</strong>
                 初手から「🎭災厄の仮面」を伏せ、あえて2〜3枚の宣言で誘い込むブラフの名手。
               </div>
-              <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-2">
-                <strong className="text-amber-300">強気の発掘家エレナ：</strong>
+              <div className="tabletop-panel-soft border-l-2 border-l-[#6b543d] p-2">
+                <strong className="text-[#dfb06d]">強気の発掘家エレナ：</strong>
                 自分の祭壇に「☀️太陽の黄金盤」を2枚以上重ねてから高ビッドを狙う本格派。
               </div>
-              <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-2">
-                <strong className="text-cyan-300">慎重派の学者セオドア：</strong>
+              <div className="tabletop-panel-soft border-l-2 border-l-[#3f5f78] p-2">
+                <strong className="text-[#a9c8da]">慎重派の学者セオドア：</strong>
                 場の枚数と期待値を計算し、無理な競りには即座にパスする堅実な分析家。
               </div>
             </div>
           </div>
 
           {/* Action Log */}
-          <div className="rounded-2xl border border-stone-800 bg-stone-900/90 p-4 shadow-xl">
-            <h3 className="text-xs font-extrabold text-amber-300">📜 円卓の発掘記録ログ</h3>
+          <div className="tabletop-panel p-3.5 sm:p-4">
+            <h3 className="tabletop-title text-sm">📜 円卓の発掘記録</h3>
             <div className="mt-2.5 max-h-60 space-y-1.5 overflow-y-auto pr-1 text-xs">
               {logs.map((entry) => (
                 <div
                   key={entry.id}
-                  className={`rounded-lg border px-2.5 py-1.5 leading-relaxed ${
+                  className={`rounded-md border px-2.5 py-1.5 leading-relaxed ${
                     entry.tone === 'crown'
-                      ? 'border-yellow-400/50 bg-yellow-500/15 text-yellow-200'
+                      ? 'border-[#6b543d] bg-[#3a2a1c] text-[#dfb06d]'
                       : entry.tone === 'danger'
-                        ? 'border-rose-500/50 bg-rose-950/40 text-rose-200'
+                        ? 'border-[#6b3a36] bg-[#241615] text-[#e0a9a2]'
                         : entry.tone === 'safe'
-                          ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
+                          ? 'border-[#315d4e] bg-[#14211b] text-[#a9cdb7]'
                           : entry.tone === 'bid'
-                            ? 'border-amber-500/40 bg-amber-950/30 text-amber-200'
-                            : 'border-stone-800 bg-stone-950/60 text-stone-300'
+                            ? 'border-[#6b543d] bg-[#2a211a] text-[#d8cbb8]'
+                            : 'tabletop-panel-soft text-[#c9b79d]'
                   }`}
                 >
-                  <span className="mr-1.5 font-bold text-stone-400">[R{entry.round}]</span>
+                  <span className="mr-1.5 font-bold text-[#9c8d78]">[R{entry.round}]</span>
                   {entry.text}
                 </div>
               ))}
@@ -2471,24 +2456,27 @@ export default function TotemBluffGame() {
 
       {/* Rules Modal */}
       {showRulesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-amber-400/40 bg-stone-900 p-6 text-stone-100 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
-              <h3 className="text-lg font-extrabold text-amber-300">
-                📖 『仮面の円卓（Totem Bluff）』公式ルールガイド
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="tabletop-panel max-h-[85vh] w-full max-w-2xl space-y-4 overflow-y-auto p-4 text-[#e8dcc8] sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#4d3d2d] pb-3">
+              <div>
+                <span className="tabletop-kicker !text-[11px]">Rulebook</span>
+                <h3 className="tabletop-title text-lg">
+                  📖 『仮面の円卓（Totem Bluff）』ルールガイド
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowRulesModal(false)}
-                className="rounded-lg border border-stone-700 px-3 py-1 text-xs font-bold text-stone-300 hover:bg-stone-800"
+                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs font-bold"
               >
                 ✕ 閉じる
               </button>
             </div>
 
-            <div className="mt-4 space-y-4 text-xs leading-relaxed text-stone-200 sm:text-sm">
+            <div className="mt-4 space-y-4 text-xs leading-relaxed text-[#c9b79d] sm:text-sm">
               <div>
-                <h4 className="font-extrabold text-amber-300">
+                <h4 className="font-bold text-[#dfb06d]">
                   1. 勝利条件（太陽の王冠 2ポイント先取 または 最後の生存者）
                 </h4>
                 <p className="mt-1">
@@ -2499,7 +2487,7 @@ export default function TotemBluffGame() {
               </div>
 
               <div>
-                <h4 className="font-extrabold text-amber-300">
+                <h4 className="font-bold text-[#dfb06d]">
                   2. フェーズ①：伏せ配置 または 発掘枚数ビッド（挑戦宣言）
                 </h4>
                 <p className="mt-1">
@@ -2508,7 +2496,7 @@ export default function TotemBluffGame() {
               </div>
 
               <div>
-                <h4 className="font-extrabold text-amber-300">
+                <h4 className="font-bold text-[#dfb06d]">
                   3. フェーズ②：発掘枚数の競り上げ（オークション）
                 </h4>
                 <p className="mt-1">
@@ -2517,7 +2505,7 @@ export default function TotemBluffGame() {
               </div>
 
               <div>
-                <h4 className="font-extrabold text-amber-300">
+                <h4 className="font-bold text-[#dfb06d]">
                   4. フェーズ③：運命の発掘めくり（鉄則：自分の山が最優先！）
                 </h4>
                 <p className="mt-1">

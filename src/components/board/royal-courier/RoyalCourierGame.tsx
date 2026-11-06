@@ -1647,46 +1647,37 @@ export default function RoyalCourierGame() {
   // ==========================================================================
 
   return (
-    <div className="min-h-screen bg-[#090712] text-stone-100 selection:bg-amber-500/30">
-      {/* Decorative Gothic Royal Background Glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-        <div className="absolute -top-36 left-1/4 w-[34rem] h-[34rem] rounded-full bg-amber-600/10 blur-[130px]" />
-        <div className="absolute top-1/3 -right-24 w-[30rem] h-[30rem] rounded-full bg-rose-700/10 blur-[130px]" />
-        <div className="absolute -bottom-32 left-1/3 w-[32rem] h-[32rem] rounded-full bg-purple-800/10 blur-[130px]" />
-      </div>
-
-      {/* Top Navigation & Control Bar */}
-      <header className="sticky top-0 z-30 border-b border-amber-500/25 bg-[#0c0918]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
+    <div className="tabletop-page pb-16">
+      <header className="tabletop-header sticky top-0 z-30">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/games"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-900/40 transition"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-[13px]"
             >
               ← ゲーム一覧
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-widest text-amber-400 uppercase">
-                  ROYAL COURIER
-                </span>
-                <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-200">
-                  全16枚・手札1枚の宮廷心理推理
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tabletop-kicker">Royal Courier</span>
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
+                  全16枚・手札1枚の宮廷推理
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-amber-50">
-                王宮の密使
-              </h2>
+              <h2 className="tabletop-title truncate text-lg sm:text-xl">王宮の密使</h2>
+              <p className="tabletop-muted hidden text-[13px] sm:block">
+                16枚デッキを読み切る、手札1枚の宮廷サバイバル
+              </p>
             </div>
           </div>
 
           {/* Mode, Audio & Rules Controls */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <select
               aria-label="対戦モード選択"
               value={gameMode}
               onChange={(e) => handleRestartMatch(e.target.value as GameMode)}
-              className="rounded-lg border border-amber-500/35 bg-stone-900/90 px-2.5 py-1.5 text-xs font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="tabletop-button min-h-11 cursor-pointer px-2.5 text-xs text-[#f4ead8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c99555]"
             >
               <option value="cpu4">CPU対戦 4人テーブル（推奨）</option>
               <option value="cpu3">CPU対戦 3人テーブル</option>
@@ -1698,7 +1689,7 @@ export default function RoyalCourierGame() {
               aria-label="勝利封蝋数選択"
               value={targetSeals}
               onChange={(e) => handleRestartMatch(undefined, Number(e.target.value))}
-              className="rounded-lg border border-amber-500/35 bg-stone-900/90 px-2.5 py-1.5 text-xs font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="tabletop-button min-h-11 cursor-pointer px-2.5 text-xs text-[#f4ead8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c99555]"
             >
               <option value={3}>3封蝋先取（標準）</option>
               <option value={4}>4封蝋先取（ロング）</option>
@@ -1708,10 +1699,8 @@ export default function RoyalCourierGame() {
             <button
               type="button"
               onClick={handleToggleBgm}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                bgmOn
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100'
-                  : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                bgmOn ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🎵 BGM {bgmOn ? 'ON' : 'OFF'}
@@ -1720,10 +1709,8 @@ export default function RoyalCourierGame() {
             <button
               type="button"
               onClick={handleToggleSfx}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                sfxOn
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100'
-                  : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                sfxOn ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🔊 効果音 {sfxOn ? 'ON' : 'OFF'}
@@ -1732,15 +1719,15 @@ export default function RoyalCourierGame() {
             <button
               type="button"
               onClick={() => setShowRulesModal(true)}
-              className="rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs"
             >
-              📜 役職・ルール一覧
+              📜 役職・ルール
             </button>
 
             <button
               type="button"
               onClick={() => handleRestartMatch()}
-              className="rounded-lg border border-rose-400/40 bg-rose-950/50 px-2.5 py-1.5 text-xs font-semibold text-rose-200 hover:bg-rose-900/60 transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#e3b6ad]"
             >
               ↻ 新規対局
             </button>
@@ -1750,32 +1737,31 @@ export default function RoyalCourierGame() {
         </div>
       </header>
 
-      {/* Main Content Container */}
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-5 space-y-5">
+      <div className="mx-auto max-w-7xl space-y-5 px-3 py-4 sm:px-6">
         {/* Top Status Banner & Deck / Hidden Royal Decree Bar */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-12">
           {/* Center Dramatic Event Banner */}
-          <div className="lg:col-span-7 rounded-2xl border border-amber-500/35 bg-gradient-to-r from-[#17112a] via-[#1d1433] to-[#17112a] p-4 shadow-lg flex flex-col justify-between">
+          <div className="tabletop-panel flex flex-col justify-between p-3.5 sm:p-4 lg:col-span-7">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="rounded-md bg-amber-500/20 border border-amber-400/50 px-2.5 py-0.5 text-xs font-bold text-amber-200">
-                  第 {roundNumber} ラウンド / {turnCounter} 手目
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 items-center px-2.5 text-[11px] font-bold">
+                  第 {roundNumber} ラウンド・{turnCounter} 手目
                 </span>
                 {activePlayer && !roundSummary && (
-                  <span className="rounded-md bg-rose-500/20 border border-rose-400/50 px-2.5 py-0.5 text-xs font-bold text-rose-200">
-                    現在の手番：{activePlayer.name}
+                  <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px] font-bold">
+                    手番：{activePlayer.name}
                   </span>
                 )}
               </div>
-              <span className="text-xs text-stone-300">
-                勝利条件：王宮の封蝋トークン ⚜ <strong className="text-amber-300">{targetSeals}個</strong> 先取
+              <span className="text-[11px] text-[#b9a88f]">
+                勝利条件：封蝋トークン ⚜ <strong className="text-[#dfb06d]">{targetSeals}個</strong> 先取
               </span>
             </div>
 
             {bannerMessage && (
-              <div className="mt-3 rounded-xl border border-amber-400/30 bg-black/35 px-3.5 py-2.5">
-                <p className="text-sm font-bold text-amber-200">{bannerMessage.title}</p>
-                <p className="mt-0.5 text-xs text-stone-300 leading-relaxed">
+              <div className="tabletop-panel-soft mt-3 px-3.5 py-2.5">
+                <p className="text-sm font-bold text-[#dfb06d]">{bannerMessage.title}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[#c9b79d]">
                   {bannerMessage.subtitle}
                 </p>
               </div>
@@ -1783,28 +1769,28 @@ export default function RoyalCourierGame() {
           </div>
 
           {/* Royal Court Deck & Hidden Decree Status */}
-          <div className="lg:col-span-5 rounded-2xl border border-amber-500/30 bg-[#130e24]/90 p-4 flex items-center justify-between gap-4">
+          <div className="tabletop-panel flex flex-wrap items-center justify-between gap-4 p-3.5 sm:p-4 lg:col-span-5">
             <div className="flex items-center gap-3">
               {/* Deck Stack Visual */}
-              <div className="relative flex h-20 w-14 flex-col items-center justify-center rounded-xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-900/60 via-stone-900 to-purple-950 shadow-md">
-                <span className="text-[10px] font-bold text-amber-300">山札</span>
-                <span className="text-2xl font-black text-amber-100">{deck.length}</span>
-                <span className="text-[10px] text-stone-400">枚</span>
+              <div className="relative flex h-20 w-14 flex-col items-center justify-center rounded-md border border-[#6b543d] bg-[#2a211a]">
+                <span className="text-[10px] font-bold text-[#dfb06d]">山札</span>
+                <span className="text-2xl font-black text-[#f4ead8]">{deck.length}</span>
+                <span className="text-[10px] text-[#9c8d78]">枚</span>
               </div>
               <div>
-                <p className="text-xs font-bold text-amber-200">王宮密使デッキ（全16枚）</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">
+                <p className="text-xs font-bold text-[#e8dcc8]">王宮密使デッキ（全16枚）</p>
+                <p className="mt-0.5 text-[11px] text-[#b9a88f]">
                   山札が0枚になるか、生存者が1人になるとラウンド決着
                 </p>
                 {faceUpExiles.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                    <span className="text-[10px] text-amber-300 font-semibold">
-                      2人戦公開除外(3枚):
+                    <span className="text-[10px] font-semibold text-[#dfb06d]">
+                      2人戦公開除外（3枚）：
                     </span>
                     {faceUpExiles.map((c) => (
                       <span
                         key={c.id}
-                        className="rounded border border-amber-400/40 bg-amber-950/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-200"
+                        className="tabletop-chip inline-flex min-h-6 items-center px-1.5 text-[10px] font-bold"
                       >
                         Lv.{c.rank} {ROLE_DEFINITIONS[c.rank].shortName}
                       </span>
@@ -1816,23 +1802,23 @@ export default function RoyalCourierGame() {
 
             {/* Hidden Royal Decree (伏せ密書 1枚) */}
             <div
-              className="flex flex-col items-center justify-center rounded-xl border border-dashed border-amber-400/50 bg-stone-950/80 px-3 py-2 text-center min-w-[105px]"
+              className="tabletop-panel-soft flex min-w-[110px] flex-col items-center justify-center border-dashed border-[#6b543d] px-3 py-2 text-center"
               title="ラウンド開始時に裏向きで1枚除外された「伏せ密書」。最後まで誰の手にも渡らない可能性があるため、完全なカウンティングに揺らぎを生みます（山札0枚時にLv.5魔導師が使われた場合のみ引かれます）。"
             >
-              <span className="text-[10px] font-bold tracking-wider text-amber-300">
+              <span className="text-[10px] font-bold tracking-wider text-[#dfb06d]">
                 📜 伏せ密書
               </span>
               {roundSummary && roundSummary.hiddenDecree ? (
-                <span className="mt-1 text-xs font-extrabold text-rose-300">
+                <span className="mt-1 text-xs font-extrabold text-[#e0a9a2]">
                   Lv.{roundSummary.hiddenDecree.rank}{' '}
                   {ROLE_DEFINITIONS[roundSummary.hiddenDecree.rank].shortName}
                 </span>
               ) : hiddenDecree ? (
-                <span className="mt-1 text-xs font-bold text-stone-300">裏向き封印 (1枚)</span>
+                <span className="mt-1 text-xs font-bold text-[#e8dcc8]">裏向き封印（1枚）</span>
               ) : (
-                <span className="mt-1 text-xs font-bold text-stone-500">魔導師で引かれ済</span>
+                <span className="mt-1 text-xs font-bold text-[#7f7261]">魔導師で引かれ済</span>
               )}
-              <span className="mt-0.5 text-[10px] text-stone-400">
+              <span className="mt-0.5 text-[10px] text-[#9c8d78]">
                 {roundSummary ? 'ラウンド終了公開' : '正体不明の1枚'}
               </span>
             </div>
@@ -1855,26 +1841,26 @@ export default function RoyalCourierGame() {
                 return (
                   <div
                     key={p.id}
-                    className={`relative rounded-2xl border p-4 transition-all ${
+                    className={`relative rounded-md border p-3.5 transition-all ${
                       p.isEliminated
-                        ? 'border-stone-800 bg-stone-950/60 opacity-65'
+                        ? 'border-[#3a2e23] bg-[#1d1712] opacity-60'
                         : isTurn
-                        ? 'border-amber-400 bg-gradient-to-br from-[#1f1638] via-[#161029] to-[#120d22] shadow-[0_0_24px_rgba(245,158,11,0.22)]'
-                        : 'border-amber-500/25 bg-[#130f24]/90'
+                        ? 'border-[#c99555] bg-[#2a211a] ring-1 ring-[#c99555]'
+                        : 'tabletop-panel-soft'
                     }`}
                   >
                     {/* Header: Name, Title, Seals */}
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-extrabold text-amber-50">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-bold text-[#f4ead8]">
                             {p.name}
                           </span>
-                          <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+                          <span className="tabletop-chip inline-flex min-h-6 items-center px-1.5 text-[10px] font-semibold">
                             {p.title}
                           </span>
                           {isTurn && (
-                            <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-stone-950 animate-pulse">
+                            <span className="inline-flex min-h-6 items-center rounded-sm bg-[#c99555] px-2 text-[10px] font-black text-[#1b120b]">
                               手番中
                             </span>
                           )}
@@ -1883,17 +1869,17 @@ export default function RoyalCourierGame() {
                         {/* Status Badges: Shield / Eliminated / Known Identity */}
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           {p.isProtected && !p.isEliminated && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/60 bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-200">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#315d4e] bg-[#14211b] px-2 py-0.5 text-[11px] font-bold text-[#a9cdb7]">
                               🛡️ 守護結界中（指名無効）
                             </span>
                           )}
                           {p.isEliminated && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/50 bg-rose-950/70 px-2 py-0.5 text-[11px] font-bold text-rose-300">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#6b3a36] bg-[#241615] px-2 py-0.5 text-[11px] font-bold text-[#e0a9a2]">
                               💀 脱落（{p.eliminatedReason ?? '脱落'}）
                             </span>
                           )}
                           {!p.isEliminated && knownByViewer && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/80 bg-sky-500/25 px-2.5 py-0.5 text-[11px] font-extrabold text-sky-100 shadow-sm">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#3f5f78] bg-[#131d24] px-2.5 py-0.5 text-[11px] font-bold text-[#a9c8da]">
                               👁️ 正体判明：Lv.{knownByViewer.rank}{' '}
                               {ROLE_DEFINITIONS[knownByViewer.rank].name}（{knownByViewer.reason}）
                             </span>
@@ -1911,18 +1897,18 @@ export default function RoyalCourierGame() {
 
                     {/* Speech Bubble (AI or Character Reaction) */}
                     {p.speechBubble && (
-                      <div className="mt-2.5 rounded-xl border border-amber-400/25 bg-black/40 px-3 py-1.5 text-xs italic text-amber-100/90">
+                      <div className="tabletop-panel-soft mt-2.5 px-3 py-1.5 text-xs italic text-[#d8cbb8]">
                         💬 「{p.speechBubble}」
                       </div>
                     )}
 
                     {/* Current Hand Summary (Hidden for opponents unless round ended or peeked) */}
-                    <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs">
-                      <span className="text-stone-400">
-                        所持手札：<strong className="text-stone-200">{p.hand.length}枚</strong>
+                    <div className="mt-3 flex items-center justify-between border-t border-[#4d3d2d] pt-2.5 text-xs">
+                      <span className="text-[#b9a88f]">
+                        所持手札：<strong className="text-[#e8dcc8]">{p.hand.length}枚</strong>
                       </span>
                       {roundSummary && !p.isEliminated && p.hand[0] && (
-                        <span className="rounded-md border border-amber-400/60 bg-amber-500/20 px-2 py-0.5 font-bold text-amber-200">
+                        <span className="tabletop-chip tabletop-chip-active inline-flex min-h-6 items-center px-2 text-[11px] font-bold">
                           公開手札：Lv.{p.hand[0].rank}{' '}
                           {ROLE_DEFINITIONS[p.hand[0].rank].name}
                         </span>
@@ -1931,11 +1917,11 @@ export default function RoyalCourierGame() {
 
                     {/* Face-up Discards History */}
                     <div className="mt-2">
-                      <p className="text-[11px] font-semibold text-stone-400 mb-1">
-                        場に出した捨て札履歴（公開情報）：
+                      <p className="mb-1 text-[11px] font-semibold text-[#b9a88f]">
+                        場に出した捨て札（公開情報）
                       </p>
                       {p.discards.length === 0 ? (
-                        <span className="text-[11px] text-stone-500">まだ捨て札はありません</span>
+                        <span className="text-[11px] text-[#7f7261]">まだ捨て札はありません</span>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {p.discards.map((d, dIdx) => {
@@ -1960,20 +1946,20 @@ export default function RoyalCourierGame() {
 
             {/* Pass-and-Play Privacy Gate Modal/Card */}
             {gameMode === 'pvp2' && pvpPrivacyGate && activePlayer && !roundSummary && !matchWinner && (
-              <div className="rounded-2xl border-2 border-amber-400/70 bg-gradient-to-br from-[#1d1436] via-[#120c24] to-[#0c0918] p-6 text-center shadow-2xl">
-                <p className="text-xs font-bold uppercase tracking-widest text-amber-400">
-                  PASS & PLAY PRIVACY SHIELD
+              <div className="tabletop-panel border-[#6b543d] p-5 text-center sm:p-6">
+                <p className="tabletop-kicker !text-[11px]">
+                  Pass &amp; Play Privacy Shield
                 </p>
-                <h3 className="mt-1 text-xl font-black text-amber-100">
+                <h3 className="tabletop-title mt-1 text-xl">
                   次は「{activePlayer.name}」の手番です
                 </h3>
-                <p className="mt-2 text-xs text-stone-300">
+                <p className="mt-2 text-xs leading-relaxed text-[#c9b79d]">
                   相手プレイヤーに手札が見えないよう端末を受け渡してから、下のボタンを押して手札を開いてください。
                 </p>
                 <button
                   type="button"
                   onClick={() => setPvpPrivacyGate(false)}
-                  className="mt-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 px-6 py-2.5 text-sm font-black text-stone-950 shadow-lg hover:brightness-110 transition"
+                  className="tabletop-button-primary mt-4 inline-flex min-h-11 items-center px-5 text-sm font-black"
                 >
                   👁️ {activePlayer.name}の手札を表示する
                 </button>
@@ -1982,20 +1968,20 @@ export default function RoyalCourierGame() {
 
             {/* Round Summary / Next Round Modal Box */}
             {roundSummary && (
-              <div className="rounded-2xl border-2 border-amber-400 bg-gradient-to-br from-[#23173e] via-[#160f29] to-[#0f0a1c] p-5 shadow-2xl space-y-4">
+              <div className="tabletop-panel space-y-4 border-[#6b543d] p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <span className="text-xs font-bold uppercase tracking-widest text-amber-300">
-                      ROUND {roundSummary.roundNumber} RESULT
+                    <span className="tabletop-kicker !text-[11px]">
+                      Round {roundSummary.roundNumber} Result
                     </span>
-                    <h3 className="text-lg sm:text-xl font-black text-amber-100">
-                      ⚜ {roundSummary.winnerNames.join('・')} が王宮の封蝋を獲得！
+                    <h3 className="tabletop-title text-lg sm:text-xl">
+                      ⚜ {roundSummary.winnerNames.join('・')} が王宮の封蝋を獲得
                     </h3>
                   </div>
                   {roundSummary.hiddenDecree && (
-                    <div className="rounded-xl border border-amber-400/50 bg-black/40 px-3 py-1.5 text-xs">
-                      <span className="text-stone-400">今回の伏せ密書：</span>{' '}
-                      <strong className="text-amber-200">
+                    <div className="tabletop-panel-soft px-3 py-1.5 text-xs">
+                      <span className="text-[#b9a88f]">今回の伏せ密書：</span>{' '}
+                      <strong className="text-[#dfb06d]">
                         Lv.{roundSummary.hiddenDecree.rank}{' '}
                         {ROLE_DEFINITIONS[roundSummary.hiddenDecree.rank].name}
                       </strong>
@@ -2003,29 +1989,29 @@ export default function RoyalCourierGame() {
                   )}
                 </div>
 
-                <p className="text-xs sm:text-sm text-stone-200 leading-relaxed">
+                <p className="text-[13px] leading-relaxed text-[#d8cbb8]">
                   {roundSummary.reason}
                 </p>
 
                 {roundSummary.survivingHands.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     {roundSummary.survivingHands.map((sh) => (
                       <div
                         key={sh.playerId}
-                        className="rounded-xl border border-amber-500/30 bg-black/35 px-3.5 py-2.5 flex items-center justify-between"
+                        className="tabletop-panel-soft flex items-center justify-between px-3.5 py-2.5"
                       >
                         <div>
-                          <p className="text-xs font-bold text-amber-100">{sh.playerName}</p>
-                          <p className="text-[11px] text-stone-400">
+                          <p className="text-xs font-bold text-[#e8dcc8]">{sh.playerName}</p>
+                          <p className="text-[11px] text-[#b9a88f]">
                             捨て札合計ランク：{sh.totalDiscardScore}
                           </p>
                         </div>
                         {sh.card ? (
-                          <span className="rounded-lg border border-amber-400/60 bg-amber-500/20 px-2.5 py-1 text-xs font-extrabold text-amber-200">
+                          <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 items-center px-2.5 text-xs font-extrabold">
                             Lv.{sh.card.rank} {ROLE_DEFINITIONS[sh.card.rank].name}
                           </span>
                         ) : (
-                          <span className="text-xs text-stone-400">手札なし</span>
+                          <span className="text-xs text-[#b9a88f]">手札なし</span>
                         )}
                       </div>
                     ))}
@@ -2034,19 +2020,19 @@ export default function RoyalCourierGame() {
 
                 <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
                   {matchWinner ? (
-                    <div className="flex flex-wrap items-center justify-between w-full gap-3 rounded-xl border border-amber-300 bg-amber-500/20 px-4 py-3">
+                    <div className="flex w-full flex-wrap items-center justify-between gap-3 rounded-md border border-[#6b543d] bg-[#3a2a1c] px-4 py-3">
                       <div>
-                        <p className="text-sm font-black text-amber-100">
-                          👑 最終優勝：{matchWinner.name}（封蝋 {matchWinner.seals}個 達成！）
+                        <p className="text-sm font-bold text-[#f4ead8]">
+                          👑 最終優勝：{matchWinner.name}（封蝋 {matchWinner.seals}個 達成）
                         </p>
-                        <p className="text-xs text-amber-200/90">
-                          見事な宮廷推理と心理戦で王宮筆頭密使の栄冠を勝ち取りました！
+                        <p className="text-xs text-[#c9b79d]">
+                          見事な宮廷推理と心理戦で王宮筆頭密使の栄冠を勝ち取りました。
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRestartMatch()}
-                        className="rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-xs sm:text-sm font-black text-stone-950 shadow-lg hover:brightness-110 transition"
+                        className="tabletop-button-primary inline-flex min-h-11 items-center px-5 text-xs font-black sm:text-sm"
                       >
                         🏆 新しい対局を始める
                       </button>
@@ -2065,7 +2051,7 @@ export default function RoyalCourierGame() {
                           winnerIdx >= 0 ? winnerIdx : 0
                         );
                       }}
-                      className="rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-6 py-2.5 text-sm font-black text-stone-950 shadow-lg hover:brightness-110 transition"
+                      className="tabletop-button-primary inline-flex min-h-11 items-center px-6 text-sm font-black"
                     >
                       ▶ 第 {roundNumber + 1} ラウンドへ進む
                     </button>
@@ -2080,13 +2066,13 @@ export default function RoyalCourierGame() {
               !pvpPrivacyGate &&
               !roundSummary &&
               !matchWinner && (
-                <div className="rounded-2xl border border-amber-400/50 bg-gradient-to-b from-[#1a1330] to-[#110c20] p-5 shadow-xl space-y-4">
+                <div className="tabletop-panel space-y-4 border-[#6b543d] p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                        YOUR TURN — CHOOSE 1 CARD TO PLAY
+                      <span className="tabletop-kicker !text-[11px]">
+                        Your Turn — Choose 1 Card
                       </span>
-                      <h3 className="text-base sm:text-lg font-extrabold text-amber-50">
+                      <h3 className="tabletop-title text-base sm:text-lg">
                         {activePlayer.name}の手札（2枚のうち1枚を場に出して効果を発動）
                       </h3>
                     </div>
@@ -2095,7 +2081,7 @@ export default function RoyalCourierGame() {
                       <button
                         type="button"
                         onClick={applyHumanRecommendation}
-                        className="rounded-lg border border-sky-400/50 bg-sky-500/20 px-3 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/30 transition"
+                        className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs font-bold text-[#a9c8da]"
                       >
                         💡 AI推奨手をセット
                       </button>
@@ -2104,13 +2090,13 @@ export default function RoyalCourierGame() {
 
                   {/* Mandatory Lv.7 Archduchess Alert */}
                   {mustPlayArchduchess(activePlayer.hand) && (
-                    <div className="rounded-xl border border-pink-400/70 bg-pink-950/60 px-3.5 py-2 text-xs font-bold text-pink-200">
+                    <div className="rounded-md border border-[#6b3a36] bg-[#241615] px-3.5 py-2 text-xs font-bold text-[#e0a9a2]">
                       ⚠️ 宮廷儀礼ルール：手札に「Lv.5 宮廷魔導師」または「Lv.6 枢機卿」があるため、この手番は必ず「Lv.7 女公爵」を場に出さなければなりません。
                     </div>
                   )}
 
                   {/* Two Cards in Hand */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {activePlayer.hand.map((card) => {
                       const def = ROLE_DEFINITIONS[card.rank];
                       const isSelected = (selectedCardObj?.id ?? '') === card.id;
@@ -2123,44 +2109,44 @@ export default function RoyalCourierGame() {
                           type="button"
                           disabled={lockedByArchduchess}
                           onClick={() => setSelectedCardId(card.id)}
-                          className={`group relative flex flex-col justify-between rounded-2xl border-2 bg-gradient-to-br ${def.colorTheme.bg} p-4 text-left transition-all ${
+                          className={`group relative flex flex-col justify-between rounded-md border p-4 text-left transition-all ${
                             lockedByArchduchess
-                              ? 'opacity-40 cursor-not-allowed border-stone-700'
+                              ? 'cursor-not-allowed border-[#3a2e23] bg-[#1d1712] opacity-45'
                               : isSelected
-                              ? 'border-amber-300 ring-2 ring-amber-400/60 shadow-[0_0_25px_rgba(251,191,36,0.3)] -translate-y-1'
-                              : `${def.colorTheme.border} hover:border-amber-300/80`
+                              ? 'border-[#c99555] bg-[#3a2a1c] ring-1 ring-[#c99555]'
+                              : 'border-[#4d3d2d] bg-[#241c15] hover:border-[#6b543d]'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400 text-sm font-black text-stone-950 shadow">
+                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-sm bg-[#c99555] text-sm font-black text-[#1b120b]">
                                   {card.rank}
                                 </span>
                                 <div>
-                                  <p className="text-[10px] font-bold tracking-widest text-amber-300/90">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#d8a86f]">
                                     {def.titleEn}
                                   </p>
-                                  <h4 className="text-base font-black text-white">
+                                  <h4 className="text-base font-bold text-[#f4ead8]">
                                     {def.name}
                                   </h4>
                                 </div>
                               </div>
                             </div>
-                            <RoleCrestSvg rank={card.rank} className="w-14 h-14 shrink-0" />
+                            <RoleCrestSvg rank={card.rank} className="h-14 w-14 shrink-0" />
                           </div>
 
-                          <p className="mt-3 text-xs text-stone-200 leading-relaxed">
+                          <p className="mt-3 text-xs leading-relaxed text-[#c9b79d]">
                             {def.detail}
                           </p>
 
-                          <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2 text-[11px]">
-                            <span className="text-stone-400">
+                          <div className="mt-3 flex items-center justify-between border-t border-[#4d3d2d] pt-2 text-[11px]">
+                            <span className="text-[#9c8d78]">
                               デッキ総数：{def.countInDeck}枚
                             </span>
                             <span
-                              className={`font-extrabold ${
-                                isSelected ? 'text-amber-300' : 'text-stone-400'
+                              className={`font-bold ${
+                                isSelected ? 'text-[#dfb06d]' : 'text-[#9c8d78]'
                               }`}
                             >
                               {isSelected ? '✓ 選択中' : 'クリックして選択'}
@@ -2173,14 +2159,14 @@ export default function RoyalCourierGame() {
 
                   {/* Target & Role Guess Selector */}
                   {selectedCardObj && (
-                    <div className="rounded-xl border border-amber-500/30 bg-black/40 p-4 space-y-3">
+                    <div className="tabletop-panel-soft space-y-3 p-3.5">
                       {ROLE_DEFINITIONS[selectedCardObj.rank].targetMode !== 'none' && (
                         <div>
-                          <p className="text-xs font-bold text-amber-200 mb-2">
-                            🎯 指名する対象プレイヤーを選択：
+                          <p className="mb-2 text-xs font-bold text-[#dfb06d]">
+                            🎯 指名する対象プレイヤー
                           </p>
                           {validTargets.length === 0 ? (
-                            <p className="text-xs text-emerald-300">
+                            <p className="text-xs text-[#a9cdb7]">
                               他プレイヤー全員が「🛡️ 守護結界」中のため、指名なしでカードのみ場に出します。
                             </p>
                           ) : (
@@ -2192,10 +2178,10 @@ export default function RoyalCourierGame() {
                                     key={t.id}
                                     type="button"
                                     onClick={() => setSelectedTargetId(t.id)}
-                                    className={`rounded-xl border px-3.5 py-2 text-xs font-bold transition ${
+                                    className={`inline-flex min-h-11 items-center rounded-md border px-3.5 text-xs font-bold transition ${
                                       selectedTargetId === t.id
-                                        ? 'border-amber-300 bg-amber-500/30 text-amber-100 shadow'
-                                        : 'border-stone-700 bg-stone-900/80 text-stone-300 hover:border-amber-400/50'
+                                        ? 'border-[#c99555] bg-[#3a2a1c] text-[#dfb06d]'
+                                        : 'border-[#4d3d2d] bg-[#241c15] text-[#d8cbb8] hover:border-[#6b543d]'
                                     }`}
                                   >
                                     {t.name}
@@ -2214,10 +2200,10 @@ export default function RoyalCourierGame() {
                       {/* Lv.1 Gate Sentinel Role Guess Buttons (Lv.2 .. Lv.8) */}
                       {selectedCardObj.rank === 1 && validTargets.length > 0 && (
                         <div>
-                          <p className="text-xs font-bold text-amber-200 mb-2">
-                            ⚔️ 宣言する相手の役職（Lv.2〜Lv.8）を選択：
+                          <p className="mb-2 text-xs font-bold text-[#dfb06d]">
+                            ⚔️ 宣言する相手の役職（Lv.2〜Lv.8）
                           </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {([2, 3, 4, 5, 6, 7, 8] as CardRank[]).map((r) => {
                               const rDef = ROLE_DEFINITIONS[r];
                               const mat = cardCountingMatrix.find((m) => m.rank === r);
@@ -2227,10 +2213,10 @@ export default function RoyalCourierGame() {
                                   key={r}
                                   type="button"
                                   onClick={() => setGuessedRank(r)}
-                                  className={`rounded-xl border px-2.5 py-2 text-left text-xs transition ${
+                                  className={`min-h-11 rounded-md border px-2.5 py-2 text-left text-xs transition ${
                                     guessedRank === r
-                                      ? 'border-amber-300 bg-amber-500/30 text-amber-100 font-extrabold shadow'
-                                      : 'border-stone-700 bg-stone-900/80 text-stone-300 hover:border-amber-400/40'
+                                      ? 'border-[#c99555] bg-[#3a2a1c] font-bold text-[#dfb06d]'
+                                      : 'border-[#4d3d2d] bg-[#241c15] text-[#d8cbb8] hover:border-[#6b543d]'
                                   }`}
                                 >
                                   <div className="flex items-center justify-between">
@@ -2238,10 +2224,10 @@ export default function RoyalCourierGame() {
                                       Lv.{r} {rDef.shortName}
                                     </span>
                                     <span
-                                      className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                      className={`rounded-sm px-1.5 py-0.5 text-[10px] ${
                                         rem > 0
-                                          ? 'bg-amber-500/20 text-amber-200'
-                                          : 'bg-stone-800 text-stone-500'
+                                          ? 'border border-[#6b543d] bg-[#3a2a1c] text-[#dfb06d]'
+                                          : 'bg-[#1d1712] text-[#7f7261]'
                                       }`}
                                     >
                                       未公開 {rem}枚
@@ -2256,7 +2242,7 @@ export default function RoyalCourierGame() {
 
                       {/* AI Recommendation Reason Preview */}
                       {humanRecommendation && (
-                        <p className="text-[11px] text-sky-300/90">
+                        <p className="text-[11px] leading-relaxed text-[#a9c8da]">
                           💡 参謀の助言：{humanRecommendation.reason}
                         </p>
                       )}
@@ -2272,7 +2258,7 @@ export default function RoyalCourierGame() {
                               guessedRank
                             )
                           }
-                          className="rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 px-6 py-2.5 text-sm font-black text-stone-950 shadow-lg hover:brightness-110 transition"
+                          className="tabletop-button-primary inline-flex min-h-11 items-center px-5 text-sm font-black"
                         >
                           ⚜ 「Lv.{selectedCardObj.rank}{' '}
                           {ROLE_DEFINITIONS[selectedCardObj.rank].name}」を場に出す
@@ -2285,19 +2271,19 @@ export default function RoyalCourierGame() {
           </div>
 
           {/* Right 4 Columns: Live 16-Card Counting & Deduction Tracker + Court Chronicles Log */}
-          <div className="lg:col-span-4 space-y-5">
+          <div className="space-y-5 lg:col-span-4">
             {/* Live Card-Counting & Deduction Matrix */}
-            <div className="rounded-2xl border border-amber-500/35 bg-[#130e24]/95 p-4 shadow-xl">
-              <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+            <div className="tabletop-panel p-3.5 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-2.5">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                    DEDUCTION MATRIX
+                  <span className="tabletop-kicker !text-[11px]">
+                    Deduction Matrix
                   </span>
-                  <h3 className="text-sm font-extrabold text-amber-100">
-                    全16枚カウンティング＆生存確率トラッカー
+                  <h3 className="tabletop-title text-sm">
+                    全16枚カウンティング＆生存確率
                   </h3>
                 </div>
-                <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-bold">
                   残り未知：{deck.length + players.reduce((acc, p) => acc + p.hand.length, 0) + (hiddenDecree ? 1 : 0)}枚
                 </span>
               </div>
@@ -2306,64 +2292,64 @@ export default function RoyalCourierGame() {
                 {cardCountingMatrix.map((row) => (
                   <div
                     key={row.rank}
-                    className={`rounded-xl border px-3 py-2 transition ${
+                    className={`rounded-md border px-3 py-2 transition ${
                       row.remaining === 0
-                        ? 'border-stone-800 bg-stone-950/60 opacity-50'
-                        : 'border-white/10 bg-black/35'
+                        ? 'border-[#3a2e23] bg-[#1d1712] opacity-50'
+                        : 'tabletop-panel-soft'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-amber-400/90 text-[11px] font-black text-stone-950">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-sm bg-[#c99555] text-[11px] font-black text-[#1b120b]">
                           {row.rank}
                         </span>
-                        <span className="text-xs font-bold text-stone-100">
+                        <span className="text-xs font-bold text-[#e8dcc8]">
                           {row.def.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-[11px]">
-                        <span className="text-stone-400">
+                        <span className="text-[#9c8d78]">
                           公開済 {row.played}/{row.total}
                         </span>
                         <span
-                          className={`rounded px-1.5 py-0.5 font-extrabold ${
+                          className={`rounded-sm border px-1.5 py-0.5 font-bold ${
                             row.remaining > 0
-                              ? 'bg-amber-500/25 text-amber-200 border border-amber-400/40'
-                              : 'bg-stone-800 text-stone-500'
+                              ? 'border-[#6b543d] bg-[#3a2a1c] text-[#dfb06d]'
+                              : 'border-[#3a2e23] bg-[#1d1712] text-[#7f7261]'
                           }`}
                         >
                           残り {row.remaining}枚
                         </span>
                       </div>
                     </div>
-                    <p className="mt-1 text-[11px] text-stone-400">{row.def.summary}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-[#9c8d78]">{row.def.summary}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Royal Court Chronicles (Action Log) */}
-            <div className="rounded-2xl border border-amber-500/30 bg-[#130e24]/95 p-4 shadow-xl">
-              <h3 className="text-sm font-extrabold text-amber-100 border-b border-white/10 pb-2">
-                📜 宮廷年代記（リアルタイム推理想定ログ）
+            <div className="tabletop-panel p-3.5 sm:p-4">
+              <h3 className="tabletop-title border-b border-[#4d3d2d] pb-2 text-sm">
+                📜 宮廷年代記（推理想定ログ）
               </h3>
-              <div className="mt-2.5 max-h-64 overflow-y-auto space-y-2 pr-1">
+              <div className="mt-2.5 max-h-64 space-y-2 overflow-y-auto pr-1">
                 {logs.map((entry) => (
                   <div
                     key={entry.id}
-                    className={`rounded-lg border px-2.5 py-2 text-xs leading-relaxed ${
+                    className={`rounded-md border px-2.5 py-2 text-xs leading-relaxed ${
                       entry.highlight === 'elimination'
-                        ? 'border-rose-500/50 bg-rose-950/40 text-rose-100'
+                        ? 'border-[#6b3a36] bg-[#241615] text-[#e0a9a2]'
                         : entry.highlight === 'win'
-                        ? 'border-amber-400/60 bg-amber-950/40 text-amber-100 font-semibold'
+                        ? 'border-[#6b543d] bg-[#3a2a1c] font-semibold text-[#dfb06d]'
                         : entry.highlight === 'peek'
-                        ? 'border-sky-400/50 bg-sky-950/40 text-sky-100'
+                        ? 'border-[#3f5f78] bg-[#131d24] text-[#a9c8da]'
                         : entry.highlight === 'shield'
-                        ? 'border-emerald-400/50 bg-emerald-950/40 text-emerald-100'
-                        : 'border-white/10 bg-black/30 text-stone-300'
+                        ? 'border-[#315d4e] bg-[#14211b] text-[#a9cdb7]'
+                        : 'tabletop-panel-soft text-[#c9b79d]'
                     }`}
                   >
-                    <span className="text-[10px] font-bold text-amber-400/90 mr-1.5">
+                    <span className="mr-1.5 text-[10px] font-bold text-[#c99555]">
                       [R{entry.round}-T{entry.turn}]
                     </span>
                     {entry.text}
@@ -2377,57 +2363,57 @@ export default function RoyalCourierGame() {
 
       {/* Role Encyclopedia & Rules Modal */}
       {showRulesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl border-2 border-amber-400/60 bg-[#120d22] p-6 text-stone-100 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/15 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+          <div className="tabletop-panel max-h-[88vh] w-full max-w-3xl space-y-4 overflow-y-auto p-4 text-[#e8dcc8] sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#4d3d2d] pb-3">
               <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
-                  ROYAL COURIER ENCYCLOPEDIA
+                <span className="tabletop-kicker !text-[11px]">
+                  Royal Courier Encyclopedia
                 </span>
-                <h3 className="text-lg font-black text-amber-100">
+                <h3 className="tabletop-title text-lg">
                   『王宮の密使』全8役職（16枚デッキ）＆ルール早見表
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowRulesModal(false)}
-                className="rounded-lg border border-stone-600 px-3 py-1 text-xs font-bold text-stone-300 hover:bg-stone-800"
+                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs font-bold"
               >
                 ✕ 閉じる
               </button>
             </div>
 
-            <div className="space-y-2 text-xs text-stone-300 leading-relaxed">
+            <div className="space-y-2 text-xs leading-relaxed text-[#c9b79d]">
               <p>
-                ・ラウンド開始時、全16枚の密使デッキから<strong>「伏せ密書（1枚）」</strong>を裏向きで除外し、各プレイヤーに手札を1枚ずつ配ります。
+                ・ラウンド開始時、全16枚の密使デッキから<strong className="text-[#e8dcc8]">「伏せ密書（1枚）」</strong>を裏向きで除外し、各プレイヤーに手札を1枚ずつ配ります。
               </p>
               <p>
                 ・自分の手番が来たら山札から1枚引き（手札2枚）、どちらか1枚を場に出して効果を発動します。
               </p>
               <p>
-                ・<strong>生存者が最後の1人になる</strong>か、<strong>山札が0枚になった時点</strong>で生存者の手札を比較し、最もランク（Lv）が高いプレイヤーが<strong>「王宮の封蝋トークン ⚜」</strong>を1個獲得します。
+                ・<strong className="text-[#e8dcc8]">生存者が最後の1人になる</strong>か、<strong className="text-[#e8dcc8]">山札が0枚になった時点</strong>で生存者の手札を比較し、最もランク（Lv）が高いプレイヤーが<strong className="text-[#dfb06d]">「王宮の封蝋トークン ⚜」</strong>を1個獲得します。
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {ALL_RANKS.map((r) => {
                 const def = ROLE_DEFINITIONS[r];
                 return (
                   <div
                     key={r}
-                    className={`rounded-xl border ${def.colorTheme.border} bg-gradient-to-br ${def.colorTheme.bg} p-3 flex items-start gap-3`}
+                    className="tabletop-panel-soft flex items-start gap-3 p-3"
                   >
-                    <RoleCrestSvg rank={r} className="w-12 h-12 shrink-0" />
+                    <RoleCrestSvg rank={r} className="h-12 w-12 shrink-0" />
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-amber-300">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-[#dfb06d]">
                           Lv.{r} {def.name}
                         </span>
-                        <span className="rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-bold text-stone-300">
+                        <span className="tabletop-chip inline-flex min-h-6 items-center px-1.5 text-[10px] font-bold">
                           全{def.countInDeck}枚
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-stone-200 leading-relaxed">
+                      <p className="mt-1 text-[11px] leading-relaxed text-[#c9b79d]">
                         {def.detail}
                       </p>
                     </div>

@@ -75,7 +75,7 @@ const game: GameSeoData = {
   ],
   related: [
     { href: '/games', label: '無料ブラウザゲーム一覧', description: '定番トランプ・ボードゲーム・パズルをまとめて探す' },
-    { href: '/texas-holdem', label: 'テキサスホールデム・ポーカー', description: 'AI 4人対戦＆リアルタイム勝率メーター搭載の本格ポーカー' },
+    { href: '/texas-holdem', label: 'ロイヤル・ナイト・ポーカー（テキサスホールデム）', description: 'アニメキャラ6人と対戦できるカットイン演出付き本格ポーカー' },
     { href: '/blackjack', label: 'ブラックジャック（21）', description: 'ベーシックストラテジー＆確率ナビ付きのカジノカードゲーム' },
     { href: '/klondike', label: 'ソリティア（クロンダイク）', description: '1枚・3枚めくり対応の定番1人用トランプ' },
   ],

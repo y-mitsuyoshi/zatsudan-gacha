@@ -386,7 +386,7 @@ export default function DotsAndBoxesGame() {
 
       const { nextState, claimedBoxes } = applyEdgeMove(state, edge, turn, boxSize);
       const pName =
-        turn === 1 ? 'エメラルド(先手)' : gameMode === 'cpu' ? 'バイオレット(CPU)' : 'バイオレット(後手)';
+        turn === 1 ? '深緑(先手)' : gameMode === 'cpu' ? '朱(CPU)' : '朱(後手)';
       const claimMsg =
         claimedBoxes.length > 0
           ? ` 🎉 ボックス ${claimedBoxes.length} 個獲得！ボーナスターン発動！`
@@ -448,111 +448,111 @@ export default function DotsAndBoxesGame() {
   const svgDim = pad * 2 + boxSize * cellSpan;
 
   return (
-    <div className="min-h-screen bg-[#060b14] text-slate-100">
-      <header className="border-b border-slate-800/80 bg-[#0a1020]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+    <div className="tabletop-page">
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6">
           <Link
             href="/games"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-emerald-400/60 hover:text-white"
+            className="tabletop-button inline-flex min-h-11 items-center gap-2 px-3 text-xs"
           >
-            ← 無料ゲーム一覧へ
+            <span aria-hidden="true">←</span>
+            <span>ゲーム一覧</span>
           </Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
-              DOTS AND BOXES
-            </span>
-            <ThemeToggleButton />
+            <span className="tabletop-kicker hidden sm:inline">Dots &amp; Boxes · Paper</span>
+            <div className="[&>button]:h-11 [&>button]:w-11 [&>div]:h-11 [&>div]:w-11">
+              <ThemeToggleButton />
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6">
-        {/* Control Header */}
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/95 via-[#0f172a] to-slate-900/95 p-4 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl">
-                ドット＆ボックス（陣取り線引きボードゲーム）
+      <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
+        {/* Title & Match Controls */}
+        <section className="tabletop-panel mb-4 p-3 sm:p-5">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
+              <p className="tabletop-kicker">Paper &amp; Pencil · Territory</p>
+              <h2 className="tabletop-title mt-1 text-xl sm:text-2xl">
+                ドット＆ボックス
               </h2>
-              <p className="mt-0.5 text-xs text-slate-400">
-                隣り合うドットを線で結び、正方形の4辺目を完成させたプレイヤーがボックスを獲得＆連続手番！3辺目を渡さない読み合いと「ダブルクロス」が鍵。
+              <p className="tabletop-muted mt-1 max-w-2xl text-xs leading-relaxed sm:text-sm">
+                隣り合うドットを線で結び、四角い陣地を奪い合うペンと紙の定番ゲーム。4辺目を完成させるとボックスを獲得し、続けて線を引けます。
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
-                {(
-                  [
-                    [3, '3×3 (9マス)'],
-                    [4, '4×4 (16マス)'],
-                    [5, '5×5 (25マス)'],
-                  ] as const
-                ).map(([sz, label]) => (
-                  <button
-                    key={sz}
-                    type="button"
-                    onClick={() => resetGame(sz)}
-                    className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                      boxSize === sz
-                        ? 'bg-emerald-600 text-white'
-                        : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <div
+              role="group"
+              aria-label="盤面サイズ"
+              className="flex flex-wrap gap-1.5"
+            >
+              {(
+                [
+                  [3, '3×3'],
+                  [4, '4×4'],
+                  [5, '5×5'],
+                ] as const
+              ).map(([sz, label]) => (
+                <button
+                  key={sz}
+                  type="button"
+                  data-size={sz}
+                  onClick={() => resetGame(sz)}
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    boxSize === sz ? 'tabletop-chip-active' : ''
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
+          <div className="tabletop-divider mt-3 flex flex-col gap-2 border-t pt-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div role="group" aria-label="対戦モード" className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
+                  data-mode="cpu"
                   onClick={() => {
                     setGameMode('cpu');
                     resetGame(boxSize);
                   }}
-                  className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                    gameMode === 'cpu'
-                      ? 'bg-violet-600 text-white'
-                      : 'text-slate-300 hover:text-white'
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    gameMode === 'cpu' ? 'tabletop-chip-active' : ''
                   }`}
                 >
                   CPU対戦
                 </button>
                 <button
                   type="button"
+                  data-mode="2p"
                   onClick={() => {
                     setGameMode('2p');
                     resetGame(boxSize);
                   }}
-                  className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                    gameMode === '2p'
-                      ? 'bg-violet-600 text-white'
-                      : 'text-slate-300 hover:text-white'
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    gameMode === '2p' ? 'tabletop-chip-active' : ''
                   }`}
                 >
                   1台で2人対戦
                 </button>
               </div>
-            </div>
-          </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
               {gameMode === 'cpu' && (
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">CPU強さ:</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="tabletop-muted text-[11px]">CPU強さ</span>
                   {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
                     <button
                       key={d}
                       type="button"
+                      data-difficulty={d}
                       onClick={() => setDifficulty(d)}
-                      className={`rounded-md px-2.5 py-1 font-medium transition ${
-                        difficulty === d
-                          ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50'
-                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                        difficulty === d ? 'tabletop-chip-active' : ''
                       }`}
                     >
-                      {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級(ダブルクロスAI)'}
+                      {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級'}
                     </button>
                   ))}
                 </div>
@@ -560,97 +560,123 @@ export default function DotsAndBoxesGame() {
 
               <button
                 type="button"
+                data-toggle="side-numbers"
+                aria-pressed={showSideNumbers}
                 onClick={() => setShowSideNumbers((v) => !v)}
-                className={`rounded-lg border px-2.5 py-1 font-medium transition ${
-                  showSideNumbers
-                    ? 'border-sky-500/50 bg-sky-500/15 text-sky-300'
-                    : 'border-slate-700 bg-slate-800 text-slate-400'
+                className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                  showSideNumbers ? 'tabletop-chip-active' : ''
                 }`}
               >
-                ボックス辺数ガイド: {showSideNumbers ? 'ON' : 'OFF'}
+                辺数ガイド
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
+                data-action="hint"
                 onClick={handleHint}
                 disabled={isGameOver || (gameMode === 'cpu' && turn === 2)}
-                className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1 font-semibold text-amber-300 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                💡 ヒント
+                ヒント
               </button>
               <button
                 type="button"
+                data-action="undo"
                 onClick={handleUndo}
                 disabled={snapshots.length === 0}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1 font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
+                data-action="reset"
                 onClick={() => resetGame(boxSize)}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1 font-semibold text-rose-300 transition hover:bg-rose-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-3 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          {/* Dots & Boxes SVG Board */}
-          <div className="lg:col-span-8">
-            <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-3 shadow-2xl sm:p-5">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+          {/* Board Column */}
+          <div className="min-w-0 lg:col-span-8">
+            <div className="tabletop-panel p-2.5 sm:p-4">
               {/* Turn & Bonus Banner */}
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5">
-                <div className="flex items-center gap-2.5">
+              <div className="tabletop-panel-soft mb-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className={`h-3.5 w-3.5 rounded-full ${
-                      turn === 1
-                        ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]'
-                        : 'bg-violet-400 shadow-[0_0_10px_#a78bfa]'
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                      turn === 1 ? 'bg-[#315d4e]' : 'bg-[#9f4540]'
                     }`}
                   />
-                  <span className="text-sm font-bold text-white">
+                  <span className="truncate text-xs font-semibold text-[#f4ead8] sm:text-sm">
                     {winner
                       ? winner === 'draw'
-                        ? '🤝 引き分け！'
+                        ? '引き分け'
                         : winner === 1
-                          ? `🏆 エメラルド（先手）の勝利！（${scores.p1} 対 ${scores.p2}）`
+                          ? `深緑（先手）の勝利 ${scores.p1}–${scores.p2}`
                           : gameMode === 'cpu'
-                            ? `🏆 バイオレット（CPU）の勝利！（${scores.p2} 対 ${scores.p1}）`
-                            : `🏆 バイオレット（後手）の勝利！（${scores.p2} 対 ${scores.p1}）`
+                            ? `朱（CPU）の勝利 ${scores.p2}–${scores.p1}`
+                            : `朱（後手）の勝利 ${scores.p2}–${scores.p1}`
                       : turn === 1
-                        ? 'エメラルド（先手）の手番'
+                        ? '深緑（先手）の手番'
                         : gameMode === 'cpu'
-                          ? 'バイオレット（CPU）が思考中...'
-                          : 'バイオレット（後手）の手番'}
+                          ? '朱（CPU）が思考中'
+                          : '朱（後手）の手番'}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {bonusTurnBanner && !isGameOver && (
-                    <span className="animate-bounce rounded-full border border-amber-400/60 bg-amber-500/20 px-3 py-0.5 text-xs font-bold text-amber-200">
-                      🎁 ボックス獲得でもう1手！続けて線を引けます
+                    <span className="tabletop-chip tabletop-chip-active px-2.5 py-1 text-[10px] font-semibold sm:text-[11px]">
+                      ボックス獲得 — もう1手
                     </span>
                   )}
-                  <span className="text-xs text-slate-400">
-                    残りボックス: <strong className="text-white">{scores.remaining}</strong> /{' '}
-                    {scores.total}
+                  <span className="tabletop-chip px-2.5 py-1 text-[10px] font-semibold sm:text-[11px]">
+                    残り {scores.remaining} / {scores.total}
                   </span>
                 </div>
               </div>
 
-              {/* Interactive SVG Grid */}
-              <div className="mx-auto max-w-[490px]">
+              {/* Paper Board */}
+              <div className="tabletop-board-frame mx-auto max-w-[520px] p-1.5 sm:p-2">
                 <svg
                   viewBox={`0 0 ${svgDim} ${svgDim}`}
-                  className="h-auto w-full select-none rounded-2xl border border-slate-800 bg-[#070c18] shadow-inner"
+                  role="img"
+                  aria-label="ドット＆ボックスの盤面"
+                  className="block h-auto w-full select-none"
                   style={{ touchAction: 'manipulation' }}
                 >
+                  <defs>
+                    <linearGradient id="dotsPaper" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#f8f2e7" />
+                      <stop offset="55%" stopColor="#f2eadd" />
+                      <stop offset="100%" stopColor="#eadfcd" />
+                    </linearGradient>
+                    <pattern id="dotsGrain" width="10" height="10" patternUnits="userSpaceOnUse">
+                      <circle cx="1.4" cy="1.4" r="0.6" fill="#b7a58c" opacity="0.3" />
+                    </pattern>
+                  </defs>
+
+                  <rect x="0" y="0" width={svgDim} height={svgDim} rx="6" fill="url(#dotsPaper)" />
+                  <rect x="0" y="0" width={svgDim} height={svgDim} rx="6" fill="url(#dotsGrain)" />
+                  <rect
+                    x={pad - 18}
+                    y={pad - 18}
+                    width={boxSize * cellSpan + 36}
+                    height={boxSize * cellSpan + 36}
+                    rx="4"
+                    fill="none"
+                    stroke="#d6c8b4"
+                    strokeWidth="1.5"
+                  />
+
                   {/* Boxes */}
                   {state.boxes.map((row, r) =>
                     row.map((owner, c) => {
@@ -659,28 +685,29 @@ export default function DotsAndBoxesGame() {
                       const sides = countBoxSides(state, r, c);
 
                       let boxFill = 'transparent';
-                      if (owner === 1) boxFill = 'rgba(16, 185, 129, 0.28)';
-                      else if (owner === 2) boxFill = 'rgba(139, 92, 246, 0.30)';
-                      else if (sides === 3) boxFill = 'rgba(245, 158, 11, 0.14)';
+                      if (owner === 1) boxFill = 'rgba(49, 93, 78, 0.18)';
+                      else if (owner === 2) boxFill = 'rgba(159, 69, 64, 0.16)';
+                      else if (sides === 3) boxFill = 'rgba(185, 133, 63, 0.16)';
 
                       return (
                         <g key={`box-${r}-${c}`}>
                           <rect
-                            x={x + 6}
-                            y={y + 6}
-                            width={cellSpan - 12}
-                            height={cellSpan - 12}
-                            rx={10}
+                            x={x + 7}
+                            y={y + 7}
+                            width={cellSpan - 14}
+                            height={cellSpan - 14}
+                            rx={7}
                             fill={boxFill}
                           />
                           {owner ? (
                             <text
                               x={x + cellSpan / 2}
-                              y={y + cellSpan / 2 + 7}
+                              y={y + cellSpan / 2 + 6}
                               textAnchor="middle"
-                              className={`text-lg font-black ${
-                                owner === 1 ? 'fill-emerald-300' : 'fill-violet-300'
-                              }`}
+                              fill={owner === 1 ? '#315d4e' : '#8b3a34'}
+                              fontSize={boxSize === 5 ? 14 : 17}
+                              fontWeight="700"
+                              fontFamily="'Hiragino Mincho ProN', 'Yu Mincho', serif"
                             >
                               {owner === 1 ? 'P1' : gameMode === 'cpu' ? 'CPU' : 'P2'}
                             </text>
@@ -688,17 +715,14 @@ export default function DotsAndBoxesGame() {
                             showSideNumbers && (
                               <text
                                 x={x + cellSpan / 2}
-                                y={y + cellSpan / 2 + 5}
+                                y={y + cellSpan / 2 + 4}
                                 textAnchor="middle"
-                                className={`text-xs font-bold ${
-                                  sides === 3
-                                    ? 'fill-amber-300'
-                                    : sides === 2
-                                      ? 'fill-rose-400/75'
-                                      : 'fill-slate-600'
-                                }`}
+                                fill={sides === 3 ? '#a06a20' : sides === 2 ? '#9f4540' : '#a4937b'}
+                                fontSize={boxSize === 5 ? 10 : 12}
+                                fontWeight="700"
+                                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
                               >
-                                {sides === 3 ? '★3辺(獲得可!)' : `${sides}/4`}
+                                {sides === 3 ? '3辺' : `${sides}/4`}
                               </text>
                             )
                           )}
@@ -721,21 +745,21 @@ export default function DotsAndBoxesGame() {
                       return (
                         <g
                           key={`h-${r}-${c}`}
+                          data-edge={`h-${r}-${c}`}
                           onClick={() => {
                             if (gameMode === 'cpu' && turn === 2) return;
                             executeEdge({ orient: 'h', r, c }, false);
                           }}
-                          className={owner === null ? 'cursor-pointer group' : ''}
+                          className={owner === null ? 'cursor-pointer' : ''}
                         >
-                          {/* Wide transparent hit area */}
                           <rect
-                            x={x1 + 10}
-                            y={y1 - 16}
-                            width={cellSpan - 20}
-                            height={32}
+                            x={x1 + 4}
+                            y={y1 - 34}
+                            width={cellSpan - 8}
+                            height={68}
                             fill="transparent"
+                            pointerEvents="all"
                           />
-                          {/* Base guide track */}
                           <line
                             x1={x1 + 10}
                             y1={y1}
@@ -743,19 +767,19 @@ export default function DotsAndBoxesGame() {
                             y2={y1}
                             stroke={
                               owner === 1
-                                ? '#10b981'
+                                ? '#315d4e'
                                 : owner === 2
-                                  ? '#8b5cf6'
+                                  ? '#9f4540'
                                   : isHint
-                                    ? '#fbbf24'
-                                    : '#1e293b'
+                                    ? '#b9853f'
+                                    : '#c3b49c'
                             }
-                            strokeWidth={owner !== null ? 8 : isHint ? 6 : 5}
+                            strokeWidth={owner !== null ? 7.5 : isHint ? 5.5 : 4}
                             strokeLinecap="round"
-                            strokeDasharray={owner === null && !isHint ? '4 6' : undefined}
+                            strokeDasharray={owner === null && !isHint ? '5 7' : undefined}
                           />
                           {isLast && (
-                            <circle cx={(x1 + x2) / 2} cy={y1} r={5} fill="#fef08a" />
+                            <circle cx={(x1 + x2) / 2} cy={y1} r={4.5} fill="#c9922e" stroke="#5b4527" strokeWidth={1} />
                           )}
                         </g>
                       );
@@ -776,21 +800,21 @@ export default function DotsAndBoxesGame() {
                       return (
                         <g
                           key={`v-${r}-${c}`}
+                          data-edge={`v-${r}-${c}`}
                           onClick={() => {
                             if (gameMode === 'cpu' && turn === 2) return;
                             executeEdge({ orient: 'v', r, c }, false);
                           }}
-                          className={owner === null ? 'cursor-pointer group' : ''}
+                          className={owner === null ? 'cursor-pointer' : ''}
                         >
-                          {/* Wide transparent hit area */}
                           <rect
-                            x={x1 - 16}
-                            y={y1 + 10}
-                            width={32}
-                            height={cellSpan - 20}
+                            x={x1 - 34}
+                            y={y1 + 4}
+                            width={68}
+                            height={cellSpan - 8}
                             fill="transparent"
+                            pointerEvents="all"
                           />
-                          {/* Base guide track */}
                           <line
                             x1={x1}
                             y1={y1 + 10}
@@ -798,19 +822,19 @@ export default function DotsAndBoxesGame() {
                             y2={y2 - 10}
                             stroke={
                               owner === 1
-                                ? '#10b981'
+                                ? '#315d4e'
                                 : owner === 2
-                                  ? '#8b5cf6'
+                                  ? '#9f4540'
                                   : isHint
-                                    ? '#fbbf24'
-                                    : '#1e293b'
+                                    ? '#b9853f'
+                                    : '#c3b49c'
                             }
-                            strokeWidth={owner !== null ? 8 : isHint ? 6 : 5}
+                            strokeWidth={owner !== null ? 7.5 : isHint ? 5.5 : 4}
                             strokeLinecap="round"
-                            strokeDasharray={owner === null && !isHint ? '4 6' : undefined}
+                            strokeDasharray={owner === null && !isHint ? '5 7' : undefined}
                           />
                           {isLast && (
-                            <circle cx={x1} cy={(y1 + y2) / 2} r={5} fill="#fef08a" />
+                            <circle cx={x1} cy={(y1 + y2) / 2} r={4.5} fill="#c9922e" stroke="#5b4527" strokeWidth={1} />
                           )}
                         </g>
                       );
@@ -827,9 +851,9 @@ export default function DotsAndBoxesGame() {
                           key={`dot-${r}-${c}`}
                           cx={cx}
                           cy={cy}
-                          r={7.5}
-                          fill="#f8fafc"
-                          stroke="#334155"
+                          r={7}
+                          fill="#2b2118"
+                          stroke="#f7f0e2"
                           strokeWidth={2.5}
                           pointerEvents="none"
                         />
@@ -840,125 +864,139 @@ export default function DotsAndBoxesGame() {
               </div>
 
               {hint && (
-                <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  <span className="font-bold">💡 AI戦術ヒント ({formatEdgeLabel(hint.edge)}): </span>
+                <div className="mt-3 border-l-2 border-[#c99555] bg-[#2a211a] px-3 py-2 text-xs leading-relaxed text-[#e8d7bd]">
+                  <span className="font-semibold text-[#dfb06d]">
+                    AIヒント（{formatEdgeLabel(hint.edge)}）: </span>
                   {hint.reason}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Analytics & Scoreboard Column */}
-          <div className="space-y-4 lg:col-span-4">
-            {/* Player Score Cards */}
-            <div className="grid grid-cols-2 gap-3">
+          {/* Side Panels */}
+          <aside className="min-w-0 space-y-3 lg:col-span-4">
+            {/* Score Cards */}
+            <div className="grid grid-cols-2 gap-2.5">
               <div
-                className={`rounded-2xl border p-3.5 ${
+                className="tabletop-stat p-2.5 sm:p-3"
+                style={
                   turn === 1 && !isGameOver
-                    ? 'border-emerald-500/70 bg-emerald-950/30 shadow-lg'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
+                    ? { borderColor: '#315d4e', background: 'rgba(49, 93, 78, 0.14)' }
+                    : undefined
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-400">エメラルド（先手）</span>
-                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#e8d7bd]">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#315d4e] ring-1 ring-[#7fa08e]" />
+                    <span className="truncate">深緑（先手）</span>
+                  </span>
+                  <span className="tabletop-chip shrink-0 px-1.5 py-0.5 text-[9px] font-semibold">
                     P1
                   </span>
                 </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <strong className="text-3xl font-extrabold text-white">{scores.p1}</strong>
-                  <span className="text-xs text-slate-400">ボックス獲得</span>
+                <div className="mt-2 flex items-end justify-between gap-2">
+                  <strong className="text-2xl font-bold leading-none text-[#f4ead8]">
+                    {scores.p1}
+                  </strong>
+                  <span className="tabletop-muted text-[10px]">ボックス</span>
                 </div>
               </div>
 
               <div
-                className={`rounded-2xl border p-3.5 ${
+                className="tabletop-stat p-2.5 sm:p-3"
+                style={
                   turn === 2 && !isGameOver
-                    ? 'border-violet-400/70 bg-violet-950/30 shadow-lg'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
+                    ? { borderColor: '#9f4540', background: 'rgba(159, 69, 64, 0.12)' }
+                    : undefined
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-violet-300">
-                    {gameMode === 'cpu' ? 'バイオレット（CPU）' : 'バイオレット（後手）'}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#e8d7bd]">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#9f4540] ring-1 ring-[#c98d84]" />
+                    <span className="truncate">
+                      {gameMode === 'cpu' ? '朱（CPU）' : '朱（後手）'}
+                    </span>
                   </span>
-                  <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-200">
+                  <span className="tabletop-chip shrink-0 px-1.5 py-0.5 text-[9px] font-semibold">
                     {gameMode === 'cpu' ? difficulty.toUpperCase() : 'P2'}
                   </span>
                 </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <strong className="text-3xl font-extrabold text-white">{scores.p2}</strong>
-                  <span className="text-xs text-slate-400">ボックス獲得</span>
+                <div className="mt-2 flex items-end justify-between gap-2">
+                  <strong className="text-2xl font-bold leading-none text-[#f4ead8]">
+                    {scores.p2}
+                  </strong>
+                  <span className="tabletop-muted text-[10px]">ボックス</span>
                 </div>
               </div>
             </div>
 
-            {/* Live Chain-Length Analyzer */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <h3 className="text-sm font-bold text-white">🔍 リアルタイム盤面・チェーン解析</h3>
-              <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5">
-                  <div className="text-slate-400">即獲得可能な3辺ボックス</div>
-                  <div className="mt-1 text-lg font-extrabold text-amber-300">
-                    {metrics.threeSidedBoxes} 個
+            {/* Board Analytics */}
+            <div className="tabletop-panel p-3.5">
+              <h3 className="tabletop-title text-sm">盤面・チェーン解析</h3>
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <div className="tabletop-stat p-2">
+                  <div className="tabletop-muted text-[10px]">3辺ボックス</div>
+                  <div className="mt-0.5 text-base font-bold text-[#dfb06d]">
+                    {metrics.threeSidedBoxes}
                   </div>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5">
-                  <div className="text-slate-400">安全な辺（リーチ与えず）</div>
-                  <div className="mt-1 text-lg font-extrabold text-emerald-300">
-                    {metrics.safeEdges} 本
+                <div className="tabletop-stat p-2">
+                  <div className="tabletop-muted text-[10px]">安全な辺</div>
+                  <div className="mt-0.5 text-base font-bold text-[#8fb7a3]">
+                    {metrics.safeEdges}
                   </div>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5">
-                  <div className="text-slate-400">2辺済み警戒ボックス</div>
-                  <div className="mt-1 text-lg font-extrabold text-rose-300">
-                    {metrics.twoSidedBoxes} 個
+                <div className="tabletop-stat p-2">
+                  <div className="tabletop-muted text-[10px]">2辺ボックス</div>
+                  <div className="mt-0.5 text-base font-bold text-[#c98d84]">
+                    {metrics.twoSidedBoxes}
                   </div>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5">
-                  <div className="text-slate-400">最小献上チェーン長</div>
-                  <div className="mt-1 text-lg font-extrabold text-sky-300">
-                    {metrics.minSacrificeChain} マス
+                <div className="tabletop-stat p-2">
+                  <div className="tabletop-muted text-[10px]">最小献上</div>
+                  <div className="mt-0.5 text-base font-bold text-[#9db8c9]">
+                    {metrics.minSacrificeChain}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Strategy Guide */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <h3 className="text-sm font-bold text-white">📐 ドット＆ボックスの必勝セオリー</h3>
-              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-slate-300">
+            <div className="tabletop-panel p-3.5">
+              <h3 className="tabletop-title text-sm">陣取りのセオリー</h3>
+              <ul className="tabletop-muted mt-2 space-y-1.5 text-[11px] leading-relaxed">
                 <li>
-                  ・<strong>ボーナスターン</strong>: 4辺目を引いてボックスを完成させたプレイヤーは、そのまま連続でもう1本線を引けます。
+                  <strong className="text-[#dfb06d]">ボーナスターン</strong> — 4辺目を引いてボックスを完成させると、続けてもう1本引けます。
                 </li>
                 <li>
-                  ・<strong>3辺目を引かない鉄則</strong>: すでに2辺が引かれたボックスに3辺目を引くと、相手に4辺目を奪われチェーン（連鎖）で大量失点します。
+                  <strong className="text-[#dfb06d]">3辺目を避ける</strong> — 2辺済みのボックスに3辺目を引くと、相手に4辺目と連鎖を渡します。
                 </li>
                 <li>
-                  ・<strong>ダブルクロス（2マス献上）</strong>: 長いチェーンを取り切る直前、最後の2ボックスだけあえて相手に渡すことで、次の長いチェーンを自分が獲得する高等テクニックです。
+                  <strong className="text-[#dfb06d]">ダブルクロス</strong> — 最後の2ボックスをあえて譲り、次の長いチェーンを奪う高等戦術です。
                 </li>
               </ul>
             </div>
 
             {/* Move Log */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">📜 対局ログ</h3>
-                <span className="text-[11px] text-slate-400">{logs.length} 手</span>
+            <div className="tabletop-panel p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="tabletop-title text-sm">対局ログ</h3>
+                <span className="tabletop-muted text-[10px]">{logs.length} 手</span>
               </div>
-              <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1 text-xs">
+              <div className="mt-2 max-h-44 space-y-0 overflow-y-auto pr-1 text-[11px]">
                 {logs.length === 0 ? (
-                  <p className="py-4 text-center text-slate-500">
-                    ドットとドットの間の破線をタップして最初の線を引いてください。
+                  <p className="tabletop-muted py-4 text-center leading-relaxed">
+                    ドット間の破線を選んで最初の線を引いてください。
                   </p>
                 ) : (
                   logs.map((log, i) => (
                     <div
                       key={`${i}-${log}`}
-                      className="rounded-lg border border-slate-800/90 bg-slate-950/60 px-2.5 py-1.5 text-slate-300"
+                      data-log-entry
+                      className="tabletop-divider border-b py-1.5 leading-snug text-[#d8c9b2] last:border-b-0"
                     >
-                      <span className="mr-1.5 font-mono text-[10px] text-slate-500">
-                        #{logs.length - i}
+                      <span className="mr-1.5 font-mono text-[10px] text-[#8f7d66]">
+                        {String(logs.length - i).padStart(2, '0')}
                       </span>
                       {log}
                     </div>
@@ -966,7 +1004,7 @@ export default function DotsAndBoxesGame() {
                 )}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

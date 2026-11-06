@@ -536,7 +536,7 @@ export default function ReversiGame() {
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#060913');
+    scene.background = new THREE.Color('#17120f');
 
     const camera = new THREE.PerspectiveCamera(
       40,
@@ -564,7 +564,7 @@ export default function ReversiGame() {
     mainLight.shadow.mapSize.height = 1024;
     scene.add(mainLight);
 
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+    const rimLight = new THREE.DirectionalLight(0xd8b078, 0.4);
     rimLight.position.set(-7, 6, -6);
     scene.add(rimLight);
 
@@ -628,7 +628,7 @@ export default function ReversiGame() {
     const discGroups: THREE.Group[][] = Array.from({ length: 8 }, () => []);
     const lastMarkerMesh = new THREE.Mesh(
       new THREE.RingGeometry(0.11, 0.19, 24),
-      new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color: 0xdfb06d, side: THREE.DoubleSide })
     );
     lastMarkerMesh.rotation.x = -Math.PI / 2;
     lastMarkerMesh.visible = false;
@@ -654,7 +654,7 @@ export default function ReversiGame() {
         const z = r - 3.5;
 
         const tileMat = new THREE.MeshBasicMaterial({
-          color: 0x34d399,
+          color: 0xe6c48f,
           transparent: true,
           opacity: 0,
           side: THREE.DoubleSide,
@@ -667,7 +667,7 @@ export default function ReversiGame() {
         cellTiles.push(tile);
 
         const ringMat = new THREE.MeshBasicMaterial({
-          color: 0x6ee7b7,
+          color: 0xe6c48f,
           transparent: true,
           opacity: 0.75,
           side: THREE.DoubleSide,
@@ -811,9 +811,9 @@ export default function ReversiGame() {
             ring.visible = true;
             const pulse = 0.88 + Math.sin(now * 0.006) * 0.14;
             ring.scale.set(pulse, pulse, 1);
-            ringMat.color.setHex(isHint ? 0xfbbf24 : 0x34d399);
-            tileMat.color.setHex(isHint ? 0xfbbf24 : 0x34d399);
-            tileMat.opacity = isHovered ? 0.34 : isHint ? 0.25 : 0.08;
+            ringMat.color.setHex(isHint ? 0xf3d9a3 : 0xe6c48f);
+            tileMat.color.setHex(isHint ? 0xf3d9a3 : 0xe6c48f);
+            tileMat.opacity = isHovered ? 0.3 : isHint ? 0.24 : 0.08;
           } else {
             ring.visible = false;
             tileMat.opacity = 0;
@@ -900,36 +900,35 @@ export default function ReversiGame() {
   }, [counts.black, counts.white, gameOver]);
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 select-none">
-      {/* Top Header */}
-      <header className="border-b border-emerald-500/20 bg-[#09101d]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+    <div className="tabletop-page min-h-screen select-none overflow-x-hidden">
+      {/* Header */}
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-2 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-200"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-sm"
             >
-              ← 無料ゲーム一覧へ
+              ← ゲーム一覧
             </Link>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-emerald-400">
-                CLASSIC BOARD / 8×8 REVERSI
-              </p>
-              <h2 className="text-sm font-black sm:text-lg">
-                リバーシ（Reversi 3D / 2D）
+            <div className="min-w-0">
+              <p className="tabletop-kicker truncate">Classic Board · 8×8 Reversi</p>
+              <h2 className="tabletop-title truncate text-base sm:text-xl">
+                リバーシ
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-emerald-500/30 bg-black/40 p-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 rounded-md border border-[#4d3d2d] bg-black/20 p-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode('3d')}
-                className={`rounded-md px-2.5 py-1 text-xs font-black transition ${
+                aria-pressed={viewMode === '3d'}
+                className={`inline-flex min-h-11 items-center rounded px-3 text-xs font-semibold transition ${
                   viewMode === '3d'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-[#c99555] text-[#1b120b]'
+                    : 'text-[#b9a88f] hover:text-[#f4ead8]'
                 }`}
               >
                 3D盤面
@@ -937,10 +936,11 @@ export default function ReversiGame() {
               <button
                 type="button"
                 onClick={() => setViewMode('2d')}
-                className={`rounded-md px-2.5 py-1 text-xs font-black transition ${
+                aria-pressed={viewMode === '2d'}
+                className={`inline-flex min-h-11 items-center rounded px-3 text-xs font-semibold transition ${
                   viewMode === '2d'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-[#c99555] text-[#1b120b]'
+                    : 'text-[#b9a88f] hover:text-[#f4ead8]'
                 }`}
               >
                 2D盤面
@@ -949,112 +949,130 @@ export default function ReversiGame() {
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-emerald-400/50"
+              aria-pressed={soundOn}
+              className={`tabletop-chip inline-flex min-h-11 items-center px-3 text-xs font-semibold ${
+                soundOn ? 'tabletop-chip-active' : ''
+              }`}
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              {soundOn ? '効果音 ON' : '効果音 OFF'}
             </button>
             <ThemeToggleButton />
           </div>
         </div>
       </header>
 
-      {/* Main Layout */}
-      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Left: Board Canvas / 2D Grid */}
-        <div className="flex flex-col gap-3">
-          {/* Score & Territory Bar */}
-          <div className="rounded-2xl border border-emerald-500/20 bg-[#0b1322]/90 p-3 shadow-lg">
+      <main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-2 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Left: Score + Board */}
+        <div className="flex min-w-0 flex-col gap-3">
+          {/* Score & Territory */}
+          <section className="tabletop-panel p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-500 bg-slate-950 text-xs font-black text-white shadow">
+              <div className="tabletop-stat flex min-w-0 items-center gap-2.5 px-2.5 py-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#7d7468] bg-gradient-to-br from-[#45413a] to-[#0d0c0a] text-[10px] font-black text-[#f4ead8]">
                   ●
                 </span>
-                <div>
-                  <p className="text-xs font-bold text-slate-300">
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-semibold text-[#d8cbb8]">
                     黒（先手）{mode === 'cpu' ? (humanSide === 1 ? '・あなた' : '・CPU') : '・P1'}
                   </p>
-                  <p className="font-mono text-xl font-black text-white">{counts.black} 枚</p>
+                  <p className="font-mono text-lg font-bold leading-tight text-[#f4ead8]">
+                    {counts.black}
+                    <span className="ml-1 text-[11px] font-normal text-[#b9a88f]">枚</span>
+                  </p>
                 </div>
               </div>
 
-              <div className="rounded-full border border-emerald-400/30 bg-emerald-950/50 px-3.5 py-1 text-center">
-                {gameOver ? (
-                  <span className="text-xs font-black text-amber-300">{winnerText}</span>
-                ) : isCpuTurn ? (
-                  <span className="text-xs font-black text-emerald-300">
-                    CPU思考中...（{turn === 1 ? '黒' : '白'}番）
-                  </span>
-                ) : (
-                  <span className="text-xs font-black text-emerald-200">
-                    現在の手番: {turn === 1 ? '● 黒（先手）' : '○ 白（後手）'}（合法手 {legalMoves.length} 箇所）
-                  </span>
-                )}
+              <div className="order-last w-full sm:order-none sm:w-auto">
+                <div
+                  className={`mx-auto w-fit rounded-md border px-3 py-1.5 text-center text-xs font-semibold ${
+                    gameOver
+                      ? 'border-[#8a5b36] bg-[#2c2118] text-[#e6c48f]'
+                      : isCpuTurn
+                        ? 'border-[#8a6a3f] bg-[#2a211a] text-[#dfb06d]'
+                        : 'border-[#4f6b57] bg-[#223129] text-[#d6e5d8]'
+                  }`}
+                >
+                  {gameOver ? (
+                    winnerText
+                  ) : isCpuTurn ? (
+                    <>CPU 思考中（{turn === 1 ? '黒' : '白'}番）</>
+                  ) : (
+                    <>
+                      手番: {turn === 1 ? '● 黒（先手）' : '○ 白（後手）'}
+                      <span className="ml-1.5 font-normal text-[#b9c9bd]">
+                        合法手 {legalMoves.length}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2.5 text-right">
-                <div>
-                  <p className="text-xs font-bold text-slate-300">
+              <div className="tabletop-stat flex min-w-0 items-center gap-2.5 px-2.5 py-2">
+                <div className="min-w-0 text-right">
+                  <p className="truncate text-[11px] font-semibold text-[#d8cbb8]">
                     白（後手）{mode === 'cpu' ? (humanSide === 2 ? '・あなた' : '・CPU') : '・P2'}
                   </p>
-                  <p className="font-mono text-xl font-black text-slate-100">{counts.white} 枚</p>
+                  <p className="font-mono text-lg font-bold leading-tight text-[#f4ead8]">
+                    {counts.white}
+                    <span className="ml-1 text-[11px] font-normal text-[#b9a88f]">枚</span>
+                  </p>
                 </div>
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-xs font-black text-slate-900 shadow">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#e5dccb] bg-gradient-to-br from-[#fffaf0] to-[#d8c8ad] text-[10px] font-black text-[#2a241d]">
                   ○
                 </span>
               </div>
             </div>
 
-            {/* Territory Advantage Bar */}
-            <div className="mt-2.5">
-              <div className="flex justify-between text-[10px] font-bold text-slate-400">
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] font-medium text-[#b9a88f]">
                 <span>黒 {blackRatio}%</span>
-                <span>残り空きマス: {counts.empty}</span>
+                <span>空きマス {counts.empty}</span>
                 <span>白 {100 - blackRatio}%</span>
               </div>
-              <div className="mt-1 flex h-2.5 overflow-hidden rounded-full border border-white/10 bg-slate-200">
+              <div className="mt-1.5 flex h-2 overflow-hidden rounded-full border border-[#5a4a37] bg-[#e9ddc8]">
                 <div
-                  className="bg-slate-950 transition-all duration-300"
+                  className="bg-[#1b1712] transition-all duration-300"
                   style={{ width: `${blackRatio}%` }}
                 />
               </div>
             </div>
 
             {passNotice && (
-              <div className="mt-2 rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-center text-xs font-bold text-amber-200">
+              <div className="mt-2 rounded-md border border-[#8a6a3f] bg-[#2a211a] px-3 py-2 text-center text-xs font-medium text-[#e6c48f]">
                 {passNotice}
               </div>
             )}
-          </div>
+          </section>
 
-          {/* 3D or 2D Board Area */}
+          {/* 3D or 2D Board */}
           {viewMode === '3d' ? (
-            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-[#060913] shadow-2xl">
+            <div className="tabletop-board-frame relative overflow-hidden">
               <div
                 ref={mountRef}
-                className="aspect-square w-full max-h-[560px] cursor-grab active:cursor-grabbing touch-none"
+                className="aspect-square w-full max-h-[600px] cursor-grab touch-none active:cursor-grabbing"
                 aria-label="リバーシ 3Dボード"
               />
-              {/* Camera Controls Overlay */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 p-3">
-                <span className="rounded-full border border-emerald-400/30 bg-black/65 px-2.5 py-1 text-[11px] font-bold text-emerald-200 backdrop-blur">
-                  ドラッグで視点回転 / マスをタップして石を配置
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-2 p-2 sm:p-3">
+                <span className="tabletop-panel-soft hidden px-2.5 py-1.5 text-[11px] font-medium text-[#b9a88f] sm:inline-flex">
+                  ドラッグで視点回転 / マスをタップ
                 </span>
-                <div className="pointer-events-auto flex gap-1">
+                <div className="pointer-events-auto flex flex-wrap gap-1">
                   {(
                     [
                       ['angled', '斜め俯瞰'],
-                      ['top', '真上視点'],
-                      ['low', '立体ローアングル'],
+                      ['top', '真上'],
+                      ['low', 'ローアングル'],
                     ] as const
                   ).map(([presetKey, label]) => (
                     <button
                       key={presetKey}
                       type="button"
                       onClick={() => applyCameraPreset(presetKey)}
-                      className={`rounded-lg border px-2 py-1 text-[11px] font-bold transition ${
+                      aria-pressed={cameraPreset === presetKey}
+                      className={`inline-flex min-h-10 items-center rounded-md border px-2.5 text-[11px] font-semibold transition ${
                         cameraPreset === presetKey
-                          ? 'border-emerald-400 bg-emerald-500/25 text-emerald-100'
-                          : 'border-white/15 bg-black/65 text-slate-300 hover:text-white'
+                          ? 'border-[#c99555] bg-[#3a2a1c] text-[#dfb06d]'
+                          : 'border-[#4d3d2d] bg-[#17120f]/95 text-[#b9a88f] hover:border-[#6b543d] hover:text-[#f4ead8]'
                       }`}
                     >
                       {label}
@@ -1063,32 +1081,29 @@ export default function ReversiGame() {
                 </div>
               </div>
 
-              {/* Hovered Cell Flip Preview Badge */}
               {hoveredMove && (
-                <div className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-emerald-400/40 bg-black/75 px-3 py-1.5 text-xs font-bold text-emerald-200 backdrop-blur">
+                <div className="pointer-events-none absolute bottom-2 left-2 rounded-md border border-[#4d3d2d] bg-[#17120f]/95 px-3 py-1.5 text-[11px] font-medium text-[#d8cbb8] sm:bottom-3 sm:left-3">
                   座標 {COL_LABELS[hoveredMove.c]}
-                  {ROW_LABELS[hoveredMove.r]}：ここへ置くと{' '}
-                  <span className="font-mono text-amber-300">{hoveredMove.flips.length}枚</span> 反転します
+                  {ROW_LABELS[hoveredMove.r]}：{' '}
+                  <span className="font-mono text-[#e6c48f]">{hoveredMove.flips.length}枚</span>{' '}
+                  反転
                 </div>
               )}
             </div>
           ) : (
-            <div className="mx-auto w-full max-w-[540px] rounded-2xl border border-amber-900/50 bg-[#2b180c] p-3 shadow-2xl sm:p-4">
-              {/* Column Labels */}
-              <div className="mb-1 grid grid-cols-8 pl-5 text-center font-mono text-[11px] font-bold text-amber-200/80">
+            <div className="tabletop-board-frame mx-auto w-full max-w-[560px] p-1 sm:p-3">
+              <div className="mb-1 grid grid-cols-8 text-center font-mono text-[11px] font-bold text-[#d8c6a5] sm:pl-5">
                 {COL_LABELS.map((lbl) => (
                   <span key={lbl}>{lbl}</span>
                 ))}
               </div>
               <div className="flex">
-                {/* Row Labels */}
-                <div className="mr-1.5 flex flex-col justify-around font-mono text-[11px] font-bold text-amber-200/80">
+                <div className="mr-1.5 hidden flex-col justify-around font-mono text-[11px] font-bold text-[#d8c6a5] sm:flex">
                   {ROW_LABELS.map((lbl) => (
                     <span key={lbl}>{lbl}</span>
                   ))}
                 </div>
-                {/* 8x8 Felt Grid */}
-                <div className="grid flex-1 grid-cols-8 gap-1 rounded-xl border-2 border-[#1b0f07] bg-[#06381e] p-1.5">
+                <div className="grid min-w-0 flex-1 grid-cols-8 gap-px rounded-sm border border-[#1b0f07] bg-[#06381e] p-0.5 sm:gap-1 sm:p-1.5">
                   {board.map((row, r) =>
                     row.map((cell, c) => {
                       const key = `${r}-${c}`;
@@ -1106,33 +1121,33 @@ export default function ReversiGame() {
                           onMouseLeave={() => setHoveredCell(null)}
                           disabled={!legal}
                           aria-label={`マス ${COL_LABELS[c]}${ROW_LABELS[r]}`}
-                          className={`relative flex aspect-square items-center justify-center rounded-md transition ${
+                          className={`relative flex min-w-0 aspect-square items-center justify-center rounded-[3px] transition sm:rounded-md ${
                             legal
                               ? isHint
-                                ? 'bg-amber-500/30 ring-2 ring-amber-300'
-                                : 'bg-[#0d6e3d] hover:bg-emerald-500/35'
+                                ? 'bg-[#c99555]/35 ring-1 ring-[#e0bb82]'
+                                : 'bg-[#0d6e3d] hover:bg-[#12814a]'
                               : 'bg-[#0b5c33]'
                           }`}
                         >
                           {cell !== 0 && (
                             <span
-                              className={`flex h-[82%] w-[82%] items-center justify-center rounded-full shadow-md transition-transform duration-300 ${
+                              className={`flex h-[82%] w-[82%] items-center justify-center rounded-full shadow-sm transition-transform duration-300 ${
                                 cell === 1
-                                  ? 'border border-slate-600 bg-gradient-to-br from-slate-700 via-slate-900 to-black'
-                                  : 'border border-slate-300 bg-gradient-to-br from-white via-slate-100 to-slate-300'
-                              } ${willFlip ? 'ring-2 ring-amber-400 scale-95' : ''}`}
+                                  ? 'border border-[#5a554d] bg-gradient-to-br from-[#45413a] via-[#201d19] to-[#080706]'
+                                  : 'border border-[#e5dccb] bg-gradient-to-br from-[#fffaf0] via-[#f0e6d5] to-[#cfc0a6]'
+                              } ${willFlip ? 'scale-95 ring-2 ring-[#e6c48f]' : ''}`}
                             >
                               {isLast && (
-                                <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow" />
+                                <span className="h-2 w-2 rounded-full bg-[#dfb06d] sm:h-2.5 sm:w-2.5" />
                               )}
                             </span>
                           )}
                           {cell === 0 && legal && (
                             <span
-                              className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black ${
+                              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold sm:h-6 sm:w-6 sm:text-[11px] ${
                                 isHint
-                                  ? 'bg-amber-400 text-slate-950'
-                                  : 'border border-emerald-300/70 bg-emerald-400/25 text-emerald-100'
+                                  ? 'bg-[#dfb06d] text-[#1b120b]'
+                                  : 'border border-[#dfb06d]/70 bg-[#2f5d4e] text-[#f4ead8]'
                               }`}
                             >
                               {showMoveCount ? `+${legal.flips.length}` : '•'}
@@ -1148,80 +1163,77 @@ export default function ReversiGame() {
           )}
         </div>
 
-        {/* Right: Sidebar Controls */}
-        <aside className="flex flex-col gap-3">
-          {/* Action Buttons */}
-          <div className="rounded-2xl border border-emerald-500/20 bg-[#0b1322]/90 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-emerald-400">
-              MATCH ACTIONS
-            </p>
+        {/* Right: Sidebar */}
+        <aside className="flex min-w-0 flex-col gap-3">
+          {/* Actions */}
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Match Actions</p>
             <div className="mt-2.5 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={history.length === 0 || isCpuTurn}
-                className="rounded-xl border border-white/15 bg-white/[0.05] px-2 py-2.5 text-xs font-bold text-slate-100 transition hover:border-emerald-400/50 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs disabled:cursor-not-allowed disabled:opacity-45"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
                 onClick={handleHint}
                 disabled={gameOver || isCpuTurn || legalMoves.length === 0}
-                className="rounded-xl border border-amber-400/35 bg-amber-500/15 px-2 py-2.5 text-xs font-bold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs text-[#dfb06d] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                💡 AIヒント
+                AIヒント
               </button>
               <button
                 type="button"
                 onClick={() => resetGame()}
-                className="rounded-xl border border-emerald-400/35 bg-emerald-500/15 px-2 py-2.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-2 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
             {hintMove && (
-              <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-200">
-                AI推奨手: 座標 <span className="font-mono">{COL_LABELS[hintMove.c]}{ROW_LABELS[hintMove.r]}</span>（{hintMove.flips.length}枚反転）
+              <p className="tabletop-panel-soft mt-2 px-2.5 py-1.5 text-xs font-medium text-[#e6c48f]">
+                AI推奨手: 座標{' '}
+                <span className="font-mono">
+                  {COL_LABELS[hintMove.c]}
+                  {ROW_LABELS[hintMove.r]}
+                </span>
+                （{hintMove.flips.length}枚反転）
               </p>
             )}
           </div>
 
-          {/* Mode & Difficulty Config */}
-          <div className="rounded-2xl border border-white/10 bg-[#0b1322]/90 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-emerald-400">
-              GAME MODE / 対戦モード
-            </p>
+          {/* Mode & Difficulty */}
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Game Mode / 対戦設定</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => resetGame('cpu', difficulty, humanSide)}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                  mode === 'cpu'
-                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100'
-                    : 'border-white/10 bg-white/[0.04] text-slate-300'
+                aria-pressed={mode === 'cpu'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'cpu' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                🤖 CPU対戦
+                CPU対戦
               </button>
               <button
                 type="button"
                 onClick={() => resetGame('pvp', difficulty, humanSide)}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                  mode === 'pvp'
-                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100'
-                    : 'border-white/10 bg-white/[0.04] text-slate-300'
+                aria-pressed={mode === 'pvp'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'pvp' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                👥 1台で2人対戦
+                1台で2人対戦
               </button>
             </div>
 
             {mode === 'cpu' && (
               <>
-                <p className="mt-3 text-[10px] font-black tracking-[0.18em] text-slate-400">
-                  CPU強さ（AIレベル）
-                </p>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">CPUの強さ</p>
                 <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   {(
                     [
@@ -1234,10 +1246,9 @@ export default function ReversiGame() {
                       key={lv}
                       type="button"
                       onClick={() => resetGame('cpu', lv, humanSide)}
-                      className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                        difficulty === lv
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                          : 'border-white/10 bg-white/[0.04] text-slate-300'
+                      aria-pressed={difficulty === lv}
+                      className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1.5 text-xs font-semibold ${
+                        difficulty === lv ? 'tabletop-chip-active' : ''
                       }`}
                     >
                       {label}
@@ -1245,17 +1256,14 @@ export default function ReversiGame() {
                   ))}
                 </div>
 
-                <p className="mt-3 text-[10px] font-black tracking-[0.18em] text-slate-400">
-                  あなたの手番（先手・後手）
-                </p>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">あなたの手番</p>
                 <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={() => resetGame('cpu', difficulty, 1)}
-                    className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                      humanSide === 1
-                        ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100'
-                        : 'border-white/10 bg-white/[0.04] text-slate-300'
+                    aria-pressed={humanSide === 1}
+                    className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                      humanSide === 1 ? 'tabletop-chip-active' : ''
                     }`}
                   >
                     ● 黒（先手）
@@ -1263,10 +1271,9 @@ export default function ReversiGame() {
                   <button
                     type="button"
                     onClick={() => resetGame('cpu', difficulty, 2)}
-                    className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                      humanSide === 2
-                        ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100'
-                        : 'border-white/10 bg-white/[0.04] text-slate-300'
+                    aria-pressed={humanSide === 2}
+                    className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                      humanSide === 2 ? 'tabletop-chip-active' : ''
                     }`}
                   >
                     ○ 白（後手）
@@ -1275,15 +1282,14 @@ export default function ReversiGame() {
               </>
             )}
 
-            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5">
-              <span className="text-xs font-bold text-slate-300">反転枚数のガイド表示</span>
+            <div className="mt-3 flex min-h-11 items-center justify-between border-t border-[#4d3d2d] pt-2.5">
+              <span className="text-xs font-medium text-[#d8cbb8]">反転枚数のガイド</span>
               <button
                 type="button"
                 onClick={() => setShowMoveCount((v) => !v)}
-                className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${
-                  showMoveCount
-                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
-                    : 'border-white/15 bg-white/[0.04] text-slate-400'
+                aria-pressed={showMoveCount}
+                className={`tabletop-chip inline-flex min-h-11 items-center px-3 text-xs font-semibold ${
+                  showMoveCount ? 'tabletop-chip-active' : ''
                 }`}
               >
                 {showMoveCount ? '表示 ON' : '表示 OFF'}
@@ -1291,28 +1297,26 @@ export default function ReversiGame() {
             </div>
           </div>
 
-          {/* Strategy Tips Card */}
-          <div className="rounded-2xl border border-white/10 bg-[#0b1322]/90 p-3.5 text-xs leading-relaxed text-slate-300">
-            <p className="text-[10px] font-black tracking-[0.18em] text-emerald-400">
-              REVERSI STRATEGY GUIDE
-            </p>
-            <ul className="mt-2 space-y-1.5 text-[11px] text-slate-400">
+          {/* Strategy */}
+          <div className="tabletop-panel-soft p-3.5 text-xs leading-relaxed">
+            <p className="tabletop-kicker">Reversi Strategy</p>
+            <ul className="mt-2 space-y-2 text-[11px] text-[#b9a88f]">
               <li>
-                <strong className="text-emerald-200">1. 四隅（角）の確保が最重要：</strong>
-                角（A1, H1, A8, H8）に置いた石は絶対に反転されない確定石になります。
+                <strong className="font-semibold text-[#dfb06d]">1. 四隅（角）の確保：</strong>
+                角（A1, H1, A8, H8）の石は絶対に反転されない確定石になります。
               </li>
               <li>
-                <strong className="text-emerald-200">2. 序盤は取りすぎない：</strong>
-                序盤に多く石を裏返すと相手の着手可能数が増え、不利になりやすくなります。
+                <strong className="font-semibold text-[#dfb06d]">2. 序盤は取りすぎない：</strong>
+                序盤に多く裏返すと相手の着手可能数が増え、不利になりやすくなります。
               </li>
               <li>
-                <strong className="text-emerald-200">3. 角の隣（X打ち・C打ち）に注意：</strong>
+                <strong className="font-semibold text-[#dfb06d]">3. 角の隣に注意：</strong>
                 空いている角の斜め内側（B2, G2, B7, G7）に打つと相手に角を取られやすくなります。
               </li>
             </ul>
           </div>
         </aside>
-      </div>
+      </main>
     </div>
   );
 }

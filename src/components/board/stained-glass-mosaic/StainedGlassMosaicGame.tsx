@@ -874,16 +874,14 @@ function StainedGlassTileSvg({
       ? 'w-7 h-7'
       : size === 'lg'
         ? 'w-11 h-11 sm:w-12 sm:h-12'
-        : 'w-9 h-9 sm:w-10 sm:h-10';
+        : 'w-11 h-11 sm:w-10 sm:h-10';
 
   return (
     <div
       className={`relative inline-flex items-center justify-center rounded-lg select-none transition-transform duration-150 ${dims} ${
         ghost ? 'opacity-30 saturate-50' : 'shadow-md'
       } ${
-        highlighted
-          ? 'ring-2 ring-amber-300 scale-105 shadow-[0_0_15px_rgba(251,191,36,0.65)]'
-          : ''
+        highlighted ? 'scale-105 ring-2 ring-[#c99555]' : ''
       } ${className}`}
       title={meta.name}
     >
@@ -1580,33 +1578,27 @@ export default function StainedGlassMosaicGame() {
   }, [rowEvaluations, hoveredWorkbenchRow]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#070914] via-[#0c1224] to-[#090d1a] text-slate-100 pb-16">
-      {/* Top Cathedral Stained-Glass Accent Ribbon */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-amber-400 to-purple-500 opacity-90" />
-
-      {/* Header Bar */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-[#070b18]/90 border-b border-amber-500/20">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+    <div className="tabletop-page pb-16">
+      <header className="tabletop-header sticky top-0 z-30">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/games"
-              className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/60 text-xs font-medium text-slate-200 transition"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-[13px]"
             >
               ← ゲーム一覧
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold tracking-wider uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                  Stained Glass Mosaic
-                </span>
-                <span className="text-xs text-slate-400 hidden sm:inline">
-                  第{round}ラウンド｜袋残り {bag.length}枚 / 廃棄塔{' '}
-                  {discardTower.length}枚
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tabletop-kicker">Stained Glass Mosaic</span>
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
+                  第{round}ラウンド・袋 {bag.length} / 廃棄塔 {discardTower.length}
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-amber-100">
-                硝子工房のモザイク師
-              </h2>
+              <h2 className="tabletop-title truncate text-lg sm:text-xl">硝子工房のモザイク師</h2>
+              <p className="tabletop-muted hidden text-[13px] sm:block">
+                色硝子をドラフトして5×5の大聖堂ステンドグラスを完成させる
+              </p>
             </div>
           </div>
 
@@ -1614,10 +1606,8 @@ export default function StainedGlassMosaicGame() {
             <button
               type="button"
               onClick={handleToggleBgm}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                bgmEnabled
-                  ? 'bg-amber-500/25 border-amber-400/70 text-amber-200'
-                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700/70'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                bgmEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🎵 BGM {bgmEnabled ? 'ON' : 'OFF'}
@@ -1626,10 +1616,8 @@ export default function StainedGlassMosaicGame() {
             <button
               type="button"
               onClick={handleToggleSfx}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                sfxEnabled
-                  ? 'bg-sky-500/25 border-sky-400/70 text-sky-200'
-                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700/70'
+              className={`inline-flex min-h-11 items-center px-3 text-xs font-semibold transition ${
+                sfxEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
               🔊 効果音 {sfxEnabled ? 'ON' : 'OFF'}
@@ -1639,7 +1627,7 @@ export default function StainedGlassMosaicGame() {
               type="button"
               onClick={handleUndo}
               disabled={undoStack.length === 0}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border bg-slate-800/80 border-slate-600/70 text-slate-200 hover:bg-slate-700/80 disabled:opacity-40 disabled:pointer-events-none transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs disabled:pointer-events-none disabled:opacity-40"
             >
               ↩ 1手戻す
             </button>
@@ -1648,15 +1636,15 @@ export default function StainedGlassMosaicGame() {
               type="button"
               onClick={handleRequestHint}
               disabled={!isHumanTurn}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border bg-emerald-500/20 border-emerald-400/60 text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-40 disabled:pointer-events-none transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs text-[#dfb06d] disabled:pointer-events-none disabled:opacity-40"
             >
-              💡 AI推奨手ヒント
+              💡 ヒント
             </button>
 
             <button
               type="button"
               onClick={() => setShowRuleModal(true)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border bg-purple-500/20 border-purple-400/60 text-purple-200 hover:bg-purple-500/30 transition"
+              className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs"
             >
               📖 遊び方・得点表
             </button>
@@ -1667,21 +1655,17 @@ export default function StainedGlassMosaicGame() {
       </header>
 
       {/* Main Content Container */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-5">
+      <div className="mx-auto max-w-7xl space-y-5 px-3 pt-4 sm:px-6">
         {/* Match Mode & Setup Bar */}
-        <section className="rounded-2xl bg-slate-900/80 border border-amber-500/25 p-3.5 sm:p-4 shadow-xl">
+        <section className="tabletop-panel p-3.5 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-300 mr-1">
-                対局モード設定：
-              </span>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="mr-1 text-[11px] font-semibold text-[#b9a88f]">対局設定</span>
               <button
                 type="button"
                 onClick={() => startNewGame('cpu', playerCount, leadAiPersona)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                  gameMode === 'cpu'
-                    ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-sm'
-                    : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-800'
+                className={`inline-flex min-h-11 items-center px-3 text-[11px] font-bold transition sm:text-xs ${
+                  gameMode === 'cpu' ? 'tabletop-chip tabletop-chip-active border' : 'tabletop-chip'
                 }`}
               >
                 🤖 CPU対戦（2〜4人）
@@ -1689,36 +1673,34 @@ export default function StainedGlassMosaicGame() {
               <button
                 type="button"
                 onClick={() => startNewGame('pvp', 2, leadAiPersona)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                  gameMode === 'pvp'
-                    ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-sm'
-                    : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-800'
+                className={`inline-flex min-h-11 items-center px-3 text-[11px] font-bold transition sm:text-xs ${
+                  gameMode === 'pvp' ? 'tabletop-chip tabletop-chip-active border' : 'tabletop-chip'
                 }`}
               >
-                👥 1台で2人対戦（パス＆プレイ）
+                👥 1台で2人対戦
               </button>
 
               {gameMode === 'cpu' && (
                 <>
-                  <div className="h-4 w-px bg-slate-700 mx-1 hidden sm:block" />
-                  <span className="text-xs text-slate-300">人数:</span>
+                  <div className="mx-1 hidden h-5 w-px bg-[#4d3d2d] sm:block" />
+                  <span className="text-[11px] text-[#b9a88f]">人数</span>
                   {[2, 3, 4].map((cnt) => (
                     <button
                       key={cnt}
                       type="button"
                       onClick={() => startNewGame('cpu', cnt, leadAiPersona)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition ${
+                      className={`inline-flex min-h-11 items-center px-2.5 text-[11px] font-semibold transition ${
                         playerCount === cnt
-                          ? 'bg-sky-500/25 border-sky-400 text-sky-200'
-                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                          ? 'tabletop-chip tabletop-chip-active border'
+                          : 'tabletop-chip'
                       }`}
                     >
                       {cnt}人（窯{getKilnCount(cnt)}基）
                     </button>
                   ))}
 
-                  <div className="h-4 w-px bg-slate-700 mx-1 hidden sm:block" />
-                  <span className="text-xs text-slate-300">AI思考:</span>
+                  <div className="mx-1 hidden h-5 w-px bg-[#4d3d2d] sm:block" />
+                  <span className="text-[11px] text-[#b9a88f]">AI思考</span>
                   {(['chain', 'cut', 'bonus'] as AiPersona[]).map((persona) => (
                     <button
                       key={persona}
@@ -1726,10 +1708,10 @@ export default function StainedGlassMosaicGame() {
                       onClick={() =>
                         startNewGame('cpu', playerCount, persona)
                       }
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition ${
+                      className={`inline-flex min-h-11 items-center px-2.5 text-[11px] font-semibold transition ${
                         leadAiPersona === persona
-                          ? 'bg-purple-500/25 border-purple-400 text-purple-200'
-                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                          ? 'tabletop-chip tabletop-chip-active border'
+                          : 'tabletop-chip'
                       }`}
                     >
                       {getPersonaLabel(persona)}
@@ -1739,14 +1721,14 @@ export default function StainedGlassMosaicGame() {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {gameOver && (
                 <button
                   type="button"
                   onClick={() => setShowResultModal(true)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-400 transition shadow"
+                  className="tabletop-button-primary inline-flex min-h-11 items-center px-3 text-xs"
                 >
-                  🏆 最終結果内訳を表示
+                  🏆 最終結果
                 </button>
               )}
               <button
@@ -1754,43 +1736,43 @@ export default function StainedGlassMosaicGame() {
                 onClick={() =>
                   startNewGame(gameMode, playerCount, leadAiPersona)
                 }
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/20 border border-rose-400/60 text-rose-200 hover:bg-rose-500/30 transition"
+                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#e3b6ad]"
               >
-                🔄 新規対局リセット
+                ↻ 新規対局
               </button>
             </div>
           </div>
         </section>
 
         {/* Active Turn Banner & Step Guidance */}
-        <section className="rounded-2xl bg-gradient-to-r from-slate-900/95 via-indigo-950/80 to-slate-900/95 border border-indigo-400/30 p-3.5 sm:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <section className="tabletop-panel flex flex-col items-start justify-between gap-3 p-3.5 sm:p-4 md:flex-row md:items-center">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-slate-950">
+              <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 items-center px-2.5 text-[11px] font-bold">
                 第1フェーズ：硝子窯からの採取
               </span>
-              <span className="text-sm sm:text-base font-bold text-white">
+              <span className="text-sm font-bold text-[#f4ead8] sm:text-base">
                 現在の手番：{currentPlayer?.name}
               </span>
               {currentPlayer?.isAi && !gameOver && (
-                <span className="text-xs text-sky-300 animate-pulse">
-                  （AIが最適な硝子配置を計算中...）
+                <span className="text-[11px] text-[#b9a88f]">
+                  AIが最適な硝子配置を計算中…
                 </span>
               )}
             </div>
-            <p className="text-xs sm:text-sm text-slate-300">
+            <p className="text-[13px] leading-relaxed text-[#c9b79d]">
               {!selectedDraft
                 ? '① まず「硝子窯（キルン）」または「中庭ストック」の色硝子ピースをクリックして選択してください。'
-                : `② 「${GLASS_MAP[selectedDraft.color].name}」×${selectedTileCount}枚を選択中！下の「準備作業台（1〜5段）」をクリックして配置してください。`}
+                : `② 「${GLASS_MAP[selectedDraft.color].name}」×${selectedTileCount}枚を選択中。下の「準備作業台（1〜5段）」をクリックして配置してください。`}
             </p>
           </div>
 
           {/* Live Placement Score Preview Pill */}
           {selectedDraft && (
-            <div className="w-full md:w-auto rounded-xl bg-slate-950/90 border border-amber-400/50 px-3.5 py-2 text-xs space-y-1">
+            <div className="tabletop-panel-soft w-full space-y-1 p-3 text-xs md:w-auto">
               <div className="flex items-center justify-between gap-3">
-                <span className="font-bold text-amber-300">
-                  ✨ 配置時の即時獲得点＆減点プレビュー
+                <span className="font-bold text-[#dfb06d]">
+                  ✨ 配置時の獲得点・減点プレビュー
                 </span>
                 <button
                   type="button"
@@ -1798,41 +1780,41 @@ export default function StainedGlassMosaicGame() {
                     setSelectedDraft(null);
                     setHoveredWorkbenchRow(null);
                   }}
-                  className="text-slate-400 hover:text-white underline"
+                  className="min-h-11 px-1 text-[#b9a88f] underline-offset-2 hover:text-[#f4ead8] hover:underline"
                 >
                   選択解除
                 </button>
               </div>
               {activePreviewEval ? (
                 activePreviewEval.valid ? (
-                  <div className="flex flex-wrap items-center gap-2 text-slate-200">
+                  <div className="flex flex-wrap items-center gap-2 text-[#d8cbb8]">
                     <span>
                       配置先：
-                      <strong className="text-white">
+                      <strong className="text-[#f4ead8]">
                         {activePreviewEval.targetRow >= 0
                           ? `準備作業台 ${activePreviewEval.targetRow + 1}段目`
                           : '破損ガラス枠へ直接破棄'}
                       </strong>
                     </span>
                     {activePreviewEval.willCompleteWorkbench ? (
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/25 border border-emerald-400/60 text-emerald-200 font-bold">
+                      <span className="rounded-sm border border-[#315d4e] bg-[#14211b] px-2 py-0.5 font-bold text-[#a9cdb7]">
                         完成時 +{activePreviewEval.projectedGlazePoints}点（横
                         {activePreviewEval.projectedHChain}/縦
                         {activePreviewEval.projectedVChain}）
                       </span>
                     ) : (
                       activePreviewEval.targetRow >= 0 && (
-                        <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 text-sky-200">
+                        <span className="rounded-sm border border-[#3f5f78] bg-[#131d24] px-2 py-0.5 text-[#a9c8da]">
                           次ラウンドへ持ち越し（+{activePreviewEval.placedInWorkbench}枚）
                         </span>
                       )
                     )}
                     {activePreviewEval.projectedPenaltyDelta < 0 && (
-                      <span className="px-2 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 font-bold">
+                      <span className="rounded-sm border border-[#6b3a36] bg-[#241615] px-2 py-0.5 font-bold text-[#e0a9a2]">
                         破損減点 {activePreviewEval.projectedPenaltyDelta}点
                       </span>
                     )}
-                    <span className="font-bold text-amber-300">
+                    <span className="font-bold text-[#dfb06d]">
                       実質収支：
                       {activePreviewEval.netProjectedDelta >= 0
                         ? `+${activePreviewEval.netProjectedDelta}`
@@ -1841,12 +1823,12 @@ export default function StainedGlassMosaicGame() {
                     </span>
                   </div>
                 ) : (
-                  <p className="text-rose-300 font-medium">
+                  <p className="font-medium text-[#e0a9a2]">
                     ⚠️ {activePreviewEval.invalidReason}
                   </p>
                 )
               ) : (
-                <p className="text-slate-400">
+                <p className="text-[#b9a88f]">
                   準備作業台（1〜5段目）にカーソルを合わせると、嵌め込み時の連鎖得点と余剰減点を自動試算します。
                 </p>
               )}
@@ -1856,12 +1838,12 @@ export default function StainedGlassMosaicGame() {
 
         {/* AI Hint Banner if requested */}
         {hintMove && isHumanTurn && (
-          <div className="rounded-xl bg-emerald-950/70 border border-emerald-400/60 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
+          <div className="tabletop-panel-soft flex flex-wrap items-center justify-between gap-2 border-l-2 border-l-[#315d4e] px-3.5 py-2.5 text-xs sm:text-[13px]">
             <div>
-              <span className="font-bold text-emerald-300 mr-2">
-                💡 AI推奨手ナビ：
+              <span className="mr-2 font-bold text-[#a9cdb7]">
+                💡 AI推奨手：
               </span>
-              <span className="text-emerald-100">
+              <span className="text-[#e8dcc8]">
                 {hintMove.selection.sourceType === 'kiln'
                   ? `硝子窯 #${(hintMove.selection.kilnIndex ?? 0) + 1}`
                   : '中庭ストック'}
@@ -1879,57 +1861,57 @@ export default function StainedGlassMosaicGame() {
               onClick={() =>
                 executeMove(hintMove.selection, hintMove.targetRow, true)
               }
-              className="px-3 py-1 rounded-lg bg-emerald-400 text-slate-950 font-bold hover:bg-emerald-300 transition"
+              className="tabletop-button-primary inline-flex min-h-11 items-center px-3 text-xs"
             >
-              この推奨手を実行する
+              この推奨手を実行
             </button>
           </div>
         )}
 
         {/* PHASE 1 AREA: Glass Kilns (硝子窯) & Center Courtyard (中庭ストック) */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Glass Kilns */}
-          <div className="lg:col-span-8 rounded-2xl bg-slate-900/85 border border-amber-500/25 p-4 shadow-xl">
-            <div className="flex items-center justify-between mb-3">
+          <div className="tabletop-panel p-3.5 sm:p-4 lg:col-span-8">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-amber-200 flex items-center gap-2">
+                <h3 className="tabletop-title flex flex-wrap items-center gap-2 text-sm sm:text-base">
                   <span>🔥 硝子窯（キルン）</span>
-                  <span className="text-xs font-normal text-slate-400">
-                    選んだ窯の同色ピースをすべて獲得し、残りは中庭ストックへ移動します
+                  <span className="font-sans text-[11px] font-normal text-[#b9a88f]">
+                    同色ピースをすべて獲得し、残りは中庭ストックへ移動
                   </span>
                 </h3>
               </div>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
                 残り稼働窯：{kilns.filter((k) => k.length > 0).length} /{' '}
                 {kilns.length}基
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
               {kilns.map((kiln, kIdx) => {
                 const isEmpty = kiln.length === 0;
                 return (
                   <div
                     key={kIdx}
-                    className={`relative rounded-2xl p-3 border transition flex flex-col items-center justify-between min-h-[126px] ${
+                    className={`relative flex min-h-[132px] flex-col items-center justify-between rounded-md border p-2.5 transition ${
                       isEmpty
-                        ? 'bg-slate-950/40 border-slate-800/60 opacity-45'
-                        : 'bg-[radial-gradient(circle_at_center,#1e293b_0%,#0f172a_100%)] border-amber-500/35 shadow-inner'
+                        ? 'border-[#3a2e23] bg-[#171310] opacity-50'
+                        : 'border-[#5a4631] bg-[#1d1712]'
                     }`}
                   >
-                    <div className="w-full flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
-                      <span className="font-semibold text-amber-200/90">
+                    <div className="mb-1.5 flex w-full items-center justify-between text-[11px] text-[#9c8d78]">
+                      <span className="font-semibold text-[#dfb06d]">
                         硝子窯 #{kIdx + 1}
                       </span>
                       <span>{isEmpty ? '空' : `${kiln.length}枚`}</span>
                     </div>
 
                     {isEmpty ? (
-                      <div className="my-auto text-xs text-slate-600">
+                      <div className="my-auto text-[11px] text-[#7f7261]">
                         採取済み
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2 my-auto">
+                      <div className="my-auto grid grid-cols-2 gap-1.5 sm:gap-2">
                         {kiln.map((color, tIdx) => {
                           const isSelected =
                             selectedDraft?.sourceType === 'kiln' &&
@@ -1947,7 +1929,7 @@ export default function StainedGlassMosaicGame() {
                                   color,
                                 });
                               }}
-                              className="focus:outline-none group"
+                              className="group min-h-11 min-w-11 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c99555] disabled:opacity-60"
                               aria-label={`硝子窯${kIdx + 1}の${GLASS_MAP[color].name}を選択`}
                             >
                               <StainedGlassTileSvg
@@ -1968,32 +1950,32 @@ export default function StainedGlassMosaicGame() {
           </div>
 
           {/* Center Courtyard (中庭ストック) */}
-          <div className="lg:col-span-4 rounded-2xl bg-slate-900/85 border border-sky-500/30 p-4 shadow-xl flex flex-col justify-between">
+          <div className="tabletop-panel flex flex-col justify-between p-3.5 sm:p-4 lg:col-span-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-bold text-sky-200">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="tabletop-title text-sm sm:text-base">
                   ⛲ 中庭ストック
                 </h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-sky-950/90 text-sky-300 border border-sky-500/40">
+                <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
                   合計 {courtyard.length}枚
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mb-3">
+              <p className="mb-3 text-[11px] leading-relaxed text-[#b9a88f]">
                 硝子窯から押し出された色硝子が溜まります。各ラウンドで最初に中庭から採取した職人は「親方マーカー（次ラウンド先手権 / -1点）」も受け取ります。
               </p>
 
               {/* Master Marker Badge */}
               {courtyardHasMaster && (
-                <div className="mb-3 rounded-xl bg-amber-500/15 border border-amber-400/50 px-3 py-2 flex items-center justify-between">
+                <div className="tabletop-panel-soft mb-3 flex items-center justify-between border-l-2 border-l-[#c99555] px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-400 text-slate-950 font-black text-xs shadow">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#c99555] text-[10px] font-black text-[#1b120b]">
                       親方
                     </span>
                     <div className="text-xs">
-                      <div className="font-bold text-amber-200">
+                      <div className="font-bold text-[#e8dcc8]">
                         親方マーカー（先手権 / -1点）
                       </div>
-                      <div className="text-[11px] text-amber-300/80">
+                      <div className="text-[11px] text-[#b9a88f]">
                         中庭から最初に採取すると自動獲得
                       </div>
                     </div>
@@ -2003,7 +1985,7 @@ export default function StainedGlassMosaicGame() {
 
               {/* Grouped Courtyard Tiles by Color */}
               {courtyard.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-700/80 py-8 text-center text-xs text-slate-500">
+                <div className="tabletop-panel-soft border-dashed py-8 text-center text-[11px] text-[#8b7d69]">
                   現在、中庭ストックに色硝子はありません
                 </div>
               ) : (
@@ -2025,14 +2007,14 @@ export default function StainedGlassMosaicGame() {
                             color,
                           })
                         }
-                        className={`w-full rounded-xl p-2 border flex items-center justify-between transition ${
+                        className={`flex min-h-11 w-full items-center justify-between rounded-md border p-2 transition ${
                           isSelected
-                            ? 'bg-amber-500/20 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)]'
-                            : 'bg-slate-950/70 border-slate-800 hover:border-slate-600'
+                            ? 'border-[#c99555] bg-[#3a2a1c]'
+                            : 'border-[#4d3d2d] bg-[#241c15] hover:border-[#6b543d]'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-200 min-w-[92px] text-left">
+                          <span className="min-w-[92px] text-left text-xs font-bold text-[#e8dcc8]">
                             {GLASS_MAP[color].shortName}
                           </span>
                           <div className="flex flex-wrap gap-1">
@@ -2046,7 +2028,7 @@ export default function StainedGlassMosaicGame() {
                             ))}
                           </div>
                         </div>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-300">
+                        <span className="rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-2 py-0.5 text-xs font-bold text-[#dfb06d]">
                           ×{count}枚
                         </span>
                       </button>
@@ -2057,11 +2039,11 @@ export default function StainedGlassMosaicGame() {
             </div>
 
             {/* Color Legend */}
-            <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-1 border-t border-[#4d3d2d] pt-3 text-[11px] text-[#b9a88f]">
               {GLASS_COLORS.map((g) => (
                 <span key={g.id} className="inline-flex items-center gap-1">
                   <span
-                    className="w-2.5 h-2.5 rounded-full"
+                    className="h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: g.primaryHex }}
                   />
                   {g.shortName}
@@ -2083,25 +2065,23 @@ export default function StainedGlassMosaicGame() {
             return (
               <div
                 key={player.id}
-                className={`rounded-2xl p-4 sm:p-5 border transition shadow-2xl ${
-                  isCurrentTurnPlayer
-                    ? 'bg-slate-900/95 border-amber-400/80 ring-1 ring-amber-400/40'
-                    : 'bg-slate-900/75 border-slate-800'
+                className={`tabletop-panel p-3.5 transition sm:p-4 ${
+                  isCurrentTurnPlayer ? 'border-[#c99555] ring-1 ring-[#c99555]' : ''
                 }`}
               >
                 {/* Player Header */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     {isCurrentTurnPlayer && (
-                      <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-xs">
+                      <span className="inline-flex min-h-7 items-center rounded-sm bg-[#c99555] px-2 text-[11px] font-black text-[#1b120b]">
                         手番中
                       </span>
                     )}
-                    <h3 className="text-base sm:text-lg font-bold text-white">
+                    <h3 className="tabletop-title text-base sm:text-lg">
                       {player.name}
                     </h3>
                     {(startPlayerIndex === pIdx || hasMasterInBroken) && (
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/50">
+                      <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-semibold">
                         👑 次ラウンド先手
                       </span>
                     )}
@@ -2109,32 +2089,32 @@ export default function StainedGlassMosaicGame() {
 
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <span className="text-xs text-slate-400 mr-1.5">
+                      <span className="mr-1.5 text-[11px] text-[#b9a88f]">
                         現在スコア
                       </span>
-                      <span className="text-xl sm:text-2xl font-black text-amber-300">
+                      <span className="text-xl font-black text-[#dfb06d] sm:text-2xl">
                         {player.score}
                       </span>
-                      <span className="text-xs text-amber-200 ml-0.5">点</span>
+                      <span className="ml-0.5 text-xs text-[#c99555]">点</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Workbench + Cathedral Window 5 Rows Alignment */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-12">
                   {/* Column Headers */}
-                  <div className="sm:col-span-5 text-xs font-bold text-slate-300 flex items-center justify-between px-1">
+                  <div className="flex items-center justify-between px-1 text-[11px] font-bold text-[#c9b79d] sm:col-span-5">
                     <span>🛠️ 準備作業台（1〜5段）</span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[10px] text-[#9c8d78]">
                       右端から充填
                     </span>
                   </div>
-                  <div className="hidden sm:flex sm:col-span-1 justify-center text-slate-500 text-xs">
+                  <div className="hidden justify-center text-xs text-[#8b7d69] sm:col-span-1 sm:flex">
                     ➔
                   </div>
-                  <div className="sm:col-span-6 text-xs font-bold text-amber-200 flex items-center justify-between px-1">
+                  <div className="flex items-center justify-between px-1 text-[11px] font-bold text-[#dfb06d] sm:col-span-6">
                     <span>🏰 大聖堂ステンドグラス窓（5×5）</span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[10px] text-[#9c8d78]">
                       横1列完成で終了
                     </span>
                   </div>
@@ -2174,25 +2154,25 @@ export default function StainedGlassMosaicGame() {
                                 executeMove(selectedDraft, rowIndex, true);
                               }
                             }}
-                            className={`w-full rounded-xl px-2.5 py-1.5 border flex items-center justify-between gap-2 transition ${
+                            className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 transition ${
                               isInteractiveBoard
                                 ? canPlace
-                                  ? 'bg-emerald-950/40 border-emerald-400/80 hover:bg-emerald-900/50 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.25)]'
-                                  : 'bg-rose-950/20 border-rose-800/40 opacity-50 cursor-not-allowed'
-                                : 'bg-slate-950/60 border-slate-800/90'
+                                  ? 'cursor-pointer border-[#315d4e] bg-[#14211b] hover:bg-[#1b2b24]'
+                                  : 'cursor-not-allowed border-[#4d3d2d] bg-[#1d1712] opacity-55'
+                                : 'border-[#4d3d2d] bg-[#241c15]'
                             }`}
                           >
-                            <div className="flex flex-col items-start text-left min-w-[54px]">
-                              <span className="text-xs font-bold text-slate-300">
+                            <div className="flex min-w-[54px] flex-col items-start text-left">
+                              <span className="text-[11px] font-bold text-[#e8dcc8]">
                                 {rowIndex + 1}段目
                               </span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-[#9c8d78]">
                                 容量 {wb.count}/{wb.capacity}
                               </span>
                               {isInteractiveBoard && rowEval && canPlace && (
-                                <span className="mt-0.5 text-[10px] font-bold text-emerald-300">
+                                <span className="mt-0.5 text-[10px] font-bold text-[#a9cdb7]">
                                   {rowEval.willCompleteWorkbench
-                                    ? `完成+${rowEval.projectedGlazePoints}点`
+                                    ? `完成 +${rowEval.projectedGlazePoints}点`
                                     : `+${rowEval.placedInWorkbench}枚`}
                                   {rowEval.projectedPenaltyDelta < 0
                                     ? ` (${rowEval.projectedPenaltyDelta})`
@@ -2202,7 +2182,7 @@ export default function StainedGlassMosaicGame() {
                             </div>
 
                             {/* Slots rendered right-to-left visually so tiles fill toward the window */}
-                            <div className="flex items-center justify-end gap-1 flex-1">
+                            <div className="flex flex-1 items-center justify-end gap-1">
                               {Array.from({ length: wb.capacity }).map(
                                 (_, slotIdx) => {
                                   // Fill from right to left
@@ -2219,7 +2199,7 @@ export default function StainedGlassMosaicGame() {
                                   return (
                                     <div
                                       key={slotIdx}
-                                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-slate-700/80 bg-slate-900/90 flex items-center justify-center"
+                                      className="flex h-9 w-9 items-center justify-center rounded-md border border-[#4d3d2d] bg-[#171310]"
                                     >
                                       {isFilled && wb.color ? (
                                         <StainedGlassTileSvg
@@ -2234,7 +2214,7 @@ export default function StainedGlassMosaicGame() {
                                           highlighted
                                         />
                                       ) : (
-                                        <span className="text-[10px] text-slate-700">
+                                        <span className="text-[10px] text-[#5e5140]">
                                           •
                                         </span>
                                       )}
@@ -2247,12 +2227,12 @@ export default function StainedGlassMosaicGame() {
                         </div>
 
                         {/* Arrow Connector */}
-                        <div className="hidden sm:flex sm:col-span-1 justify-center">
+                        <div className="hidden justify-center sm:col-span-1 sm:flex">
                           <span
-                            className={`text-xs font-bold ${
+                            className={`text-[10px] font-bold ${
                               wb.count === wb.capacity
-                                ? 'text-amber-300 animate-pulse'
-                                : 'text-slate-600'
+                                ? 'text-[#dfb06d]'
+                                : 'text-[#6b543d]'
                             }`}
                           >
                             {wb.count === wb.capacity ? '🔥完成' : '→'}
@@ -2260,7 +2240,7 @@ export default function StainedGlassMosaicGame() {
                         </div>
 
                         {/* 5x5 Cathedral Stained Glass Window Row */}
-                        <div className="sm:col-span-6 grid grid-cols-5 gap-1.5 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
+                        <div className="grid grid-cols-5 gap-1.5 rounded-md border border-[#4d3d2d] bg-[#171310] p-1.5 sm:col-span-6">
                           {WINDOW_PATTERN[rowIndex].map((cellColor, colIdx) => {
                             const isGlazed = player.window[rowIndex][colIdx];
                             const isTargetPreview =
@@ -2271,12 +2251,12 @@ export default function StainedGlassMosaicGame() {
                             return (
                               <div
                                 key={colIdx}
-                                className={`relative rounded-lg p-1 flex items-center justify-center border transition ${
+                                className={`relative flex items-center justify-center rounded-md border p-1 transition ${
                                   isGlazed
-                                    ? 'bg-slate-900/90 border-amber-400/70 shadow-[0_0_12px_rgba(251,191,36,0.22)]'
+                                    ? 'border-[#6b543d] bg-[#241c15]'
                                     : isTargetPreview
-                                      ? 'bg-emerald-950/50 border-emerald-400 border-dashed'
-                                      : 'bg-slate-950/60 border-slate-800/80'
+                                      ? 'border-dashed border-[#315d4e] bg-[#14211b]'
+                                      : 'border-[#3a2e23] bg-[#1d1712]'
                                 }`}
                               >
                                 <StainedGlassTileSvg
@@ -2287,7 +2267,7 @@ export default function StainedGlassMosaicGame() {
                                 />
                                 {isGlazed && (
                                   <span
-                                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-slate-950 text-[9px] font-black flex items-center justify-center shadow"
+                                    className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#c99555] text-[9px] font-black text-[#1b120b]"
                                     title="嵌め込み済み"
                                   >
                                     ✓
@@ -2303,15 +2283,15 @@ export default function StainedGlassMosaicGame() {
                 </div>
 
                 {/* Broken Glass Floor (破損ガラス枠: -1, -1, -2, -2, -2, -3, -3) */}
-                <div className="mt-4 pt-3 border-t border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="mt-3 flex flex-col justify-between gap-2 border-t border-[#4d3d2d] pt-3 sm:flex-row sm:items-center">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-rose-300">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-bold text-[#e0a9a2]">
                         💥 破損ガラス枠（減点ライン）
                       </span>
-                      <span className="text-[11px] text-slate-400">
-                        現在減点予定：
-                        <strong className="text-rose-300">
+                      <span className="text-[11px] text-[#b9a88f]">
+                        現在の減点予定：
+                        <strong className="text-[#e0a9a2]">
                           {calculateBrokenFloorPenalty(
                             player.brokenFloor.length,
                           )}
@@ -2326,23 +2306,23 @@ export default function StainedGlassMosaicGame() {
                         return (
                           <div
                             key={slotIdx}
-                            className={`w-10 h-11 rounded-lg border flex flex-col items-center justify-between p-1 ${
+                            className={`flex h-12 w-11 flex-col items-center justify-between rounded-md border p-1 ${
                               item
-                                ? 'bg-rose-950/60 border-rose-400/70'
-                                : 'bg-slate-950/70 border-slate-800'
+                                ? 'border-[#6b3a36] bg-[#241615]'
+                                : 'border-[#3a2e23] bg-[#171310]'
                             }`}
                           >
-                            <span className="text-[10px] font-bold text-rose-300">
+                            <span className="text-[10px] font-bold text-[#e0a9a2]">
                               {pen}
                             </span>
                             {item === 'master' ? (
-                              <span className="px-1 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px]">
+                              <span className="rounded-sm bg-[#c99555] px-1 py-0.5 text-[9px] font-black text-[#1b120b]">
                                 親方
                               </span>
                             ) : item ? (
                               <StainedGlassTileSvg color={item} size="sm" />
                             ) : (
-                              <span className="text-[10px] text-slate-700">
+                              <span className="text-[10px] text-[#5e5140]">
                                 -
                               </span>
                             )}
@@ -2359,9 +2339,9 @@ export default function StainedGlassMosaicGame() {
                       onMouseEnter={() => setHoveredWorkbenchRow(-1)}
                       onMouseLeave={() => setHoveredWorkbenchRow(null)}
                       onClick={() => executeMove(selectedDraft, -1, true)}
-                      className="self-start sm:self-end px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900/80 border border-rose-400/60 text-xs font-bold text-rose-200 transition"
+                      className="tabletop-button inline-flex min-h-11 items-center self-start px-3 text-xs font-bold text-[#e0a9a2] sm:self-end"
                     >
-                      💥 破損ガラス枠へ直接破棄する（
+                      💥 破損ガラス枠へ直接破棄（
                       {rowEvaluations?.[-1]?.projectedPenaltyDelta ?? 0}点）
                     </button>
                   )}
@@ -2372,39 +2352,39 @@ export default function StainedGlassMosaicGame() {
         </section>
 
         {/* Last Glazing Phase Summary & Action Logs */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Round Glazing Summary */}
-          <div className="lg:col-span-5 rounded-2xl bg-slate-900/80 border border-amber-500/25 p-4">
-            <h3 className="text-sm font-bold text-amber-200 mb-2">
-              🔥 第2フェーズ：焼き入れ＆嵌め込み集計レポート
+          <div className="tabletop-panel p-3.5 sm:p-4 lg:col-span-5">
+            <h3 className="tabletop-title mb-2 text-sm">
+              🔥 第2フェーズ：焼き入れ＆嵌め込み集計
             </h3>
             {!lastGlazeSummary ? (
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs leading-relaxed text-[#b9a88f]">
                 すべての硝子窯と中庭ストックが空になると、自動的に「第2フェーズ：焼き入れ＆ステンドグラス嵌め込み」が実行され、満杯になった準備作業台の右端ピースが大聖堂ステンドグラス窓へ嵌め込まれます。
               </p>
             ) : (
               <div className="space-y-2 text-xs">
-                <div className="text-amber-300 font-semibold">
-                  第{lastGlazeSummary.round}ラウンド終了時の嵌め込み結果：
+                <div className="font-semibold text-[#dfb06d]">
+                  第{lastGlazeSummary.round}ラウンド終了時の嵌め込み結果
                 </div>
                 {lastGlazeSummary.entries.map((entry, idx) => (
                   <div
                     key={idx}
-                    className="rounded-xl bg-slate-950/70 border border-slate-800 p-2.5 space-y-1"
+                    className="tabletop-panel-soft space-y-1 p-2.5"
                   >
-                    <div className="flex items-center justify-between font-bold text-slate-200">
+                    <div className="flex items-center justify-between font-bold text-[#e8dcc8]">
                       <span>{entry.playerName}</span>
-                      <span className="text-amber-300">
+                      <span className="text-[#dfb06d]">
                         累計 {entry.newScore}点
                       </span>
                     </div>
-                    <div className="text-slate-300">
+                    <div className="text-[#c9b79d]">
                       {entry.glazedDetails.length > 0
                         ? entry.glazedDetails.join(' / ')
                         : 'このラウンドに完成した作業台なし'}
                     </div>
                     {entry.penalty < 0 && (
-                      <div className="text-rose-300">
+                      <div className="text-[#e0a9a2]">
                         破損ガラス枠減点：{entry.penalty}点
                       </div>
                     )}
@@ -2415,15 +2395,15 @@ export default function StainedGlassMosaicGame() {
           </div>
 
           {/* Match Logs */}
-          <div className="lg:col-span-7 rounded-2xl bg-slate-900/80 border border-slate-800 p-4">
-            <h3 className="text-sm font-bold text-slate-200 mb-2">
+          <div className="tabletop-panel p-3.5 sm:p-4 lg:col-span-7">
+            <h3 className="tabletop-title mb-2 text-sm">
               📜 工房モザイク対局ログ
             </h3>
-            <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 text-xs text-slate-300">
+            <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs text-[#c9b79d]">
               {logs.map((log, i) => (
                 <div
                   key={i}
-                  className="rounded-lg bg-slate-950/60 border border-slate-800/80 px-2.5 py-1.5"
+                  className="tabletop-panel-soft px-2.5 py-1.5 leading-relaxed"
                 >
                   {log}
                 </div>
@@ -2437,78 +2417,78 @@ export default function StainedGlassMosaicGame() {
       {/* Final Score Breakdown Modal */}
       {/* ==================================================================== */}
       {showResultModal && gameOver && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full rounded-2xl bg-slate-900 border border-amber-400/60 p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+          <div className="tabletop-panel max-h-[85vh] w-full max-w-2xl space-y-4 overflow-y-auto p-4 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#4d3d2d] pb-3">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                <span className="tabletop-kicker !text-[11px]">
                   Cathedral Masterpiece Complete
                 </span>
-                <h3 className="text-xl font-black text-white">
+                <h3 className="tabletop-title text-lg sm:text-xl">
                   🏆 大聖堂ステンドグラス窓 完成・最終得点内訳
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowResultModal(false)}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-xs"
+                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs"
               >
                 閉じる
               </button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+              <table className="w-full border-collapse text-left text-xs sm:text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
+                  <tr className="border-b border-[#4d3d2d] text-[#b9a88f]">
                     <th className="py-2 pr-2">順位 / 職人</th>
-                    <th className="py-2 px-2 text-right">基本連鎖点</th>
-                    <th className="py-2 px-2 text-right">
+                    <th className="px-2 py-2 text-right">基本連鎖点</th>
+                    <th className="px-2 py-2 text-right">
                       横列ボーナス
                       <span className="block text-[10px]">(+2点×列)</span>
                     </th>
-                    <th className="py-2 px-2 text-right">
+                    <th className="px-2 py-2 text-right">
                       縦列ボーナス
                       <span className="block text-[10px]">(+7点×列)</span>
                     </th>
-                    <th className="py-2 px-2 text-right">
+                    <th className="px-2 py-2 text-right">
                       5色コンプ
                       <span className="block text-[10px]">(+10点×色)</span>
                     </th>
-                    <th className="py-2 px-2 text-right">破損減点累計</th>
-                    <th className="py-2 pl-2 text-right text-amber-300">
+                    <th className="px-2 py-2 text-right">破損減点累計</th>
+                    <th className="py-2 pl-2 text-right text-[#dfb06d]">
                       最終合計
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-[#4d3d2d]">
                   {standings.map((pl, rankIdx) => (
                     <tr
                       key={pl.id}
                       className={
-                        rankIdx === 0 ? 'bg-amber-500/10 font-semibold' : ''
+                        rankIdx === 0 ? 'bg-[#3a2a1c] font-semibold' : ''
                       }
                     >
-                      <td className="py-2.5 pr-2 text-white">
+                      <td className="py-2.5 pr-2 text-[#f4ead8]">
                         {rankIdx === 0 ? '🥇 1位 ' : `${rankIdx + 1}位 `}
                         {pl.name}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-slate-200">
+                      <td className="px-2 py-2.5 text-right text-[#e8dcc8]">
                         +{pl.chainPointsTotal}点
                       </td>
-                      <td className="py-2.5 px-2 text-right text-sky-300">
+                      <td className="px-2 py-2.5 text-right text-[#a9c8da]">
                         +{pl.rowBonusScore}点 ({pl.completedRowsCount}列)
                       </td>
-                      <td className="py-2.5 px-2 text-right text-emerald-300">
+                      <td className="px-2 py-2.5 text-right text-[#a9cdb7]">
                         +{pl.colBonusScore}点 ({pl.completedColsCount}列)
                       </td>
-                      <td className="py-2.5 px-2 text-right text-purple-300">
+                      <td className="px-2 py-2.5 text-right text-[#cbb5dc]">
                         +{pl.colorBonusScore}点 ({pl.completedColorsCount}色)
                       </td>
-                      <td className="py-2.5 px-2 text-right text-rose-300">
+                      <td className="px-2 py-2.5 text-right text-[#e0a9a2]">
                         -{pl.brokenPenaltyTotal}点
                       </td>
-                      <td className="py-2.5 pl-2 text-right text-lg font-black text-amber-300">
+                      <td className="py-2.5 pl-2 text-right text-lg font-black text-[#dfb06d]">
                         {pl.score}点
                       </td>
                     </tr>
@@ -2521,7 +2501,7 @@ export default function StainedGlassMosaicGame() {
               <button
                 type="button"
                 onClick={() => setShowResultModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition"
+                className="tabletop-button inline-flex min-h-11 items-center px-4 text-xs font-bold"
               >
                 盤面を確認する
               </button>
@@ -2530,7 +2510,7 @@ export default function StainedGlassMosaicGame() {
                 onClick={() =>
                   startNewGame(gameMode, playerCount, leadAiPersona)
                 }
-                className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-xs font-black text-slate-950 transition shadow"
+                className="tabletop-button-primary inline-flex min-h-11 items-center px-4 text-xs font-black"
               >
                 🔄 もう一度対局する
               </button>
@@ -2543,16 +2523,19 @@ export default function StainedGlassMosaicGame() {
       {/* Rule & Scoring Guide Modal */}
       {/* ==================================================================== */}
       {showRuleModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full max-h-[85vh] overflow-y-auto rounded-2xl bg-slate-900 border border-purple-400/50 p-5 sm:p-6 shadow-2xl space-y-4 text-xs sm:text-sm text-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white">
-                📖 『硝子工房のモザイク師』ルール＆得点早見表
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+          <div className="tabletop-panel max-h-[85vh] w-full max-w-2xl space-y-4 overflow-y-auto p-4 text-xs text-[#e8dcc8] sm:p-6 sm:text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#4d3d2d] pb-3">
+              <div>
+                <span className="tabletop-kicker !text-[11px]">Rulebook</span>
+                <h3 className="tabletop-title text-lg">
+                  📖 『硝子工房のモザイク師』ルール＆得点早見表
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowRuleModal(false)}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-xs"
+                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs"
               >
                 閉じる
               </button>
@@ -2560,7 +2543,7 @@ export default function StainedGlassMosaicGame() {
 
             <div className="space-y-3 leading-relaxed">
               <div>
-                <h4 className="font-bold text-amber-300 mb-1">
+                <h4 className="mb-1 font-bold text-[#dfb06d]">
                   1. 第1フェーズ：硝子窯からの採取（ドラフト）
                 </h4>
                 <p>
@@ -2569,7 +2552,7 @@ export default function StainedGlassMosaicGame() {
               </div>
 
               <div>
-                <h4 className="font-bold text-amber-300 mb-1">
+                <h4 className="mb-1 font-bold text-[#dfb06d]">
                   2. 準備作業台（1〜5段）への配置ルール
                 </h4>
                 <p>
@@ -2578,7 +2561,7 @@ export default function StainedGlassMosaicGame() {
               </div>
 
               <div>
-                <h4 className="font-bold text-amber-300 mb-1">
+                <h4 className="mb-1 font-bold text-[#dfb06d]">
                   3. 第2フェーズ：焼き入れ＆ステンドグラス嵌め込み
                 </h4>
                 <p>
@@ -2587,13 +2570,13 @@ export default function StainedGlassMosaicGame() {
               </div>
 
               <div>
-                <h4 className="font-bold text-amber-300 mb-1">
+                <h4 className="mb-1 font-bold text-[#dfb06d]">
                   4. 対局終了条件と3大完成ボーナス
                 </h4>
                 <p>
                   いずれかの職人が大聖堂ステンドグラス窓の<strong>横1列（5マス）をすべて完成</strong>させたラウンドの終了時に対局終了となり、以下の最終ボーナスが加算されます：
                 </p>
-                <ul className="list-disc list-inside mt-1 space-y-1 text-amber-200">
+                <ul className="mt-1 list-disc list-inside space-y-1 text-[#dfb06d]">
                   <li>
                     <strong>横1列完成ボーナス</strong>：完成した横1列ごとに <strong>+2点</strong>
                   </li>

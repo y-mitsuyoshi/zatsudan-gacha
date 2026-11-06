@@ -257,3 +257,145 @@ select {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Tabletop board-game theme: warm club room, brass, paper and wood */
+.tabletop-page {
+  --table-bg: #17120f;
+  --table-bg-deep: #100c0a;
+  --table-panel: #211a15;
+  --table-panel-soft: #2a211a;
+  --table-panel-raised: #30251c;
+  --table-ink: #f4ead8;
+  --table-muted: #b9a88f;
+  --table-line: #4d3d2d;
+  --table-line-strong: #6b543d;
+  --table-accent: #c99555;
+  --table-accent-strong: #dfb06d;
+  --table-accent-soft: #3a2a1c;
+  --table-green: #315d4e;
+  --table-red: #9f4540;
+  --table-blue: #3f5f78;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  color: var(--table-ink);
+  background-color: var(--table-bg);
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(201, 149, 85, 0.11), transparent 34rem),
+    radial-gradient(circle at 82% 18%, rgba(86, 55, 34, 0.22), transparent 30rem),
+    linear-gradient(135deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 9px);
+  background-size: auto, auto, 9px 9px;
+}
+
+.tabletop-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 49.8%, rgba(255,255,255,0.025) 50%, transparent 50.2%),
+    linear-gradient(0deg, transparent 0 49.8%, rgba(255,255,255,0.018) 50%, transparent 50.2%);
+  background-size: 120px 120px;
+}
+
+.tabletop-header {
+  border-bottom: 1px solid var(--table-line);
+  background: rgba(23, 18, 15, 0.94);
+  backdrop-filter: blur(10px);
+}
+
+.tabletop-title {
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'Noto Serif', serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--table-ink);
+}
+
+.tabletop-kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--table-accent);
+}
+
+.tabletop-muted {
+  color: var(--table-muted);
+}
+
+.tabletop-panel {
+  border: 1px solid var(--table-line);
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.028), transparent 42%), var(--table-panel);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 10px 24px rgba(0,0,0,0.18);
+}
+
+.tabletop-panel-soft {
+  border: 1px solid var(--table-line);
+  border-radius: 0.375rem;
+  background: var(--table-panel-soft);
+}
+
+.tabletop-board-frame {
+  border: 1px solid var(--table-line-strong);
+  border-radius: 0.5rem;
+  background: var(--table-bg-deep);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.4) inset,
+    0 18px 40px rgba(0,0,0,0.3);
+}
+
+.tabletop-button {
+  border: 1px solid var(--table-line-strong);
+  border-radius: 0.375rem;
+  background: var(--table-panel-raised);
+  color: var(--table-ink);
+  font-weight: 700;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+.tabletop-button:hover {
+  border-color: var(--table-accent);
+  background: var(--table-panel-soft);
+}
+.tabletop-button:active {
+  transform: translateY(1px);
+}
+
+.tabletop-button-primary {
+  border: 1px solid var(--table-accent-strong);
+  border-radius: 0.375rem;
+  background: var(--table-accent);
+  color: #1b120b;
+  font-weight: 800;
+  transition: background-color 140ms ease, transform 140ms ease;
+}
+.tabletop-button-primary:hover {
+  background: var(--table-accent-strong);
+}
+.tabletop-button-primary:active {
+  transform: translateY(1px);
+}
+
+.tabletop-chip {
+  border: 1px solid var(--table-line);
+  border-radius: 999px;
+  background: var(--table-panel-soft);
+  color: var(--table-muted);
+}
+.tabletop-chip-active {
+  border-color: var(--table-accent);
+  background: var(--table-accent-soft);
+  color: var(--table-accent-strong);
+}
+
+.tabletop-stat {
+  border: 1px solid var(--table-line);
+  border-radius: 0.375rem;
+  background: rgba(0,0,0,0.16);
+}
+
+.tabletop-divider {
+  border-color: var(--table-line);
+}

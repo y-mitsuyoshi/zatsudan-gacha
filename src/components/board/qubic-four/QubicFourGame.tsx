@@ -599,7 +599,7 @@ export default function QubicFourGame() {
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#060913');
+    scene.background = new THREE.Color('#17120f');
 
     const camera = new THREE.PerspectiveCamera(
       42,
@@ -622,7 +622,7 @@ export default function QubicFourGame() {
     dirLight1.castShadow = true;
     scene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.55);
+    const dirLight2 = new THREE.DirectionalLight(0xd8b078, 0.5);
     dirLight2.position.set(-8, 9, -7);
     scene.add(dirLight2);
 
@@ -644,7 +644,7 @@ export default function QubicFourGame() {
 
     const innerPlateGeo = new THREE.BoxGeometry(6.5, 0.08, 6.5);
     const innerPlateMat = new THREE.MeshStandardMaterial({
-      color: 0x162032,
+      color: 0x1f1712,
       roughness: 0.55,
       metalness: 0.25,
     });
@@ -870,8 +870,8 @@ export default function QubicFourGame() {
             pegMat.color.setHex(0xfbbf24);
             pegMat.emissive.setHex(0x92400e);
           } else if (isHovered && !st.gameOver && !st.isCpuTurn) {
-            pegMat.color.setHex(0x38bdf8);
-            pegMat.emissive.setHex(0x0369a1);
+            pegMat.color.setHex(0xc99555);
+            pegMat.emissive.setHex(0x7a4f26);
           } else {
             pegMat.color.setHex(0x94a3b8);
             pegMat.emissive.setHex(0x000000);
@@ -977,112 +977,125 @@ export default function QubicFourGame() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#060913] text-slate-100 select-none">
+    <div className="tabletop-page min-h-screen select-none overflow-x-hidden">
       {/* Header */}
-      <header className="border-b border-cyan-500/20 bg-[#080d1a]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-2 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-cyan-400/50 hover:text-cyan-200"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-sm"
             >
-              ← 無料ゲーム一覧へ
+              ← ゲーム一覧
             </Link>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-cyan-400">
-                3D SPATIAL STRATEGY / 4×4×4 QUBIC
-              </p>
-              <h2 className="text-sm font-black sm:text-lg">
-                立体四目並べ 3D（Qubic 4×4×4）
+            <div className="min-w-0">
+              <p className="tabletop-kicker truncate">3D Strategy · 4×4×4 Qubic</p>
+              <h2 className="tabletop-title truncate text-base sm:text-xl">
+                立体四目並べ
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-cyan-400/50"
+              aria-pressed={soundOn}
+              className={`tabletop-chip inline-flex min-h-11 items-center px-3 text-xs font-semibold ${
+                soundOn ? 'tabletop-chip-active' : ''
+              }`}
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              {soundOn ? '効果音 ON' : '効果音 OFF'}
             </button>
             <ThemeToggleButton />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* Left: 3D Board + Status Banner */}
-        <div className="flex flex-col gap-3">
+      <main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-2 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {/* Left: Board + Status */}
+        <div className="flex min-w-0 flex-col gap-3">
           {/* Status & Threat Bar */}
-          <div className="rounded-2xl border border-cyan-500/20 bg-[#0b1324]/90 p-3 shadow-lg">
+          <section className="tabletop-panel p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="h-5 w-5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
-                <div>
-                  <p className="text-xs font-bold text-amber-200">
+              <div className="tabletop-stat flex min-w-0 items-center gap-2.5 px-2.5 py-2">
+                <span className="h-5 w-5 shrink-0 rounded-full border border-[#e0bb82] bg-[#c99555]" />
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-semibold text-[#d8cbb8]">
                     先手（アンバー）{mode === 'cpu' ? (humanSide === 1 ? '・あなた' : '・CPU') : '・P1'}
                   </p>
-                  <p className="font-mono text-base font-black text-white">{totalSpheres.p1} 個</p>
+                  <p className="font-mono text-base font-bold leading-tight text-[#f4ead8]">
+                    {totalSpheres.p1}
+                    <span className="ml-1 text-[11px] font-normal text-[#b9a88f]">球</span>
+                  </p>
                 </div>
               </div>
 
-              <div className="rounded-full border border-cyan-400/30 bg-cyan-950/50 px-3.5 py-1 text-center">
-                {winResult ? (
-                  <span className="text-xs font-black text-amber-300">
-                    🏆 {winResult.winner === 1 ? '先手（アンバー）' : '後手（サファイア）'}の4連達成・勝利！
-                  </span>
-                ) : isDraw ? (
-                  <span className="text-xs font-black text-slate-200">64球すべて配置・引き分け！</span>
-                ) : isCpuTurn ? (
-                  <span className="text-xs font-black text-cyan-300">CPUが76ラインの空間を読み中...</span>
-                ) : (
-                  <span className="text-xs font-black text-cyan-100">
-                    現在の手番: {turn === 1 ? '🟡 先手（アンバー）' : '🔵 後手（サファイア）'}
-                  </span>
-                )}
+              <div className="order-last w-full sm:order-none sm:w-auto">
+                <div
+                  className={`mx-auto w-fit rounded-md border px-3 py-1.5 text-center text-xs font-semibold ${
+                    winResult
+                      ? 'border-[#8a5b36] bg-[#2c2118] text-[#e6c48f]'
+                      : 'border-[#4d3d2d] bg-[#211a15] text-[#d8cbb8]'
+                  }`}
+                >
+                  {winResult ? (
+                    <>
+                      {winResult.winner === 1 ? '先手（アンバー）' : '後手（サファイア）'}の4連達成・勝利
+                    </>
+                  ) : isDraw ? (
+                    <>64球すべて配置・引き分け</>
+                  ) : isCpuTurn ? (
+                    <span className="text-[#dfb06d]">CPU が76ラインを読み中...</span>
+                  ) : (
+                    <>
+                      手番: {turn === 1 ? 'アンバー（先手）' : 'サファイア（後手）'}
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 text-right">
-                <div>
-                  <p className="text-xs font-bold text-cyan-200">
+              <div className="tabletop-stat flex min-w-0 items-center gap-2.5 px-2.5 py-2">
+                <div className="min-w-0 text-right">
+                  <p className="truncate text-[11px] font-semibold text-[#d8cbb8]">
                     後手（サファイア）{mode === 'cpu' ? (humanSide === 2 ? '・あなた' : '・CPU') : '・P2'}
                   </p>
-                  <p className="font-mono text-base font-black text-white">{totalSpheres.p2} 個</p>
+                  <p className="font-mono text-base font-bold leading-tight text-[#f4ead8]">
+                    {totalSpheres.p2}
+                    <span className="ml-1 text-[11px] font-normal text-[#b9a88f]">球</span>
+                  </p>
                 </div>
-                <span className="h-5 w-5 rounded-full bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.7)]" />
+                <span className="h-5 w-5 shrink-0 rounded-full border border-[#9db8cd] bg-[#5f8fb3]" />
               </div>
             </div>
 
-            {/* Threat Warning Indicator */}
             {!gameOver && threats.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-200">
-                <span>
-                  ⚠️ リーチ警告：
-                  {threats.map((t, i) => (
-                    <span key={i} className="ml-1.5 inline-block rounded bg-black/40 px-1.5 py-0.5 font-mono">
-                      {t.player === 1 ? '先手' : '後手'} → {COL_LABELS[t.openSpot.x]}
-                      {t.openSpot.z + 1}（{t.openSpot.y + 1}段目
-                      {t.playableNow ? '・即着手可！' : '・空中待ち'}）
-                    </span>
-                  ))}
-                </span>
+              <div className="mt-2.5 rounded-md border border-[#8a5b36] bg-[#2c2118] px-3 py-2 text-xs font-medium text-[#e6c48f]">
+                <span className="font-semibold">リーチ警告：</span>
+                {threats.map((t, i) => (
+                  <span
+                    key={i}
+                    className="ml-1.5 inline-block rounded bg-black/25 px-1.5 py-0.5 font-mono"
+                  >
+                    {t.player === 1 ? '先手' : '後手'} → {COL_LABELS[t.openSpot.x]}
+                    {t.openSpot.z + 1}（{t.openSpot.y + 1}段目
+                    {t.playableNow ? '・即着手可' : '・空中待ち'}）
+                  </span>
+                ))}
               </div>
             )}
-          </div>
+          </section>
 
           {/* Three.js Canvas */}
-          <div className="relative overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#060913] shadow-2xl">
+          <div className="tabletop-board-frame relative overflow-hidden">
             <div
               ref={mountRef}
-              className="aspect-[5/4] w-full min-h-[340px] max-h-[540px] cursor-grab active:cursor-grabbing touch-none"
+              className="aspect-[5/4] w-full min-h-[320px] max-h-[560px] cursor-grab touch-none active:cursor-grabbing"
               aria-label="立体四目並べ 3Dキャンバス"
             />
 
-            {/* Top Camera Preset Bar */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center justify-between gap-2 p-3">
-              <span className="rounded-full border border-cyan-400/30 bg-black/65 px-2.5 py-1 text-[11px] font-bold text-cyan-200 backdrop-blur">
+            <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-2 p-2 sm:p-3">
+              <span className="tabletop-panel-soft hidden px-2.5 py-1.5 text-[11px] font-medium text-[#b9a88f] sm:inline-flex">
                 ドラッグで360°回転 / ポールをタップして球を落下
               </span>
               <div className="pointer-events-auto flex flex-wrap gap-1">
@@ -1098,10 +1111,11 @@ export default function QubicFourGame() {
                     key={key}
                     type="button"
                     onClick={() => selectCameraPreset(key)}
-                    className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold transition ${
+                    aria-pressed={cameraPreset === key}
+                    className={`inline-flex min-h-11 items-center rounded-md border px-2.5 text-[11px] font-semibold transition ${
                       cameraPreset === key
-                        ? 'border-cyan-400 bg-cyan-500/25 text-cyan-100'
-                        : 'border-white/15 bg-black/65 text-slate-300 hover:text-white'
+                        ? 'border-[#c99555] bg-[#3a2a1c] text-[#dfb06d]'
+                        : 'border-[#4d3d2d] bg-[#17120f]/95 text-[#b9a88f] hover:border-[#6b543d] hover:text-[#f4ead8]'
                     }`}
                   >
                     {label}
@@ -1111,9 +1125,13 @@ export default function QubicFourGame() {
             </div>
 
             {hoveredPeg && !gameOver && (
-              <div className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-cyan-400/35 bg-black/75 px-3 py-1.5 text-xs font-bold text-cyan-100 backdrop-blur">
-                選択ポール: <span className="font-mono text-amber-300">{COL_LABELS[hoveredPeg[0]]}{hoveredPeg[1] + 1}</span>
-                （次の落下段:{' '}
+              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md border border-[#4d3d2d] bg-[#17120f]/95 px-3 py-1.5 text-[11px] font-medium text-[#d8cbb8] sm:bottom-3 sm:left-3">
+                選択ポール:{' '}
+                <span className="font-mono text-[#e6c48f]">
+                  {COL_LABELS[hoveredPeg[0]]}
+                  {hoveredPeg[1] + 1}
+                </span>
+                （落下段:{' '}
                 {getDropLevel(grid, hoveredPeg[0], hoveredPeg[1]) !== -1
                   ? `${getDropLevel(grid, hoveredPeg[0], hoveredPeg[1]) + 1}段目`
                   : '満杯'}
@@ -1123,30 +1141,28 @@ export default function QubicFourGame() {
           </div>
         </div>
 
-        {/* Right Sidebar: 2D Layer Slice Map + Controls */}
-        <aside className="flex flex-col gap-3">
-          {/* Synchronized 2D Layer Slice Map (1段目〜4段目) */}
-          <div className="rounded-2xl border border-cyan-500/25 bg-[#0b1324]/90 p-3.5">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black tracking-[0.18em] text-cyan-400">
-                2D LAYER SLICE MAP（1段目〜4段目スライス）
-              </p>
-              <span className="text-[10px] font-bold text-slate-400">タップでも投下可能</span>
+        {/* Right: Slice Map + Controls */}
+        <aside className="flex min-w-0 flex-col gap-3">
+          {/* 2D Layer Slice Map */}
+          <div className="tabletop-panel p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <p className="tabletop-kicker">Layer Slice Map</p>
+              <span className="text-[11px] font-medium text-[#b9a88f]">タップでも投下可能</span>
             </div>
 
-            <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
               {[0, 1, 2, 3].map((levelY) => (
                 <div
                   key={levelY}
-                  className="rounded-xl border border-white/10 bg-[#070c18] p-2"
+                  className="tabletop-panel-soft min-w-0 p-2"
                 >
-                  <div className="mb-1.5 flex items-center justify-between text-[11px] font-black text-slate-300">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-xs font-semibold text-[#d8cbb8]">
                     <span>{levelY + 1}段目 (Y={levelY + 1})</span>
-                    <span className="text-[9px] text-slate-400">
+                    <span className="text-[10px] font-medium text-[#8f806d]">
                       {levelY === 0 ? '最下段' : levelY === 3 ? '最上段' : '中段'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-4 gap-1">
+                  <div className="grid min-w-0 grid-cols-4 gap-1">
                     {[0, 1, 2, 3].map((z) =>
                       [0, 1, 2, 3].map((x) => {
                         const val = grid[levelY][z][x];
@@ -1166,16 +1182,16 @@ export default function QubicFourGame() {
                             onMouseLeave={() => setHoveredPeg(null)}
                             disabled={dropY === -1 || gameOver || isCpuTurn}
                             title={`ポール ${COL_LABELS[x]}${z + 1} (${levelY + 1}段目)`}
-                            className={`relative flex aspect-square items-center justify-center rounded-md border text-[10px] font-bold transition ${
+                            className={`relative flex min-w-0 aspect-square items-center justify-center rounded-md border text-[10px] font-bold transition ${
                               val === 1
-                                ? 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                                ? 'border-[#e0bb82] bg-[#c99555] text-[#1b120b]'
                                 : val === 2
-                                  ? 'border-sky-300 bg-sky-400 text-slate-950 shadow-[0_0_8px_rgba(56,189,248,0.5)]'
+                                  ? 'border-[#9db8cd] bg-[#5f8fb3] text-[#0f1a22]'
                                   : isHint
-                                    ? 'border-amber-300 bg-amber-400/35 text-amber-200 ring-2 ring-amber-300'
+                                    ? 'border-[#dfb06d] bg-[#3a2a1c] text-[#dfb06d] ring-1 ring-[#dfb06d]'
                                     : isNextLanding
-                                      ? 'border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-500/30'
-                                      : 'border-white/5 bg-white/[0.02] text-slate-600'
+                                      ? 'border-[#4d3d2d] bg-[#2a211a] text-[#b9a88f] hover:border-[#c99555] hover:bg-[#3a2a1c]'
+                                      : 'border-[#3a3027] bg-[#1b1612] text-[#6f6252]'
                             }`}
                           >
                             {val !== 0 ? (
@@ -1185,7 +1201,10 @@ export default function QubicFourGame() {
                                 '●'
                               )
                             ) : isNextLanding ? (
-                              <span className="opacity-65">{COL_LABELS[x]}{z + 1}</span>
+                              <span className="opacity-70">
+                                {COL_LABELS[x]}
+                                {z + 1}
+                              </span>
                             ) : (
                               '·'
                             )}
@@ -1199,77 +1218,76 @@ export default function QubicFourGame() {
             </div>
           </div>
 
-          {/* Match Actions */}
-          <div className="rounded-2xl border border-cyan-500/20 bg-[#0b1324]/90 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-cyan-400">
-              MATCH ACTIONS
-            </p>
+          {/* Actions */}
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Match Actions</p>
             <div className="mt-2 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={history.length === 0 || isCpuTurn}
-                className="rounded-xl border border-white/15 bg-white/[0.05] px-2 py-2 text-xs font-bold text-slate-100 transition hover:border-cyan-400/50 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs disabled:cursor-not-allowed disabled:opacity-45"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
                 onClick={handleHint}
                 disabled={gameOver || isCpuTurn}
-                className="rounded-xl border border-amber-400/35 bg-amber-500/15 px-2 py-2 text-xs font-bold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs text-[#dfb06d] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                💡 AIヒント
+                AIヒント
               </button>
               <button
                 type="button"
                 onClick={() => resetGame()}
-                className="rounded-xl border border-cyan-400/35 bg-cyan-500/15 px-2 py-2 text-xs font-bold text-cyan-200 transition hover:bg-cyan-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-2 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
             {hintCoord && (
-              <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-200">
-                AI推奨ポール: <span className="font-mono">{COL_LABELS[hintCoord.x]}{hintCoord.z + 1}</span>（{hintCoord.y + 1}段目に着地）
+              <p className="tabletop-panel-soft mt-2 px-2.5 py-1.5 text-xs font-medium text-[#e6c48f]">
+                AI推奨ポール:{' '}
+                <span className="font-mono">
+                  {COL_LABELS[hintCoord.x]}
+                  {hintCoord.z + 1}
+                </span>
+                （{hintCoord.y + 1}段目に着地）
               </p>
             )}
           </div>
 
           {/* Mode & AI Level */}
-          <div className="rounded-2xl border border-white/10 bg-[#0b1324]/90 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-cyan-400">
-              GAME MODE / 対戦設定
-            </p>
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Game Mode / 対戦設定</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => resetGame('cpu', difficulty, humanSide)}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                  mode === 'cpu'
-                    ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100'
-                    : 'border-white/10 bg-white/[0.04] text-slate-300'
+                aria-pressed={mode === 'cpu'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'cpu' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                🤖 CPU対戦
+                CPU対戦
               </button>
               <button
                 type="button"
                 onClick={() => resetGame('pvp', difficulty, humanSide)}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                  mode === 'pvp'
-                    ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100'
-                    : 'border-white/10 bg-white/[0.04] text-slate-300'
+                aria-pressed={mode === 'pvp'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'pvp' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                👥 1台で2人対戦
+                1台で2人対戦
               </button>
             </div>
 
             {mode === 'cpu' && (
               <>
-                <p className="mt-3 text-[10px] font-black tracking-[0.18em] text-slate-400">
-                  CPU強さ（76ライン空間探索AI）
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">
+                  CPUの強さ（76ライン空間探索）
                 </p>
                 <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   {(
@@ -1283,10 +1301,9 @@ export default function QubicFourGame() {
                       key={lv}
                       type="button"
                       onClick={() => resetGame('cpu', lv, humanSide)}
-                      className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                        difficulty === lv
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                          : 'border-white/10 bg-white/[0.04] text-slate-300'
+                      aria-pressed={difficulty === lv}
+                      className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1.5 text-xs font-semibold ${
+                        difficulty === lv ? 'tabletop-chip-active' : ''
                       }`}
                     >
                       {label}
@@ -1294,38 +1311,34 @@ export default function QubicFourGame() {
                   ))}
                 </div>
 
-                <p className="mt-3 text-[10px] font-black tracking-[0.18em] text-slate-400">
-                  あなたの手番
-                </p>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">あなたの手番</p>
                 <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={() => resetGame('cpu', difficulty, 1)}
-                    className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                      humanSide === 1
-                        ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                        : 'border-white/10 bg-white/[0.04] text-slate-300'
+                    aria-pressed={humanSide === 1}
+                    className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                      humanSide === 1 ? 'tabletop-chip-active' : ''
                     }`}
                   >
-                    🟡 先手（アンバー）
+                    アンバー（先手）
                   </button>
                   <button
                     type="button"
                     onClick={() => resetGame('cpu', difficulty, 2)}
-                    className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                      humanSide === 2
-                        ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                        : 'border-white/10 bg-white/[0.04] text-slate-300'
+                    aria-pressed={humanSide === 2}
+                    className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                      humanSide === 2 ? 'tabletop-chip-active' : ''
                     }`}
                   >
-                    🔵 後手（サファイア）
+                    サファイア（後手）
                   </button>
                 </div>
               </>
             )}
           </div>
         </aside>
-      </div>
+      </main>
     </div>
   );
 }

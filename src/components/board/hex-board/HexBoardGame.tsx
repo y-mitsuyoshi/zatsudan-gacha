@@ -628,114 +628,109 @@ export default function HexBoardGame() {
   const bottomLeft = getHexCenter(boardSize - 1, 0);
 
   return (
-    <div className="min-h-screen bg-[#060a14] text-slate-100">
-      <header className="border-b border-slate-800/80 bg-[#0a1020]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+    <div className="tabletop-page">
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6">
           <Link
             href="/games"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-rose-400/60 hover:text-white"
+            className="tabletop-button inline-flex min-h-11 items-center gap-2 px-3 text-xs"
           >
-            ← 無料ゲーム一覧へ
+            <span aria-hidden="true">←</span>
+            <span>ゲーム一覧</span>
           </Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-300">
-              HEX CONNECTION BOARD
-            </span>
-            <ThemeToggleButton />
+            <span className="tabletop-kicker hidden sm:inline">Hex · Connection</span>
+            <div className="[&>button]:h-11 [&>button]:w-11 [&>div]:h-11 [&>div]:w-11">
+              <ThemeToggleButton />
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6">
-        {/* Top Controls */}
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/95 via-[#0e172a] to-slate-900/95 p-4 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl">
-                ヘックス（六角形接続トポロジー戦略盤）
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-400">
-                赤は【上辺 ↔ 下辺】、青は【左辺 ↔ 右辺】を六角形の鎖でつなげば勝利！数学のヘックス定理により引き分けは絶対に起こりません。
+      <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
+        {/* Title & Match Controls */}
+        <section className="tabletop-panel mb-4 p-3 sm:p-5">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
+              <p className="tabletop-kicker">Topology Game · No Draws</p>
+              <h2 className="tabletop-title mt-1 text-xl sm:text-2xl">ヘックス</h2>
+              <p className="tabletop-muted mt-1 max-w-2xl text-xs leading-relaxed sm:text-sm">
+                赤は上辺と下辺、青は左辺と右辺を六角形の石でつなぐ接続戦略。相手の進路を遮りながら、先に二辺を結んでください。
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Board Size Selector */}
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
-                {(
-                  [
-                    [7, '7×7 高速戦'],
-                    [9, '9×9 標準戦'],
-                    [11, '11×11 公式戦'],
-                  ] as const
-                ).map(([sz, label]) => (
-                  <button
-                    key={sz}
-                    type="button"
-                    onClick={() => resetWithSize(sz)}
-                    className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                      boardSize === sz
-                        ? 'bg-rose-600 text-white'
-                        : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <div
+              role="group"
+              aria-label="盤面サイズ"
+              className="flex flex-wrap gap-1.5"
+            >
+              {(
+                [
+                  [7, '7×7'],
+                  [9, '9×9'],
+                  [11, '11×11'],
+                ] as const
+              ).map(([sz, label]) => (
+                <button
+                  key={sz}
+                  type="button"
+                  data-size={sz}
+                  onClick={() => resetWithSize(sz)}
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    boardSize === sz ? 'tabletop-chip-active' : ''
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              {/* CPU vs 2P */}
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
+          <div className="tabletop-divider mt-3 flex flex-col gap-2 border-t pt-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div role="group" aria-label="対戦モード" className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
+                  data-mode="cpu"
                   onClick={() => {
                     setGameMode('cpu');
                     resetWithSize(boardSize);
                   }}
-                  className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                    gameMode === 'cpu'
-                      ? 'bg-sky-600 text-white'
-                      : 'text-slate-300 hover:text-white'
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    gameMode === 'cpu' ? 'tabletop-chip-active' : ''
                   }`}
                 >
                   CPU対戦
                 </button>
                 <button
                   type="button"
+                  data-mode="2p"
                   onClick={() => {
                     setGameMode('2p');
                     resetWithSize(boardSize);
                   }}
-                  className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                    gameMode === '2p'
-                      ? 'bg-sky-600 text-white'
-                      : 'text-slate-300 hover:text-white'
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    gameMode === '2p' ? 'tabletop-chip-active' : ''
                   }`}
                 >
                   1台で2人対戦
                 </button>
               </div>
-            </div>
-          </div>
 
-          {/* Sub Controls */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
               {gameMode === 'cpu' && (
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">CPU強さ:</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="tabletop-muted text-[11px]">CPU強さ</span>
                   {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
                     <button
                       key={d}
                       type="button"
+                      data-difficulty={d}
                       onClick={() => setDifficulty(d)}
-                      className={`rounded-md px-2.5 py-1 font-medium transition ${
-                        difficulty === d
-                          ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50'
-                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                        difficulty === d ? 'tabletop-chip-active' : ''
                       }`}
                     >
-                      {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級(2ブリッジAI)'}
+                      {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級'}
                     </button>
                   ))}
                 </div>
@@ -743,152 +738,210 @@ export default function HexBoardGame() {
 
               <button
                 type="button"
+                data-toggle="bridges"
+                aria-pressed={showBridges}
                 onClick={() => setShowBridges((b) => !b)}
-                className={`rounded-lg border px-2.5 py-1 font-medium transition ${
-                  showBridges
-                    ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
-                    : 'border-slate-700 bg-slate-800 text-slate-400'
+                className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                  showBridges ? 'tabletop-chip-active' : ''
                 }`}
               >
-                🔗 2ブリッジ仮想接続表示: {showBridges ? 'ON' : 'OFF'}
+                2ブリッジ表示
               </button>
 
               <button
                 type="button"
+                data-toggle="swap-rule"
+                aria-pressed={swapRuleEnabled}
                 onClick={() => setSwapRuleEnabled((s) => !s)}
-                className={`rounded-lg border px-2.5 py-1 font-medium transition ${
-                  swapRuleEnabled
-                    ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
-                    : 'border-slate-700 bg-slate-800 text-slate-400'
+                className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                  swapRuleEnabled ? 'tabletop-chip-active' : ''
                 }`}
               >
-                スワップルール: {swapRuleEnabled ? 'ON' : 'OFF'}
+                スワップルール
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {canInvokeSwap && (gameMode === '2p' || turn === 2) && (
                 <button
                   type="button"
+                  data-action="swap"
                   onClick={handleSwapMove}
-                  className="rounded-lg border border-purple-400/60 bg-purple-500/20 px-3 py-1 font-bold text-purple-200 transition hover:bg-purple-500/30"
+                  className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-3 text-xs"
                 >
-                  🔄 スワップ宣言（1手目を青に入れ替え）
+                  スワップ宣言
                 </button>
               )}
               <button
                 type="button"
+                data-action="hint"
                 onClick={handleHint}
                 disabled={Boolean(winner) || (gameMode === 'cpu' && turn === 2)}
-                className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1 font-semibold text-amber-300 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                💡 ヒント
+                ヒント
               </button>
               <button
                 type="button"
+                data-action="undo"
                 onClick={handleUndo}
                 disabled={snapshots.length === 0}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1 font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
+                data-action="reset"
                 onClick={() => resetWithSize(boardSize)}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1 font-semibold text-rose-300 transition hover:bg-rose-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-3 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          {/* Hex SVG Board */}
-          <div className="lg:col-span-8">
-            <div className="rounded-2xl border border-slate-800 bg-[#0a1120] p-3 shadow-2xl sm:p-5">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+          {/* Hex Board Column */}
+          <div className="min-w-0 lg:col-span-8">
+            <div className="tabletop-panel p-2.5 sm:p-4">
               {/* Turn Banner */}
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5">
-                <div className="flex items-center gap-2.5">
+              <div className="tabletop-panel-soft mb-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className={`h-3.5 w-3.5 rounded-full ${
-                      turn === 1
-                        ? 'bg-rose-500 shadow-[0_0_10px_#f43f5e]'
-                        : 'bg-sky-400 shadow-[0_0_10px_#38bdf8]'
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                      turn === 1 ? 'bg-[#b9685f]' : 'bg-[#587a92]'
                     }`}
                   />
-                  <span className="text-sm font-bold text-white">
+                  <span className="truncate text-xs font-semibold text-[#f4ead8] sm:text-sm">
                     {winner
                       ? winner === 1
-                        ? '🏆 赤（上辺↔下辺 接続完了！）の勝利！'
+                        ? '赤の勝利 — 上下を接続'
                         : gameMode === 'cpu'
-                          ? '🏆 青（CPU・左辺↔右辺 接続完了！）の勝利！'
-                          : '🏆 青（後手・左辺↔右辺 接続完了！）の勝利！'
+                          ? '青（CPU）の勝利 — 左右を接続'
+                          : '青（後手）の勝利 — 左右を接続'
                       : turn === 1
-                        ? '赤（先手：上辺 ↕ 下辺 をつなぐ）の手番'
+                        ? '赤（先手）の手番'
                         : gameMode === 'cpu'
-                          ? '青（CPU：左辺 ↔ 右辺）が思考中...'
-                          : '青（後手：左辺 ↔ 右辺 をつなぐ）の手番'}
+                          ? '青（CPU）が思考中'
+                          : '青（後手）の手番'}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="text-rose-300">
-                    赤 残り最短距離: <strong>{connectionMetrics.p1Dist}</strong>
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
+                  <span className="tabletop-chip px-2 py-0.5 font-semibold text-[#d8a49b]">
+                    赤 最短 {connectionMetrics.p1Dist}
                   </span>
-                  <span className="text-sky-300">
-                    青 残り最短距離: <strong>{connectionMetrics.p2Dist}</strong>
+                  <span className="tabletop-chip px-2 py-0.5 font-semibold text-[#9db8c9]">
+                    青 最短 {connectionMetrics.p2Dist}
                   </span>
                 </div>
               </div>
 
-              {/* Rhombus Hex SVG */}
-              <div className="overflow-x-auto">
+              {/* Wooden Hex Board */}
+              <div className="tabletop-board-frame mx-auto p-1.5 sm:p-2">
                 <svg
                   viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                  className="mx-auto h-auto max-h-[520px] w-full select-none rounded-xl bg-[#070c18]"
+                  role="img"
+                  aria-label="ヘックスの盤面"
+                  className="block h-auto max-h-[560px] w-full select-none"
                   style={{ touchAction: 'manipulation' }}
                 >
-                  {/* Colored Border Goal Bands */}
-                  {/* Top Red Border */}
+                  <defs>
+                    <linearGradient id="hexWood" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#241a13" />
+                      <stop offset="55%" stopColor="#1c140f" />
+                      <stop offset="100%" stopColor="#15100c" />
+                    </linearGradient>
+                  </defs>
+
+                  <rect x="0" y="0" width={svgWidth} height={svgHeight} rx="8" fill="url(#hexWood)" />
+                  <g opacity="0.1" stroke="#8a6744" strokeWidth="0.8">
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const y = 14 + i * (svgHeight / 12);
+                      return (
+                        <path
+                          key={i}
+                          d={`M8 ${y} C ${svgWidth * 0.3} ${y - 5}, ${svgWidth * 0.66} ${y + 6}, ${svgWidth - 8} ${y - 2}`}
+                          fill="none"
+                        />
+                      );
+                    })}
+                  </g>
+
+                  {/* Goal Bands */}
                   <line
                     x1={topLeft.x - 16}
                     y1={topLeft.y - 26}
                     x2={topRight.x + 16}
                     y2={topRight.y - 26}
-                    stroke="#f43f5e"
-                    strokeWidth={8}
+                    stroke="#1a110b"
+                    strokeWidth={10}
                     strokeLinecap="round"
                   />
-                  {/* Bottom Red Border */}
+                  <line
+                    x1={topLeft.x - 16}
+                    y1={topLeft.y - 26}
+                    x2={topRight.x + 16}
+                    y2={topRight.y - 26}
+                    stroke="#9f4540"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                  />
                   <line
                     x1={bottomLeft.x - 16}
                     y1={bottomLeft.y + 26}
                     x2={bottomRight.x + 16}
                     y2={bottomRight.y + 26}
-                    stroke="#f43f5e"
-                    strokeWidth={8}
+                    stroke="#1a110b"
+                    strokeWidth={10}
                     strokeLinecap="round"
                   />
-                  {/* Left Blue Border */}
+                  <line
+                    x1={bottomLeft.x - 16}
+                    y1={bottomLeft.y + 26}
+                    x2={bottomRight.x + 16}
+                    y2={bottomRight.y + 26}
+                    stroke="#9f4540"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                  />
                   <line
                     x1={topLeft.x - 28}
                     y1={topLeft.y - 10}
                     x2={bottomLeft.x - 28}
                     y2={bottomLeft.y + 10}
-                    stroke="#38bdf8"
-                    strokeWidth={8}
+                    stroke="#1a110b"
+                    strokeWidth={10}
                     strokeLinecap="round"
                   />
-                  {/* Right Blue Border */}
+                  <line
+                    x1={topLeft.x - 28}
+                    y1={topLeft.y - 10}
+                    x2={bottomLeft.x - 28}
+                    y2={bottomLeft.y + 10}
+                    stroke="#3f5f78"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                  />
                   <line
                     x1={topRight.x + 28}
                     y1={topRight.y - 10}
                     x2={bottomRight.x + 28}
                     y2={bottomRight.y + 10}
-                    stroke="#38bdf8"
-                    strokeWidth={8}
+                    stroke="#1a110b"
+                    strokeWidth={10}
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1={topRight.x + 28}
+                    y1={topRight.y - 10}
+                    x2={bottomRight.x + 28}
+                    y2={bottomRight.y + 10}
+                    stroke="#3f5f78"
+                    strokeWidth={6}
                     strokeLinecap="round"
                   />
 
@@ -901,14 +954,23 @@ export default function HexBoardGame() {
                       const lastMove = moveHistory[moveHistory.length - 1];
                       const isLastHex = lastMove?.r === r && lastMove?.c === c;
 
-                      let fill = '#1e293b';
-                      if (cell === 1) fill = isWinHex ? '#fb7185' : '#e11d48';
-                      else if (cell === 2) fill = isWinHex ? '#7dd3fc' : '#0284c7';
-                      else if (isHintHex) fill = '#78350f';
+                      let fill = '#2b2118';
+                      let stroke = '#4d3d2d';
+                      if (cell === 1) {
+                        fill = isWinHex ? '#b9685f' : '#9f4540';
+                        stroke = isWinHex ? '#e3c08a' : '#7a332e';
+                      } else if (cell === 2) {
+                        fill = isWinHex ? '#587a92' : '#3f5f78';
+                        stroke = isWinHex ? '#e3c08a' : '#2f4a5c';
+                      } else if (isHintHex) {
+                        fill = '#3a2a1c';
+                        stroke = '#dfb06d';
+                      }
 
                       return (
                         <g
                           key={`${r}-${c}`}
+                          data-hex={`${r}-${c}`}
                           onClick={() => {
                             if (gameMode === 'cpu' && turn === 2) return;
                             handlePlaceStone(r, c, false);
@@ -918,54 +980,48 @@ export default function HexBoardGame() {
                           <polygon
                             points={getHexPolygonPoints(x, y, hexRadius - 1.2)}
                             fill={fill}
-                            stroke={
-                              isWinHex
-                                ? '#fef08a'
-                                : isHintHex
-                                  ? '#fbbf24'
-                                  : isLastHex
-                                    ? '#f8fafc'
-                                    : '#475569'
-                            }
-                            strokeWidth={isWinHex || isHintHex || isLastHex ? 2.6 : 1.3}
+                            stroke={isLastHex ? '#f4ead8' : stroke}
+                            strokeWidth={isWinHex || isHintHex ? 2.6 : isLastHex ? 2 : 1.2}
                           />
 
-                          {/* Coordinate labels on outer borders */}
+                          {cell && (
+                            <circle
+                              cx={x}
+                              cy={y}
+                              r={hexRadius * 0.52}
+                              fill={cell === 1 ? '#e3b4ad' : '#a9c2d1'}
+                              opacity={0.16}
+                            />
+                          )}
+
+                          {isLastHex && <circle cx={x} cy={y} r={3.5} fill="#f4ead8" />}
+
+                          {/* Coordinate labels */}
                           {r === 0 && (
                             <text
                               x={x}
-                              y={y - hexRadius - 6}
+                              y={y - hexRadius - 14}
                               textAnchor="middle"
-                              className="fill-rose-300/80 text-[10px] font-bold"
+                              fill="#b9a88f"
+                              fontSize="10"
+                              fontWeight="700"
+                              fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
                             >
                               {COL_LETTERS[c]}
                             </text>
                           )}
                           {c === 0 && (
                             <text
-                              x={x - hexRadius - 10}
+                              x={x - hexRadius - 12}
                               y={y + 4}
                               textAnchor="end"
-                              className="fill-sky-300/80 text-[10px] font-bold"
+                              fill="#b9a88f"
+                              fontSize="10"
+                              fontWeight="700"
+                              fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
                             >
                               {r + 1}
                             </text>
-                          )}
-
-                          {/* Stone Inner Gloss */}
-                          {cell && (
-                            <circle
-                              cx={x}
-                              cy={y}
-                              r={hexRadius * 0.56}
-                              fill={cell === 1 ? '#fda4af' : '#bae6fd'}
-                              opacity={0.28}
-                            />
-                          )}
-
-                          {/* Last move dot */}
-                          {isLastHex && (
-                            <circle cx={x} cy={y} r={4} fill="#ffffff" />
                           )}
                         </g>
                       );
@@ -984,31 +1040,28 @@ export default function HexBoardGame() {
                         x2={pB.x}
                         y2={pB.y}
                         stroke={
-                          b.threatenedBy
-                            ? '#fbbf24'
-                            : b.player === 1
-                              ? '#fda4af'
-                              : '#7dd3fc'
+                          b.threatenedBy ? '#dfb06d' : b.player === 1 ? '#c98d84' : '#7fa3b8'
                         }
-                        strokeWidth={2.5}
-                        strokeDasharray="4 3"
+                        strokeWidth={2}
+                        strokeDasharray="4 4"
+                        opacity={0.75}
                         pointerEvents="none"
                       />
                     );
                   })}
 
-                  {/* Winning Path Polyline */}
+                  {/* Winning Path */}
                   {winningPath.length > 1 && (
                     <polyline
                       points={winningPath
                         .map((pt) => {
-                          const c = getHexCenter(pt.r, pt.c);
-                          return `${c.x.toFixed(1)},${c.y.toFixed(1)}`;
+                          const center = getHexCenter(pt.r, pt.c);
+                          return `${center.x.toFixed(1)},${center.y.toFixed(1)}`;
                         })
                         .join(' ')}
                       fill="none"
-                      stroke="#fef08a"
-                      strokeWidth={4.5}
+                      stroke="#e3c08a"
+                      strokeWidth={4}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       pointerEvents="none"
@@ -1018,111 +1071,119 @@ export default function HexBoardGame() {
               </div>
 
               {hint && (
-                <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  <span className="font-bold">💡 AI戦術ヒント: </span>
+                <div className="mt-3 border-l-2 border-[#c99555] bg-[#2a211a] px-3 py-2 text-xs leading-relaxed text-[#e8d7bd]">
+                  <span className="font-semibold text-[#dfb06d]">AIヒント: </span>
                   {hint.reason}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-4 lg:col-span-4">
+          {/* Side Panels */}
+          <aside className="min-w-0 space-y-3 lg:col-span-4">
             {/* Connection Status Cards */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <div
-                className={`rounded-2xl border p-3.5 ${
+                className="tabletop-stat p-2.5 sm:p-3"
+                style={
                   turn === 1 && !winner
-                    ? 'border-rose-500/70 bg-rose-950/30'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
+                    ? { borderColor: '#9f4540', background: 'rgba(159, 69, 64, 0.1)' }
+                    : undefined
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-rose-400">赤（上下接続）</span>
-                  <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">
-                    TOP ↕ BOTTOM
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#e8d7bd]">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#9f4540] ring-1 ring-[#c98d84]" />
+                    <span className="truncate">赤（上下）</span>
+                  </span>
+                  <span className="tabletop-chip shrink-0 px-1.5 py-0.5 text-[9px] font-semibold">
+                    上下
                   </span>
                 </div>
                 <div className="mt-2">
-                  <span className="text-xs text-slate-400">最短必要石数: </span>
-                  <strong className="text-2xl font-extrabold text-white">
+                  <span className="tabletop-muted text-[10px]">最短必要石数</span>
+                  <div className="mt-0.5 text-xl font-bold leading-none text-[#f4ead8]">
                     {connectionMetrics.p1Dist}
-                  </strong>
+                  </div>
                 </div>
               </div>
 
               <div
-                className={`rounded-2xl border p-3.5 ${
+                className="tabletop-stat p-2.5 sm:p-3"
+                style={
                   turn === 2 && !winner
-                    ? 'border-sky-400/70 bg-sky-950/30'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
+                    ? { borderColor: '#3f5f78', background: 'rgba(63, 95, 120, 0.14)' }
+                    : undefined
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-sky-400">
-                    {gameMode === 'cpu' ? '青（CPU・左右）' : '青（後手・左右）'}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#e8d7bd]">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#3f5f78] ring-1 ring-[#7fa3b8]" />
+                    <span className="truncate">{gameMode === 'cpu' ? '青（CPU）' : '青（後手）'}</span>
                   </span>
-                  <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
-                    LEFT ↔ RIGHT
+                  <span className="tabletop-chip shrink-0 px-1.5 py-0.5 text-[9px] font-semibold">
+                    左右
                   </span>
                 </div>
                 <div className="mt-2">
-                  <span className="text-xs text-slate-400">最短必要石数: </span>
-                  <strong className="text-2xl font-extrabold text-white">
+                  <span className="tabletop-muted text-[10px]">最短必要石数</span>
+                  <div className="mt-0.5 text-xl font-bold leading-none text-[#f4ead8]">
                     {connectionMetrics.p2Dist}
-                  </strong>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Hex Mathematical Strategy Guide */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <h3 className="text-sm font-bold text-white">📐 ヘックスの数学と「2ブリッジ」定石</h3>
-              <ul className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            {/* Strategy Guide */}
+            <div className="tabletop-panel p-3.5">
+              <h3 className="tabletop-title text-sm">ヘックスの数学と定石</h3>
+              <ul className="tabletop-muted mt-2 space-y-1.5 text-[11px] leading-relaxed">
                 <li>
-                  <strong className="text-rose-300">・ヘックス定理（引き分けなし）</strong>: 数学者ジョン・ナッシュらが証明した通り、盤面がすべて埋まったとき赤か青のどちらか一方が必ず辺と辺を連結しており、引き分けは数学的に存在しません。
+                  <strong className="text-[#dfb06d]">引き分けなし</strong> — 盤面が埋まれば、どちらか一方の辺同士の接続が必ず成立します。
                 </li>
                 <li>
-                  <strong className="text-indigo-300">・🔗 2ブリッジ（仮想接続）</strong>: 1マス飛ばしの斜め向かい（間に2つの共通空きマスがある配置）に自分の石を置くと、相手が片方を邪魔してももう片方でつなげるため<strong>実質的に連結が確定</strong>します（盤上の破線表示）。
+                  <strong className="text-[#dfb06d]">2ブリッジ</strong> — 共通の空きマスを挟んだ斜め向かいの石は、片側を止められてももう片側で接続を守れます。
                 </li>
                 <li>
-                  <strong className="text-emerald-300">・🔄 スワップルール（パイ・ルール）</strong>: 先手1手目が中央の絶対有利マスに置かれた場合、後手は1手目直後に「スワップ」を宣言して先手の石を自分の色に置き換えられます。
+                  <strong className="text-[#dfb06d]">スワップ</strong> — 先手の強い初手に対し、後手はその石を自分の色へ入れ替えられます。
                 </li>
               </ul>
             </div>
 
             {/* Move History */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">📜 棋譜ログ</h3>
-                <span className="text-[11px] text-slate-400">{moveHistory.length} 手</span>
+            <div className="tabletop-panel p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="tabletop-title text-sm">棋譜ログ</h3>
+                <span className="tabletop-muted text-[10px]">{moveHistory.length} 手</span>
               </div>
-              <div className="mt-2 max-h-48 space-y-1 overflow-y-auto pr-1 text-xs">
+              <div className="mt-2 max-h-44 space-y-0 overflow-y-auto pr-1 text-[11px]">
                 {moveHistory.length === 0 ? (
-                  <p className="py-4 text-center text-slate-500">
-                    任意の六角形マスをタップして対局を開始してください。
+                  <p className="tabletop-muted py-4 text-center leading-relaxed">
+                    六角形のマスを選んで対局を開始してください。
                   </p>
                 ) : (
                   [...moveHistory].reverse().map((m, i) => (
                     <div
                       key={`${i}-${m.r}-${m.c}`}
-                      className="rounded-lg border border-slate-800/90 bg-slate-950/60 px-2.5 py-1.5 text-slate-300"
+                      data-log-entry
+                      className="tabletop-divider border-b py-1.5 leading-snug text-[#d8c9b2] last:border-b-0"
                     >
-                      <span className="mr-1.5 font-mono text-[10px] text-slate-500">
-                        #{moveHistory.length - i}
+                      <span className="mr-1.5 font-mono text-[10px] text-[#8f7d66]">
+                        {String(moveHistory.length - i).padStart(2, '0')}
                       </span>
-                      <span className={m.player === 1 ? 'text-rose-300' : 'text-sky-300'}>
-                        {m.player === 1 ? '赤(先手)' : gameMode === 'cpu' ? '青(CPU)' : '青(後手)'}
+                      <span className={m.player === 1 ? 'text-[#d8a49b]' : 'text-[#9db8c9]'}>
+                        {m.player === 1 ? '赤' : gameMode === 'cpu' ? '青（CPU）' : '青'}
                       </span>
-                      : {COL_LETTERS[m.c]}
+                      <span className="mx-1 text-[#8f7d66]">/</span>
+                      {COL_LETTERS[m.c]}
                       {m.r + 1}
-                      {m.swapped ? ' (🔄スワップ宣言)' : ''}
+                      {m.swapped ? '（スワップ）' : ''}
                     </div>
                   ))
                 )}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

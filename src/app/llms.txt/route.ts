@@ -155,7 +155,7 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [ブラックジャック（21・期待値ナビ付）](${BASE_URL}/blackjack)
 - [フリーセル（完全情報トランプパズル）](${BASE_URL}/freecell)
 - [大富豪（大貧民・AI 4人対戦）](${BASE_URL}/daifugo)
-- [テキサスホールデム・ポーカー](${BASE_URL}/texas-holdem)
+- [ロイヤル・ナイト・ポーカー（テキサスホールデム）](${BASE_URL}/texas-holdem)
 - [星屑のアトリエ（星片収集＆錬成エンジンビルド盤ゲーム）](${BASE_URL}/stellar-atelier)
 - [群島開拓記（海域タイル配置＆航路ネットワーク盤ゲーム）](${BASE_URL}/archipelago-cartographer)
 - [深海サルベージ：酸素限界の遺跡探査（深海チキンレース盤ゲーム）](${BASE_URL}/abyssal-salvage)

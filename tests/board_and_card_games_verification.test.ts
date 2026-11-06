@@ -88,9 +88,29 @@ describe('Board and Card games', () => {
     );
     assert.ok(daifugo.includes('bgmOn'), 'Daifugo must include procedural BGM toggle');
 
-    const holdem = read('src/components/cards/texas-holdem/TexasHoldemGame.tsx');
-    assert.ok(holdem.includes('CharacterPortraitSvg'), 'Texas Holdem must include custom SVG character portraits');
-    assert.ok(holdem.includes('ChipStackVisual'), 'Texas Holdem must include 3D chip stack visuals');
-    assert.ok(holdem.includes('bgmOn') && holdem.includes('voiceOn'), 'Texas Holdem must include BGM and Voice toggles');
+    const holdemDir = 'src/components/cards/texas-holdem';
+    const holdem = read(`${holdemDir}/TexasHoldemGame.tsx`);
+    assert.ok(holdem.includes('TitleScreen') && holdem.includes('LobbyScreen') && holdem.includes('TableScreen'), 'Texas Holdem must route title / lobby / table screens');
+    const chars = read(`${holdemDir}/characters.ts`);
+    for (const id of ['karen', 'rei', 'koharu', 'valentina', 'jin', 'luna']) {
+      assert.ok(chars.includes(`${id}:`), `Texas Holdem character ${id} missing`);
+      assert.ok(fs.existsSync(path.join(ROOT, `public/assets/holdem/chars/${id}.webp`)), `missing illustration for ${id}`);
+      assert.ok(fs.existsSync(path.join(ROOT, `public/assets/holdem/chars/${id}_win.webp`)), `missing win illustration for ${id}`);
+    }
+    const audio = read(`${holdemDir}/audio.ts`);
+    assert.ok(audio.includes('playBgm') && audio.includes('speak'), 'Texas Holdem must include BGM and voice playback');
+    const profile = read(`${holdemDir}/profile.ts`);
+    for (const rankName of ['ブロンズ', 'シルバー', 'ゴールド', 'プラチナ', 'ダイヤモンド', 'ロイヤル', 'レジェンド']) {
+      assert.ok(profile.includes(rankName), `Texas Holdem rank ${rankName} missing`);
+    }
+    const threeFx = read(`${holdemDir}/ui/ThreeFx.tsx`);
+    assert.ok(threeFx.includes("'three'"), 'Texas Holdem must include Three.js celebratory effect overlay');
+    const resultOverlay = read(`${holdemDir}/ui/ResultOverlay.tsx`);
+    assert.ok(
+      resultOverlay.includes('無料リバイして続行') &&
+        resultOverlay.includes('チップ満額で再挑戦') &&
+        resultOverlay.includes('満額補充'),
+      'Texas Holdem must include busted relief rebuy, retry, and stack top-up UI when chips run out'
+    );
   });
 });

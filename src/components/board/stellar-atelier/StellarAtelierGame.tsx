@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
@@ -32,10 +32,10 @@ export const ELEMENTS: ElementMeta[] = [
     name: '紅炎（クリムゾン）',
     shortName: '紅炎',
     sub: '火成星片',
-    bgClass: 'bg-rose-950/80',
-    borderClass: 'border-rose-400/60',
-    textClass: 'text-rose-300',
-    badgeClass: 'bg-rose-500/25 text-rose-200 border-rose-400/50',
+    bgClass: 'bg-[#9f4540]/20',
+    borderClass: 'border-[#9f4540]/60',
+    textClass: 'text-[#d9a19b]',
+    badgeClass: 'bg-[#9f4540]/22 text-[#d9a19b] border-[#9f4540]/50',
     glowHex: '#fb7185',
   },
   {
@@ -43,10 +43,10 @@ export const ELEMENTS: ElementMeta[] = [
     name: '蒼氷（サファイア）',
     shortName: '蒼氷',
     sub: '氷晶星片',
-    bgClass: 'bg-sky-950/80',
-    borderClass: 'border-sky-400/60',
-    textClass: 'text-sky-300',
-    badgeClass: 'bg-sky-500/25 text-sky-200 border-sky-400/50',
+    bgClass: 'bg-[#142330]',
+    borderClass: 'border-[#3f5f78]/60',
+    textClass: 'text-[#9db8c8]',
+    badgeClass: 'bg-[#3f5f78]/20 text-[#9db8c8] border-[#3f5f78]/50',
     glowHex: '#38bdf8',
   },
   {
@@ -54,10 +54,10 @@ export const ELEMENTS: ElementMeta[] = [
     name: '翠風（エメラルド）',
     shortName: '翠風',
     sub: '翠嵐星片',
-    bgClass: 'bg-emerald-950/80',
-    borderClass: 'border-emerald-400/60',
-    textClass: 'text-emerald-300',
-    badgeClass: 'bg-emerald-500/25 text-emerald-200 border-emerald-400/50',
+    bgClass: 'bg-[#315d4e]/16',
+    borderClass: 'border-[#315d4e]/60',
+    textClass: 'text-[#9dc4af]',
+    badgeClass: 'bg-[#315d4e]/25 text-[#9dc4af] border-[#315d4e]/50',
     glowHex: '#34d399',
   },
   {
@@ -65,10 +65,10 @@ export const ELEMENTS: ElementMeta[] = [
     name: '琥珀（アンバー）',
     shortName: '琥珀',
     sub: '黄金星片',
-    bgClass: 'bg-amber-950/80',
-    borderClass: 'border-amber-400/60',
-    textClass: 'text-amber-300',
-    badgeClass: 'bg-amber-500/25 text-amber-200 border-amber-400/50',
+    bgClass: 'bg-[#c99555]/12',
+    borderClass: 'border-[var(--table-accent)]/60',
+    textClass: 'text-[var(--table-accent-strong)]',
+    badgeClass: 'bg-[#c99555]/20 text-[var(--table-accent-strong)] border-[var(--table-accent)]/50',
     glowHex: '#fbbf24',
   },
   {
@@ -76,10 +76,10 @@ export const ELEMENTS: ElementMeta[] = [
     name: '紫電（ヴァイオレット）',
     shortName: '紫電',
     sub: '星雲星片',
-    bgClass: 'bg-purple-950/80',
-    borderClass: 'border-purple-400/60',
-    textClass: 'text-purple-300',
-    badgeClass: 'bg-purple-500/25 text-purple-200 border-purple-400/50',
+    bgClass: 'bg-[#6a4a66]/22',
+    borderClass: 'border-[#6a4a66]/60',
+    textClass: 'text-[#cbb3c9]',
+    badgeClass: 'bg-[#6a4a66]/20 text-[#cbb3c9] border-[#6a4a66]/50',
     glowHex: '#c084fc',
   },
 ];
@@ -153,12 +153,12 @@ const TIER_META: Record<Tier, { label: string; sub: string; badge: string }> = {
   2: {
     label: 'Tier II：中級天球儀',
     sub: '中核アストラル機構（1〜3★）',
-    badge: 'border-indigo-400/40 bg-indigo-950/70 text-indigo-200',
+    badge: 'border-[#4b4668]/40 bg-[#1d1b2a] text-[var(--table-ink)]',
   },
   3: {
     label: 'Tier III：高等星辰機関',
     sub: '高純度名声結晶（3〜5★）',
-    badge: 'border-amber-400/50 bg-amber-950/70 text-amber-200',
+    badge: 'border-[var(--table-accent)]/50 bg-[#c99555]/12 text-[var(--table-accent-strong)]',
   },
 };
 
@@ -523,14 +523,16 @@ function cloneSnapshot(s: GameSnapshot): GameSnapshot {
 function createInitialGame(
   mode: GameMode,
   playerCount: number,
-  personas: AiPersona[]
+  personas: AiPersona[],
+  randomize = true
 ): GameSnapshot {
   const numPlayers = mode === 'pvp' ? 2 : playerCount;
   const baseGemSupply = numPlayers === 2 ? 4 : numPlayers === 3 ? 5 : 7;
 
-  const t1 = shuffleArray(ALL_RECIPE_CARDS.filter((c) => c.tier === 1));
-  const t2 = shuffleArray(ALL_RECIPE_CARDS.filter((c) => c.tier === 2));
-  const t3 = shuffleArray(ALL_RECIPE_CARDS.filter((c) => c.tier === 3));
+  const ordered = (tier: Tier) => ALL_RECIPE_CARDS.filter((c) => c.tier === tier);
+  const t1 = randomize ? shuffleArray(ordered(1)) : ordered(1);
+  const t2 = randomize ? shuffleArray(ordered(2)) : ordered(2);
+  const t3 = randomize ? shuffleArray(ordered(3)) : ordered(3);
 
   const market: Record<Tier, (RecipeCard | null)[]> = {
     1: t1.slice(0, 4),
@@ -544,7 +546,10 @@ function createInitialGame(
     3: t3.slice(4),
   };
 
-  const patrons = shuffleArray(ALL_PATRON_TILES).slice(0, numPlayers + 1);
+  const patrons = (randomize ? shuffleArray(ALL_PATRON_TILES) : ALL_PATRON_TILES).slice(
+    0,
+    numPlayers + 1
+  );
 
   const players: PlayerState[] = Array.from({ length: numPlayers }, (_, idx) => {
     const isAi = mode === 'cpu' && idx > 0;
@@ -833,21 +838,22 @@ function ShardSvgIcon({
   type: ShardType;
   className?: string;
 }) {
+  const gradientId = `prismGrad-${useId().replace(/:/g, '')}`;
   if (type === 'prism') {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none">
         <defs>
-          <linearGradient id="prismGrad" x1="0" y1="0" x2="24" y2="24">
-            <stop offset="0%" stopColor="#f43f5e" />
-            <stop offset="35%" stopColor="#eab308" />
-            <stop offset="70%" stopColor="#38bdf8" />
-            <stop offset="100%" stopColor="#c084fc" />
+          <linearGradient id={gradientId} x1="0" y1="0" x2="24" y2="24">
+            <stop offset="0%" stopColor="#9f4540" />
+            <stop offset="35%" stopColor="#c99555" />
+            <stop offset="70%" stopColor="#3f5f78" />
+            <stop offset="100%" stopColor="#6a4a66" />
           </linearGradient>
         </defs>
         <polygon
           points="12,2 20,8 17,20 7,20 4,8"
-          fill="url(#prismGrad)"
-          stroke="#ffffff"
+          fill={`url(#${gradientId})`}
+          stroke="#f4ead8"
           strokeWidth="1.5"
         />
         <polygon points="12,5 16,10 12,18 8,10" fill="rgba(255,255,255,0.45)" />
@@ -940,10 +946,17 @@ export default function StellarAtelierGame() {
   const [bgmOn, setBgmOn] = useState<boolean>(false);
 
   // Core Game Snapshot & Undo Stack
+  // The first render must be deterministic so SSR and hydration agree. The
+  // shuffled snapshot is created on the client right after mount (and again
+  // whenever the player explicitly starts a new game).
   const [gameState, setGameState] = useState<GameSnapshot>(() =>
-    createInitialGame('cpu', 3, ['steady', 'rush', 'patron'])
+    createInitialGame('cpu', 3, ['steady', 'rush', 'patron'], false)
   );
   const [history, setHistory] = useState<GameSnapshot[]>([]);
+
+  useEffect(() => {
+    setGameState(createInitialGame('cpu', 3, ['steady', 'rush', 'patron'], true));
+  }, []);
 
   // Interactive Selection State
   const [selectedShards, setSelectedShards] = useState<ElementColor[]>([]);
@@ -1495,22 +1508,22 @@ export default function StellarAtelierGame() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070913] text-slate-100 select-none">
+    <div className="tabletop-page min-h-screen overflow-x-hidden select-none">
       {/* Top Navigation & Mode Header */}
-      <header className="border-b border-indigo-500/25 bg-[#0b0f22]/95 backdrop-blur sticky top-0 z-30">
+      <header className="tabletop-header sticky top-0 z-30">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-5">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-amber-400/60 hover:text-amber-200"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs"
             >
               ← 無料ゲーム一覧へ
             </Link>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-amber-400">
+              <p className="tabletop-kicker">
                 CELESTIAL ENGINE-BUILDING BOARD GAME
               </p>
-              <h2 className="text-sm font-black sm:text-lg text-white">
+              <h2 className="tabletop-title text-base sm:text-lg">
                 星屑のアトリエ（Stellar Atelier）
               </h2>
             </div>
@@ -1521,7 +1534,7 @@ export default function StellarAtelierGame() {
               type="button"
               onClick={handleUndo}
               disabled={history.length === 0}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-amber-400/50 disabled:opacity-40"
+              className="tabletop-button min-h-11 px-3 text-xs disabled:opacity-40"
             >
               ↩ 1手戻す
             </button>
@@ -1529,17 +1542,15 @@ export default function StellarAtelierGame() {
               type="button"
               onClick={handleShowHint}
               disabled={!isHumanTurn}
-              className="rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
+              className="tabletop-button min-h-11 px-3 text-xs text-[var(--table-accent-strong)] disabled:opacity-40"
             >
               💡 AI推奨手ナビ
             </button>
             <button
               type="button"
               onClick={() => setBgmOn((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
-                bgmOn
-                  ? 'border-indigo-400/60 bg-indigo-500/20 text-indigo-200'
-                  : 'border-white/15 bg-white/[0.05] text-slate-300 hover:border-indigo-400/50'
+              className={`tabletop-button min-h-11 px-3 text-xs ${
+                bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
               {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
@@ -1547,7 +1558,7 @@ export default function StellarAtelierGame() {
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-indigo-400/50"
+              className="tabletop-button min-h-11 px-3 text-xs"
             >
               {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
             </button>
@@ -1559,20 +1570,20 @@ export default function StellarAtelierGame() {
       {/* Main Content Container */}
       <div className="mx-auto max-w-7xl px-3 py-4 sm:px-5 space-y-4">
         {/* Control Bar: Mode, Player Count, AI Personas & New Game */}
-        <section className="rounded-2xl border border-indigo-500/25 bg-[#0d1329]/90 p-3.5 shadow-lg">
+        <section className="tabletop-panel p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-xl border border-indigo-400/30 bg-black/40 p-0.5">
+              <div className="tabletop-panel-soft flex p-0.5">
                 <button
                   type="button"
                   onClick={() => {
                     setMode('cpu');
                     startNewGame('cpu', playerCount, aiPersonas);
                   }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
+                  className={`min-h-11 rounded-md px-3 text-xs font-black transition ${
                     mode === 'cpu'
-                      ? 'bg-amber-400 text-slate-950 shadow'
-                      : 'text-slate-300 hover:text-white'
+                      ? 'tabletop-button-primary'
+                      : 'tabletop-button border-transparent bg-transparent'
                   }`}
                 >
                   🤖 CPU対戦（2〜4人）
@@ -1583,10 +1594,10 @@ export default function StellarAtelierGame() {
                     setMode('pvp');
                     startNewGame('pvp', 2, aiPersonas);
                   }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
+                  className={`min-h-11 rounded-md px-3 text-xs font-black transition ${
                     mode === 'pvp'
-                      ? 'bg-amber-400 text-slate-950 shadow'
-                      : 'text-slate-300 hover:text-white'
+                      ? 'tabletop-button-primary'
+                      : 'tabletop-button border-transparent bg-transparent'
                   }`}
                 >
                   👥 1台で2人対戦（パス＆プレイ）
@@ -1595,8 +1606,8 @@ export default function StellarAtelierGame() {
 
               {mode === 'cpu' && (
                 <>
-                  <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/30 px-2.5 py-1">
-                    <span className="text-[11px] font-bold text-slate-300">人数:</span>
+                  <div className="tabletop-stat flex items-center gap-1 px-2.5 py-1">
+                    <span className="text-[11px] font-bold text-[var(--table-muted)]">人数:</span>
                     {[2, 3, 4].map((cnt) => (
                       <button
                         key={cnt}
@@ -1605,10 +1616,10 @@ export default function StellarAtelierGame() {
                           setPlayerCount(cnt);
                           startNewGame('cpu', cnt, aiPersonas);
                         }}
-                        className={`rounded-md px-2 py-0.5 text-xs font-black transition ${
+                        className={`min-h-11 rounded-md px-2 text-xs font-black transition ${
                           playerCount === cnt
-                            ? 'bg-indigo-500 text-white'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'tabletop-button-primary'
+                            : 'text-[var(--table-muted)] hover:text-[var(--table-ink)]'
                         }`}
                       >
                         {cnt}人
@@ -1616,8 +1627,8 @@ export default function StellarAtelierGame() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/30 px-2.5 py-1">
-                    <span className="text-[11px] font-bold text-slate-300">
+                  <div className="tabletop-stat flex items-center gap-1.5 px-2.5 py-1">
+                    <span className="text-[11px] font-bold text-[var(--table-muted)]">
                       AI1思考タイプ:
                     </span>
                     {(['steady', 'rush', 'patron'] as AiPersona[]).map((pType) => (
@@ -1633,10 +1644,10 @@ export default function StellarAtelierGame() {
                           setAiPersonas(updated);
                           startNewGame('cpu', playerCount, updated);
                         }}
-                        className={`rounded-md px-2 py-0.5 text-[11px] font-black transition ${
+                        className={`min-h-11 rounded-md px-2 text-[11px] font-black transition ${
                           aiPersonas[0] === pType
-                            ? 'bg-purple-500 text-white'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'tabletop-button-primary'
+                            : 'text-[var(--table-muted)] hover:text-[var(--table-ink)]'
                         }`}
                       >
                         {pType === 'steady'
@@ -1652,16 +1663,16 @@ export default function StellarAtelierGame() {
             </div>
 
             <div className="flex items-center gap-2.5">
-              <div className="rounded-xl border border-amber-400/30 bg-amber-950/40 px-3 py-1 text-xs font-bold text-amber-200">
+              <div className="tabletop-chip px-3 py-1.5 text-xs font-bold text-[var(--table-accent-strong)]">
                 ラウンド <span className="font-mono font-black">{gameState.round}</span> ／ 勝利条件:{' '}
-                <span className="font-mono font-black text-amber-300">
+                <span className="font-mono font-black text-[var(--table-accent-strong)]">
                   {TARGET_PRESTIGE}★
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => startNewGame()}
-                className="rounded-xl border border-indigo-400/40 bg-indigo-500/20 px-3 py-1.5 text-xs font-black text-indigo-100 transition hover:bg-indigo-500/35"
+                className="tabletop-button-primary min-h-11 px-3 text-xs"
               >
                 🔄 新規対局
               </button>
@@ -1671,25 +1682,25 @@ export default function StellarAtelierGame() {
 
         {/* Final Round or Game Over Banner */}
         {isGameOver && (
-          <section className="rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-950/90 via-indigo-950/90 to-purple-950/90 p-5 shadow-2xl">
+          <section className="tabletop-panel border-2 border-[var(--table-accent)] p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-black tracking-widest text-amber-300">
+                <p className="tabletop-kicker">
                   🌟 GRAND ATELIER FINALE — 終局結果発表
                 </p>
-                <h3 className="mt-1 text-xl font-black text-white sm:text-2xl">
+                <h3 className="tabletop-title mt-1 text-xl sm:text-2xl">
                   🏆 優勝: {rankedPlayers[0].name}（名声星{' '}
                   {getPlayerPrestige(rankedPlayers[0])}★ ／ 錬成数{' '}
                   {rankedPlayers[0].crafted.length}枚）
                 </h3>
-                <p className="mt-1 text-xs text-slate-300">
+                <p className="mt-1 text-xs text-[var(--table-muted)]">
                   同点の場合は、より少ないレシピ枚数で効率よくエンジンを築いた錬金術師が上位となります。
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => startNewGame()}
-                className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:bg-amber-300"
+                className="tabletop-button-primary min-h-11 px-5 text-sm"
               >
                 もう一度アトリエを開く
               </button>
@@ -1698,21 +1709,21 @@ export default function StellarAtelierGame() {
               {rankedPlayers.map((p, idx) => (
                 <div
                   key={p.id}
-                  className={`rounded-xl border p-3 ${
+                  className={`rounded-md border p-3 ${
                     idx === 0
-                      ? 'border-amber-400 bg-amber-500/15'
-                      : 'border-white/15 bg-black/30'
+                      ? 'border-[var(--table-accent)] bg-[#c99555]/12'
+                      : 'border-[var(--table-line)] bg-black/20'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-amber-300">
+                    <span className="text-xs font-black text-[var(--table-accent-strong)]">
                       #{idx + 1} {p.name}
                     </span>
-                    <span className="font-mono text-base font-black text-white">
+                    <span className="font-mono text-base font-black text-[var(--table-ink)]">
                       {getPlayerPrestige(p)} ★
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-300">
+                  <p className="mt-1 text-[11px] text-[var(--table-muted)]">
                     錬成レシピ: {p.crafted.length}枚 ／ パトロン来訪: {p.patrons.length}人
                   </p>
                 </div>
@@ -1723,11 +1734,11 @@ export default function StellarAtelierGame() {
 
         {/* AI Hint or System Notice Banner */}
         {(hintMove || bannerNotice) && (
-          <div className="rounded-xl border border-amber-400/50 bg-amber-950/60 px-4 py-2.5 text-xs text-amber-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="tabletop-panel-soft flex flex-wrap items-center justify-between gap-2 border-[var(--table-accent)] px-4 py-2.5 text-xs text-[var(--table-accent-strong)]">
             <div>
               {hintMove ? (
                 <>
-                  <span className="font-black text-amber-300">
+                  <span className="font-black text-[var(--table-accent-strong)]">
                     💡 AI推奨手: {hintMove.label}
                   </span>{' '}
                   — {hintMove.reason}
@@ -1742,7 +1753,7 @@ export default function StellarAtelierGame() {
                 setHintMove(null);
                 setBannerNotice(null);
               }}
-              className="text-[11px] font-bold text-amber-300 underline"
+              className="text-[11px] font-bold text-[var(--table-accent-strong)] underline"
             >
               閉じる
             </button>
@@ -1752,17 +1763,17 @@ export default function StellarAtelierGame() {
         {/* Constellation Patrons Bar + Engine Discount & Efficiency Analyzer */}
         <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
           {/* Constellation Patrons (`星座パトロンタイル`, +3 Prestige) */}
-          <section className="rounded-2xl border border-purple-500/30 bg-[#0d1228]/90 p-3.5 shadow-lg">
+          <section className="tabletop-panel p-3.5">
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <div>
-                <h3 className="text-xs font-black tracking-wider text-purple-200 flex items-center gap-1.5">
+                <h3 className="tabletop-title flex items-center gap-1.5 text-sm">
                   <span>👑 星座パトロンタイル（条件達成で手番終了時に自動来訪 +3★）</span>
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-[var(--table-muted)]">
                   星片の消費ではなく、錬成済みレシピの「永続共鳴ボーナス数」が条件を満たすと自動で訪れます。
                 </p>
               </div>
-              <span className="rounded-full border border-purple-400/40 bg-purple-950/60 px-2.5 py-0.5 text-[11px] font-black text-purple-200">
+              <span className="rounded-full border border-[#6a4a66]/40 bg-[#6a4a66]/18 px-2.5 py-0.5 text-[11px] font-black text-[#cbb3c9]">
                 残り {gameState.patrons.length} 柱
               </span>
             </div>
@@ -1773,21 +1784,21 @@ export default function StellarAtelierGame() {
                 return (
                   <div
                     key={patron.id}
-                    className={`rounded-xl border p-2.5 transition ${
+                    className={`rounded-md border p-2.5 transition ${
                       eligible
-                        ? 'border-amber-400 bg-amber-500/20 shadow-[0_0_15px_rgba(251,191,36,0.25)]'
-                        : 'border-purple-400/25 bg-black/40'
+                        ? 'border-[var(--table-accent)] bg-[#c99555]/16 '
+                        : 'border-[#6a4a66]/25 bg-black/20'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-bold text-purple-300">
+                      <span className="text-[10px] font-bold text-[#cbb3c9]">
                         {patron.constellation}
                       </span>
-                      <span className="rounded bg-amber-400/20 px-1.5 py-0.5 font-mono text-xs font-black text-amber-300">
+                      <span className="rounded bg-[#c99555]/16 px-1.5 py-0.5 font-mono text-xs font-black text-[var(--table-accent-strong)]">
                         +{patron.prestige}★
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs font-black text-white truncate">
+                    <p className="mt-0.5 text-xs font-black text-[var(--table-ink)] truncate">
                       {patron.name}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -1801,7 +1812,7 @@ export default function StellarAtelierGame() {
                             key={el.id}
                             className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-black ${
                               met
-                                ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
+                                ? 'border-[#315d4e]/60 bg-[#315d4e]/22 text-[#9dc4af]'
                                 : el.badgeClass
                             }`}
                           >
@@ -1818,17 +1829,17 @@ export default function StellarAtelierGame() {
           </section>
 
           {/* Engine Discount & Efficiency Analyzer (`錬成エンジン割引＆必要コスト計算ナビ`) */}
-          <section className="rounded-2xl border border-amber-500/30 bg-[#0d1326]/90 p-3.5 shadow-lg">
+          <section className="tabletop-panel p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div>
-                <h3 className="text-xs font-black tracking-wider text-amber-300">
+                <h3 className="tabletop-title text-sm">
                   ⚙️ 錬成エンジン割引＆必要コスト計算ナビ（{analyzerPlayer.name}）
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-[var(--table-muted)]">
                   各属性の「永続共鳴割引」と「手持ち星片」の合計購買力（最大支払可能コスト）をリアルタイム算出
                 </p>
               </div>
-              <span className="rounded-lg border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-black text-amber-200">
+              <span className="rounded-lg border border-[var(--table-accent)]/30 bg-[#c99555]/12 px-2 py-0.5 text-[11px] font-black text-[var(--table-accent-strong)]">
                 総割引力:{' '}
                 {Object.values(analyzerBonuses).reduce((a, b) => a + b, 0)} 個分
               </span>
@@ -1842,28 +1853,28 @@ export default function StellarAtelierGame() {
                 return (
                   <div
                     key={el.id}
-                    className={`rounded-xl border p-2 ${el.bgClass} ${el.borderClass}`}
+                    className={`rounded-md border p-2 ${el.bgClass} ${el.borderClass}`}
                   >
                     <div className="flex items-center gap-1">
                       <ShardSvgIcon type={el.id} className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-black text-white">
+                      <span className="text-[11px] font-black text-[var(--table-ink)]">
                         {el.shortName}
                       </span>
                     </div>
                     <div className="mt-1 space-y-0.5 text-[10px]">
-                      <div className="flex justify-between text-slate-300">
+                      <div className="flex justify-between text-[var(--table-muted)]">
                         <span>永続割引</span>
-                        <span className="font-mono font-black text-emerald-300">
+                        <span className="font-mono font-black text-[#9dc4af]">
                           -{disc}
                         </span>
                       </div>
-                      <div className="flex justify-between text-slate-300">
+                      <div className="flex justify-between text-[var(--table-muted)]">
                         <span>所持星片</span>
-                        <span className="font-mono font-bold text-white">
+                        <span className="font-mono font-bold text-[var(--table-ink)]">
                           {shard}
                         </span>
                       </div>
-                      <div className="border-t border-white/10 pt-0.5 flex justify-between font-black text-amber-300">
+                      <div className="border-t border-[var(--table-line)] pt-0.5 flex justify-between font-black text-[var(--table-accent-strong)]">
                         <span>購買力</span>
                         <span className="font-mono">{totalPower}</span>
                       </div>
@@ -1873,25 +1884,25 @@ export default function StellarAtelierGame() {
               })}
 
               {/* Prism Wild Power */}
-              <div className="rounded-xl border border-pink-400/50 bg-gradient-to-br from-rose-950/70 via-indigo-950/70 to-purple-950/70 p-2">
+              <div className="tabletop-panel-soft border-[#8a4f61] p-2">
                 <div className="flex items-center gap-1">
                   <ShardSvgIcon type="prism" className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-black text-white">虹結晶</span>
+                  <span className="text-[11px] font-black text-[var(--table-ink)]">虹結晶</span>
                 </div>
                 <div className="mt-1 space-y-0.5 text-[10px]">
-                  <div className="flex justify-between text-slate-300">
+                  <div className="flex justify-between text-[var(--table-muted)]">
                     <span>ワイルド</span>
-                    <span className="font-mono font-black text-pink-300">
+                    <span className="font-mono font-black text-[#d8a4b4]">
                       全色対応
                     </span>
                   </div>
-                  <div className="flex justify-between text-slate-300">
+                  <div className="flex justify-between text-[var(--table-muted)]">
                     <span>所持数</span>
-                    <span className="font-mono font-bold text-white">
+                    <span className="font-mono font-bold text-[var(--table-ink)]">
                       {analyzerPlayer.shards.prism}
                     </span>
                   </div>
-                  <div className="border-t border-white/10 pt-0.5 flex justify-between font-black text-amber-300">
+                  <div className="border-t border-[var(--table-line)] pt-0.5 flex justify-between font-black text-[var(--table-accent-strong)]">
                     <span>予約枠</span>
                     <span className="font-mono">
                       {analyzerPlayer.reserved.length}/{MAX_RESERVED}
@@ -1908,16 +1919,16 @@ export default function StellarAtelierGame() {
           {/* Left Column: Shard Supply & Recipe Market */}
           <div className="space-y-4">
             {/* Action 1: Starlight Shard Supply & Collection Panel */}
-            <section className="rounded-2xl border border-indigo-500/30 bg-[#0c1226]/95 p-4 shadow-xl">
+            <section className="tabletop-panel p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div>
-                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <h3 className="tabletop-title flex items-center gap-2 text-sm">
                     <span>💎 星片サプライ（アクション①：星片の採取）</span>
-                    <span className="rounded-full border border-indigo-400/40 bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-black text-indigo-200">
+                    <span className="rounded-full border border-[#4b4668]/40 bg-[#4b4668]/18 px-2.5 py-0.5 text-[11px] font-black text-[var(--table-ink)]">
                       手番: {activePlayer.name}
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">
+                  <p className="text-xs text-[var(--table-muted)] mt-0.5">
                     【ルール】異なる色を最大3個まで採取、または在庫4個以上の同じ色を2個採取（所持上限10個）
                   </p>
                 </div>
@@ -1929,7 +1940,7 @@ export default function StellarAtelierGame() {
                       setSelectedShards([]);
                       setSelectedReturnShards([]);
                     }}
-                    className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300 hover:text-white"
+                    className="rounded-lg border border-[var(--table-line)] bg-[var(--table-panel-soft)] px-2.5 py-1 text-xs font-bold text-[var(--table-muted)] hover:text-[var(--table-ink)]"
                   >
                     選択クリア
                   </button>
@@ -1951,17 +1962,17 @@ export default function StellarAtelierGame() {
                       type="button"
                       disabled={!isHumanTurn || (supplyCount === 0 && pickedCount === 0)}
                       onClick={() => handleToggleShardSelection(el.id)}
-                      className={`group relative flex flex-col items-center justify-between rounded-xl border p-2.5 text-left transition ${
+                      className={`group relative flex flex-col items-center justify-between rounded-md border p-2.5 text-left transition ${
                         pickedCount > 0
-                          ? 'border-amber-400 bg-amber-500/20 shadow-[0_0_16px_rgba(251,191,36,0.3)] scale-[1.02]'
-                          : `${el.bgClass} ${el.borderClass} hover:border-white/50`
+                          ? 'border-[var(--table-accent)] bg-[#c99555]/16  scale-[1.02]'
+                          : `${el.bgClass} ${el.borderClass} hover:border-[var(--table-line)]0`
                       } disabled:opacity-40`}
                     >
                       <div className="flex w-full items-center justify-between">
-                        <span className="text-xs font-black text-white">
+                        <span className="text-xs font-black text-[var(--table-ink)]">
                           {el.shortName}
                         </span>
-                        <span className="rounded-md bg-black/50 px-1.5 py-0.5 font-mono text-xs font-black text-white">
+                        <span className="rounded-md bg-black/20 px-1.5 py-0.5 font-mono text-xs font-black text-[var(--table-ink)]">
                           残 {supplyCount}
                         </span>
                       </div>
@@ -1972,11 +1983,11 @@ export default function StellarAtelierGame() {
 
                       <div className="w-full text-center">
                         {pickedCount > 0 ? (
-                          <span className="inline-block w-full rounded bg-amber-400 px-1.5 py-0.5 text-[11px] font-black text-slate-950">
+                          <span className="inline-block w-full rounded bg-[var(--table-accent)] px-1.5 py-0.5 text-[11px] font-black text-[#1b120b]">
                             選択中 ×{pickedCount}
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-slate-300">
+                          <span className="text-[10px] font-bold text-[var(--table-muted)]">
                             {canTakePair ? '1個 / 同色2個OK' : supplyCount > 0 ? '1個採取OK' : '在庫切れ'}
                           </span>
                         )}
@@ -1986,19 +1997,19 @@ export default function StellarAtelierGame() {
                 })}
 
                 {/* Wild Prism Crystal info card */}
-                <div className="flex flex-col items-center justify-between rounded-xl border border-pink-400/40 bg-gradient-to-b from-rose-950/60 to-purple-950/60 p-2.5">
+                <div className="tabletop-panel-soft flex flex-col items-center justify-between border-[#8a4f61] p-2.5">
                   <div className="flex w-full items-center justify-between">
-                    <span className="text-xs font-black text-pink-200">
+                    <span className="text-xs font-black text-[#d8a4b4]">
                       虹プリズム
                     </span>
-                    <span className="rounded-md bg-black/50 px-1.5 py-0.5 font-mono text-xs font-black text-pink-200">
+                    <span className="rounded-md bg-black/20 px-1.5 py-0.5 font-mono text-xs font-black text-[#d8a4b4]">
                       残 {gameState.supply.prism}
                     </span>
                   </div>
                   <div className="my-2 flex items-center justify-center">
                     <ShardSvgIcon type="prism" className="w-8 h-8" />
                   </div>
-                  <span className="text-[10px] font-bold text-pink-200 text-center">
+                  <span className="text-[10px] font-bold text-[#d8a4b4] text-center">
                     設計図予約で+1獲得
                   </span>
                 </div>
@@ -2006,23 +2017,23 @@ export default function StellarAtelierGame() {
 
               {/* 10-Shard Hand Limit Return Selector (shown when taking shards would exceed 10) */}
               {selectedShards.length > 0 && (
-                <div className="mt-3 rounded-xl border border-amber-400/40 bg-black/40 p-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-3 rounded-md border border-[var(--table-accent)]/40 bg-black/20 p-3 flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-black text-white">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-black text-[var(--table-ink)]">
                       <span>
                         採取予定:{' '}
                         {selectedShards
                           .map((c) => ELEMENT_MAP[c].shortName)
                           .join(' ＋ ')}
                       </span>
-                      <span className="text-slate-400">｜</span>
+                      <span className="text-[var(--table-muted)]">｜</span>
                       <span>
                         採取後の所持数:{' '}
                         <span
                           className={
                             overflowCount > 0
-                              ? 'text-rose-300 font-black'
-                              : 'text-emerald-300 font-black'
+                              ? 'text-[#d9a19b] font-black'
+                              : 'text-[#9dc4af] font-black'
                           }
                         >
                           {activePlayerTotalShards +
@@ -2035,7 +2046,7 @@ export default function StellarAtelierGame() {
 
                     {overflowCount > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[11px] font-bold text-rose-300">
+                        <span className="text-[11px] font-bold text-[#d9a19b]">
                           ⚠️ 上限10個を超えるため、手元から返却する星片をあと{' '}
                           {overflowCount - selectedReturnShards.length} 個選んでください:
                         </span>
@@ -2052,8 +2063,8 @@ export default function StellarAtelierGame() {
                               onClick={() => handleToggleReturnShard(el.id)}
                               className={`rounded-md border px-2 py-0.5 text-[11px] font-black ${
                                 returning > 0
-                                  ? 'border-rose-400 bg-rose-500/30 text-white'
-                                  : 'border-white/20 bg-white/5 text-slate-200'
+                                  ? 'border-[#9f4540] bg-[#9f4540]/25 text-[var(--table-ink)]'
+                                  : 'border-[var(--table-line)] bg-[var(--table-panel-soft)] text-[var(--table-ink)]'
                               }`}
                             >
                               {el.shortName}（所持{owned} / 返却{returning}）
@@ -2070,7 +2081,7 @@ export default function StellarAtelierGame() {
                     onClick={() =>
                       executeTakeShards(selectedShards, selectedReturnShards, true)
                     }
-                    className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 shadow-lg transition hover:bg-amber-300 disabled:opacity-40"
+                    className="tabletop-button-primary min-h-11 px-4 text-xs disabled:opacity-40"
                   >
                     ✨ この星片を採取して手番終了
                   </button>
@@ -2079,23 +2090,23 @@ export default function StellarAtelierGame() {
             </section>
 
             {/* Action 2 & 3: Alchemical Recipe Market (Tier III, II, I) */}
-            <section className="rounded-2xl border border-indigo-500/30 bg-[#0b1022]/95 p-4 shadow-xl space-y-4">
+            <section className="tabletop-panel space-y-4 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-sm font-black text-white">
+                  <h3 className="tabletop-title text-sm">
                     📜 工房レシピマーケット（アクション②：錬成 ／ アクション③：設計図の予約）
                   </h3>
-                  <p className="text-xs text-slate-300">
-                    各カードのコストは<strong className="text-amber-300">永続共鳴ボーナス割引後</strong>の必要星片数を併記しています。
+                  <p className="text-xs text-[var(--table-muted)]">
+                    各カードのコストは<strong className="text-[var(--table-accent-strong)]">永続共鳴ボーナス割引後</strong>の必要星片数を併記しています。
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setFilterCraftableOnly((v) => !v)}
-                  className={`rounded-xl border px-3 py-1.5 text-xs font-black transition ${
+                  className={`rounded-md border px-3 py-1.5 text-xs font-black transition ${
                     filterCraftableOnly
-                      ? 'border-emerald-400 bg-emerald-500/25 text-emerald-200'
-                      : 'border-white/15 bg-white/5 text-slate-300 hover:text-white'
+                      ? 'border-[#315d4e] bg-[#315d4e]/25 text-[#9dc4af]'
+                      : 'border-[var(--table-line)] bg-[var(--table-panel-soft)] text-[var(--table-muted)] hover:text-[var(--table-ink)]'
                   }`}
                 >
                   {filterCraftableOnly
@@ -2111,18 +2122,18 @@ export default function StellarAtelierGame() {
 
                 return (
                   <div key={tier} className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--table-line)] pb-1.5">
                       <div className="flex items-center gap-2">
                         <span
                           className={`rounded-lg border px-2.5 py-0.5 text-xs font-black ${meta.badge}`}
                         >
                           {meta.label}
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-[var(--table-muted)]">
                           {meta.sub}
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono font-bold text-slate-400">
+                      <span className="text-[11px] font-mono font-bold text-[var(--table-muted)]">
                         山札残り: {deckCount}枚
                       </span>
                     </div>
@@ -2133,7 +2144,7 @@ export default function StellarAtelierGame() {
                           return (
                             <div
                               key={`empty-${tier}-${slotIdx}`}
-                              className="flex h-44 items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 text-xs text-slate-500"
+                              className="flex h-44 items-center justify-center rounded-md border border-dashed border-[var(--table-line)] bg-black/20 text-xs text-[var(--table-muted)]"
                             >
                               山札枯渇
                             </div>
@@ -2153,12 +2164,12 @@ export default function StellarAtelierGame() {
                           return (
                             <div
                               key={card.id}
-                              className="flex h-44 flex-col items-center justify-center rounded-xl border border-white/5 bg-black/20 p-3 opacity-35 text-center"
+                              className="flex h-44 flex-col items-center justify-center rounded-md border border-[var(--table-line)] bg-black/20 p-3 opacity-35 text-center"
                             >
-                              <p className="text-xs font-bold text-slate-400">
+                              <p className="text-xs font-bold text-[var(--table-muted)]">
                                 {card.title}
                               </p>
-                              <p className="text-[11px] text-slate-500 mt-1">
+                              <p className="text-[11px] text-[var(--table-muted)] mt-1">
                                 あと {analysis.missingAfterPrism} 星片不足
                               </p>
                             </div>
@@ -2168,29 +2179,29 @@ export default function StellarAtelierGame() {
                         return (
                           <div
                             key={card.id}
-                            className={`relative flex flex-col justify-between rounded-xl border p-3 transition ${
+                            className={`relative flex flex-col justify-between rounded-md border p-3 transition ${
                               isHinted
-                                ? 'border-amber-300 ring-2 ring-amber-400/60 bg-amber-950/35'
+                                ? 'border-[var(--table-accent)] ring-2 ring-amber-400/60 bg-[#c99555]/10'
                                 : analysis.canCraftNow
-                                  ? 'border-emerald-400/80 bg-emerald-950/25 shadow-[0_0_18px_rgba(52,211,153,0.18)]'
+                                  ? 'border-[#315d4e]/80 bg-[#315d4e]/12 '
                                   : analysis.isOneTurnAway
-                                    ? 'border-amber-400/50 bg-indigo-950/40'
-                                    : 'border-white/15 bg-[#111833]/90'
+                                    ? 'border-[var(--table-accent)]/50 bg-[#1d1b2a]'
+                                    : 'tabletop-panel-soft border-[var(--table-line)]'
                             }`}
                           >
                             {/* Top Row: Prestige Stars + Permanent Elemental Resonance Bonus */}
                             <div>
                               <div className="flex items-center justify-between gap-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="rounded-lg bg-black/60 px-2 py-0.5 font-mono text-base font-black text-amber-300">
+                                  <span className="rounded-lg bg-black/20 px-2 py-0.5 font-mono text-base font-black text-[var(--table-accent-strong)]">
                                     {card.prestige > 0 ? `${card.prestige}★` : '0★'}
                                   </span>
                                   {analysis.canCraftNow ? (
-                                    <span className="rounded-md bg-emerald-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                                    <span className="rounded-md bg-[#4f806b] px-1.5 py-0.5 text-[10px] font-black text-[#1b120b]">
                                       錬成可能！
                                     </span>
                                   ) : analysis.isOneTurnAway ? (
-                                    <span className="rounded-md border border-amber-400/60 bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-black text-amber-200">
+                                    <span className="rounded-md border border-[var(--table-accent)]/60 bg-[#c99555]/16 px-1.5 py-0.5 text-[10px] font-black text-[var(--table-accent-strong)]">
                                       あと1手圏内
                                     </span>
                                   ) : null}
@@ -2208,7 +2219,7 @@ export default function StellarAtelierGame() {
                                 </span>
                               </div>
 
-                              <h4 className="mt-1.5 text-xs font-black text-white leading-snug">
+                              <h4 className="mt-1.5 text-xs font-black text-[var(--table-ink)] leading-snug">
                                 {card.title}
                               </h4>
                             </div>
@@ -2228,7 +2239,7 @@ export default function StellarAtelierGame() {
                                       key={el.id}
                                       className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold ${
                                         isMet
-                                          ? 'border-emerald-400/50 bg-emerald-950/60 text-emerald-200'
+                                          ? 'border-[#315d4e]/50 bg-[#315d4e]/20 text-[#9dc4af]'
                                           : el.badgeClass
                                       }`}
                                     >
@@ -2249,18 +2260,18 @@ export default function StellarAtelierGame() {
                                   );
                                 })}
                               </div>
-                              <p className="text-[10px] text-slate-400">
+                              <p className="text-[10px] text-[var(--table-muted)]">
                                 割引後コスト計:{' '}
-                                <span className="font-mono font-black text-white">
+                                <span className="font-mono font-black text-[var(--table-ink)]">
                                   {analysis.totalAfterDiscount}
                                 </span>
                                 {analysis.prismNeeded > 0 && (
-                                  <span className="text-pink-300">
+                                  <span className="text-[#d8a4b4]">
                                     （虹結晶{analysis.prismNeeded}個使用）
                                   </span>
                                 )}
                                 {!analysis.canCraftNow && (
-                                  <span className="text-amber-300">
+                                  <span className="text-[var(--table-accent-strong)]">
                                     {' '}
                                     ／ 不足 {analysis.missingAfterPrism}個
                                   </span>
@@ -2269,15 +2280,15 @@ export default function StellarAtelierGame() {
                             </div>
 
                             {/* Action Buttons: Craft or Reserve */}
-                            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-white/10">
+                            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[var(--table-line)]">
                               <button
                                 type="button"
                                 disabled={!isHumanTurn || !activeAnalysis.canCraftNow}
                                 onClick={() => executeCraftCard(card.id, true)}
                                 className={`rounded-lg px-2 py-1.5 text-[11px] font-black transition ${
                                   isHumanTurn && activeAnalysis.canCraftNow
-                                    ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow'
-                                    : 'bg-white/5 text-slate-500 cursor-not-allowed'
+                                    ? 'bg-[#4f806b] text-[#1b120b] hover:bg-[#5b8f78]'
+                                    : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)] cursor-not-allowed'
                                 }`}
                               >
                                 ⚒️ 錬成する
@@ -2289,7 +2300,7 @@ export default function StellarAtelierGame() {
                                   activePlayer.reserved.length >= MAX_RESERVED
                                 }
                                 onClick={() => executeReserveCard(card.id, true)}
-                                className="rounded-lg border border-pink-400/40 bg-pink-500/15 px-2 py-1.5 text-[11px] font-black text-pink-200 transition hover:bg-pink-500/30 disabled:opacity-35"
+                                className="rounded-lg border border-[#8a4f61]/40 bg-[#8a4f61]/16 px-2 py-1.5 text-[11px] font-black text-[#d8a4b4] transition hover:bg-[#8a4f61]/22 disabled:opacity-35"
                               >
                                 📌 予約(+虹)
                               </button>
@@ -2307,13 +2318,13 @@ export default function StellarAtelierGame() {
           {/* Right Column: Alchemist Player Boards, Reserved Cards & Action Log */}
           <div className="space-y-4">
             {/* Players Status & Engine Summary */}
-            <section className="rounded-2xl border border-indigo-500/30 bg-[#0c1226]/95 p-3.5 shadow-xl space-y-3">
+            <section className="tabletop-panel space-y-3 p-3.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black tracking-wider text-indigo-200">
+                <h3 className="tabletop-title text-sm">
                   🧙 各錬金術師のアトリエ状況（全{numPlayers}名）
                 </h3>
                 {gameState.finalRoundTriggered && !isGameOver && (
-                  <span className="rounded-full bg-rose-500/30 border border-rose-400 px-2 py-0.5 text-[10px] font-black text-rose-200 animate-pulse">
+                  <span className="rounded-full bg-[#9f4540]/25 border border-[#9f4540] px-2 py-0.5 text-[10px] font-black text-[#d9a19b] ">
                     🔥 最終ラウンド進行中
                   </span>
                 )}
@@ -2329,26 +2340,26 @@ export default function StellarAtelierGame() {
                   return (
                     <div
                       key={p.id}
-                      className={`rounded-xl border p-3 transition ${
+                      className={`rounded-md border p-3 transition ${
                         isCurrent
-                          ? 'border-amber-400 bg-amber-950/25 shadow-[0_0_15px_rgba(251,191,36,0.18)]'
-                          : 'border-white/10 bg-black/35'
+                          ? 'border-[var(--table-accent)] bg-[#c99555]/10 '
+                          : 'border-[var(--table-line)] bg-black/20'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
                           {isCurrent && (
-                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--table-accent)] animate-ping" />
                           )}
-                          <span className="text-xs font-black text-white">
+                          <span className="text-xs font-black text-[var(--table-ink)]">
                             {p.name}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                          <span className="rounded-md bg-[var(--table-panel-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--table-muted)]">
                             星片 {shardTotal}/{MAX_SHARDS}
                           </span>
-                          <span className="rounded-lg bg-amber-400/20 border border-amber-400/50 px-2 py-0.5 font-mono text-sm font-black text-amber-300">
+                          <span className="rounded-lg bg-[#c99555]/16 border border-[var(--table-accent)]/50 px-2 py-0.5 font-mono text-sm font-black text-[var(--table-accent-strong)]">
                             {prestige} ★
                           </span>
                         </div>
@@ -2363,20 +2374,20 @@ export default function StellarAtelierGame() {
                           >
                             <div className="flex items-center justify-center gap-0.5">
                               <ShardSvgIcon type={el.id} className="w-3 h-3" />
-                              <span className="text-[9px] font-bold text-slate-200">
+                              <span className="text-[9px] font-bold text-[var(--table-ink)]">
                                 {el.shortName}
                               </span>
                             </div>
                             <div className="mt-0.5 text-[10px] font-mono">
                               <span
-                                className="font-black text-emerald-300"
+                                className="font-black text-[#9dc4af]"
                                 title="永続割引ボーナス"
                               >
                                 +{bonuses[el.id]}
                               </span>
-                              <span className="text-slate-400"> / </span>
+                              <span className="text-[var(--table-muted)]"> / </span>
                               <span
-                                className="font-bold text-white"
+                                className="font-bold text-[var(--table-ink)]"
                                 title="所持星片"
                               >
                                 {p.shards[el.id]}
@@ -2385,27 +2396,27 @@ export default function StellarAtelierGame() {
                           </div>
                         ))}
 
-                        <div className="rounded-lg border border-pink-400/40 bg-pink-950/50 px-1 py-1">
+                        <div className="rounded-lg border border-[#8a4f61]/40 bg-[#8a4f61]/16 px-1 py-1">
                           <div className="flex items-center justify-center gap-0.5">
                             <ShardSvgIcon type="prism" className="w-3 h-3" />
-                            <span className="text-[9px] font-bold text-pink-200">
+                            <span className="text-[9px] font-bold text-[#d8a4b4]">
                               虹
                             </span>
                           </div>
-                          <div className="mt-0.5 text-[10px] font-mono font-black text-pink-200">
+                          <div className="mt-0.5 text-[10px] font-mono font-black text-[#d8a4b4]">
                             {p.shards.prism}個
                           </div>
                         </div>
                       </div>
 
                       {/* Patrons & Crafted Count */}
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[10px] text-[var(--table-muted)]">
                         <span>
-                          錬成済: <strong className="text-white">{p.crafted.length}</strong>枚 ／ 予約中:{' '}
-                          <strong className="text-white">{p.reserved.length}</strong>/{MAX_RESERVED}枚
+                          錬成済: <strong className="text-[var(--table-ink)]">{p.crafted.length}</strong>枚 ／ 予約中:{' '}
+                          <strong className="text-[var(--table-ink)]">{p.reserved.length}</strong>/{MAX_RESERVED}枚
                         </span>
                         {p.patrons.length > 0 && (
-                          <span className="text-amber-300 font-bold">
+                          <span className="text-[var(--table-accent-strong)] font-bold">
                             👑 パトロン×{p.patrons.length}（+{p.patrons.length * 3}★）
                           </span>
                         )}
@@ -2413,8 +2424,8 @@ export default function StellarAtelierGame() {
 
                       {/* Reserved Cards for this player (Craftable on their turn) */}
                       {p.reserved.length > 0 && (
-                        <div className="mt-2 space-y-1.5 border-t border-white/10 pt-2">
-                          <p className="text-[10px] font-black text-pink-300">
+                        <div className="mt-2 space-y-1.5 border-t border-[var(--table-line)] pt-2">
+                          <p className="text-[10px] font-black text-[#d8a4b4]">
                             📌 {p.name}の予約済み設計図（{p.reserved.length}枚）:
                           </p>
                           {p.reserved.map((rCard) => {
@@ -2423,11 +2434,11 @@ export default function StellarAtelierGame() {
                             return (
                               <div
                                 key={rCard.id}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-pink-400/30 bg-black/50 px-2.5 py-1.5"
+                                className="flex items-center justify-between gap-2 rounded-lg border border-[#8a4f61]/30 bg-black/20 px-2.5 py-1.5"
                               >
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-mono text-xs font-black text-amber-300">
+                                    <span className="font-mono text-xs font-black text-[var(--table-accent-strong)]">
                                       {rCard.prestige}★
                                     </span>
                                     <span
@@ -2435,11 +2446,11 @@ export default function StellarAtelierGame() {
                                     >
                                       {rBonus.shortName}+1
                                     </span>
-                                    <span className="text-xs font-bold text-white truncate">
+                                    <span className="text-xs font-bold text-[var(--table-ink)] truncate">
                                       {rCard.title}
                                     </span>
                                   </div>
-                                  <p className="text-[10px] text-slate-400 mt-0.5">
+                                  <p className="text-[10px] text-[var(--table-muted)] mt-0.5">
                                     割引後残りコスト: {rAnalysis.totalAfterDiscount}（不足{' '}
                                     {rAnalysis.missingAfterPrism}）
                                   </p>
@@ -2452,8 +2463,8 @@ export default function StellarAtelierGame() {
                                     onClick={() => executeCraftCard(rCard.id, true)}
                                     className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-black ${
                                       rAnalysis.canCraftNow
-                                        ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300'
-                                        : 'bg-white/5 text-slate-500 cursor-not-allowed'
+                                        ? 'bg-[#4f806b] text-[#1b120b] hover:bg-[#5b8f78]'
+                                        : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)] cursor-not-allowed'
                                     }`}
                                   >
                                     錬成
@@ -2471,8 +2482,8 @@ export default function StellarAtelierGame() {
             </section>
 
             {/* Action History Log */}
-            <section className="rounded-2xl border border-indigo-500/30 bg-[#0b1022]/95 p-3.5 shadow-xl">
-              <h3 className="text-xs font-black tracking-wider text-indigo-200 mb-2">
+            <section className="tabletop-panel p-3.5">
+              <h3 className="tabletop-title mb-2 text-sm">
                 📜 アトリエ錬成ログ（行動履歴）
               </h3>
               <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 text-xs">
@@ -2481,8 +2492,8 @@ export default function StellarAtelierGame() {
                     key={`${i}-${entry.slice(0, 12)}`}
                     className={`rounded-lg border px-2.5 py-1.5 leading-relaxed ${
                       i === 0
-                        ? 'border-amber-400/40 bg-amber-950/30 text-amber-100 font-bold'
-                        : 'border-white/5 bg-black/30 text-slate-300'
+                        ? 'border-[var(--table-accent)]/40 bg-[#c99555]/10 text-[var(--table-accent-strong)] font-bold'
+                        : 'border-[var(--table-line)] bg-black/20 text-[var(--table-muted)]'
                     }`}
                   >
                     {entry}

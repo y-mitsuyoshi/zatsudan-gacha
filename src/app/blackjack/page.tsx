@@ -79,7 +79,7 @@ const game: GameSeoData = {
   ],
   related: [
     { href: '/games', label: '無料ブラウザゲーム一覧', description: '定番トランプ・ボードゲーム・パズルをまとめて探す' },
-    { href: '/texas-holdem', label: 'テキサスホールデム・ポーカー', description: 'リアルタイム勝率＆ポットオッズ解析付きのAI 4人対戦ポーカー' },
+    { href: '/texas-holdem', label: 'ロイヤル・ナイト・ポーカー（テキサスホールデム）', description: 'アニメキャラ6人と対戦できるカットイン演出付き本格ポーカー' },
     { href: '/klondike', label: 'ソリティア（クロンダイク）', description: '1枚・3枚めくり対応の王道ソリティア' },
     { href: '/daifugo', label: '大富豪（大貧民）', description: '革命・8切り・階段・都落ち対応の4人対戦トランプ' },
   ],

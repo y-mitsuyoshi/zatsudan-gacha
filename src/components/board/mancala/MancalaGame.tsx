@@ -34,12 +34,12 @@ interface HistorySnapshot {
 }
 
 const GEM_PALETTE = [
-  'from-cyan-300 via-sky-400 to-blue-600 border-cyan-200/70',
-  'from-amber-200 via-amber-400 to-orange-600 border-amber-100/70',
-  'from-emerald-300 via-teal-400 to-emerald-700 border-emerald-200/70',
-  'from-rose-300 via-pink-400 to-rose-700 border-rose-200/70',
-  'from-violet-300 via-purple-400 to-indigo-700 border-violet-200/70',
-  'from-lime-300 via-green-400 to-emerald-600 border-lime-200/70',
+  'from-amber-200 via-amber-400 to-amber-700 border-amber-100/70',
+  'from-rose-300 via-rose-500 to-red-800 border-rose-200/60',
+  'from-emerald-300 via-emerald-500 to-emerald-800 border-emerald-200/60',
+  'from-sky-300 via-sky-500 to-blue-900 border-sky-200/60',
+  'from-violet-300 via-violet-500 to-indigo-900 border-violet-200/60',
+  'from-lime-300 via-lime-500 to-green-800 border-lime-200/60',
 ];
 
 function createInitialPits(seedsPerPit: InitialSeeds): number[] {
@@ -540,18 +540,18 @@ export default function MancalaGame() {
   const renderGems = (count: number, seedKey: number) => {
     const visible = Math.min(count, 18);
     return (
-      <div className="flex flex-wrap items-center justify-center gap-1 p-1">
+      <div className="flex flex-wrap items-center justify-center gap-0.5 p-0.5 sm:gap-1 sm:p-1">
         {Array.from({ length: visible }, (_, i) => {
           const colorCls = GEM_PALETTE[(seedKey * 3 + i) % GEM_PALETTE.length];
           return (
             <span
               key={i}
-              className={`h-3.5 w-3.5 rounded-full border bg-gradient-to-br shadow-sm transition-transform duration-200 sm:h-4 sm:w-4 ${colorCls}`}
+              className={`h-2.5 w-2.5 rounded-full border bg-gradient-to-br shadow-sm transition-transform duration-200 sm:h-4 sm:w-4 ${colorCls}`}
             />
           );
         })}
         {count > 18 && (
-          <span className="rounded bg-black/60 px-1 text-[10px] font-black text-amber-200">
+          <span className="rounded bg-black/60 px-1 text-[10px] font-black text-[#e6c48f]">
             +{count - 18}
           </span>
         )}
@@ -560,375 +560,371 @@ export default function MancalaGame() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0c0906] text-amber-50 select-none">
+    <div className="tabletop-page min-h-screen select-none overflow-x-hidden">
       {/* Header */}
-      <header className="border-b border-amber-500/20 bg-[#16100b]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-2 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-amber-100 transition hover:border-amber-400/50 hover:text-amber-200"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-sm"
             >
-              ← 無料ゲーム一覧へ
+              ← ゲーム一覧
             </Link>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-amber-400">
-                ANCIENT SOWING STRATEGY / KALAH & BASIC MANCALA
-              </p>
-              <h2 className="text-sm font-black sm:text-lg">
-                マンカラ（カラハ・種まき頭脳ボードゲーム）
+            <div className="min-w-0">
+              <p className="tabletop-kicker truncate">Ancient Sowing · Kalah & Basic Mancala</p>
+              <h2 className="tabletop-title truncate text-base sm:text-xl">
+                マンカラ
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-amber-500/30 bg-black/40 p-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 rounded-md border border-[#4d3d2d] bg-black/20 p-0.5">
               <button
                 type="button"
                 onClick={() => resetGame('kalah', mode, difficulty, initialSeeds)}
-                className={`rounded-md px-2.5 py-1 text-xs font-black transition ${
+                aria-pressed={rule === 'kalah'}
+                className={`inline-flex min-h-11 items-center rounded px-2.5 text-xs font-semibold transition ${
                   rule === 'kalah'
-                    ? 'bg-amber-400 text-stone-950'
-                    : 'text-amber-200/80 hover:text-white'
+                    ? 'bg-[#c99555] text-[#1b120b]'
+                    : 'text-[#b9a88f] hover:text-[#f4ead8]'
                 }`}
               >
-                カラハ（高戦略）
+                カラハ
               </button>
               <button
                 type="button"
                 onClick={() => resetGame('basic', mode, difficulty, initialSeeds)}
-                className={`rounded-md px-2.5 py-1 text-xs font-black transition ${
+                aria-pressed={rule === 'basic'}
+                className={`inline-flex min-h-11 items-center rounded px-2.5 text-xs font-semibold transition ${
                   rule === 'basic'
-                    ? 'bg-amber-400 text-stone-950'
-                    : 'text-amber-200/80 hover:text-white'
+                    ? 'bg-[#c99555] text-[#1b120b]'
+                    : 'text-[#b9a88f] hover:text-[#f4ead8]'
                 }`}
               >
-                ベーシック（先空け）
+                ベーシック
               </button>
             </div>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-amber-100 transition hover:border-amber-400/50"
+              aria-pressed={soundOn}
+              className={`tabletop-chip inline-flex min-h-11 items-center px-3 text-xs font-semibold ${
+                soundOn ? 'tabletop-chip-active' : ''
+              }`}
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              効果音 {soundOn ? 'ON' : 'OFF'}
             </button>
             <ThemeToggleButton />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Left: Wooden Mancala Board + Live Status */}
-        <div className="flex flex-col gap-3">
-          {/* Status Banner */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#1b130d]/95 p-3.5 shadow-lg">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-2.5 py-1 text-xs font-black text-emerald-200">
+      <main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-2 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Left: Board + Status */}
+        <div className="flex min-w-0 flex-col gap-3">
+          <section className="tabletop-panel p-3 sm:p-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="tabletop-stat min-w-0 px-2.5 py-2">
+                <p className="truncate text-[11px] font-semibold text-[#a9c9b1]">
                   先手（下段 A1〜A6）
-                </span>
-                <span className="font-mono text-xs text-amber-200/90">
-                  自陣残り {p1SideTotal} 個 ／ ストア {pits[6]} 個
-                </span>
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-[#d8cbb8]">
+                  自陣 {p1SideTotal} / ストア{' '}
+                  <span className="text-lg font-bold text-[#f4ead8]">{pits[6]}</span>
+                </p>
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-sky-200/90">
-                  自陣残り {p2SideTotal} 個 ／ ストア {pits[13]} 個
-                </span>
-                <span className="rounded-lg border border-sky-400/40 bg-sky-500/20 px-2.5 py-1 text-xs font-black text-sky-200">
+              <div className="tabletop-stat min-w-0 px-2.5 py-2 text-right">
+                <p className="truncate text-[11px] font-semibold text-[#d8a69a]">
                   後手（{mode === 'cpu' ? 'CPU' : '上段 B1〜B6'}）
-                </span>
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-[#d8cbb8]">
+                  自陣 {p2SideTotal} / ストア{' '}
+                  <span className="text-lg font-bold text-[#f4ead8]">{pits[13]}</span>
+                </p>
               </div>
             </div>
 
-            <div className="mt-2.5 rounded-xl border border-amber-400/30 bg-black/45 px-3.5 py-2 text-center text-xs font-black text-amber-200 sm:text-sm">
+            <div className="mt-2.5 rounded-md border border-[#6b543d] bg-[#17120f] px-3 py-2 text-center text-xs font-semibold text-[#e6c48f] sm:text-sm">
               {banner}
             </div>
 
-            {/* Hover Preview Bar */}
             {hoverPreview && (
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-400/35 bg-emerald-950/40 px-3 py-1.5 text-xs font-bold text-emerald-200">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#4f6b57] bg-[#223129] px-3 py-2 text-xs font-medium text-[#d6e5d8]">
                 <span>
-                  👀 種まき予測：最後の石は「{pitLabel(hoverPreview.landingPit)}」に着地します
+                  種まき予測: 最後の石は「{pitLabel(hoverPreview.landingPit)}」に着地
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {hoverPreview.extraTurn && (
-                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[11px] font-black text-stone-950">
-                      ✨ ぴったりゴールでもう1手！
+                    <span className="rounded bg-[#c99555] px-2 py-0.5 text-[11px] font-bold text-[#1b120b]">
+                      もう1手
                     </span>
                   )}
                   {hoverPreview.capturedCount > 0 && (
-                    <span className="rounded bg-rose-500 px-2 py-0.5 text-[11px] font-black text-white">
-                      🎯 横取り +{hoverPreview.capturedCount}個！
+                    <span className="rounded bg-[#9f4540] px-2 py-0.5 text-[11px] font-bold text-[#fff4e6]">
+                      横取り +{hoverPreview.capturedCount}
                     </span>
                   )}
                 </div>
               </div>
             )}
-          </div>
+          </section>
 
-          {/* Carved Wooden Mancala Board */}
-          <div className="relative overflow-hidden rounded-3xl border-4 border-[#5b381a] bg-gradient-to-b from-[#432611] via-[#341c0b] to-[#261407] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.75)] sm:p-5">
-            {/* Direction guide header */}
-            <div className="mb-3 flex items-center justify-between text-[11px] font-bold text-amber-200/75">
-              <span>⬅️ 上段（後手・{mode === 'cpu' ? 'CPU' : 'P2'}陣地）は右から左へ反時計回り</span>
-              <span>反時計回り（CCW）🔄</span>
-            </div>
-
-            <div className="grid grid-cols-[78px_1fr_78px] gap-2 sm:grid-cols-[104px_1fr_104px] sm:gap-3.5">
-              {/* Left Store: Player 2 Store (Index 13) */}
-              <div
-                className={`flex flex-col items-center justify-between rounded-2xl border-2 bg-gradient-to-b from-[#1e1006] to-[#120903] p-2 shadow-inner transition ${
-                  activePit === 13
-                    ? 'border-sky-400 ring-2 ring-sky-400/60'
-                    : hoverPreview?.landingPit === 13
-                      ? 'border-amber-300 ring-2 ring-amber-300/60'
-                      : 'border-[#6b4423]'
-                }`}
-              >
-                <div className="text-center">
-                  <span className="block text-[10px] font-black tracking-wider text-sky-300">
-                    {mode === 'cpu' ? 'CPU STORE' : 'P2 STORE'}
-                  </span>
-                  <span className="font-mono text-2xl font-black text-white sm:text-3xl">
-                    {pits[13]}
-                  </span>
-                </div>
-                {renderGems(pits[13], 13)}
-                <span className="text-[10px] font-bold text-amber-200/60">後手ゴール</span>
+          {/* Carved Wooden Board */}
+          <div className="tabletop-board-frame p-1.5 sm:p-3">
+            <div className="rounded-lg border border-[#6b4423] bg-gradient-to-b from-[#432611] via-[#341c0b] to-[#261407] p-2.5 shadow-inner sm:p-4">
+              <div className="mb-2 flex flex-col items-center justify-between gap-1 text-[11px] font-medium text-[#d8b98a] sm:mb-3 sm:flex-row">
+                <span>⬅ 上段（後手・{mode === 'cpu' ? 'CPU' : 'P2'}）は右から左へ</span>
+                <span>反時計回り（CCW）</span>
               </div>
 
-              {/* Center 2x6 Pits */}
-              <div className="flex flex-col justify-between gap-3 sm:gap-4">
-                {/* Top Row: P2 Pits (Indices 12 down to 7, displayed left-to-right) */}
-                <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5">
-                  {[12, 11, 10, 9, 8, 7].map((pitIdx) => {
-                    const count = pits[pitIdx];
-                    const canClick =
-                      !isAnimating && !gameOver && mode === 'pvp' && turn === 2 && count > 0;
-                    const isLanding = hoverPreview?.landingPit === pitIdx;
-                    const isCapturedTarget = hoverPreview?.capturedFromPit === pitIdx;
-                    const isHint = hintPit === pitIdx;
-                    const isActive = activePit === pitIdx;
-
-                    return (
-                      <button
-                        key={pitIdx}
-                        type="button"
-                        disabled={!canClick}
-                        onClick={() => handlePitClick(pitIdx)}
-                        onMouseEnter={() => setHoveredPit(pitIdx)}
-                        onMouseLeave={() => setHoveredPit(null)}
-                        className={`relative flex min-h-[104px] flex-col items-center justify-between rounded-2xl border-2 bg-gradient-to-b from-[#1c0f06] to-[#130a04] p-1.5 shadow-inner transition sm:min-h-[122px] sm:p-2 ${
-                          isHint
-                            ? 'border-amber-300 ring-2 ring-amber-300'
-                            : isLanding
-                              ? 'border-emerald-400 ring-2 ring-emerald-400/70'
-                              : isCapturedTarget
-                                ? 'border-rose-400 ring-2 ring-rose-400/70'
-                                : isActive
-                                  ? 'border-sky-400'
-                                  : canClick
-                                    ? 'border-sky-500/50 hover:border-sky-300 hover:bg-[#261509]'
-                                    : 'border-[#5a381c]'
-                        }`}
-                      >
-                        <span className="font-mono text-[10px] font-bold text-sky-300/80">
-                          B{13 - pitIdx}
-                        </span>
-                        {renderGems(count, pitIdx)}
-                        <span className="rounded-full bg-black/55 px-2 py-0.5 font-mono text-xs font-black text-white sm:text-sm">
-                          {count}
-                        </span>
-                      </button>
-                    );
-                  })}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[84px_minmax(0,1fr)_84px] sm:gap-3 lg:grid-cols-[104px_minmax(0,1fr)_104px]">
+                {/* P2 Store */}
+                <div
+                  className={`order-1 flex flex-row items-center justify-between gap-3 rounded-lg border bg-gradient-to-b from-[#1e1006] to-[#120903] px-3 py-2 transition sm:order-none sm:flex-col sm:justify-between sm:gap-2 sm:px-2 sm:py-3 ${
+                    activePit === 13
+                      ? 'border-[#c99555] ring-1 ring-[#c99555]'
+                      : hoverPreview?.landingPit === 13
+                        ? 'border-[#dfb06d] ring-1 ring-[#dfb06d]'
+                        : 'border-[#6b4423]'
+                  }`}
+                >
+                  <div className="text-left sm:text-center">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#9db8cd] sm:text-[11px]">
+                      {mode === 'cpu' ? 'CPU STORE' : 'P2 STORE'}
+                    </span>
+                    <span className="font-mono text-xl font-bold text-[#f4ead8] sm:text-2xl">
+                      {pits[13]}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1 sm:flex-none">{renderGems(pits[13], 13)}</div>
+                  <span className="hidden text-[10px] font-medium text-[#b9a88f] sm:block">
+                    後手ゴール
+                  </span>
                 </div>
 
-                {/* Bottom Row: P1 Pits (Indices 0 to 5, displayed left-to-right) */}
-                <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5">
-                  {[0, 1, 2, 3, 4, 5].map((pitIdx) => {
-                    const count = pits[pitIdx];
-                    const canClick =
-                      !isAnimating && !gameOver && turn === 1 && count > 0;
-                    const isLanding = hoverPreview?.landingPit === pitIdx;
-                    const isCapturedTarget = hoverPreview?.capturedFromPit === pitIdx;
-                    const isHint = hintPit === pitIdx;
-                    const isActive = activePit === pitIdx;
+                {/* Center Pits */}
+                <div className="order-2 flex min-w-0 flex-col justify-between gap-2.5 sm:order-none sm:gap-4">
+                  {/* Top Row: P2 */}
+                  <div className="grid min-w-0 grid-cols-6 gap-1 sm:gap-2">
+                    {[12, 11, 10, 9, 8, 7].map((pitIdx) => {
+                      const count = pits[pitIdx];
+                      const canClick =
+                        !isAnimating && !gameOver && mode === 'pvp' && turn === 2 && count > 0;
+                      const isLanding = hoverPreview?.landingPit === pitIdx;
+                      const isCapturedTarget = hoverPreview?.capturedFromPit === pitIdx;
+                      const isHint = hintPit === pitIdx;
+                      const isActive = activePit === pitIdx;
 
-                    return (
-                      <button
-                        key={pitIdx}
-                        type="button"
-                        disabled={!canClick}
-                        onClick={() => handlePitClick(pitIdx)}
-                        onMouseEnter={() => setHoveredPit(pitIdx)}
-                        onMouseLeave={() => setHoveredPit(null)}
-                        className={`relative flex min-h-[104px] flex-col items-center justify-between rounded-2xl border-2 bg-gradient-to-b from-[#1c0f06] to-[#130a04] p-1.5 shadow-inner transition sm:min-h-[122px] sm:p-2 ${
-                          isHint
-                            ? 'border-amber-300 ring-2 ring-amber-300'
-                            : isLanding
-                              ? 'border-emerald-400 ring-2 ring-emerald-400/70'
-                              : isCapturedTarget
-                                ? 'border-rose-400 ring-2 ring-rose-400/70'
-                                : isActive
-                                  ? 'border-emerald-400'
-                                  : canClick
-                                    ? 'border-emerald-500/60 hover:border-emerald-300 hover:bg-[#261509]'
-                                    : 'border-[#5a381c]'
-                        }`}
-                      >
-                        <span className="rounded-full bg-black/55 px-2 py-0.5 font-mono text-xs font-black text-white sm:text-sm">
-                          {count}
-                        </span>
-                        {renderGems(count, pitIdx)}
-                        <span className="font-mono text-[10px] font-bold text-emerald-300">
-                          A{pitIdx + 1}
-                        </span>
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={pitIdx}
+                          type="button"
+                          disabled={!canClick}
+                          onClick={() => handlePitClick(pitIdx)}
+                          onMouseEnter={() => setHoveredPit(pitIdx)}
+                          onMouseLeave={() => setHoveredPit(null)}
+                          className={`relative flex min-h-[88px] min-w-0 flex-col items-center justify-between rounded-lg border-2 bg-gradient-to-b from-[#1c0f06] to-[#130a04] p-1 transition sm:min-h-[118px] sm:p-2 ${
+                            isHint
+                              ? 'border-[#dfb06d] ring-1 ring-[#dfb06d]'
+                              : isLanding
+                                ? 'border-[#6f9a75] ring-1 ring-[#6f9a75]'
+                                : isCapturedTarget
+                                  ? 'border-[#b4544a] ring-1 ring-[#b4544a]'
+                                  : isActive
+                                    ? 'border-[#c99555]'
+                                    : canClick
+                                      ? 'border-[#6b543d] hover:border-[#c99555] hover:bg-[#261509]'
+                                      : 'border-[#4d3d2d]'
+                          }`}
+                        >
+                          <span className="font-mono text-[10px] font-bold text-[#9db8cd]">
+                            B{13 - pitIdx}
+                          </span>
+                          {renderGems(count, pitIdx)}
+                          <span className="rounded-full bg-black/45 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#f4ead8] sm:px-2 sm:text-sm">
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom Row: P1 */}
+                  <div className="grid min-w-0 grid-cols-6 gap-1 sm:gap-2">
+                    {[0, 1, 2, 3, 4, 5].map((pitIdx) => {
+                      const count = pits[pitIdx];
+                      const canClick = !isAnimating && !gameOver && turn === 1 && count > 0;
+                      const isLanding = hoverPreview?.landingPit === pitIdx;
+                      const isCapturedTarget = hoverPreview?.capturedFromPit === pitIdx;
+                      const isHint = hintPit === pitIdx;
+                      const isActive = activePit === pitIdx;
+
+                      return (
+                        <button
+                          key={pitIdx}
+                          type="button"
+                          disabled={!canClick}
+                          onClick={() => handlePitClick(pitIdx)}
+                          onMouseEnter={() => setHoveredPit(pitIdx)}
+                          onMouseLeave={() => setHoveredPit(null)}
+                          className={`relative flex min-h-[88px] min-w-0 flex-col items-center justify-between rounded-lg border-2 bg-gradient-to-b from-[#1c0f06] to-[#130a04] p-1 transition sm:min-h-[118px] sm:p-2 ${
+                            isHint
+                              ? 'border-[#dfb06d] ring-1 ring-[#dfb06d]'
+                              : isLanding
+                                ? 'border-[#6f9a75] ring-1 ring-[#6f9a75]'
+                                : isCapturedTarget
+                                  ? 'border-[#b4544a] ring-1 ring-[#b4544a]'
+                                  : isActive
+                                    ? 'border-[#c99555]'
+                                    : canClick
+                                      ? 'border-[#6b543d] hover:border-[#c99555] hover:bg-[#261509]'
+                                      : 'border-[#4d3d2d]'
+                          }`}
+                        >
+                          <span className="rounded-full bg-black/45 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#f4ead8] sm:px-2 sm:text-sm">
+                            {count}
+                          </span>
+                          {renderGems(count, pitIdx)}
+                          <span className="font-mono text-[10px] font-bold text-[#a9c9b1]">
+                            A{pitIdx + 1}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* P1 Store */}
+                <div
+                  className={`order-3 flex flex-row items-center justify-between gap-3 rounded-lg border bg-gradient-to-b from-[#1e1006] to-[#120903] px-3 py-2 transition sm:order-none sm:flex-col sm:justify-between sm:gap-2 sm:px-2 sm:py-3 ${
+                    activePit === 6
+                      ? 'border-[#c99555] ring-1 ring-[#c99555]'
+                      : hoverPreview?.landingPit === 6
+                        ? 'border-[#dfb06d] ring-1 ring-[#dfb06d]'
+                        : 'border-[#6b4423]'
+                  }`}
+                >
+                  <div className="text-left sm:text-center">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#a9c9b1] sm:text-[11px]">
+                      YOU / P1
+                    </span>
+                    <span className="font-mono text-xl font-bold text-[#f4ead8] sm:text-2xl">
+                      {pits[6]}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1 sm:flex-none">{renderGems(pits[6], 6)}</div>
+                  <span className="hidden text-[10px] font-medium text-[#b9a88f] sm:block">
+                    先手ゴール
+                  </span>
                 </div>
               </div>
 
-              {/* Right Store: Player 1 Store (Index 6) */}
-              <div
-                className={`flex flex-col items-center justify-between rounded-2xl border-2 bg-gradient-to-b from-[#1e1006] to-[#120903] p-2 shadow-inner transition ${
-                  activePit === 6
-                    ? 'border-emerald-400 ring-2 ring-emerald-400/60'
-                    : hoverPreview?.landingPit === 6
-                      ? 'border-amber-300 ring-2 ring-amber-300/70'
-                      : 'border-[#6b4423]'
-                }`}
-              >
-                <div className="text-center">
-                  <span className="block text-[10px] font-black tracking-wider text-emerald-300">
-                    YOU / P1
-                  </span>
-                  <span className="font-mono text-2xl font-black text-white sm:text-3xl">
-                    {pits[6]}
-                  </span>
-                </div>
-                {renderGems(pits[6], 6)}
-                <span className="text-[10px] font-bold text-amber-200/60">先手ゴール</span>
+              <div className="mt-3 flex flex-col items-center justify-between gap-1 text-[11px] font-medium text-[#d8b98a] sm:flex-row">
+                <span>
+                  勝利条件:{' '}
+                  {rule === 'kalah'
+                    ? 'カラハ（ストアの石が多い方が勝利）'
+                    : 'ベーシック（先に自陣を空にした方が勝利）'}
+                </span>
+                <span>下段（先手・あなた）は左から右へ ➡</span>
               </div>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between text-[11px] font-bold text-amber-200/75">
-              <span>
-                勝利条件：
-                {rule === 'kalah'
-                  ? 'カラハ（終了時にゴールストアの石が多い方が勝利）'
-                  : 'ベーシック（先に自分の6ポケットをすべて空にした方が即勝利！）'}
-              </span>
-              <span>下段（先手・あなた）は左から右へ種まき ➡️</span>
             </div>
           </div>
         </div>
 
-        {/* Right Sidebar: Controls & Rules */}
-        <aside className="flex flex-col gap-3">
-          {/* Match Actions */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#1b130d]/95 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-              MATCH ACTIONS
-            </p>
+        {/* Right: Sidebar */}
+        <aside className="flex min-w-0 flex-col gap-3">
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Match Actions</p>
             <div className="mt-2.5 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={history.length === 0 || isAnimating || isCpuTurn}
-                className="rounded-xl border border-white/15 bg-white/[0.05] px-2 py-2.5 text-xs font-bold text-amber-50 transition hover:border-amber-400/50 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs disabled:cursor-not-allowed disabled:opacity-45"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
                 onClick={handleHint}
                 disabled={gameOver || isAnimating || isCpuTurn}
-                className="rounded-xl border border-amber-400/40 bg-amber-500/15 px-2 py-2.5 text-xs font-bold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs text-[#dfb06d] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                💡 AIヒント
+                AIヒント
               </button>
               <button
                 type="button"
                 onClick={() => resetGame()}
-                className="rounded-xl border border-emerald-400/35 bg-emerald-500/15 px-2 py-2.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-2 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
             {hintPit !== null && (
-              <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-200">
-                AI推奨ポケット: <span className="font-mono">{pitLabel(hintPit)}</span>（石 {pits[hintPit]}個）
+              <p className="tabletop-panel-soft mt-2 px-2.5 py-1.5 text-xs font-medium text-[#e6c48f]">
+                AI推奨ポケット: <span className="font-mono">{pitLabel(hintPit)}</span>（石{' '}
+                {pits[hintPit]}個）
               </p>
             )}
           </div>
 
-          {/* Rule & Mode Selector */}
-          <div className="rounded-2xl border border-white/10 bg-[#1b130d]/95 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-              RULE & MODE / ルールと対戦設定
-            </p>
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Rule & Mode / 対戦設定</p>
 
-            <p className="mt-2 text-[10px] font-bold text-amber-200/70">ルール選択</p>
+            <p className="mt-2 text-[11px] font-semibold text-[#b9a88f]">ルール</p>
             <div className="mt-1 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => resetGame('kalah', mode, difficulty, initialSeeds)}
-                className={`rounded-xl border px-2.5 py-2 text-xs font-bold transition ${
-                  rule === 'kalah'
-                    ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                    : 'border-white/10 bg-white/[0.04] text-amber-200/70'
+                aria-pressed={rule === 'kalah'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  rule === 'kalah' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                🏆 カラハ（横取り有）
+                カラハ（横取り有）
               </button>
               <button
                 type="button"
                 onClick={() => resetGame('basic', mode, difficulty, initialSeeds)}
-                className={`rounded-xl border px-2.5 py-2 text-xs font-bold transition ${
-                  rule === 'basic'
-                    ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                    : 'border-white/10 bg-white/[0.04] text-amber-200/70'
+                aria-pressed={rule === 'basic'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  rule === 'basic' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                ⚡ ベーシック（先空け）
+                ベーシック
               </button>
             </div>
 
-            <p className="mt-3 text-[10px] font-bold text-amber-200/70">対戦モード</p>
+            <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">対戦モード</p>
             <div className="mt-1 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => resetGame(rule, 'cpu', difficulty, initialSeeds)}
-                className={`rounded-xl border px-2.5 py-2 text-xs font-bold transition ${
-                  mode === 'cpu'
-                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100'
-                    : 'border-white/10 bg-white/[0.04] text-amber-200/70'
+                aria-pressed={mode === 'cpu'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'cpu' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                🤖 CPU対戦
+                CPU対戦
               </button>
               <button
                 type="button"
                 onClick={() => resetGame(rule, 'pvp', difficulty, initialSeeds)}
-                className={`rounded-xl border px-2.5 py-2 text-xs font-bold transition ${
-                  mode === 'pvp'
-                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100'
-                    : 'border-white/10 bg-white/[0.04] text-amber-200/70'
+                aria-pressed={mode === 'pvp'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'pvp' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                👥 1台で2人対戦
+                1台で2人対戦
               </button>
             </div>
 
             {mode === 'cpu' && (
               <>
-                <p className="mt-3 text-[10px] font-bold text-amber-200/70">CPU強さ</p>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">CPUの強さ</p>
                 <div className="mt-1 grid grid-cols-3 gap-1.5">
                   {(
                     [
@@ -941,10 +937,9 @@ export default function MancalaGame() {
                       key={lv}
                       type="button"
                       onClick={() => resetGame(rule, 'cpu', lv, initialSeeds)}
-                      className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                        difficulty === lv
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                          : 'border-white/10 bg-white/[0.04] text-amber-200/70'
+                      aria-pressed={difficulty === lv}
+                      className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1.5 text-xs font-semibold ${
+                        difficulty === lv ? 'tabletop-chip-active' : ''
                       }`}
                     >
                       {label}
@@ -954,8 +949,8 @@ export default function MancalaGame() {
               </>
             )}
 
-            <p className="mt-3 text-[10px] font-bold text-amber-200/70">
-              初期の石の数（1ポケットあたり）
+            <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">
+              初期の石の数（1ポケット）
             </p>
             <div className="mt-1 grid grid-cols-3 gap-1.5">
               {([3, 4, 6] as const).map((cnt) => (
@@ -963,40 +958,36 @@ export default function MancalaGame() {
                   key={cnt}
                   type="button"
                   onClick={() => resetGame(rule, mode, difficulty, cnt)}
-                  className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                    initialSeeds === cnt
-                      ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                      : 'border-white/10 bg-white/[0.04] text-amber-200/70'
+                  aria-pressed={initialSeeds === cnt}
+                  className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1 text-xs font-semibold ${
+                    initialSeeds === cnt ? 'tabletop-chip-active' : ''
                   }`}
                 >
-                  {cnt}個（計{cnt * 12}個）
+                  {cnt}個（計{cnt * 12}）
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Rule Guide Card */}
-          <div className="rounded-2xl border border-white/10 bg-[#1b130d]/95 p-3.5 text-xs leading-relaxed text-amber-100/90">
-            <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-              MANCALA RULES / 2つの定番ルール
-            </p>
-            <ul className="mt-2 space-y-2 text-[11px] text-amber-200/80">
+          <div className="tabletop-panel-soft p-3.5 text-xs leading-relaxed">
+            <p className="tabletop-kicker">Mancala Rules</p>
+            <ul className="mt-2 space-y-2 text-[11px] text-[#b9a88f]">
               <li>
-                <strong className="text-amber-300">・ぴったりゴール（共通）：</strong>
-                種まきの最後の1個が自分のゴールストアに入ると、続けてもう1回手番を行えます！
+                <strong className="font-semibold text-[#dfb06d]">ぴったりゴール（共通）：</strong>
+                最後の1個が自分のゴールストアに入ると、続けてもう1回手番を行えます。
               </li>
               <li>
-                <strong className="text-amber-300">・カラハ（Kalah・高戦略ルール）：</strong>
-                最後の1個が自陣の「空のポケット」に入り、向かい側の相手ポケットに石がある場合、両方とも自分のストアへ横取りできます。最終的にストアの石が多い方が勝利です。
+                <strong className="font-semibold text-[#dfb06d]">カラハ：</strong>
+                最後の石が自陣の空ポケットに入り、向かい側に石があると両方ストアへ横取り。ストアの石が多い方が勝利です。
               </li>
               <li>
-                <strong className="text-amber-300">・ベーシック（先に自陣を空にするルール）：</strong>
-                学童や家庭でもおなじみのスピードルール。ストアの石数は競わず、先に自分の6ポケットをすべて空（0個）にしたプレイヤーがその場で勝利します。
+                <strong className="font-semibold text-[#dfb06d]">ベーシック：</strong>
+                ストアの石数は競わず、先に自分の6ポケットをすべて空にしたプレイヤーが勝利します。
               </li>
             </ul>
           </div>
         </aside>
-      </div>
+      </main>
     </div>
   );
 }

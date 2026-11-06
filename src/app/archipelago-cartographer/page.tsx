@@ -143,7 +143,6 @@ export default function ArchipelagoCartographerPage() {
   return (
     <main className="bg-[#06101e]">
       <JsonLd data={pageJsonLd} />
-      <JsonLd data={buildGameJsonLd(seo)} />
       <h1 className="sr-only">{seo.h1}</h1>
       <ArchipelagoCartographerGame />
       <SeoContentSection

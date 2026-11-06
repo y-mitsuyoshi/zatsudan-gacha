@@ -646,63 +646,63 @@ export default function NineMensMorrisGame() {
   const toSvg = (g: number) => 60 + g * 80;
 
   return (
-    <div className="min-h-screen bg-[#070a12] text-slate-100">
-      <header className="border-b border-slate-800/80 bg-[#0b1020]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+    <div className="tabletop-page">
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6">
           <Link
             href="/games"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-amber-400/60 hover:text-white"
+            className="tabletop-button inline-flex min-h-11 items-center gap-2 px-3 text-xs"
           >
-            ← 無料ゲーム一覧へ
+            <span aria-hidden="true">←</span>
+            <span>ゲーム一覧</span>
           </Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300">
-              NINE MEN&apos;S MORRIS
-            </span>
-            <ThemeToggleButton />
+            <span className="tabletop-kicker hidden sm:inline">Nine Men&apos;s Morris</span>
+            <div className="[&>button]:h-11 [&>button]:w-11 [&>div]:h-11 [&>div]:w-11">
+              <ThemeToggleButton />
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6">
-        {/* Top Control Card */}
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/95 via-[#10172a] to-slate-900/95 p-4 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl">
-                ナイン・メンズ・モリス（古代ローマ三目戦略盤・ミル）
+      <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
+        {/* Title & Match Controls */}
+        <section className="tabletop-panel mb-4 p-3 sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <p className="tabletop-kicker">Ancient Strategy · 24 Points</p>
+              <h2 className="tabletop-title mt-1 text-xl sm:text-2xl">
+                ナイン・メンズ・モリス
               </h2>
-              <p className="mt-0.5 text-xs text-slate-400">
-                縦または横に3つの石を並べて「ミル」を作り、相手の石を1つずつ除去せよ！残り3石でどこへでも飛べる「フライング」が発動。
+              <p className="tabletop-muted mt-1 max-w-2xl text-xs leading-relaxed sm:text-sm">
+                三つの石で「ミル」を組み、相手の石を盤から取り除く古典戦略盤。配置・移動・飛翔の三段階を制し、相手を追い詰めてください。
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
+              <div role="group" aria-label="対戦モード" className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
+                  data-mode="cpu"
                   onClick={() => {
                     setGameMode('cpu');
                     handleReset();
                   }}
-                  className={`rounded-lg px-3 py-1.5 font-semibold transition ${
-                    gameMode === 'cpu'
-                      ? 'bg-amber-600 text-white'
-                      : 'text-slate-300 hover:text-white'
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    gameMode === 'cpu' ? 'tabletop-chip-active' : ''
                   }`}
                 >
                   CPU対戦
                 </button>
                 <button
                   type="button"
+                  data-mode="2p"
                   onClick={() => {
                     setGameMode('2p');
                     handleReset();
                   }}
-                  className={`rounded-lg px-3 py-1.5 font-semibold transition ${
-                    gameMode === '2p'
-                      ? 'bg-amber-600 text-white'
-                      : 'text-slate-300 hover:text-white'
+                  className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                    gameMode === '2p' ? 'tabletop-chip-active' : ''
                   }`}
                 >
                   1台で2人対戦
@@ -711,169 +711,230 @@ export default function NineMensMorrisGame() {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-3 text-xs">
+          <div className="tabletop-divider mt-3 flex flex-col gap-2 border-t pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               {gameMode === 'cpu' && (
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">CPU難易度:</span>
-                  {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDifficulty(d)}
-                      className={`rounded-md px-2.5 py-1 font-medium transition ${
-                        difficulty === d
-                          ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50'
-                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級'}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <span className="tabletop-muted text-[11px]">CPU強さ</span>
+                  <div role="group" aria-label="CPU難易度" className="flex flex-wrap gap-1.5">
+                    {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        data-difficulty={d}
+                        onClick={() => setDifficulty(d)}
+                        className={`tabletop-chip min-h-11 px-3 text-xs font-semibold transition ${
+                          difficulty === d ? 'tabletop-chip-active' : ''
+                        }`}
+                      >
+                        {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級'}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
+                data-action="hint"
                 onClick={handleHint}
                 disabled={Boolean(winner) || (gameMode === 'cpu' && turn === 2)}
-                className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1 font-semibold text-amber-300 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                💡 ヒント
+                ヒント
               </button>
               <button
                 type="button"
+                data-action="undo"
                 onClick={handleUndo}
                 disabled={history.length === 0}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1 font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
+                data-action="reset"
                 onClick={handleReset}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1 font-semibold text-rose-300 transition hover:bg-rose-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-3 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          {/* SVG Board Column */}
-          <div className="lg:col-span-8">
-            <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-3 shadow-2xl sm:p-5">
-              {/* Phase & Action Banner */}
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2.5">
-                <div className="flex items-center gap-2.5">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+          {/* Board Column */}
+          <div className="min-w-0 lg:col-span-8">
+            <div className="tabletop-panel p-2.5 sm:p-4">
+              {/* Turn & Phase Banner */}
+              <div className="tabletop-panel-soft mb-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className={`h-3.5 w-3.5 rounded-full ${
-                      turn === 1
-                        ? 'bg-amber-400 shadow-[0_0_10px_#fbbf24]'
-                        : 'bg-cyan-400 shadow-[0_0_10px_#22d3ee]'
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                      turn === 1 ? 'bg-[#e3d2b3]' : 'bg-[#7fa08e]'
                     }`}
                   />
-                  <span className="text-sm font-bold text-white">
+                  <span className="truncate text-xs font-semibold text-[#f4ead8] sm:text-sm">
                     {winner
                       ? winner === 1
-                        ? '🏆 琥珀（先手）の勝利！'
+                        ? '琥珀（先手）の勝利'
                         : gameMode === 'cpu'
-                          ? '🏆 青（CPU）の勝利！'
-                          : '🏆 青（後手）の勝利！'
+                          ? '青（CPU）の勝利'
+                          : '青（後手）の勝利'
                       : turn === 1
                         ? '琥珀（先手）の手番'
                         : gameMode === 'cpu'
-                          ? '青（CPU）が思考中...'
+                          ? '青（CPU）が思考中'
                           : '青（後手）の手番'}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {mustRemove ? (
-                    <span className="animate-pulse rounded-full border border-rose-400/60 bg-rose-500/20 px-3 py-0.5 text-xs font-bold text-rose-200">
-                      ⚡ ミル成立！赤枠で光る相手の石を1つタップして除去してください
+                    <span className="tabletop-chip tabletop-chip-active px-2.5 py-1 text-[10px] font-semibold sm:text-[11px]">
+                      ミル成立 — 相手の石を選択
                     </span>
                   ) : (
-                    <span className="rounded-full border border-indigo-400/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-semibold text-indigo-200">
+                    <span className="tabletop-chip px-2.5 py-1 text-[10px] font-semibold sm:text-[11px]">
                       {currentPhase === 'place'
-                        ? 'フェーズ1: 配置（空いている交点に石を置く）'
+                        ? '配置フェーズ'
                         : currentPhase === 'move'
-                          ? 'フェーズ2: 移動（線に沿って隣の交点へ動かす）'
-                          : 'フェーズ3: 🪽フライング（残り3石！任意の空き交点へジャンプ可能）'}
+                          ? '移動フェーズ'
+                          : '飛翔フェーズ'}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Interactive SVG Board */}
-              <div className="mx-auto max-w-[490px]">
+              {/* Wooden Morris Board */}
+              <div className="tabletop-board-frame mx-auto max-w-[520px] p-1.5 sm:p-2">
                 <svg
                   viewBox="0 0 600 600"
-                  className="h-auto w-full select-none rounded-2xl border border-amber-900/40 bg-gradient-to-br from-[#17120e] via-[#111827] to-[#0f172a] shadow-inner"
+                  role="img"
+                  aria-label="ナイン・メンズ・モリスの盤面"
+                  className="block h-auto w-full select-none"
                   style={{ touchAction: 'manipulation' }}
                 >
                   <defs>
-                    <radialGradient id="amberStone" cx="35%" cy="30%" r="70%">
-                      <stop offset="0%" stopColor="#fef08a" />
-                      <stop offset="55%" stopColor="#f59e0b" />
-                      <stop offset="100%" stopColor="#b45309" />
+                    <linearGradient id="morrisWood" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#3a2a1c" />
+                      <stop offset="48%" stopColor="#2e2117" />
+                      <stop offset="100%" stopColor="#231810" />
+                    </linearGradient>
+                    <radialGradient id="morrisIvoryStone" cx="35%" cy="28%" r="75%">
+                      <stop offset="0%" stopColor="#fff8e8" />
+                      <stop offset="58%" stopColor="#e3d2b3" />
+                      <stop offset="100%" stopColor="#b39a76" />
                     </radialGradient>
-                    <radialGradient id="cyanStone" cx="35%" cy="30%" r="70%">
-                      <stop offset="0%" stopColor="#e0f2fe" />
-                      <stop offset="55%" stopColor="#06b6d4" />
-                      <stop offset="100%" stopColor="#0e7490" />
+                    <radialGradient id="morrisForestStone" cx="35%" cy="28%" r="75%">
+                      <stop offset="0%" stopColor="#8fb7a3" />
+                      <stop offset="55%" stopColor="#4f7f69" />
+                      <stop offset="100%" stopColor="#27483a" />
                     </radialGradient>
+                    <filter id="morrisStoneShadow" x="-40%" y="-40%" width="180%" height="180%">
+                      <feDropShadow
+                        dx="0"
+                        dy="2"
+                        stdDeviation="2.2"
+                        floodColor="#0a0705"
+                        floodOpacity="0.55"
+                      />
+                    </filter>
                   </defs>
 
-                  {/* 3 Concentric Squares */}
+                  {/* Wood surface */}
+                  <rect x="0" y="0" width="600" height="600" rx="10" fill="url(#morrisWood)" />
+                  <g opacity="0.14" stroke="#8a6744" strokeWidth="1">
+                    {[48, 118, 196, 274, 352, 430, 508, 566].map((y) => (
+                      <path
+                        key={y}
+                        d={`M14 ${y} C 150 ${y - 7}, 380 ${y + 9}, 586 ${y - 3}`}
+                        fill="none"
+                      />
+                    ))}
+                  </g>
+                  <rect x="9" y="9" width="582" height="582" rx="8" fill="none" stroke="#6b543d" strokeWidth="2" />
+                  <rect x="19" y="19" width="562" height="562" rx="5" fill="none" stroke="#3b2c1f" strokeWidth="1" />
+
+                  {/* Three concentric squares */}
                   {[0, 1, 2].map((ring) => {
                     const start = toSvg(ring);
                     const size = (6 - ring * 2) * 80;
                     return (
-                      <rect
-                        key={ring}
-                        x={start}
-                        y={start}
-                        width={size}
-                        height={size}
-                        fill="none"
-                        stroke="#475569"
-                        strokeWidth={4}
-                        rx={4}
-                      />
+                      <g key={ring}>
+                        <rect
+                          x={start}
+                          y={start}
+                          width={size}
+                          height={size}
+                          rx={3}
+                          fill="none"
+                          stroke="#1a110b"
+                          strokeWidth={9}
+                        />
+                        <rect
+                          x={start}
+                          y={start}
+                          width={size}
+                          height={size}
+                          rx={3}
+                          fill="none"
+                          stroke="#8a6744"
+                          strokeWidth={3.5}
+                        />
+                      </g>
                     );
                   })}
 
-                  {/* 4 Midlines connecting the 3 squares */}
-                  <line x1={toSvg(3)} y1={toSvg(0)} x2={toSvg(3)} y2={toSvg(2)} stroke="#475569" strokeWidth={4} />
-                  <line x1={toSvg(3)} y1={toSvg(4)} x2={toSvg(3)} y2={toSvg(6)} stroke="#475569" strokeWidth={4} />
-                  <line x1={toSvg(0)} y1={toSvg(3)} x2={toSvg(2)} y2={toSvg(3)} stroke="#475569" strokeWidth={4} />
-                  <line x1={toSvg(4)} y1={toSvg(3)} x2={toSvg(6)} y2={toSvg(3)} stroke="#475569" strokeWidth={4} />
+                  {/* Four midlines */}
+                  {[
+                    [toSvg(3), toSvg(0), toSvg(3), toSvg(2)],
+                    [toSvg(3), toSvg(4), toSvg(3), toSvg(6)],
+                    [toSvg(0), toSvg(3), toSvg(2), toSvg(3)],
+                    [toSvg(4), toSvg(3), toSvg(6), toSvg(3)],
+                  ].map(([x1, y1, x2, y2], idx) => (
+                    <g key={`midline-${idx}`}>
+                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1a110b" strokeWidth={9} />
+                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#8a6744" strokeWidth={3.5} />
+                    </g>
+                  ))}
 
-                  {/* Glowing Active Mill Lines */}
+                  {/* Active mill lines */}
                   {activeMills.map(({ line, player }, idx) => {
                     const pStart = POINTS[line[0]];
                     const pEnd = POINTS[line[2]];
+                    const millColor = player === 1 ? '#e0bd86' : '#7fa08e';
                     return (
-                      <line
-                        key={`mill-${idx}`}
-                        x1={toSvg(pStart.gx)}
-                        y1={toSvg(pStart.gy)}
-                        x2={toSvg(pEnd.gx)}
-                        y2={toSvg(pEnd.gy)}
-                        stroke={player === 1 ? '#fbbf24' : '#22d3ee'}
-                        strokeWidth={9}
-                        strokeLinecap="round"
-                        opacity={0.75}
-                      />
+                      <g key={`mill-${idx}`}>
+                        <line
+                          x1={toSvg(pStart.gx)}
+                          y1={toSvg(pStart.gy)}
+                          x2={toSvg(pEnd.gx)}
+                          y2={toSvg(pEnd.gy)}
+                          stroke="#1a110b"
+                          strokeWidth={12}
+                          strokeLinecap="round"
+                        />
+                        <line
+                          x1={toSvg(pStart.gx)}
+                          y1={toSvg(pStart.gy)}
+                          x2={toSvg(pEnd.gx)}
+                          y2={toSvg(pEnd.gy)}
+                          stroke={millColor}
+                          strokeWidth={5}
+                          strokeLinecap="round"
+                          opacity={0.85}
+                        />
+                      </g>
                     );
                   })}
 
-                  {/* 24 Intersections & Stones */}
+                  {/* Intersections & stones */}
                   {POINTS.map((pt) => {
                     const cx = toSvg(pt.gx);
                     const cy = toSvg(pt.gy);
@@ -887,85 +948,109 @@ export default function NineMensMorrisGame() {
                     return (
                       <g
                         key={pt.id}
+                        data-point={pt.id}
                         onClick={() => handlePointClick(pt.id)}
                         className="cursor-pointer"
                       >
-                        {/* Invisible larger hit target for mobile fingers */}
-                        <circle cx={cx} cy={cy} r={30} fill="transparent" />
+                        {/* Full-size touch target */}
+                        <circle cx={cx} cy={cy} r={40} fill="transparent" />
 
-                        {/* Base node circle */}
+                        {/* Base inlay */}
                         <circle
                           cx={cx}
                           cy={cy}
-                          r={isDest ? 13 : 9}
-                          fill={isDest ? '#10b981' : '#334155'}
-                          stroke={isDest ? '#6ee7b7' : '#94a3b8'}
-                          strokeWidth={isDest ? 3 : 2}
+                          r={isDest ? 15 : 10}
+                          fill={isDest ? '#c99555' : '#241a12'}
+                          stroke={isDest ? '#f0d7a8' : '#8a6a45'}
+                          strokeWidth={isDest ? 2.5 : 2}
                         />
+                        {isDest && <circle cx={cx} cy={cy} r={4.5} fill="#fff6e3" />}
 
-                        {/* Hint Ring */}
-                        {isHint && (
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={26}
-                            fill="none"
-                            stroke="#fbbf24"
-                            strokeWidth={3}
-                            strokeDasharray="5 3"
-                          />
-                        )}
-
-                        {/* Removable Opponent Stone Highlight */}
-                        {isRemovable && (
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={26}
-                            fill="rgba(244, 63, 94, 0.25)"
-                            stroke="#f43f5e"
-                            strokeWidth={3.5}
-                          />
-                        )}
-
-                        {/* Stone rendering */}
+                        {/* Stone */}
                         {occupant && (
-                          <g>
+                          <g filter="url(#morrisStoneShadow)">
                             <circle
                               cx={cx}
                               cy={cy}
                               r={20}
-                              fill={occupant === 1 ? 'url(#amberStone)' : 'url(#cyanStone)'}
+                              fill={occupant === 1 ? 'url(#morrisIvoryStone)' : 'url(#morrisForestStone)'}
                               stroke={
                                 isSelected
-                                  ? '#ffffff'
+                                  ? '#fff6e3'
                                   : isRemovable
-                                    ? '#f43f5e'
-                                    : isLast
-                                      ? '#a855f7'
-                                      : occupant === 1
-                                        ? '#fde68a'
-                                        : '#a5f3fc'
+                                    ? '#c96a5a'
+                                    : occupant === 1
+                                      ? '#f0dfc0'
+                                      : '#9fc3b0'
                               }
-                              strokeWidth={isSelected || isRemovable ? 4 : 2.5}
+                              strokeWidth={isSelected || isRemovable ? 3.5 : 2}
                             />
                             <circle
                               cx={cx}
                               cy={cy}
-                              r={12}
+                              r={12.5}
                               fill="none"
-                              stroke={occupant === 1 ? 'rgba(254,240,138,0.45)' : 'rgba(224,242,254,0.45)'}
-                              strokeWidth={1.5}
+                              stroke={occupant === 1 ? '#9c7f57' : '#2b4a3b'}
+                              strokeWidth={1.4}
+                              opacity={0.65}
+                            />
+                            <ellipse
+                              cx={cx - 6}
+                              cy={cy - 7}
+                              rx={6}
+                              ry={4}
+                              fill="#ffffff"
+                              opacity={0.28}
                             />
                           </g>
+                        )}
+
+                        {/* Selection, hint and capture rings */}
+                        {isSelected && (
+                          <circle cx={cx} cy={cy} r={24} fill="none" stroke="#fff6e3" strokeWidth={2} />
+                        )}
+                        {isHint && (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={27}
+                            fill="none"
+                            stroke="#dfb06d"
+                            strokeWidth={2.5}
+                            strokeDasharray="5 4"
+                          />
+                        )}
+                        {isRemovable && (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={27}
+                            fill="rgba(159, 69, 64, 0.18)"
+                            stroke="#c96a5a"
+                            strokeWidth={2.5}
+                          />
+                        )}
+                        {isLast && !isSelected && !isRemovable && (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={23}
+                            fill="none"
+                            stroke="#dfb06d"
+                            strokeWidth={1.5}
+                            opacity={0.8}
+                          />
                         )}
 
                         {/* Coordinate label */}
                         <text
                           x={cx}
-                          y={cy + 32}
+                          y={cy + 34}
                           textAnchor="middle"
-                          className="fill-slate-400 text-[10px] font-semibold"
+                          fill="#b9a88f"
+                          fontSize="12"
+                          fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                          opacity={0.8}
                         >
                           {pt.label}
                         </text>
@@ -976,107 +1061,122 @@ export default function NineMensMorrisGame() {
               </div>
 
               {hintText && (
-                <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  <span className="font-bold">💡 AI戦術ヒント: </span>
+                <div className="mt-3 border-l-2 border-[#c99555] bg-[#2a211a] px-3 py-2 text-xs leading-relaxed text-[#e8d7bd]">
+                  <span className="font-semibold text-[#dfb06d]">AIヒント: </span>
                   {hintText}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Status & Guide Column */}
-          <div className="space-y-4 lg:col-span-4">
+          {/* Side Panels */}
+          <aside className="min-w-0 space-y-3 lg:col-span-4">
             {/* Player Cards */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <div
-                className={`rounded-2xl border p-3.5 transition ${
+                className="tabletop-stat p-2.5 sm:p-3"
+                style={
                   turn === 1 && !winner
-                    ? 'border-amber-500/70 bg-amber-950/30 shadow-lg'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
+                    ? { borderColor: '#c99555', background: 'rgba(201, 149, 85, 0.08)' }
+                    : undefined
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-300">琥珀（先手）</span>
-                  <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">
-                    {getPlayerPhase(board, unplaced1, 1).toUpperCase()}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#e8d7bd]">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#e3d2b3] ring-1 ring-[#8a6a45]" />
+                    <span className="truncate">琥珀（先手）</span>
+                  </span>
+                  <span className="tabletop-chip shrink-0 px-1.5 py-0.5 text-[9px] font-semibold">
+                    {getPlayerPhase(board, unplaced1, 1) === 'place'
+                      ? '配置'
+                      : getPlayerPhase(board, unplaced1, 1) === 'move'
+                        ? '移動'
+                        : '飛翔'}
                   </span>
                 </div>
-                <div className="mt-2 flex items-baseline justify-between">
+                <div className="mt-2 flex items-end justify-between gap-2">
                   <div>
-                    <span className="text-xs text-slate-400">盤上: </span>
-                    <strong className="text-xl font-extrabold text-white">{onBoard1}</strong>
+                    <span className="tabletop-muted text-[10px]">盤上</span>
+                    <strong className="ml-1 text-lg leading-none">{onBoard1}</strong>
                   </div>
-                  <div className="text-xs text-slate-300">
-                    手持ち未配置: <strong className="text-amber-300">{unplaced1}</strong>
-                  </div>
+                  <span className="tabletop-muted text-[10px]">
+                    手元 <strong className="text-xs text-[#e8d7bd]">{unplaced1}</strong>
+                  </span>
                 </div>
               </div>
 
               <div
-                className={`rounded-2xl border p-3.5 transition ${
+                className="tabletop-stat p-2.5 sm:p-3"
+                style={
                   turn === 2 && !winner
-                    ? 'border-cyan-400/70 bg-cyan-950/30 shadow-lg'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
+                    ? { borderColor: '#7fa08e', background: 'rgba(127, 160, 142, 0.08)' }
+                    : undefined
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-cyan-300">
-                    {gameMode === 'cpu' ? '青（CPU）' : '青（後手）'}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[#e8d7bd]">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#4f7f69] ring-1 ring-[#9fc3b0]" />
+                    <span className="truncate">{gameMode === 'cpu' ? '青（CPU）' : '青（後手）'}</span>
                   </span>
-                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-200">
-                    {getPlayerPhase(board, unplaced2, 2).toUpperCase()}
+                  <span className="tabletop-chip shrink-0 px-1.5 py-0.5 text-[9px] font-semibold">
+                    {getPlayerPhase(board, unplaced2, 2) === 'place'
+                      ? '配置'
+                      : getPlayerPhase(board, unplaced2, 2) === 'move'
+                        ? '移動'
+                        : '飛翔'}
                   </span>
                 </div>
-                <div className="mt-2 flex items-baseline justify-between">
+                <div className="mt-2 flex items-end justify-between gap-2">
                   <div>
-                    <span className="text-xs text-slate-400">盤上: </span>
-                    <strong className="text-xl font-extrabold text-white">{onBoard2}</strong>
+                    <span className="tabletop-muted text-[10px]">盤上</span>
+                    <strong className="ml-1 text-lg leading-none">{onBoard2}</strong>
                   </div>
-                  <div className="text-xs text-slate-300">
-                    手持ち未配置: <strong className="text-cyan-300">{unplaced2}</strong>
-                  </div>
+                  <span className="tabletop-muted text-[10px]">
+                    手元 <strong className="text-xs text-[#e8d7bd]">{unplaced2}</strong>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* 3 Phases Explanation */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <h3 className="text-sm font-bold text-white">🏛️ 3つのフェーズとミル成立ルール</h3>
-              <ul className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            {/* Rules Guide */}
+            <div className="tabletop-panel p-3.5">
+              <h3 className="tabletop-title text-sm">ルールと三つのフェーズ</h3>
+              <ul className="tabletop-muted mt-2 space-y-1.5 text-[11px] leading-relaxed">
                 <li>
-                  <strong className="text-amber-300">① 配置フェーズ</strong>: 手持ちの9個の石を交互に空いている交点へ1つずつ配置します。
+                  <strong className="text-[#dfb06d]">配置</strong> — 手元の9石を交互に空き交点へ置きます。
                 </li>
                 <li>
-                  <strong className="text-sky-300">② 移動フェーズ</strong>: 9個すべて置き終えたら、自分の石を線に沿って隣の空き交点へ1マス動かします。
+                  <strong className="text-[#dfb06d]">移動</strong> — 全石を置いた後、線に沿って隣の空き交点へ1マス動かします。
                 </li>
                 <li>
-                  <strong className="text-purple-300">③ フライングフェーズ</strong>: 自分の石が残り<strong>ちょうど3個</strong>になると、線に関係なく任意の空き交点へジャンプできます！
+                  <strong className="text-[#dfb06d]">飛翔</strong> — 石が3個になると、任意の空き交点へジャンプできます。
                 </li>
                 <li>
-                  <strong className="text-rose-300">⚡ ミル（三目）成立</strong>: 直線上の3つの交点に自分の石を揃えると「ミル」成立！相手の石（原則ミル以外の石）を1つ盤面から除去できます。相手を残り2石にするか移動不能にすれば勝利です。
+                  <strong className="text-[#c96a5a]">ミル</strong> — 直線3連を完成させ、相手の石を1個除去。相手を2石以下か移動不能にすれば勝利です。
                 </li>
               </ul>
             </div>
 
-            {/* Move Logs */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">📜 対局ログ</h3>
-                <span className="text-[11px] text-slate-400">{logs.length} 手</span>
+            {/* Move Log */}
+            <div className="tabletop-panel p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="tabletop-title text-sm">対局ログ</h3>
+                <span className="tabletop-muted text-[10px]">{logs.length} 手</span>
               </div>
-              <div className="mt-2 max-h-48 space-y-1 overflow-y-auto pr-1 text-xs">
+              <div className="mt-2 max-h-44 space-y-0 overflow-y-auto pr-1 text-[11px]">
                 {logs.length === 0 ? (
-                  <p className="py-4 text-center text-slate-500">
-                    交点をタップして最初の石を配置してください。
+                  <p className="tabletop-muted py-4 text-center leading-relaxed">
+                    盤上の交点を選び、最初の石を置いてください。
                   </p>
                 ) : (
                   logs.map((log, i) => (
                     <div
                       key={`${i}-${log}`}
-                      className="rounded-lg border border-slate-800/90 bg-slate-950/60 px-2.5 py-1.5 text-slate-300"
+                      data-log-entry
+                      className="tabletop-divider border-b py-1.5 leading-snug text-[#d8c9b2] last:border-b-0"
                     >
-                      <span className="mr-1.5 font-mono text-[10px] text-slate-500">
-                        #{logs.length - i}
+                      <span className="mr-1.5 font-mono text-[10px] text-[#8f7d66]">
+                        {String(logs.length - i).padStart(2, '0')}
                       </span>
                       {log}
                     </div>
@@ -1084,7 +1184,7 @@ export default function NineMensMorrisGame() {
                 )}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

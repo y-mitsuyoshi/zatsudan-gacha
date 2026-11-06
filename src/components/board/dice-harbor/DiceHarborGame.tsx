@@ -743,8 +743,8 @@ function createInitialPlayers(mode: GameMode, cpuCount: number, primaryAiStyle: 
         name: '第1港長（P1）',
         isCpu: false,
         aiStyle: 'balanced',
-        colorClass: 'border-sky-400/60 bg-sky-950/35',
-        badgeBg: 'bg-sky-500 text-slate-950',
+        colorClass: 'border-[#3f5f78]/60 bg-sky-950/35',
+        badgeBg: 'bg-[#3f5f78] text-[#1b120b]',
         gold: 3,
         cards: { ...baseCards },
         wonders: { ...baseWonders },
@@ -754,8 +754,8 @@ function createInitialPlayers(mode: GameMode, cpuCount: number, primaryAiStyle: 
         name: '第2港長（P2）',
         isCpu: false,
         aiStyle: 'balanced',
-        colorClass: 'border-amber-400/60 bg-amber-950/35',
-        badgeBg: 'bg-amber-400 text-slate-950',
+        colorClass: 'border-[var(--table-accent)]/60 bg-[#c99555]/10',
+        badgeBg: 'bg-[var(--table-accent)] text-[#1b120b]',
         gold: 3,
         cards: { ...baseCards },
         wonders: { ...baseWonders },
@@ -772,20 +772,20 @@ function createInitialPlayers(mode: GameMode, cpuCount: number, primaryAiStyle: 
           ? 'バルトロ提督（2ダイス重工AI）'
           : 'オリヴィア商会（バランスAI）',
       style: primaryAiStyle,
-      colorClass: 'border-amber-400/50 bg-amber-950/30',
-      badgeBg: 'bg-amber-400 text-slate-950',
+      colorClass: 'border-[var(--table-accent)]/50 bg-[#c99555]/10',
+      badgeBg: 'bg-[var(--table-accent)] text-[#1b120b]',
     },
     {
       name: 'シェリー船長（1ダイス速攻AI）',
       style: 'rush1d',
-      colorClass: 'border-rose-400/50 bg-rose-950/30',
-      badgeBg: 'bg-rose-400 text-slate-950',
+      colorClass: 'border-[#9f4540]/50 bg-[#9f4540]/12',
+      badgeBg: 'bg-[#9f4540] text-[#f4ead8]',
     },
     {
       name: 'バルトロ提督（2ダイス重工AI）',
       style: 'heavy2d',
-      colorClass: 'border-purple-400/50 bg-purple-950/30',
-      badgeBg: 'bg-purple-400 text-slate-950',
+      colorClass: 'border-[#6a4a66]/50 bg-[#6a4a66]/12',
+      badgeBg: 'bg-[#6a4a66] text-[#1b120b]',
     },
   ];
 
@@ -795,8 +795,8 @@ function createInitialPlayers(mode: GameMode, cpuCount: number, primaryAiStyle: 
       name: 'あなた（港長）',
       isCpu: false,
       aiStyle: 'balanced',
-      colorClass: 'border-cyan-400/60 bg-cyan-950/35',
-      badgeBg: 'bg-cyan-400 text-slate-950',
+      colorClass: 'border-[#3f5f78]/60 bg-[#3f5f78]/12',
+      badgeBg: 'bg-[#3f5f78] text-[#1b120b]',
       gold: 3,
       cards: { ...baseCards },
       wonders: { ...baseWonders },
@@ -873,8 +873,8 @@ function SvgDieFace({
 
   return (
     <div
-      className={`relative h-16 w-16 sm:h-20 sm:w-20 rounded-2xl shadow-xl transition-transform duration-200 ${
-        rolling ? 'animate-bounce scale-105 rotate-6' : 'hover:scale-105'
+      className={`relative h-16 w-16 sm:h-20 sm:w-20 rounded-lg  transition-transform duration-200 ${
+        rolling ? ' scale-105 rotate-6' : 'hover:scale-105'
       }`}
     >
       <svg viewBox="0 0 100 100" className="h-full w-full drop-shadow">
@@ -1682,48 +1682,48 @@ export default function DiceHarborGame() {
     { badge: string; border: string; bg: string; label: string }
   > = {
     blue: {
-      badge: 'bg-sky-500 text-slate-950',
-      border: 'border-sky-400/45',
-      bg: 'bg-sky-950/40',
+      badge: 'bg-[#3f5f78] text-[#1b120b]',
+      border: 'border-[#3f5f78]/45',
+      bg: 'bg-[#142330]',
       label: '青：一次産業（誰の番でも生産）',
     },
     green: {
-      badge: 'bg-emerald-500 text-slate-950',
-      border: 'border-emerald-400/45',
-      bg: 'bg-emerald-950/40',
+      badge: 'bg-[#4f806b] text-[#1b120b]',
+      border: 'border-[#315d4e]/45',
+      bg: 'bg-[#315d4e]/16',
       label: '緑：商業（自分の番に高収入）',
     },
     red: {
-      badge: 'bg-rose-500 text-white',
-      border: 'border-rose-400/45',
-      bg: 'bg-rose-950/40',
+      badge: 'bg-[#9f4540] text-[var(--table-ink)]',
+      border: 'border-[#9f4540]/45',
+      bg: 'bg-[#9f4540]/14',
       label: '赤：歓楽街（他人の番に通行料）',
     },
     purple: {
-      badge: 'bg-purple-500 text-white',
-      border: 'border-purple-400/45',
-      bg: 'bg-purple-950/40',
+      badge: 'bg-[#6a4a66] text-[#f4ead8]',
+      border: 'border-[#6a4a66]/45',
+      bg: 'bg-[#6a4a66]/14',
       label: '紫：ギルド（自分の番に特別効果）',
     },
   };
 
   return (
-    <div className="min-h-screen bg-[#07111e] text-slate-100 select-none">
+    <div className="tabletop-page min-h-screen overflow-x-hidden select-none">
       {/* Top Header */}
-      <header className="border-b border-cyan-500/20 bg-[#091728]/95 backdrop-blur">
+      <header className="tabletop-header sticky top-0 z-30">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-cyan-400/50 hover:text-cyan-200"
+              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs"
             >
               ← 無料ゲーム一覧へ
             </Link>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-amber-400">
+              <p className="tabletop-kicker">
                 DICE ENGINE &amp; HARBOR CITY BUILDER
               </p>
-              <h2 className="text-sm font-black sm:text-lg">
+              <h2 className="tabletop-title text-base sm:text-lg">
                 サイコロ港町（ダイス・ハーバー）：出目で育つ交易都市
               </h2>
             </div>
@@ -1731,17 +1731,17 @@ export default function DiceHarborGame() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Mode Switcher */}
-            <div className="flex rounded-lg border border-cyan-500/30 bg-black/40 p-0.5">
+            <div className="tabletop-panel-soft flex p-0.5">
               <button
                 type="button"
                 onClick={() => {
                   setMode('cpu');
                   startNewGame('cpu', cpuCount, primaryAiStyle);
                 }}
-                className={`rounded-md px-2.5 py-1 text-xs font-black transition ${
+                className={`min-h-11 rounded-md px-3 text-xs font-black transition ${
                   mode === 'cpu'
-                    ? 'bg-cyan-400 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'tabletop-button-primary'
+                    : 'tabletop-button border-transparent bg-transparent'
                 }`}
               >
                 CPU対戦（{cpuCount + 1}人）
@@ -1752,10 +1752,10 @@ export default function DiceHarborGame() {
                   setMode('pvp');
                   startNewGame('pvp', cpuCount, primaryAiStyle);
                 }}
-                className={`rounded-md px-2.5 py-1 text-xs font-black transition ${
+                className={`min-h-11 rounded-md px-3 text-xs font-black transition ${
                   mode === 'pvp'
-                    ? 'bg-amber-400 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'tabletop-button-primary'
+                    : 'tabletop-button border-transparent bg-transparent'
                 }`}
               >
                 1台で2人対戦
@@ -1765,10 +1765,8 @@ export default function DiceHarborGame() {
             <button
               type="button"
               onClick={() => setBgmOn((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
-                bgmOn
-                  ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
-                  : 'border-white/15 bg-white/[0.05] text-slate-300 hover:border-cyan-400/50'
+              className={`tabletop-button min-h-11 px-3 text-xs ${
+                bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
               {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
@@ -1776,14 +1774,14 @@ export default function DiceHarborGame() {
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-cyan-400/50"
+              className="tabletop-button min-h-11 px-3 text-xs"
             >
               {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
             </button>
             <button
               type="button"
               onClick={() => startNewGame(mode, cpuCount, primaryAiStyle)}
-              className="rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/25"
+              className="tabletop-button-primary min-h-11 px-3 text-xs"
             >
               🔄 新規ゲーム
             </button>
@@ -1795,17 +1793,17 @@ export default function DiceHarborGame() {
       {/* Main Content Container */}
       <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
         {/* Game Mode & AI Configuration Bar */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-cyan-500/20 bg-[#0b1c30]/90 px-3.5 py-2.5 shadow-lg">
+        <div className="tabletop-panel mb-4 flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-md bg-cyan-500/20 px-2 py-0.5 font-black text-cyan-300">
+            <span className="tabletop-chip px-2.5 py-0.5 font-black text-[#9db8c8]">
               ROUND {roundNumber}
             </span>
-            <span className="font-bold text-slate-200">
+            <span className="font-bold text-[var(--table-ink)]">
               現在の手番:{' '}
-              <strong className="text-amber-300">{currentPlayer.name}</strong>
+              <strong className="text-[var(--table-accent-strong)]">{currentPlayer.name}</strong>
             </span>
-            <span className="text-slate-400">|</span>
-            <span className="font-bold text-emerald-300">
+            <span className="text-[var(--table-muted)]">|</span>
+            <span className="font-bold text-[#9dc4af]">
               フェーズ:{' '}
               {phase === 'choose_roll' && '🎲 ダイスロール選択'}
               {phase === 'rolling' && '🎲 ダイス回転中...'}
@@ -1820,7 +1818,7 @@ export default function DiceHarborGame() {
           {mode === 'cpu' && (
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <div className="flex items-center gap-1">
-                <span className="text-slate-400">人数:</span>
+                <span className="text-[var(--table-muted)]">人数:</span>
                 {[1, 2, 3].map((cnt) => (
                   <button
                     key={cnt}
@@ -1829,10 +1827,10 @@ export default function DiceHarborGame() {
                       setCpuCount(cnt);
                       startNewGame('cpu', cnt, primaryAiStyle);
                     }}
-                    className={`rounded px-2 py-0.5 font-bold transition ${
+                    className={`min-h-11 rounded-md px-2.5 font-bold transition ${
                       cpuCount === cnt
-                        ? 'bg-cyan-400 text-slate-950'
-                        : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                        ? 'tabletop-button-primary'
+                        : 'tabletop-button'
                     }`}
                   >
                     {cnt + 1}人
@@ -1840,7 +1838,7 @@ export default function DiceHarborGame() {
                 ))}
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-slate-400">主力AI戦略:</span>
+                <span className="text-[var(--table-muted)]">主力AI戦略:</span>
                 {(
                   [
                     ['balanced', 'バランス型'],
@@ -1855,10 +1853,10 @@ export default function DiceHarborGame() {
                       setPrimaryAiStyle(stKey);
                       startNewGame('cpu', cpuCount, stKey);
                     }}
-                    className={`rounded px-2 py-0.5 font-bold transition ${
+                    className={`min-h-11 rounded-md px-2.5 font-bold transition ${
                       primaryAiStyle === stKey
-                        ? 'bg-amber-400 text-slate-950'
-                        : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                        ? 'tabletop-button-primary'
+                        : 'tabletop-button'
                     }`}
                   >
                     {stLabel}
@@ -1872,13 +1870,13 @@ export default function DiceHarborGame() {
         {/* Top Grid: Dice Dock + Real-Time EV Simulator */}
         <div className="mb-4 grid gap-4 lg:grid-cols-[1.15fr_1fr]">
           {/* Left: Dice Roll & Turn Control Dock */}
-          <div className="flex flex-col justify-between rounded-2xl border border-amber-400/30 bg-gradient-to-br from-[#0e2238] via-[#0b192c] to-[#122033] p-4 shadow-xl">
+          <div className="tabletop-panel flex flex-col justify-between border-[var(--table-accent)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <span className="inline-block rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-black text-amber-300">
+                <span className="tabletop-chip px-2.5 py-0.5 text-[11px] font-black text-[var(--table-accent-strong)]">
                   {currentPlayer.name} のターン
                 </span>
-                <h3 className="mt-1 text-base font-black text-white sm:text-lg">
+                <h3 className="tabletop-title mt-1 text-base sm:text-lg">
                   {phase === 'choose_roll' && '🎲 ダイスを振って港湾施設を発動させましょう！'}
                   {phase === 'rolling' && '🎲 運命のダイスが港町を駆け巡っています...'}
                   {phase === 'reroll_prompt' && '🚂 『蒸気鉄道駅』特権：この出目で確定しますか？'}
@@ -1892,7 +1890,7 @@ export default function DiceHarborGame() {
               </div>
 
               {/* 3D SVG Dice Display */}
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-2.5">
+              <div className="flex items-center gap-3 rounded-lg border border-[var(--table-line)] bg-black/20 px-4 py-2.5">
                 {(phase === 'rolling' ? animDiceValues.slice(0, diceValues.length || 1) : diceValues).map(
                   (val, idx) => (
                     <SvgDieFace
@@ -1904,14 +1902,14 @@ export default function DiceHarborGame() {
                   )
                 )}
                 <div className="pl-1 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--table-muted)]">
                     TOTAL
                   </p>
-                  <p className="font-mono text-3xl font-black text-amber-300">
+                  <p className="font-mono text-3xl font-black text-[var(--table-accent-strong)]">
                     {phase === 'rolling' ? '?' : diceSum}
                   </p>
                   {diceValues.length === 2 && diceValues[0] === diceValues[1] && phase !== 'rolling' && (
-                    <span className="inline-block rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                    <span className="inline-block rounded bg-[var(--table-accent)] px-1.5 py-0.5 text-[10px] font-black text-[#1b120b]">
                       ゾロ目!
                     </span>
                   )}
@@ -1920,16 +1918,16 @@ export default function DiceHarborGame() {
             </div>
 
             {/* Action Buttons by Phase */}
-            <div className="mt-4 border-t border-white/10 pt-3">
+            <div className="tabletop-divider mt-4 border-t pt-3">
               {phase === 'choose_roll' && !currentPlayer.isCpu && (
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => handleRollDice(1, false)}
-                    className="flex-1 rounded-xl border border-cyan-300/50 bg-gradient-to-r from-cyan-500 to-sky-500 px-4 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-110"
+                    className="tabletop-button-primary min-h-12 flex-1 px-4 py-3 text-sm"
                   >
                     🎲 1ダイスを振る（出目 1〜6）
-                    <span className="ml-2 rounded bg-slate-950/20 px-2 py-0.5 text-xs">
+                    <span className="ml-2 rounded bg-black/20 px-2 py-0.5 text-xs">
                       期待値 +{currentEvAnalysis.ev1d.toFixed(2)}G
                     </span>
                   </button>
@@ -1938,15 +1936,15 @@ export default function DiceHarborGame() {
                     <button
                       type="button"
                       onClick={() => handleRollDice(2, false)}
-                      className="flex-1 rounded-xl border border-amber-300/60 bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-110"
+                      className="tabletop-button-primary min-h-12 flex-1 px-4 py-3 text-sm"
                     >
                       🎲🎲 2ダイスを振る（出目 2〜12）
-                      <span className="ml-2 rounded bg-slate-950/20 px-2 py-0.5 text-xs">
+                      <span className="ml-2 rounded bg-black/20 px-2 py-0.5 text-xs">
                         期待値 +{currentEvAnalysis.ev2d.toFixed(2)}G
                       </span>
                     </button>
                   ) : (
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
+                    <div className="rounded-md border border-[var(--table-line)] bg-[var(--table-panel-soft)] px-3 py-2 text-xs text-[var(--table-muted)]">
                       🔒 <strong>双子灯台（4G）</strong>を建設すると2ダイス（2〜12）が解放されます
                     </div>
                   )}
@@ -1958,14 +1956,14 @@ export default function DiceHarborGame() {
                   <button
                     type="button"
                     onClick={() => resolveConfirmedRoll(diceValues)}
-                    className="rounded-xl bg-emerald-400 px-4 py-2.5 text-xs font-black text-slate-950 shadow transition hover:bg-emerald-300"
+                    className="tabletop-button-primary min-h-11 px-4 text-xs"
                   >
                     ✅ 出目【{diceSum}】のまま確定する
                   </button>
                   <button
                     type="button"
                     onClick={() => handleRollDice(1, true)}
-                    className="rounded-xl border border-cyan-400/50 bg-cyan-500/20 px-3.5 py-2.5 text-xs font-black text-cyan-200 transition hover:bg-cyan-500/30"
+                    className="tabletop-button min-h-11 px-3.5 text-xs"
                   >
                     🚂 1ダイスで振り直す
                   </button>
@@ -1973,20 +1971,20 @@ export default function DiceHarborGame() {
                     <button
                       type="button"
                       onClick={() => handleRollDice(2, true)}
-                      className="rounded-xl border border-amber-400/50 bg-amber-500/20 px-3.5 py-2.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/30"
+                      className="tabletop-button min-h-11 px-3.5 text-xs"
                     >
                       🚂 2ダイスで振り直す
                     </button>
                   )}
                   {usedReroll && (
-                    <span className="text-xs text-slate-400">（振り直し済み）</span>
+                    <span className="text-xs text-[var(--table-muted)]">（振り直し済み）</span>
                   )}
                 </div>
               )}
 
               {phase === 'purple_swap' && !currentPlayer.isCpu && (
-                <div className="rounded-xl border border-purple-400/40 bg-purple-950/40 p-3">
-                  <p className="text-xs font-bold text-purple-200">
+                <div className="tabletop-panel-soft border-[#6a4a66] p-3">
+                  <p className="text-xs font-bold text-[#cbb3c9]">
                     ⚖️ 『海運取引所』の効果：あなたの施設1枚と、他プレイヤーの施設（紫以外）1枚を交換できます。
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -2008,7 +2006,7 @@ export default function DiceHarborGame() {
                               onClick={() =>
                                 handleExecuteSwap(giveDef.id, opp.id, takeDef.id)
                               }
-                              className="rounded-lg border border-purple-300/40 bg-purple-500/25 px-2.5 py-1.5 text-xs font-bold text-purple-100 hover:bg-purple-500/40"
+                              className="tabletop-button min-h-11 px-3 text-xs text-[#cbb3c9]"
                             >
                               自分の『{giveDef.name}』⇄ {opp.name}の『{takeDef.name}』
                             </button>
@@ -2018,7 +2016,7 @@ export default function DiceHarborGame() {
                     <button
                       type="button"
                       onClick={() => setPhase('build')}
-                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-white/20"
+                      className="tabletop-button min-h-11 px-3 text-xs"
                     >
                       交換せずに建設フェーズへ進む
                     </button>
@@ -2028,14 +2026,14 @@ export default function DiceHarborGame() {
 
               {phase === 'build' && !currentPlayer.isCpu && (
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-cyan-200">
+                  <p className="text-xs font-bold text-[#9db8c8]">
                     💡 下の「港湾モニュメント」または「港町カード市場」から1つ選んで建設できます（所持金:{' '}
-                    <strong className="text-amber-300">{currentPlayer.gold}G</strong>）
+                    <strong className="text-[var(--table-accent-strong)]">{currentPlayer.gold}G</strong>）
                   </p>
                   <button
                     type="button"
                     onClick={handleSkipBuild}
-                    className="rounded-xl border border-slate-400/40 bg-slate-800/90 px-4 py-2 text-xs font-black text-slate-100 transition hover:border-amber-400/50 hover:text-amber-200"
+                    className="tabletop-button min-h-11 px-4 text-xs"
                   >
                     💰 何も建設せず資金を貯めてターン終了 →
                   </button>
@@ -2043,20 +2041,20 @@ export default function DiceHarborGame() {
               )}
 
               {currentPlayer.isCpu && phase !== 'game_over' && (
-                <p className="text-xs font-bold text-amber-300">
+                <p className="text-xs font-bold text-[var(--table-accent-strong)]">
                   🤖 {currentPlayer.name} が港湾データを分析して行動しています...
                 </p>
               )}
 
               {phase === 'game_over' && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-black text-amber-300">
+                  <p className="text-sm font-black text-[var(--table-accent-strong)]">
                     🎉 全ての港湾モニュメントが完成しました！ もう一度新しい街づくりに挑戦しますか？
                   </p>
                   <button
                     type="button"
                     onClick={() => startNewGame(mode, cpuCount, primaryAiStyle)}
-                    className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 shadow hover:bg-amber-300"
+                    className="rounded-md bg-[var(--table-accent)] px-4 py-2 text-xs font-black text-[#1b120b] shadow hover:bg-[var(--table-accent-strong)]"
                   >
                     🔄 もう一度プレイする
                   </button>
@@ -2065,14 +2063,14 @@ export default function DiceHarborGame() {
 
               {/* Resolution Order Step Badges */}
               {resolutionEvents.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5 rounded-xl border border-white/10 bg-black/30 p-2">
-                  <span className="text-[11px] font-black text-slate-400">
+                <div className="mt-2.5 flex flex-wrap gap-1.5 rounded-md border border-[var(--table-line)] bg-black/20 p-2">
+                  <span className="text-[11px] font-black text-[var(--table-muted)]">
                     発動順ログ（赤→青→緑・紫）:
                   </span>
                   {resolutionEvents.map((ev, i) => (
                     <span
                       key={i}
-                      className="rounded-md border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[11px] font-bold text-slate-100"
+                      className="rounded-md border border-[var(--table-line)] bg-[var(--table-panel-soft)] px-2 py-0.5 text-[11px] font-bold text-[var(--table-ink)]"
                     >
                       {ev.summary}
                     </span>
@@ -2083,17 +2081,17 @@ export default function DiceHarborGame() {
           </div>
 
           {/* Right: Real-Time 1D vs 2D Expected Value (EV) Analyzer */}
-          <div className="rounded-2xl border border-cyan-400/30 bg-[#0a192b]/95 p-4 shadow-xl">
+          <div className="tabletop-panel p-4">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
+                <p className="tabletop-kicker">
                   REAL-TIME EXPECTED VALUE SIMULATOR
                 </p>
-                <h3 className="text-sm font-black text-white sm:text-base">
+                <h3 className="tabletop-title text-sm sm:text-base">
                   📊 1ダイス vs 2ダイス 期待収益シミュレーター（{evFocusPlayer.name}）
                 </h3>
               </div>
-              <span className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-black text-cyan-200">
+              <span className="tabletop-chip px-2.5 py-1 text-[11px] font-black text-[#9db8c8]">
                 推奨:{' '}
                 {evFocusPlayer.wonders.lighthouse &&
                 currentEvAnalysis.ev2d > currentEvAnalysis.ev1d
@@ -2105,20 +2103,20 @@ export default function DiceHarborGame() {
             {/* 1D vs 2D Comparison Cards */}
             <div className="mt-3 grid grid-cols-2 gap-2.5">
               <div
-                className={`rounded-xl border p-2.5 ${
+                className={`rounded-md border p-2.5 ${
                   !evFocusPlayer.wonders.lighthouse ||
                   currentEvAnalysis.ev1d >= currentEvAnalysis.ev2d
-                    ? 'border-cyan-400/60 bg-cyan-950/40'
-                    : 'border-white/10 bg-black/25'
+                    ? 'border-[#3f5f78]/60 bg-[#142330]'
+                    : 'border-[var(--table-line)] bg-black/20'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-cyan-300">🎲 1ダイス期待値 (1〜6)</span>
-                  <span className="text-[10px] font-bold text-slate-400">各 16.7%</span>
+                  <span className="text-xs font-black text-[#9db8c8]">🎲 1ダイス期待値 (1〜6)</span>
+                  <span className="text-[10px] font-bold text-[var(--table-muted)]">各 16.7%</span>
                 </div>
-                <p className="mt-1 font-mono text-2xl font-black text-white">
+                <p className="mt-1 font-mono text-2xl font-black text-[var(--table-ink)]">
                   +{currentEvAnalysis.ev1d.toFixed(2)}{' '}
-                  <span className="text-xs font-bold text-cyan-300">G/ターン</span>
+                  <span className="text-xs font-bold text-[#9db8c8]">G/ターン</span>
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {currentEvAnalysis.breakdown1d.map((b) => (
@@ -2126,10 +2124,10 @@ export default function DiceHarborGame() {
                       key={b.sum}
                       className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
                         b.net > 0
-                          ? 'bg-cyan-500/25 text-cyan-200'
+                          ? 'bg-[#3f5f78]/20 text-[#9db8c8]'
                           : b.net < 0
-                          ? 'bg-rose-500/30 text-rose-200'
-                          : 'bg-white/5 text-slate-400'
+                          ? 'bg-[#9f4540]/25 text-[#d9a19b]'
+                          : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)]'
                       }`}
                     >
                       [{b.sum}]:{b.net >= 0 ? `+${b.net}` : b.net}
@@ -2139,24 +2137,24 @@ export default function DiceHarborGame() {
               </div>
 
               <div
-                className={`rounded-xl border p-2.5 ${
+                className={`rounded-md border p-2.5 ${
                   evFocusPlayer.wonders.lighthouse &&
                   currentEvAnalysis.ev2d > currentEvAnalysis.ev1d
-                    ? 'border-amber-400/60 bg-amber-950/40'
-                    : 'border-white/10 bg-black/25'
+                    ? 'border-[var(--table-accent)]/60 bg-[#c99555]/10'
+                    : 'border-[var(--table-line)] bg-black/20'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-amber-300">
+                  <span className="text-xs font-black text-[var(--table-accent-strong)]">
                     🎲🎲 2ダイス期待値 (2〜12)
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400">
+                  <span className="text-[10px] font-bold text-[var(--table-muted)]">
                     {evFocusPlayer.wonders.lighthouse ? '解放済' : '双子灯台で解放'}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-2xl font-black text-white">
+                <p className="mt-1 font-mono text-2xl font-black text-[var(--table-ink)]">
                   +{currentEvAnalysis.ev2d.toFixed(2)}{' '}
-                  <span className="text-xs font-bold text-amber-300">G/ターン</span>
+                  <span className="text-xs font-bold text-[var(--table-accent-strong)]">G/ターン</span>
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {currentEvAnalysis.breakdown2d
@@ -2166,10 +2164,10 @@ export default function DiceHarborGame() {
                         key={b.sum}
                         className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
                           b.net > 0
-                            ? 'bg-amber-500/25 text-amber-200'
+                            ? 'bg-[#c99555]/20 text-[var(--table-accent-strong)]'
                             : b.net < 0
-                            ? 'bg-rose-500/30 text-rose-200'
-                            : 'bg-white/5 text-slate-400'
+                            ? 'bg-[#9f4540]/25 text-[#d9a19b]'
+                            : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)]'
                         }`}
                       >
                         [{b.sum}]:{b.net >= 0 ? `+${b.net}` : b.net}
@@ -2180,8 +2178,8 @@ export default function DiceHarborGame() {
             </div>
 
             {/* Best Investment Recommendation */}
-            <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-950/30 px-3 py-2">
-              <p className="text-[11px] font-black text-emerald-300">
+            <div className="mt-3 rounded-md border border-[#315d4e]/30 bg-[#315d4e]/12 px-3 py-2">
+              <p className="text-[11px] font-black text-[#9dc4af]">
                 💡 1ゴールドあたりの期待収益（EV投資効率）TOP3 市場カード:
               </p>
               <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-3">
@@ -2191,12 +2189,12 @@ export default function DiceHarborGame() {
                   return (
                     <div
                       key={item.cardId}
-                      className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-[11px]"
+                      className="flex items-center justify-between rounded-lg border border-[var(--table-line)] bg-black/20 px-2 py-1 text-[11px]"
                     >
-                      <span className="truncate font-bold text-slate-100">
+                      <span className="truncate font-bold text-[var(--table-ink)]">
                         {idx === 0 ? '👑' : `${idx + 1}.`} {def.icon} {def.name}
                       </span>
-                      <span className="ml-1 shrink-0 font-mono font-black text-emerald-300">
+                      <span className="ml-1 shrink-0 font-mono font-black text-[#9dc4af]">
                         +{item.deltaEvPerRound.toFixed(2)}G/周
                       </span>
                     </div>
@@ -2217,20 +2215,20 @@ export default function DiceHarborGame() {
             return (
               <div
                 key={player.id}
-                className={`relative rounded-2xl border p-3.5 transition-all ${
+                className={`relative rounded-md border p-3.5 transition-all ${
                   isTurn
-                    ? 'border-amber-400 bg-[#10253d] shadow-[0_0_25px_rgba(251,191,36,0.15)]'
-                    : player.colorClass
+                    ? 'tabletop-panel border-[var(--table-accent)]'
+                    : `tabletop-panel ${player.colorClass}`
                 }`}
               >
                 {/* Floating Coin Animation Badges */}
                 {playerDeltas.map((delta) => (
                   <div
                     key={delta.id}
-                    className={`pointer-events-none absolute right-4 top-2 z-20 animate-bounce rounded-full px-3 py-1 font-mono text-sm font-black shadow-lg ${
+                    className={`pointer-events-none absolute right-4 top-2 z-20  rounded-full px-3 py-1 font-mono text-sm font-black  ${
                       delta.amount > 0
-                        ? 'border border-amber-200 bg-amber-400 text-slate-950'
-                        : 'border border-rose-200 bg-rose-600 text-white'
+                        ? 'border border-[var(--table-accent)] bg-[var(--table-accent)] text-[#1b120b]'
+                        : 'border border-[#9f4540] bg-[#9f4540] text-[#f4ead8]'
                     }`}
                   >
                     {delta.reason}
@@ -2245,17 +2243,17 @@ export default function DiceHarborGame() {
                     >
                       {isTurn ? '▶ 手番中' : `P${pIdx + 1}`}
                     </span>
-                    <h4 className="text-sm font-black text-white sm:text-base">{player.name}</h4>
+                    <h4 className="text-sm font-black text-[var(--table-ink)] sm:text-base">{player.name}</h4>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl border border-amber-400/40 bg-black/40 px-3 py-1 text-right">
-                      <span className="text-[10px] font-bold text-amber-200">GOLD</span>
-                      <span className="ml-1.5 font-mono text-lg font-black text-amber-300">
+                    <div className="rounded-md border border-[var(--table-accent)]/40 bg-black/20 px-3 py-1 text-right">
+                      <span className="text-[10px] font-bold text-[var(--table-accent-strong)]">GOLD</span>
+                      <span className="ml-1.5 font-mono text-lg font-black text-[var(--table-accent-strong)]">
                         {player.gold} G
                       </span>
                     </div>
-                    <div className="rounded-xl border border-cyan-400/30 bg-black/40 px-2.5 py-1 text-xs font-black text-cyan-200">
+                    <div className="rounded-md border border-[#3f5f78]/30 bg-black/20 px-2.5 py-1 text-xs font-black text-[#9db8c8]">
                       🏛️ モニュメント {completedWonders}/4
                     </div>
                   </div>
@@ -2279,12 +2277,12 @@ export default function DiceHarborGame() {
                         disabled={!canBuildNow}
                         onClick={() => canBuildNow && handleBuildWonder(wonder.id)}
                         title={wonder.effectText}
-                        className={`flex flex-col justify-between rounded-xl border p-2 text-left transition ${
+                        className={`flex flex-col justify-between rounded-md border p-2 text-left transition ${
                           built
-                            ? 'border-amber-300 bg-gradient-to-br from-amber-500/30 to-yellow-600/20 text-amber-100 shadow'
+                            ? 'border-[var(--table-accent)] bg-[#c99555]/16 text-[var(--table-accent-strong)]'
                             : canBuildNow
-                            ? 'cursor-pointer border-emerald-400 bg-emerald-950/50 hover:bg-emerald-900/60'
-                            : 'border-white/10 bg-black/25 opacity-75'
+                            ? 'cursor-pointer border-[#315d4e] bg-[#315d4e]/18 hover:bg-[#315d4e]/25'
+                            : 'tabletop-panel-soft opacity-75'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
@@ -2294,20 +2292,20 @@ export default function DiceHarborGame() {
                           <span
                             className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-black ${
                               built
-                                ? 'bg-amber-400 text-slate-950'
+                                ? 'bg-[var(--table-accent)] text-[#1b120b]'
                                 : canBuildNow
-                                ? 'bg-emerald-400 text-slate-950'
-                                : 'bg-white/10 text-slate-300'
+                                ? 'bg-[#4f806b] text-[#1b120b]'
+                                : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)]'
                             }`}
                           >
                             {built ? '完成!' : `${wonder.cost}G`}
                           </span>
                         </div>
-                        <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-slate-300">
+                        <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-[var(--table-muted)]">
                           {wonder.title}
                         </p>
                         {canBuildNow && (
-                          <span className="mt-1 inline-block rounded bg-emerald-400/20 px-1.5 py-0.5 text-center text-[10px] font-black text-emerald-300">
+                          <span className="mt-1 inline-block rounded bg-[#315d4e]/22 px-1.5 py-0.5 text-center text-[10px] font-black text-[#9dc4af]">
                             ✨ クリックで着工
                           </span>
                         )}
@@ -2329,21 +2327,21 @@ export default function DiceHarborGame() {
                         key={def.id}
                         type="button"
                         onClick={() => setInspectedCardId(def.id)}
-                        className={`group relative flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs transition ${
+                        className={`group relative flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition ${
                           cStyle.border
                         } ${cStyle.bg} ${
                           isTriggered
-                            ? 'ring-2 ring-amber-300 scale-105 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
-                            : 'hover:border-white/40'
+                            ? 'ring-2 ring-amber-300 scale-105 '
+                            : 'hover:border-[var(--table-accent)]'
                         }`}
                       >
                         <span className={`rounded px-1 font-mono text-[10px] font-black ${cStyle.badge}`}>
                           {def.diceLabel}
                         </span>
-                        <span className="font-bold text-white">
+                        <span className="font-bold text-[var(--table-ink)]">
                           {def.icon} {def.name}
                         </span>
-                        <span className="rounded-full bg-black/60 px-1.5 py-0.5 font-mono text-[11px] font-black text-amber-300">
+                        <span className="rounded-full bg-black/20 px-1.5 py-0.5 font-mono text-[11px] font-black text-[var(--table-accent-strong)]">
                           ×{qty}
                         </span>
                       </button>
@@ -2356,13 +2354,13 @@ export default function DiceHarborGame() {
         </div>
 
         {/* Harbor Market Section (14 District Cards) */}
-        <div className="rounded-2xl border border-cyan-500/25 bg-[#09182a]/95 p-4 shadow-2xl">
+        <div className="tabletop-panel p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
+              <p className="tabletop-kicker">
                 HARBOR DISTRICT MARKETPLACE
               </p>
-              <h3 className="text-base font-black text-white sm:text-lg">
+              <h3 className="tabletop-title text-base sm:text-lg">
                 🏪 港町カード市場（全14施設・都市建設フェーズに1ターン1枚まで購入可能）
               </h3>
             </div>
@@ -2382,10 +2380,10 @@ export default function DiceHarborGame() {
                   key={key}
                   type="button"
                   onClick={() => setSelectedMarketFilter(key)}
-                  className={`rounded-lg px-2.5 py-1 font-bold transition ${
+                  className={`min-h-11 rounded-md px-2.5 font-bold transition ${
                     selectedMarketFilter === key
-                      ? 'bg-cyan-400 text-slate-950'
-                      : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                      ? 'tabletop-button-primary'
+                      : 'tabletop-button'
                   }`}
                 >
                   {label}
@@ -2396,18 +2394,18 @@ export default function DiceHarborGame() {
 
           {/* Card Detail Inspector Banner (if clicked) */}
           {inspectedCard && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-400/40 bg-cyan-950/40 px-3.5 py-2 text-xs">
+            <div className="tabletop-panel-soft mt-3 flex flex-wrap items-center justify-between gap-2 border-[#3f5f78] px-3.5 py-2 text-xs">
               <div>
-                <span className="font-black text-cyan-300">
+                <span className="font-black text-[#9db8c8]">
                   {inspectedCard.icon} 『{inspectedCard.name}』出目{inspectedCard.diceLabel}（コスト{' '}
                   {inspectedCard.cost}G / {inspectedCard.tagLabel}）:
                 </span>{' '}
-                <span className="text-slate-200">{inspectedCard.detailDesc}</span>
+                <span className="text-[var(--table-ink)]">{inspectedCard.detailDesc}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setInspectedCardId(null)}
-                className="rounded bg-white/10 px-2 py-0.5 text-[11px] font-bold text-slate-300 hover:bg-white/20"
+                className="rounded bg-[var(--table-panel-soft)] px-2 py-0.5 text-[11px] font-bold text-[var(--table-muted)] hover:bg-[var(--table-panel-raised)]"
               >
                 閉じる ✕
               </button>
@@ -2435,13 +2433,13 @@ export default function DiceHarborGame() {
               return (
                 <div
                   key={def.id}
-                  className={`flex flex-col justify-between rounded-2xl border p-3 transition ${
+                  className={`flex flex-col justify-between rounded-lg border p-3 transition ${
                     cStyle.border
                   } ${cStyle.bg} ${
                     stock <= 0
                       ? 'opacity-45 grayscale'
                       : canBuyNow
-                      ? 'hover:border-amber-300 hover:shadow-lg'
+                      ? 'hover:border-[var(--table-accent)]'
                       : ''
                   }`}
                 >
@@ -2456,11 +2454,11 @@ export default function DiceHarborGame() {
 
                       <div className="flex items-center gap-1">
                         {isBestEv && (
-                          <span className="rounded-full bg-emerald-400 px-2 py-0.5 text-[10px] font-black text-slate-950 shadow">
+                          <span className="rounded-full bg-[#4f806b] px-2 py-0.5 text-[10px] font-black text-[#1b120b] shadow">
                             ★ 最高EV効率
                           </span>
                         )}
-                        <span className="rounded-lg border border-amber-300/40 bg-black/50 px-2 py-0.5 font-mono text-xs font-black text-amber-300">
+                        <span className="rounded-lg border border-[var(--table-accent)]/40 bg-black/20 px-2 py-0.5 font-mono text-xs font-black text-[var(--table-accent-strong)]">
                           {def.cost}G
                         </span>
                       </div>
@@ -2468,28 +2466,28 @@ export default function DiceHarborGame() {
 
                     {/* Title & Tag */}
                     <div className="mt-2 flex items-baseline justify-between gap-1">
-                      <h4 className="text-sm font-black text-white">
+                      <h4 className="text-sm font-black text-[var(--table-ink)]">
                         {def.icon} {def.name}
                       </h4>
-                      <span className="text-[10px] font-bold text-slate-300">
+                      <span className="text-[10px] font-bold text-[var(--table-muted)]">
                         {def.tagLabel}
                       </span>
                     </div>
 
                     {/* Description */}
-                    <p className="mt-1 text-xs font-bold text-slate-200">{def.shortDesc}</p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-slate-400">
+                    <p className="mt-1 text-xs font-bold text-[var(--table-ink)]">{def.shortDesc}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-[var(--table-muted)]">
                       {def.detailDesc}
                     </p>
                   </div>
 
                   {/* Bottom Bar: EV Delta, Stock, & Buy Button */}
-                  <div className="mt-3 border-t border-white/10 pt-2">
+                  <div className="mt-3 border-t border-[var(--table-line)] pt-2">
                     <div className="mb-1.5 flex items-center justify-between text-[11px]">
-                      <span className="font-mono font-bold text-emerald-300">
+                      <span className="font-mono font-bold text-[#9dc4af]">
                         {eff ? `期待収益 +${eff.deltaEvPerRound.toFixed(2)}G/周` : '上限到達'}
                       </span>
-                      <span className="font-mono font-bold text-slate-300">
+                      <span className="font-mono font-bold text-[var(--table-muted)]">
                         在庫: {stock}/{def.maxStock}（所持 ×{ownedCount}）
                       </span>
                     </div>
@@ -2498,14 +2496,14 @@ export default function DiceHarborGame() {
                       type="button"
                       disabled={!canBuyNow}
                       onClick={() => handleBuildDistrict(def.id)}
-                      className={`w-full rounded-xl py-1.5 text-xs font-black transition ${
+                      className={`min-h-11 w-full rounded-md text-xs font-black transition ${
                         stock <= 0
-                          ? 'bg-slate-800 text-slate-500'
+                          ? 'bg-[var(--table-panel-raised)] text-[var(--table-muted)]'
                           : reachedMaxPerPlayer
-                          ? 'bg-purple-950/60 text-purple-300'
+                          ? 'bg-[#6a4a66]/18 text-[#cbb3c9]'
                           : canBuyNow
-                          ? 'bg-amber-400 text-slate-950 shadow hover:bg-amber-300'
-                          : 'bg-white/10 text-slate-400'
+                          ? 'tabletop-button-primary'
+                          : 'tabletop-button cursor-not-allowed opacity-50'
                       }`}
                     >
                       {stock <= 0
@@ -2527,15 +2525,15 @@ export default function DiceHarborGame() {
 
         {/* Turn History Log & Quick Color Legend */}
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-          <div className="rounded-2xl border border-white/10 bg-[#081525]/90 p-3.5">
-            <h4 className="text-xs font-black uppercase tracking-wider text-cyan-400">
+          <div className="tabletop-panel p-3.5">
+            <h4 className="tabletop-kicker">
               📜 航海＆都市開発ログ（最新30件）
             </h4>
             <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1 text-xs">
               {turnLogs.map((log, i) => (
                 <div
                   key={i}
-                  className="rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1 text-slate-200"
+                  className="rounded-lg border border-[var(--table-line)] bg-[var(--table-panel-soft)] px-2.5 py-1 text-[var(--table-ink)]"
                 >
                   {log}
                 </div>
@@ -2543,25 +2541,25 @@ export default function DiceHarborGame() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[#081525]/90 p-3.5 text-xs">
-            <h4 className="font-black uppercase tracking-wider text-amber-400">
+          <div className="tabletop-panel p-3.5 text-xs">
+            <h4 className="tabletop-kicker">
               🧭 施設カラーと収入解決の順番ルール
             </h4>
-            <ul className="mt-2 space-y-1.5 text-slate-300">
+            <ul className="mt-2 space-y-1.5 text-[var(--table-muted)]">
               <li>
-                <strong className="text-rose-400">① 歓楽街レッドカード（赤）</strong>：
+                <strong className="text-[#d9a19b]">① 歓楽街レッドカード（赤）</strong>：
                 他のプレイヤーのターンに出目が一致すると真っ先に発動し、手番プレイヤーから通行料・飲食代を徴収します。
               </li>
               <li>
-                <strong className="text-sky-400">② 一次産業ブルーカード（青）</strong>：
+                <strong className="text-[#9db8c8]">② 一次産業ブルーカード（青）</strong>：
                 誰のターンでも出目が一致すれば、所有している全員が同時に銀行から生産コインを受け取ります。
               </li>
               <li>
-                <strong className="text-emerald-400">③ 商業グリーンカード（緑）</strong>：
+                <strong className="text-[#9dc4af]">③ 商業グリーンカード（緑）</strong>：
                 自分のターンに出目が一致した時のみ、銀行から高収入を獲得します（シナジー施設は資源カード枚数に応じて倍増）。
               </li>
               <li>
-                <strong className="text-purple-400">④ ギルドパープルカード（紫）</strong>：
+                <strong className="text-[#cbb3c9]">④ ギルドパープルカード（紫）</strong>：
                 自分のターンに出目[6]が出た時のみ、全員からの徴収や施設トレードなどの強力なギルド特権を発動します。
               </li>
             </ul>

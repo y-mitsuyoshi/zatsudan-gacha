@@ -470,446 +470,405 @@ export default function GomokuGame() {
   const toPos = (idx: number) => PADDING + idx * STEP;
 
   return (
-    <div className="min-h-screen bg-[#0b0907] text-stone-100 select-none">
+    <div className="tabletop-page min-h-screen select-none overflow-x-hidden">
       {/* Header */}
-      <header className="border-b border-amber-500/20 bg-[#14100c]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-2 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/games"
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-stone-200 transition hover:border-amber-400/50 hover:text-amber-200"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-sm"
             >
-              ← 無料ゲーム一覧へ
+              ← ゲーム一覧
             </Link>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-amber-400">
-                CLASSIC STRATEGY / 15×15 GOMOKU
-              </p>
-              <h2 className="text-sm font-black sm:text-lg">
-                五目並べ（15×15 連珠・五目戦略盤）
+            <div className="min-w-0">
+              <p className="tabletop-kicker truncate">Classic Strategy · 15×15 Gomoku</p>
+              <h2 className="tabletop-title truncate text-base sm:text-xl">
+                五目並べ
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setShowMoveNumbers((v) => !v)}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
-                showMoveNumbers
-                  ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                  : 'border-white/15 bg-white/[0.05] text-stone-300'
+              aria-pressed={showMoveNumbers}
+              className={`tabletop-chip inline-flex min-h-11 items-center px-3 text-xs font-semibold ${
+                showMoveNumbers ? 'tabletop-chip-active' : ''
               }`}
             >
-              {showMoveNumbers ? '🔢 手数表示 ON' : '🔢 手数表示 OFF'}
+              手数表示 {showMoveNumbers ? 'ON' : 'OFF'}
             </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
-              className="rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-xs font-bold text-stone-200 transition hover:border-amber-400/50"
+              aria-pressed={soundOn}
+              className={`tabletop-chip inline-flex min-h-11 items-center px-3 text-xs font-semibold ${
+                soundOn ? 'tabletop-chip-active' : ''
+              }`}
             >
-              {soundOn ? '🔊 碁石音 ON' : '🔇 碁石音 OFF'}
+              碁石音 {soundOn ? 'ON' : 'OFF'}
             </button>
             <ThemeToggleButton />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_350px]">
-        {/* Left: Evaluation Bar + 15x15 Kaya Wood Board */}
-        <div className="flex flex-col gap-3">
-          {/* Real-time 形勢判断・リーチ検知バー */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#17120d]/95 p-3 shadow-lg">
+      <main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-2 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_350px]">
+        {/* Left: Evaluation + Board */}
+        <div className="flex min-w-0 flex-col gap-3">
+          <section className="tabletop-panel p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-stone-600 bg-stone-950 text-xs font-black text-white shadow">
+              <div className="tabletop-stat flex min-w-0 items-center gap-2.5 px-2.5 py-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#7d7468] bg-gradient-to-br from-[#45413a] to-[#0d0c0a] text-[10px] font-black text-[#f4ead8]">
                   ●
                 </span>
-                <div>
-                  <p className="text-xs font-bold text-stone-200">
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-semibold text-[#d8cbb8]">
                     黒（先手）{mode === 'cpu' ? (humanSide === 1 ? '・あなた' : '・CPU') : '・P1'}
                   </p>
-                  <p className="font-mono text-[11px] text-amber-300">
-                    活四:{blackAnalysis.openFours} / 四:{blackAnalysis.halfFours} / 活三:{blackAnalysis.openThrees}
+                  <p className="font-mono text-[11px] text-[#dfb06d]">
+                    活四 {blackAnalysis.openFours} / 四 {blackAnalysis.halfFours} / 活三{' '}
+                    {blackAnalysis.openThrees}
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-full border border-amber-400/35 bg-amber-950/50 px-3.5 py-1 text-center">
-                {winInfo ? (
-                  <span className="text-xs font-black text-amber-300">
-                    🏆 {winInfo.winner === 1 ? '黒（先手）' : '白（後手）'}の五連達成・勝利！（{moves.length}手）
-                  </span>
-                ) : isDraw ? (
-                  <span className="text-xs font-black text-stone-200">満局・引き分け！</span>
-                ) : isCpuTurn ? (
-                  <span className="text-xs font-black text-amber-300">CPUが筋を読んでいます...</span>
-                ) : (
-                  <span className="text-xs font-black text-amber-100">
-                    第{moves.length + 1}手：{turn === 1 ? '● 黒（先手）' : '○ 白（後手）'}の手番
-                  </span>
-                )}
+              <div className="order-last w-full sm:order-none sm:w-auto">
+                <div
+                  className={`mx-auto w-fit rounded-md border px-3 py-1.5 text-center text-xs font-semibold ${
+                    winInfo
+                      ? 'border-[#8a5b36] bg-[#2c2118] text-[#e6c48f]'
+                      : 'border-[#4d3d2d] bg-[#211a15] text-[#d8cbb8]'
+                  }`}
+                >
+                  {winInfo ? (
+                    <>
+                      {winInfo.winner === 1 ? '黒（先手）' : '白（後手）'}の五連達成・勝利（
+                      {moves.length}手）
+                    </>
+                  ) : isDraw ? (
+                    <>満局・引き分け</>
+                  ) : isCpuTurn ? (
+                    <span className="text-[#dfb06d]">CPU が筋を読んでいます...</span>
+                  ) : (
+                    <>
+                      第{moves.length + 1}手: {turn === 1 ? '● 黒（先手）' : '○ 白（後手）'}
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 text-right">
-                <div>
-                  <p className="text-xs font-bold text-stone-200">
+              <div className="tabletop-stat flex min-w-0 items-center gap-2.5 px-2.5 py-2">
+                <div className="min-w-0 text-right">
+                  <p className="truncate text-[11px] font-semibold text-[#d8cbb8]">
                     白（後手）{mode === 'cpu' ? (humanSide === 2 ? '・あなた' : '・CPU') : '・P2'}
                   </p>
-                  <p className="font-mono text-[11px] text-sky-300">
-                    活四:{whiteAnalysis.openFours} / 四:{whiteAnalysis.halfFours} / 活三:{whiteAnalysis.openThrees}
+                  <p className="font-mono text-[11px] text-[#9db8cd]">
+                    活四 {whiteAnalysis.openFours} / 四 {whiteAnalysis.halfFours} / 活三{' '}
+                    {whiteAnalysis.openThrees}
                   </p>
                 </div>
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-stone-300 bg-stone-100 text-xs font-black text-stone-900 shadow">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#e5dccb] bg-gradient-to-br from-[#fffaf0] to-[#d8c8ad] text-[10px] font-black text-[#2a241d]">
                   ○
                 </span>
               </div>
             </div>
 
-            {/* 形勢判断バー */}
-            <div className="mt-2.5">
-              <div className="flex justify-between text-[10px] font-bold text-stone-400">
-                <span>形勢判断：黒 {advantagePercent}%</span>
-                <span>総手数 {moves.length} 手</span>
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] font-medium text-[#b9a88f]">
+                <span>形勢: 黒 {advantagePercent}%</span>
+                <span>総手数 {moves.length}</span>
                 <span>白 {100 - advantagePercent}%</span>
               </div>
-              <div className="mt-1 flex h-2.5 overflow-hidden rounded-full border border-white/15 bg-stone-200">
+              <div className="mt-1.5 flex h-2 overflow-hidden rounded-full border border-[#5a4a37] bg-[#e9ddc8]">
                 <div
-                  className="bg-stone-950 transition-all duration-300"
+                  className="bg-[#1b1712] transition-all duration-300"
                   style={{ width: `${advantagePercent}%` }}
                 />
               </div>
             </div>
 
-            {/* リーチ・活三アラート */}
             {!gameOver && activeAlerts.length > 0 && (
-              <div className="mt-2 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-200">
-                ⚡ リーチ・急所検知：{activeAlerts.slice(0, 3).join(' ／ ')}
+              <div className="mt-2.5 rounded-md border border-[#8a5b36] bg-[#2c2118] px-3 py-2 text-xs font-medium text-[#e6c48f]">
+                <span className="font-semibold">リーチ・急所検知:</span>{' '}
+                {activeAlerts.slice(0, 3).join(' ／ ')}
               </div>
             )}
-          </div>
+          </section>
 
-          {/* 15x15 Kaya-wood SVG Board */}
-          <div className="mx-auto w-full max-w-[600px] overflow-hidden rounded-2xl border-2 border-[#5c3d1e] bg-gradient-to-br from-[#e2b46d] via-[#d5a153] to-[#c48d3f] p-2 shadow-2xl sm:p-3">
-            <svg
-              viewBox="0 0 640 640"
-              className="aspect-square w-full touch-manipulation select-none"
-              role="img"
-              aria-label="五目並べ 15×15 碁盤"
-            >
-              <defs>
-                <radialGradient id="blackStoneGrad" cx="32%" cy="30%" r="68%">
-                  <stop offset="0%" stopColor="#4b5563" />
-                  <stop offset="45%" stopColor="#1f2937" />
-                  <stop offset="100%" stopColor="#030712" />
-                </radialGradient>
-                <radialGradient id="whiteStoneGrad" cx="32%" cy="30%" r="68%">
-                  <stop offset="0%" stopColor="#ffffff" />
-                  <stop offset="65%" stopColor="#f1f5f9" />
-                  <stop offset="100%" stopColor="#cbd5e1" />
-                </radialGradient>
-                <filter id="stoneShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="1.5" dy="2.5" stdDeviation="2" floodColor="#000000" floodOpacity="0.42" />
-                </filter>
-              </defs>
+          {/* Kaya Wood Board */}
+          <div className="tabletop-board-frame mx-auto w-full max-w-[620px] p-1.5 sm:p-3">
+            <div className="overflow-hidden rounded-md border border-[#6b4a26] bg-gradient-to-br from-[#e2b46d] via-[#d5a153] to-[#c48d3f] p-1 shadow-inner sm:p-2">
+              <svg
+                viewBox="0 0 640 640"
+                className="aspect-square w-full touch-manipulation select-none"
+                role="img"
+                aria-label="五目並べ 15×15 碁盤"
+              >
+                <defs>
+                  <radialGradient id="blackStoneGrad" cx="32%" cy="30%" r="68%">
+                    <stop offset="0%" stopColor="#4b5563" />
+                    <stop offset="45%" stopColor="#1f2937" />
+                    <stop offset="100%" stopColor="#030712" />
+                  </radialGradient>
+                  <radialGradient id="whiteStoneGrad" cx="32%" cy="30%" r="68%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="65%" stopColor="#f1f5f9" />
+                    <stop offset="100%" stopColor="#cbd5e1" />
+                  </radialGradient>
+                  <filter id="stoneShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="1.5" dy="2.5" stdDeviation="2" floodColor="#000000" floodOpacity="0.42" />
+                  </filter>
+                </defs>
 
-              {/* Coordinate Labels A-O and 1-15 */}
-              {COL_LABELS.map((lbl, idx) => (
-                <g key={`col-${lbl}`}>
-                  <text
-                    x={toPos(idx)}
-                    y={19}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fontWeight="800"
-                    fill="#3b230d"
-                  >
-                    {lbl}
-                  </text>
-                  <text
-                    x={toPos(idx)}
-                    y={630}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fontWeight="800"
-                    fill="#3b230d"
-                  >
-                    {lbl}
-                  </text>
-                </g>
-              ))}
-              {Array.from({ length: SIZE }, (_, idx) => (
-                <g key={`row-${idx}`}>
-                  <text
-                    x={16}
-                    y={toPos(idx) + 4}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fontWeight="800"
-                    fill="#3b230d"
-                  >
-                    {idx + 1}
-                  </text>
-                  <text
-                    x={623}
-                    y={toPos(idx) + 4}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fontWeight="800"
-                    fill="#3b230d"
-                  >
-                    {idx + 1}
-                  </text>
-                </g>
-              ))}
+                {COL_LABELS.map((lbl, idx) => (
+                  <g key={`col-${lbl}`}>
+                    <text x={toPos(idx)} y={19} textAnchor="middle" fontSize="12" fontWeight="800" fill="#3b230d">
+                      {lbl}
+                    </text>
+                    <text x={toPos(idx)} y={630} textAnchor="middle" fontSize="12" fontWeight="800" fill="#3b230d">
+                      {lbl}
+                    </text>
+                  </g>
+                ))}
+                {Array.from({ length: SIZE }, (_, idx) => (
+                  <g key={`row-${idx}`}>
+                    <text x={16} y={toPos(idx) + 4} textAnchor="middle" fontSize="12" fontWeight="800" fill="#3b230d">
+                      {idx + 1}
+                    </text>
+                    <text x={623} y={toPos(idx) + 4} textAnchor="middle" fontSize="12" fontWeight="800" fill="#3b230d">
+                      {idx + 1}
+                    </text>
+                  </g>
+                ))}
 
-              {/* Grid Lines */}
-              {Array.from({ length: SIZE }, (_, idx) => (
-                <g key={`line-${idx}`}>
+                {Array.from({ length: SIZE }, (_, idx) => (
+                  <g key={`line-${idx}`}>
+                    <line
+                      x1={toPos(0)}
+                      y1={toPos(idx)}
+                      x2={toPos(SIZE - 1)}
+                      y2={toPos(idx)}
+                      stroke="#2e1a08"
+                      strokeWidth={idx === 0 || idx === SIZE - 1 ? 2.2 : 1.25}
+                    />
+                    <line
+                      x1={toPos(idx)}
+                      y1={toPos(0)}
+                      x2={toPos(idx)}
+                      y2={toPos(SIZE - 1)}
+                      stroke="#2e1a08"
+                      strokeWidth={idx === 0 || idx === SIZE - 1 ? 2.2 : 1.25}
+                    />
+                  </g>
+                ))}
+
+                {STAR_POINTS.map(([sr, sc]) => (
+                  <circle
+                    key={`star-${sr}-${sc}`}
+                    cx={toPos(sc)}
+                    cy={toPos(sr)}
+                    r={sr === 7 && sc === 7 ? 4.8 : 4.0}
+                    fill="#231305"
+                  />
+                ))}
+
+                {winInfo && (
                   <line
-                    x1={toPos(0)}
-                    y1={toPos(idx)}
-                    x2={toPos(SIZE - 1)}
-                    y2={toPos(idx)}
-                    stroke="#2e1a08"
-                    strokeWidth={idx === 0 || idx === SIZE - 1 ? 2.2 : 1.25}
-                  />
-                  <line
-                    x1={toPos(idx)}
-                    y1={toPos(0)}
-                    x2={toPos(idx)}
-                    y2={toPos(SIZE - 1)}
-                    stroke="#2e1a08"
-                    strokeWidth={idx === 0 || idx === SIZE - 1 ? 2.2 : 1.25}
-                  />
-                </g>
-              ))}
-
-              {/* 9 Star Points (星・天元) */}
-              {STAR_POINTS.map(([sr, sc]) => (
-                <circle
-                  key={`star-${sr}-${sc}`}
-                  cx={toPos(sc)}
-                  cy={toPos(sr)}
-                  r={sr === 7 && sc === 7 ? 4.8 : 4.0}
-                  fill="#231305"
-                />
-              ))}
-
-              {/* Winning 5-in-a-row Highlight Line */}
-              {winInfo && (
-                <line
-                  x1={toPos(winInfo.line[0][1])}
-                  y1={toPos(winInfo.line[0][0])}
-                  x2={toPos(winInfo.line[winInfo.line.length - 1][1])}
-                  y2={toPos(winInfo.line[winInfo.line.length - 1][0])}
-                  stroke="#ef4444"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  opacity="0.85"
-                />
-              )}
-
-              {/* Hint Marker */}
-              {hintSpot && !gameOver && (
-                <g>
-                  <circle
-                    cx={toPos(hintSpot[1])}
-                    cy={toPos(hintSpot[0])}
-                    r={16}
-                    fill="none"
-                    stroke="#d97706"
-                    strokeWidth="3.5"
-                    strokeDasharray="5 3"
-                  />
-                  <circle
-                    cx={toPos(hintSpot[1])}
-                    cy={toPos(hintSpot[0])}
-                    r={6}
-                    fill="#f59e0b"
-                  />
-                </g>
-              )}
-
-              {/* Hover Ghost Stone */}
-              {hoveredCoord &&
-                !gameOver &&
-                !isCpuTurn &&
-                board[hoveredCoord[0]][hoveredCoord[1]] === 0 && (
-                  <circle
-                    cx={toPos(hoveredCoord[1])}
-                    cy={toPos(hoveredCoord[0])}
-                    r={16.5}
-                    fill={turn === 1 ? '#111827' : '#f8fafc'}
-                    opacity={0.42}
+                    x1={toPos(winInfo.line[0][1])}
+                    y1={toPos(winInfo.line[0][0])}
+                    x2={toPos(winInfo.line[winInfo.line.length - 1][1])}
+                    y2={toPos(winInfo.line[winInfo.line.length - 1][0])}
+                    stroke="#a9443c"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    opacity="0.85"
                   />
                 )}
 
-              {/* Placed Stones */}
-              {board.map((row, r) =>
-                row.map((cell, c) => {
-                  if (cell === 0) return null;
-                  const key = `${r}-${c}`;
-                  const isLast = lastMove?.r === r && lastMove?.c === c;
-                  const isWinStone = winCellSet.has(key);
-                  const mNum = moveNumberMap.get(key);
+                {hintSpot && !gameOver && (
+                  <g>
+                    <circle
+                      cx={toPos(hintSpot[1])}
+                      cy={toPos(hintSpot[0])}
+                      r={16}
+                      fill="none"
+                      stroke="#c99555"
+                      strokeWidth="3.5"
+                      strokeDasharray="5 3"
+                    />
+                    <circle cx={toPos(hintSpot[1])} cy={toPos(hintSpot[0])} r={6} fill="#dfb06d" />
+                  </g>
+                )}
 
-                  return (
-                    <g key={`stone-${key}`}>
-                      {isWinStone && (
-                        <circle
-                          cx={toPos(c)}
-                          cy={toPos(r)}
-                          r={19.5}
-                          fill="none"
-                          stroke="#fbbf24"
-                          strokeWidth="3.5"
-                        />
-                      )}
-                      <circle
-                        cx={toPos(c)}
-                        cy={toPos(r)}
-                        r={17.2}
-                        fill={cell === 1 ? 'url(#blackStoneGrad)' : 'url(#whiteStoneGrad)'}
-                        filter="url(#stoneShadow)"
-                      />
-                      {showMoveNumbers && mNum !== undefined ? (
-                        <text
-                          x={toPos(c)}
-                          y={toPos(r) + 4}
-                          textAnchor="middle"
-                          fontSize="11"
-                          fontWeight="800"
-                          fill={cell === 1 ? '#f8fafc' : '#0f172a'}
-                        >
-                          {mNum}
-                        </text>
-                      ) : (
-                        isLast && (
+                {hoveredCoord &&
+                  !gameOver &&
+                  !isCpuTurn &&
+                  board[hoveredCoord[0]][hoveredCoord[1]] === 0 && (
+                    <circle
+                      cx={toPos(hoveredCoord[1])}
+                      cy={toPos(hoveredCoord[0])}
+                      r={16.5}
+                      fill={turn === 1 ? '#111827' : '#f8fafc'}
+                      opacity={0.42}
+                    />
+                  )}
+
+                {board.map((row, r) =>
+                  row.map((cell, c) => {
+                    if (cell === 0) return null;
+                    const key = `${r}-${c}`;
+                    const isLast = lastMove?.r === r && lastMove?.c === c;
+                    const isWinStone = winCellSet.has(key);
+                    const mNum = moveNumberMap.get(key);
+
+                    return (
+                      <g key={`stone-${key}`}>
+                        {isWinStone && (
                           <circle
                             cx={toPos(c)}
                             cy={toPos(r)}
-                            r={4.5}
-                            fill="#ef4444"
+                            r={19.5}
+                            fill="none"
+                            stroke="#dfb06d"
+                            strokeWidth="3.5"
                           />
-                        )
-                      )}
-                    </g>
-                  );
-                })
-              )}
+                        )}
+                        <circle
+                          cx={toPos(c)}
+                          cy={toPos(r)}
+                          r={17.2}
+                          fill={cell === 1 ? 'url(#blackStoneGrad)' : 'url(#whiteStoneGrad)'}
+                          filter="url(#stoneShadow)"
+                        />
+                        {showMoveNumbers && mNum !== undefined ? (
+                          <text
+                            x={toPos(c)}
+                            y={toPos(r) + 4}
+                            textAnchor="middle"
+                            fontSize="11"
+                            fontWeight="800"
+                            fill={cell === 1 ? '#f8fafc' : '#0f172a'}
+                          >
+                            {mNum}
+                          </text>
+                        ) : (
+                          isLast && (
+                            <circle cx={toPos(c)} cy={toPos(r)} r={4.5} fill="#a9443c" />
+                          )
+                        )}
+                      </g>
+                    );
+                  })
+                )}
 
-              {/* Visual Ripple on Last Placed Stone */}
-              {rippleSpot && (
-                <circle
-                  key={rippleSpot.key}
-                  cx={toPos(rippleSpot.c)}
-                  cy={toPos(rippleSpot.r)}
-                  r={22}
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="2"
-                  opacity="0.7"
-                />
-              )}
+                {rippleSpot && (
+                  <circle
+                    key={rippleSpot.key}
+                    cx={toPos(rippleSpot.c)}
+                    cy={toPos(rippleSpot.r)}
+                    r={22}
+                    fill="none"
+                    stroke="#dfb06d"
+                    strokeWidth="2"
+                    opacity="0.7"
+                  />
+                )}
 
-              {/* Interactive Clickable Intersection Targets */}
-              {board.map((row, r) =>
-                row.map((_, c) => (
-                  <rect
-                    key={`hit-${r}-${c}`}
-                    x={toPos(c) - STEP / 2}
-                    y={toPos(r) - STEP / 2}
-                    width={STEP}
-                    height={STEP}
-                    fill="transparent"
-                    className="cursor-pointer"
-                    onMouseEnter={() => setHoveredCoord([r, c])}
-                    onMouseLeave={() => setHoveredCoord(null)}
-                    onClick={() => handleIntersectionClick(r, c)}
-                  >
-                    <title>{`${COL_LABELS[c]}${r + 1}`}</title>
-                  </rect>
-                ))
-              )}
-            </svg>
+                {board.map((row, r) =>
+                  row.map((_, c) => (
+                    <rect
+                      key={`hit-${r}-${c}`}
+                      x={toPos(c) - STEP / 2}
+                      y={toPos(r) - STEP / 2}
+                      width={STEP}
+                      height={STEP}
+                      fill="transparent"
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredCoord([r, c])}
+                      onMouseLeave={() => setHoveredCoord(null)}
+                      onClick={() => handleIntersectionClick(r, c)}
+                    >
+                      <title>{`${COL_LABELS[c]}${r + 1}`}</title>
+                    </rect>
+                  ))
+                )}
+              </svg>
+            </div>
           </div>
         </div>
 
-        {/* Right Sidebar: Controls & Strategy */}
-        <aside className="flex flex-col gap-3">
-          {/* Match Actions */}
-          <div className="rounded-2xl border border-amber-500/25 bg-[#17120d]/95 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-              MATCH ACTIONS
-            </p>
+        {/* Right: Sidebar */}
+        <aside className="flex min-w-0 flex-col gap-3">
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Match Actions</p>
             <div className="mt-2.5 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={moves.length === 0 || isCpuTurn}
-                className="rounded-xl border border-white/15 bg-white/[0.05] px-2 py-2.5 text-xs font-bold text-stone-100 transition hover:border-amber-400/50 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs disabled:cursor-not-allowed disabled:opacity-45"
               >
-                ↩ 待った
+                待った
               </button>
               <button
                 type="button"
                 onClick={handleHint}
                 disabled={gameOver || isCpuTurn}
-                className="rounded-xl border border-amber-400/40 bg-amber-500/15 px-2 py-2.5 text-xs font-bold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs text-[#dfb06d] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                💡 AI推奨手
+                AI推奨手
               </button>
               <button
                 type="button"
                 onClick={() => resetGame()}
-                className="rounded-xl border border-emerald-400/35 bg-emerald-500/15 px-2 py-2.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-500/25"
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-2 text-xs"
               >
-                🔄 新規対局
+                新規対局
               </button>
             </div>
             {hintSpot && (
-              <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-200">
-                AI推奨手: 交点 <span className="font-mono">{COL_LABELS[hintSpot[1]]}{hintSpot[0] + 1}</span>
+              <p className="tabletop-panel-soft mt-2 px-2.5 py-1.5 text-xs font-medium text-[#e6c48f]">
+                AI推奨手: 交点{' '}
+                <span className="font-mono">
+                  {COL_LABELS[hintSpot[1]]}
+                  {hintSpot[0] + 1}
+                </span>
               </p>
             )}
           </div>
 
-          {/* Mode & Difficulty */}
-          <div className="rounded-2xl border border-white/10 bg-[#17120d]/95 p-3.5">
-            <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-              GAME MODE / 対局設定
-            </p>
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Game Mode / 対局設定</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => resetGame('cpu', difficulty, humanSide)}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                  mode === 'cpu'
-                    ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                    : 'border-white/10 bg-white/[0.04] text-stone-300'
+                aria-pressed={mode === 'cpu'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'cpu' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                🤖 CPU対戦
+                CPU対戦
               </button>
               <button
                 type="button"
                 onClick={() => resetGame('pvp', difficulty, humanSide)}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                  mode === 'pvp'
-                    ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                    : 'border-white/10 bg-white/[0.04] text-stone-300'
+                aria-pressed={mode === 'pvp'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  mode === 'pvp' ? 'tabletop-chip-active' : ''
                 }`}
               >
-                👥 1台で2人対戦
+                1台で2人対戦
               </button>
             </div>
 
             {mode === 'cpu' && (
               <>
-                <p className="mt-3 text-[10px] font-black tracking-[0.18em] text-stone-400">
-                  CPU強さ（活四・活三・四三評価AI）
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">
+                  CPUの強さ（活四・活三・四三評価）
                 </p>
                 <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   {(
@@ -923,10 +882,9 @@ export default function GomokuGame() {
                       key={lv}
                       type="button"
                       onClick={() => resetGame('cpu', lv, humanSide)}
-                      className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                        difficulty === lv
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                          : 'border-white/10 bg-white/[0.04] text-stone-300'
+                      aria-pressed={difficulty === lv}
+                      className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1.5 text-xs font-semibold ${
+                        difficulty === lv ? 'tabletop-chip-active' : ''
                       }`}
                     >
                       {label}
@@ -934,17 +892,14 @@ export default function GomokuGame() {
                   ))}
                 </div>
 
-                <p className="mt-3 text-[10px] font-black tracking-[0.18em] text-stone-400">
-                  あなたの手番
-                </p>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">あなたの手番</p>
                 <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={() => resetGame('cpu', difficulty, 1)}
-                    className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                      humanSide === 1
-                        ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                        : 'border-white/10 bg-white/[0.04] text-stone-300'
+                    aria-pressed={humanSide === 1}
+                    className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                      humanSide === 1 ? 'tabletop-chip-active' : ''
                     }`}
                   >
                     ● 黒（先手）
@@ -952,10 +907,9 @@ export default function GomokuGame() {
                   <button
                     type="button"
                     onClick={() => resetGame('cpu', difficulty, 2)}
-                    className={`rounded-lg border py-1.5 text-xs font-bold transition ${
-                      humanSide === 2
-                        ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                        : 'border-white/10 bg-white/[0.04] text-stone-300'
+                    aria-pressed={humanSide === 2}
+                    className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                      humanSide === 2 ? 'tabletop-chip-active' : ''
                     }`}
                   >
                     ○ 白（後手）
@@ -965,25 +919,25 @@ export default function GomokuGame() {
             )}
           </div>
 
-          {/* Move History Log */}
-          <div className="rounded-2xl border border-white/10 bg-[#17120d]/95 p-3.5">
+          {/* Move Record */}
+          <div className="tabletop-panel p-3.5">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-                MOVE RECORD / 棋譜ログ
-              </p>
-              <span className="font-mono text-[11px] text-stone-400">{moves.length} 手</span>
+              <p className="tabletop-kicker">Move Record / 棋譜</p>
+              <span className="font-mono text-[11px] text-[#b9a88f]">{moves.length} 手</span>
             </div>
-            <div className="mt-2 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto pr-1 text-[11px]">
+            <div className="mt-2 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto pr-1 text-[11px]">
               {moves.length === 0 ? (
-                <span className="text-stone-500">まだ着手されていません（中央 H8 天元からの着手が定石です）</span>
+                <span className="text-[#8f806d]">
+                  まだ着手されていません（中央 H8 天元が定石です）
+                </span>
               ) : (
                 moves.map((m) => (
                   <span
                     key={m.moveNum}
                     className={`rounded border px-2 py-0.5 font-mono ${
                       m.player === 1
-                        ? 'border-stone-700 bg-stone-900 text-stone-200'
-                        : 'border-stone-400/40 bg-stone-200 text-stone-900'
+                        ? 'border-[#5a4a37] bg-[#2a211a] text-[#f4ead8]'
+                        : 'border-[#d8c7a8] bg-[#efe4cf] text-[#211d18]'
                     }`}
                   >
                     {m.moveNum}.{m.player === 1 ? '●' : '○'}
@@ -995,28 +949,26 @@ export default function GomokuGame() {
             </div>
           </div>
 
-          {/* Gomoku Tactical Guide */}
-          <div className="rounded-2xl border border-white/10 bg-[#17120d]/95 p-3.5 text-xs leading-relaxed text-stone-300">
-            <p className="text-[10px] font-black tracking-[0.18em] text-amber-400">
-              GOMOKU TACTICS / 勝ち筋の基本
-            </p>
-            <ul className="mt-2 space-y-1.5 text-[11px] text-stone-400">
+          {/* Tactics */}
+          <div className="tabletop-panel-soft p-3.5 text-xs leading-relaxed">
+            <p className="tabletop-kicker">Gomoku Tactics</p>
+            <ul className="mt-2 space-y-2 text-[11px] text-[#b9a88f]">
               <li>
-                <strong className="text-amber-200">・活四（両側が空いた4連）：</strong>
-                片方を止められても反対側で5連になるため、作った時点で必勝となります。
+                <strong className="font-semibold text-[#dfb06d]">活四（両側空き4連）：</strong>
+                片方を止められても反対側で5連になるため、作った時点で必勝です。
               </li>
               <li>
-                <strong className="text-amber-200">・活三（両側が空いた3連）：</strong>
-                次に放置すると「活四」になるため、相手は必ず受けなければなりません。
+                <strong className="font-semibold text-[#dfb06d]">活三（両側空き3連）：</strong>
+                放置すると活四になるため、相手は必ず受けなければなりません。
               </li>
               <li>
-                <strong className="text-amber-200">・四三（しさん）・三々：</strong>
+                <strong className="font-semibold text-[#dfb06d]">四三・三々：</strong>
                 1手で2方向の狙いを同時に作る決め手です。相手は片方しか防げません。
               </li>
             </ul>
           </div>
         </aside>
-      </div>
+      </main>
     </div>
   );
 }

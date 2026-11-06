@@ -85,7 +85,7 @@ const seo: GameSeoData = {
     { href: '/games', label: '無料ブラウザゲーム一覧', description: '定番ボードゲームや戦略ゲームをまとめて探す' },
     { href: '/mancala', label: 'マンカラ（カラハ・種まき頭脳ボードゲーム）', description: '連続手番と横取りを読む伝統種まきボードゲーム' },
     { href: '/reversi', label: 'リバーシ（Reversi 3D / 2D）', description: '3D/2D切替対応の定番8×8挟み反転ボードゲーム' },
-    { href: '/backgammon', label: 'バックギャモン（Backgammon）', description: '2個のダイスとダブリングキューブで競う世界四大ボードゲーム' },
+    { href: '/checkers', label: 'チェッカー（Checkers）', description: '駒の連続ジャンプとキング昇格を駆使する定番頭脳ボードゲーム' },
   ],
 };
 
@@ -142,7 +142,7 @@ export const metadata: Metadata = {
 export default function DiceHarborPage() {
   return (
     <main className="bg-[#07111e]">
-      <JsonLd data={[pageJsonLd, ...buildGameJsonLd(seo)]} />
+      <JsonLd data={pageJsonLd} />
       <h1 className="sr-only">{seo.h1}</h1>
       <DiceHarborGame />
       <SeoContentSection

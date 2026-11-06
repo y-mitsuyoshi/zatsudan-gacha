@@ -716,7 +716,7 @@ export default function CheckersGame() {
     const height = container.clientHeight || 440;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b101e);
+    scene.background = new THREE.Color(0x17120f);
 
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
     if (cameraPreset === 'top') {
@@ -743,7 +743,7 @@ export default function CheckersGame() {
     dirLight.castShadow = true;
     scene.add(dirLight);
 
-    const rimLight = new THREE.PointLight(0x38bdf8, 0.65, 25);
+    const rimLight = new THREE.PointLight(0xd8b078, 0.45, 25);
     rimLight.position.set(-6, 5, -6);
     scene.add(rimLight);
 
@@ -772,10 +772,10 @@ export default function CheckersGame() {
           (lastMove?.from.r === r && lastMove?.from.c === c) ||
           (lastMove?.to.r === r && lastMove?.to.c === c);
 
-        let tileColor = isDark ? 0x1e293b : 0xe2e8f0;
-        if (isDest) tileColor = 0x10b981;
-        else if (isHintTo) tileColor = 0xf59e0b;
-        else if (isLast && isDark) tileColor = 0x334155;
+        let tileColor = isDark ? 0x4a3423 : 0xe0cda9;
+        if (isDest) tileColor = 0x4f7d5e;
+        else if (isHintTo) tileColor = 0xc99555;
+        else if (isLast && isDark) tileColor = 0x5a4029;
 
         const tileMat = new THREE.MeshStandardMaterial({
           color: tileColor,
@@ -795,7 +795,7 @@ export default function CheckersGame() {
         if (isDest) {
           const ringGeo = new THREE.RingGeometry(0.22, 0.36, 28);
           const ringMat = new THREE.MeshBasicMaterial({
-            color: 0x6ee7b7,
+            color: 0xe3c17c,
             side: THREE.DoubleSide,
           });
           const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -823,7 +823,7 @@ export default function CheckersGame() {
             emissive: isSelectedPiece
               ? 0xfbbf24
               : isSelectable
-                ? 0x0ea5e9
+                ? 0xc99555
                 : 0x000000,
             emissiveIntensity: isSelectedPiece ? 0.35 : isSelectable ? 0.14 : 0,
           });
@@ -937,488 +937,464 @@ export default function CheckersGame() {
   ]);
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100">
-      {/* Top Navigation */}
-      <header className="border-b border-slate-800/80 bg-[#0b1120]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link
-            href="/games"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-rose-400/60 hover:text-white"
-          >
-            ← 無料ゲーム一覧へ
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-rose-300">
-              CHECKERS 3D / 2D
-            </span>
+    <div className="tabletop-page min-h-screen select-none overflow-x-hidden">
+      {/* Header */}
+      <header className="tabletop-header">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-2 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link
+              href="/games"
+              className="tabletop-button inline-flex min-h-11 shrink-0 items-center px-3 text-xs sm:text-sm"
+            >
+              ← ゲーム一覧
+            </Link>
+            <div className="min-w-0">
+              <p className="tabletop-kicker truncate">Classic Draughts · 8×8 Checkers</p>
+              <h2 className="tabletop-title truncate text-base sm:text-xl">
+                チェッカー
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 rounded-md border border-[#4d3d2d] bg-black/20 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('3d')}
+                aria-pressed={viewMode === '3d'}
+                className={`inline-flex min-h-11 items-center rounded px-3 text-xs font-semibold transition ${
+                  viewMode === '3d'
+                    ? 'bg-[#c99555] text-[#1b120b]'
+                    : 'text-[#b9a88f] hover:text-[#f4ead8]'
+                }`}
+              >
+                3D盤面
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('2d')}
+                aria-pressed={viewMode === '2d'}
+                className={`inline-flex min-h-11 items-center rounded px-3 text-xs font-semibold transition ${
+                  viewMode === '2d'
+                    ? 'bg-[#c99555] text-[#1b120b]'
+                    : 'text-[#b9a88f] hover:text-[#f4ead8]'
+                }`}
+              >
+                2D盤面
+              </button>
+            </div>
             <ThemeToggleButton />
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6">
-        {/* Title & Status Banner */}
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/95 via-[#0f172a] to-slate-900/95 p-4 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl">
-                チェッカー（ドラフツ・8×8 斜めジャンプ捕獲盤ゲーム）
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-400">
-                斜め移動とジャンプ捕獲で相手の駒をすべて取るか移動不能にすれば勝利。最奥列到達で前後自在のキングへ昇格！
-              </p>
+      <main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-2 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Board Column */}
+        <div className="flex min-w-0 flex-col gap-3">
+          <section className="tabletop-panel p-2 sm:p-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className={`h-4 w-4 shrink-0 rounded-full border ${
+                    turn === 1
+                      ? 'border-[#e0a49a] bg-[#b4544a]'
+                      : 'border-[#efe4cf] bg-[#fffaf0]'
+                  }`}
+                />
+                <span className="tabletop-title truncate text-sm sm:text-base">
+                  {winner
+                    ? winner === 1
+                      ? '赤（先手）の勝利'
+                      : gameMode === 'cpu'
+                        ? '白（CPU）の勝利'
+                        : '白（後手）の勝利'
+                    : turn === 1
+                      ? '赤（先手）の手番'
+                      : gameMode === 'cpu'
+                        ? '白（CPU）が思考中...'
+                        : '白（後手）の手番'}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {mustContinueFrom && (
+                  <span className="tabletop-chip border-[#8a6a3f] bg-[#2a211a] px-2.5 py-1 text-[11px] font-semibold text-[#dfb06d]">
+                    連続ジャンプ中 ({formatCoord(mustContinueFrom)})
+                  </span>
+                )}
+                {!mustContinueFrom && mandatoryJump && hasMandatoryJumps && !winner && (
+                  <span className="tabletop-chip border-[#4f6b57] bg-[#223129] px-2.5 py-1 text-[11px] font-semibold text-[#a9c9b1]">
+                    ジャンプ捕獲が可能（強制ジャンプ）
+                  </span>
+                )}
+                {mustContinueFrom && !mandatoryJump && (
+                  <button
+                    type="button"
+                    onClick={handleEndMultiJump}
+                    className="tabletop-button inline-flex min-h-11 items-center px-3 text-[11px] font-semibold"
+                  >
+                    連続ジャンプを終了
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Mode & View Switchers */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('3d')}
-                  className={`rounded-lg px-3 py-1.5 font-semibold transition ${
-                    viewMode === '3d'
-                      ? 'bg-rose-600 text-white shadow'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  3D 立体盤面
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('2d')}
-                  className={`rounded-lg px-3 py-1.5 font-semibold transition ${
-                    viewMode === '2d'
-                      ? 'bg-rose-600 text-white shadow'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  2D 平面盤面
-                </button>
+            {viewMode === '3d' ? (
+              <div>
+                <div className="tabletop-board-frame relative overflow-hidden">
+                  <div
+                    ref={threeMountRef}
+                    className="h-[320px] w-full cursor-pointer touch-none overflow-hidden sm:h-[460px] lg:h-[520px]"
+                    style={{ touchAction: 'none' }}
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#b9a88f]">
+                  <span>3D盤面の駒を選択し、明るい移動先マスをタップしてください。</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('2d')}
+                    className="font-semibold text-[#dfb06d] underline decoration-[#8a6a3f] underline-offset-2 hover:text-[#f0c98f]"
+                  >
+                    2D盤面に切替
+                  </button>
+                </div>
               </div>
+            ) : (
+              <div className="mx-auto w-full max-w-[540px]">
+                <div className="mb-1 grid grid-cols-8 text-center text-[11px] font-semibold text-[#b9a88f]">
+                  {COL_LABELS.map((lbl) => (
+                    <span key={lbl}>{lbl}</span>
+                  ))}
+                </div>
 
-              <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/80 p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGameMode('cpu');
-                    handleReset();
-                  }}
-                  className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                    gameMode === 'cpu'
-                      ? 'bg-sky-600 text-white'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
+                <div
+                  className="grid aspect-square w-full grid-cols-8 overflow-hidden rounded-md border-2 border-[#5a3d24]"
+                  style={{ touchAction: 'manipulation' }}
                 >
-                  CPU対戦
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGameMode('2p');
-                    handleReset();
-                  }}
-                  className={`rounded-lg px-2.5 py-1.5 font-semibold transition ${
-                    gameMode === '2p'
-                      ? 'bg-sky-600 text-white'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  1台で2人対戦
-                </button>
+                  {board.map((row, r) =>
+                    row.map((piece, c) => {
+                      const isDark = (r + c) % 2 === 1;
+                      const activeFrom = mustContinueFrom ?? selected;
+                      const isSelected = activeFrom?.r === r && activeFrom?.c === c;
+                      const destStep = selectedDestinations.find(
+                        (s) => s.to.r === r && s.to.c === c
+                      );
+                      const isSelectable =
+                        selectableCoords.has(`${r},${c}`) && piece?.player === turn;
+                      const isHintFrom =
+                        hintMove?.step.from.r === r && hintMove?.step.from.c === c;
+                      const isHintTo = hintMove?.step.to.r === r && hintMove?.step.to.c === c;
+                      const isLastFrom = lastMove?.from.r === r && lastMove?.from.c === c;
+                      const isLastTo = lastMove?.to.r === r && lastMove?.to.c === c;
+
+                      return (
+                        <button
+                          key={`${r}-${c}`}
+                          type="button"
+                          onClick={() => handleSquareSelect(r, c)}
+                          className={`relative flex items-center justify-center transition ${
+                            isDark
+                              ? destStep
+                                ? destStep.captured
+                                  ? 'bg-[#7a4137] hover:bg-[#8a4b40]'
+                                  : 'bg-[#315d4e] hover:bg-[#3a6c5a]'
+                                : isLastFrom || isLastTo
+                                  ? 'bg-[#5d4933]'
+                                  : 'bg-[#4a3423] hover:bg-[#57402c]'
+                              : 'bg-[#e7d4ae]'
+                          }`}
+                          aria-label={`マス ${COL_LABELS[c]}${BOARD_SIZE - r}`}
+                        >
+                          {c === 0 && (
+                            <span
+                              className={`absolute left-1 top-0.5 text-[10px] font-bold ${
+                                isDark ? 'text-[#c9b291]' : 'text-[#6b543d]'
+                              }`}
+                            >
+                              {BOARD_SIZE - r}
+                            </span>
+                          )}
+
+                          {destStep && (
+                            <span
+                              className={`h-3.5 w-3.5 rounded-full sm:h-4 sm:w-4 ${
+                                destStep.captured
+                                  ? 'bg-[#dfb06d] ring-2 ring-[#dfb06d]/40'
+                                  : 'bg-[#8fb79a] ring-2 ring-[#8fb79a]/35'
+                              }`}
+                            />
+                          )}
+
+                          {isHintTo && !destStep && (
+                            <span className="h-3.5 w-3.5 rounded-full bg-[#dfb06d] ring-2 ring-[#dfb06d]/40 sm:h-4 sm:w-4" />
+                          )}
+
+                          {piece && (
+                            <div
+                              className={`relative flex h-[76%] w-[76%] items-center justify-center rounded-full border-2 shadow-sm transition-transform ${
+                                piece.player === 1
+                                  ? 'border-[#e0a49a] bg-gradient-to-br from-[#b4544a] to-[#7e2f28] text-[#fff4e6]'
+                                  : 'border-[#efe4cf] bg-gradient-to-br from-[#fffaf0] via-[#f0e6d5] to-[#d3c3a8] text-[#3a2b1c]'
+                              } ${
+                                isSelected
+                                  ? 'scale-105 ring-2 ring-[#dfb06d]'
+                                  : isSelectable
+                                    ? 'ring-1 ring-[#c99555]/70'
+                                    : ''
+                              } ${isHintFrom ? 'ring-2 ring-[#dfb06d]' : ''}`}
+                            >
+                              <div
+                                className={`flex h-[72%] w-[72%] items-center justify-center rounded-full border ${
+                                  piece.player === 1
+                                    ? 'border-[#e0a49a]/60'
+                                    : 'border-[#b7a58c]/70'
+                                }`}
+                              >
+                                {piece.isKing && (
+                                  <span
+                                    className="text-sm font-black leading-none sm:text-base"
+                                    title="キング"
+                                  >
+                                    ♛
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
+            )}
+
+            {hintMove && (
+              <div className="tabletop-panel-soft mt-2.5 px-3 py-2 text-xs text-[#d8cbb8]">
+                <span className="font-semibold text-[#dfb06d]">AI戦術ヒント: </span>
+                {hintMove.reason}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Sidebar */}
+        <aside className="flex min-w-0 flex-col gap-3">
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Match Actions</p>
+            <div className="mt-2.5 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={handleHint}
+                disabled={Boolean(winner) || (gameMode === 'cpu' && turn === 2)}
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs text-[#dfb06d] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                ヒント
+              </button>
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={history.length === 0}
+                className="tabletop-button inline-flex min-h-11 items-center justify-center px-2 text-xs disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                待った
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="tabletop-button-primary inline-flex min-h-11 items-center justify-center px-2 text-xs"
+              >
+                新規対局
+              </button>
             </div>
           </div>
 
-          {/* Difficulty & Rule Bar */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              {gameMode === 'cpu' && (
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">CPU強さ:</span>
+          <div className="tabletop-panel p-3.5">
+            <p className="tabletop-kicker">Match Setup / 対戦設定</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setGameMode('cpu');
+                  handleReset();
+                }}
+                aria-pressed={gameMode === 'cpu'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  gameMode === 'cpu' ? 'tabletop-chip-active' : ''
+                }`}
+              >
+                CPU対戦
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setGameMode('2p');
+                  handleReset();
+                }}
+                aria-pressed={gameMode === '2p'}
+                className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-2 text-xs font-semibold ${
+                  gameMode === '2p' ? 'tabletop-chip-active' : ''
+                }`}
+              >
+                1台で2人対戦
+              </button>
+            </div>
+
+            {gameMode === 'cpu' && (
+              <>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">CPUの強さ</p>
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => setDifficulty(d)}
-                      className={`rounded-md px-2.5 py-1 font-medium transition ${
-                        difficulty === d
-                          ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50'
-                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      aria-pressed={difficulty === d}
+                      className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1.5 text-xs font-semibold ${
+                        difficulty === d ? 'tabletop-chip-active' : ''
                       }`}
                     >
                       {d === 'easy' ? '初級' : d === 'normal' ? '中級' : '上級'}
                     </button>
                   ))}
                 </div>
-              )}
+              </>
+            )}
 
-              <button
-                type="button"
-                onClick={() => setMandatoryJump((v) => !v)}
-                className={`rounded-lg border px-2.5 py-1 font-medium transition ${
-                  mandatoryJump
-                    ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
-                    : 'border-slate-700 bg-slate-800/70 text-slate-400'
-                }`}
-              >
-                強制ジャンプ: {mandatoryJump ? 'ON (公式)' : 'OFF (自由)'}
-              </button>
+            <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">公式ルール</p>
+            <button
+              type="button"
+              onClick={() => setMandatoryJump((v) => !v)}
+              aria-pressed={mandatoryJump}
+              className={`tabletop-chip mt-1.5 inline-flex min-h-11 w-full items-center justify-center px-2 text-xs font-semibold ${
+                mandatoryJump ? 'tabletop-chip-active' : ''
+              }`}
+            >
+              強制ジャンプ: {mandatoryJump ? 'ON（公式）' : 'OFF（自由）'}
+            </button>
 
-              {viewMode === '3d' && (
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">カメラ:</span>
+            {viewMode === '3d' && (
+              <>
+                <p className="mt-3 text-[11px] font-semibold text-[#b9a88f]">カメラ</p>
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   {(
                     [
-                      ['angle', '斜め俯瞰'],
-                      ['top', '真上視点'],
-                      ['side', '正面視点'],
+                      ['angle', '斜め'],
+                      ['top', '真上'],
+                      ['side', '正面'],
                     ] as const
                   ).map(([key, label]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setCameraPreset(key)}
-                      className={`rounded-md px-2 py-1 transition ${
-                        cameraPreset === key
-                          ? 'bg-indigo-500/25 text-indigo-300 ring-1 ring-indigo-400/50'
-                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      aria-pressed={cameraPreset === key}
+                      className={`tabletop-chip inline-flex min-h-11 items-center justify-center px-1.5 text-xs font-semibold ${
+                        cameraPreset === key ? 'tabletop-chip-active' : ''
                       }`}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
-              )}
+              </>
+            )}
+          </div>
+
+          {/* Player Cards */}
+          <div className="grid grid-cols-2 gap-2">
+            <div
+              className={`tabletop-panel p-3 ${
+                turn === 1 && !winner ? 'ring-1 ring-[#c99555]' : ''
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] font-semibold text-[#d8a69a]">赤（先手）</span>
+                <span className="rounded bg-[#3a211b] px-1.5 py-0.5 text-[10px] font-semibold text-[#d8a69a]">
+                  YOU
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-1">
+                <span className="font-mono text-xl font-bold text-[#f4ead8]">{stats.p1Total}</span>
+                <span className="text-[10px] text-[#b9a88f]">
+                  キング <strong className="text-[#dfb06d]">{stats.p1Kings}</strong>
+                </span>
+              </div>
+              <div className="mt-1 text-[10px] text-[#8f806d]">捕獲 {stats.p1Captured} / 12</div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleHint}
-                disabled={Boolean(winner) || (gameMode === 'cpu' && turn === 2)}
-                className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1 font-semibold text-amber-300 transition hover:bg-amber-500/25 disabled:opacity-40"
-              >
-                💡 ヒント
-              </button>
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={history.length === 0}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1 font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
-              >
-                ↩ 待った
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-1 font-semibold text-rose-300 transition hover:bg-rose-500/25"
-              >
-                🔄 新規対局
-              </button>
+            <div
+              className={`tabletop-panel p-3 ${
+                turn === 2 && !winner ? 'ring-1 ring-[#c99555]' : ''
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-[11px] font-semibold text-[#d8cbb8]">
+                  {gameMode === 'cpu' ? '白（CPU）' : '白（後手）'}
+                </span>
+                <span className="rounded bg-[#2a211a] px-1.5 py-0.5 text-[10px] font-semibold text-[#b9a88f]">
+                  {gameMode === 'cpu' ? 'AI' : '2P'}
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-1">
+                <span className="font-mono text-xl font-bold text-[#f4ead8]">{stats.p2Total}</span>
+                <span className="text-[10px] text-[#b9a88f]">
+                  キング <strong className="text-[#dfb06d]">{stats.p2Kings}</strong>
+                </span>
+              </div>
+              <div className="mt-1 text-[10px] text-[#8f806d]">捕獲 {stats.p2Captured} / 12</div>
             </div>
           </div>
-        </div>
 
-        {/* Main Game Grid */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          {/* Board Column */}
-          <div className="lg:col-span-8">
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#0b1222] p-3 shadow-2xl sm:p-4">
-              {/* Turn & Mandatory Jump Alert */}
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`inline-block h-3.5 w-3.5 rounded-full ${
-                      turn === 1
-                        ? 'bg-rose-500 shadow-[0_0_10px_#f43f5e]'
-                        : 'bg-slate-100 shadow-[0_0_10px_#f8fafc]'
-                    }`}
-                  />
-                  <span className="text-sm font-bold text-white">
-                    {winner
-                      ? winner === 1
-                        ? '🏆 赤(先手)の勝利！'
-                        : gameMode === 'cpu'
-                          ? '🏆 白(CPU)の勝利！'
-                          : '🏆 白(後手)の勝利！'
-                      : turn === 1
-                        ? '赤（先手）の手番'
-                        : gameMode === 'cpu'
-                          ? '白（CPU）が思考中...'
-                          : '白（後手）の手番'}
-                  </span>
-                </div>
+          <div className="tabletop-panel-soft p-3.5 text-xs leading-relaxed">
+            <p className="tabletop-kicker">Checkers Rules</p>
+            <ul className="mt-2 space-y-1.5 text-[11px] text-[#b9a88f]">
+              <li>
+                <strong className="font-semibold text-[#dfb06d]">斜め前進：</strong>
+                通常駒は黒マスに沿って斜め前方の空きマスへ1マス進みます。
+              </li>
+              <li>
+                <strong className="font-semibold text-[#dfb06d]">ジャンプ捕獲：</strong>
+                斜め隣の相手駒を飛び越え、その奥が空いていれば捕獲します。
+              </li>
+              <li>
+                <strong className="font-semibold text-[#dfb06d]">連続ジャンプ：</strong>
+                着地後にさらに飛べる場合は続けて捕獲できます。
+              </li>
+              <li>
+                <strong className="font-semibold text-[#dfb06d]">キング昇格（♛）：</strong>
+                最奥列に到達すると前後4方向へ移動・ジャンプできるキングになります。
+              </li>
+            </ul>
+          </div>
 
-                <div className="flex items-center gap-2">
-                  {mustContinueFrom && (
-                    <span className="animate-pulse rounded-full border border-amber-400/50 bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                      ⚡ 連続ジャンプ中！ ({formatCoord(mustContinueFrom)})
-                    </span>
-                  )}
-                  {!mustContinueFrom && mandatoryJump && hasMandatoryJumps && !winner && (
-                    <span className="rounded-full border border-emerald-400/50 bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300">
-                      ジャンプ捕獲が可能です（強制ジャンプ適用中）
-                    </span>
-                  )}
-                  {mustContinueFrom && !mandatoryJump && (
-                    <button
-                      type="button"
-                      onClick={handleEndMultiJump}
-                      className="rounded-lg bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/30"
-                    >
-                      連続ジャンプを終了
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 3D or 2D Viewport */}
-              {viewMode === '3d' ? (
-                <div className="relative">
-                  <div
-                    ref={threeMountRef}
-                    className="h-[370px] w-full cursor-pointer overflow-hidden rounded-xl border border-slate-800 bg-[#080d1a] sm:h-[460px]"
-                    style={{ touchAction: 'none' }}
-                  />
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>
-                      ※ 3D盤面上の駒をタップ/クリックして選択し、緑色に光る移動先マスをタップしてください。
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('2d')}
-                      className="text-sky-400 underline hover:text-sky-300"
-                    >
-                      2D盤面に切替
-                    </button>
-                  </div>
-                </div>
+          <div className="tabletop-panel p-3.5">
+            <div className="flex items-center justify-between">
+              <p className="tabletop-kicker">Move Log / 棋譜</p>
+              <span className="text-[11px] text-[#b9a88f]">{moveLogs.length} 手</span>
+            </div>
+            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto pr-1 text-xs">
+              {moveLogs.length === 0 ? (
+                <p className="py-4 text-center text-[11px] text-[#8f806d]">
+                  まだ指し手がありません。赤の駒を選択して開始してください。
+                </p>
               ) : (
-                <div className="mx-auto max-w-[460px]">
-                  {/* Column headers */}
-                  <div className="mb-1 grid grid-cols-8 text-center text-[11px] font-semibold text-slate-400">
-                    {COL_LABELS.map((lbl) => (
-                      <span key={lbl}>{lbl}</span>
-                    ))}
-                  </div>
-
+                moveLogs.map((log, i) => (
                   <div
-                    className="grid aspect-square w-full grid-cols-8 overflow-hidden rounded-xl border-4 border-amber-900/70 shadow-2xl"
-                    style={{ touchAction: 'manipulation' }}
+                    key={`${i}-${log}`}
+                    className="rounded border border-[#4d3d2d] bg-black/15 px-2.5 py-1.5 text-[11px] text-[#d8cbb8]"
                   >
-                    {board.map((row, r) =>
-                      row.map((piece, c) => {
-                        const isDark = (r + c) % 2 === 1;
-                        const activeFrom = mustContinueFrom ?? selected;
-                        const isSelected = activeFrom?.r === r && activeFrom?.c === c;
-                        const destStep = selectedDestinations.find(
-                          (s) => s.to.r === r && s.to.c === c,
-                        );
-                        const isSelectable =
-                          selectableCoords.has(`${r},${c}`) && piece?.player === turn;
-                        const isHintFrom =
-                          hintMove?.step.from.r === r && hintMove?.step.from.c === c;
-                        const isHintTo = hintMove?.step.to.r === r && hintMove?.step.to.c === c;
-                        const isLastFrom = lastMove?.from.r === r && lastMove?.from.c === c;
-                        const isLastTo = lastMove?.to.r === r && lastMove?.to.c === c;
-
-                        return (
-                          <button
-                            key={`${r}-${c}`}
-                            type="button"
-                            onClick={() => handleSquareSelect(r, c)}
-                            className={`relative flex items-center justify-center transition ${
-                              isDark
-                                ? destStep
-                                  ? 'bg-emerald-900/80 hover:bg-emerald-800/90'
-                                  : isLastFrom || isLastTo
-                                    ? 'bg-slate-700'
-                                    : 'bg-slate-800/95 hover:bg-slate-800'
-                                : 'bg-amber-100/90'
-                            }`}
-                            aria-label={`マス ${COL_LABELS[c]}${BOARD_SIZE - r}`}
-                          >
-                            {/* Coordinate label on left/bottom edge */}
-                            {c === 0 && (
-                              <span
-                                className={`absolute left-1 top-0.5 text-[9px] font-bold ${
-                                  isDark ? 'text-slate-400' : 'text-amber-900/70'
-                                }`}
-                              >
-                                {BOARD_SIZE - r}
-                              </span>
-                            )}
-
-                            {/* Legal Destination Indicator */}
-                            {destStep && (
-                              <span
-                                className={`h-4 w-4 rounded-full ${
-                                  destStep.captured
-                                    ? 'animate-ping bg-amber-400/80 ring-4 ring-amber-400/50'
-                                    : 'bg-emerald-400/90 ring-4 ring-emerald-400/30'
-                                }`}
-                              />
-                            )}
-
-                            {/* Hint Target Indicator */}
-                            {isHintTo && !destStep && (
-                              <span className="h-4 w-4 animate-bounce rounded-full bg-amber-400 ring-4 ring-amber-300/50" />
-                            )}
-
-                            {/* Piece Disc */}
-                            {piece && (
-                              <div
-                                className={`relative flex h-[76%] w-[76%] items-center justify-center rounded-full border-2 shadow-lg transition-transform ${
-                                  piece.player === 1
-                                    ? 'border-rose-300 bg-gradient-to-br from-rose-500 to-rose-700 text-white'
-                                    : 'border-slate-300 bg-gradient-to-br from-white via-slate-100 to-slate-300 text-slate-900'
-                                } ${
-                                  isSelected
-                                    ? 'scale-110 ring-4 ring-amber-400'
-                                    : isSelectable
-                                      ? 'ring-2 ring-sky-400/70 hover:scale-105'
-                                      : ''
-                                } ${isHintFrom ? 'ring-4 ring-amber-300' : ''}`}
-                              >
-                                <div
-                                  className={`flex h-[74%] w-[74%] items-center justify-center rounded-full border ${
-                                    piece.player === 1
-                                      ? 'border-rose-300/50'
-                                      : 'border-slate-400/60'
-                                  }`}
-                                >
-                                  {piece.isKing && (
-                                    <span
-                                      className="text-sm font-black drop-shadow sm:text-base"
-                                      title="キング"
-                                    >
-                                      👑
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </button>
-                        );
-                      }),
-                    )}
+                    <span className="mr-1.5 font-mono text-[10px] text-[#8f806d]">
+                      #{moveLogs.length - i}
+                    </span>
+                    {log}
                   </div>
-                </div>
-              )}
-
-              {/* Hint Banner */}
-              {hintMove && (
-                <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-                  <span className="font-bold">💡 AI戦術ヒント: </span>
-                  {hintMove.reason}
-                </div>
+                ))
               )}
             </div>
           </div>
-
-          {/* Right Info & Scoreboard Column */}
-          <div className="space-y-4 lg:col-span-4">
-            {/* Player Cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                className={`rounded-2xl border p-3.5 transition ${
-                  turn === 1 && !winner
-                    ? 'border-rose-500/70 bg-rose-950/30 shadow-lg shadow-rose-950/30'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-rose-400">赤（先手・下側）</span>
-                  <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">
-                    YOU
-                  </span>
-                </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <span className="text-2xl font-extrabold text-white">{stats.p1Total}</span>
-                  <span className="text-xs text-slate-400">
-                    👑 キング: <strong className="text-amber-300">{stats.p1Kings}</strong>
-                  </span>
-                </div>
-                <div className="mt-1 text-[11px] text-slate-400">
-                  捕獲した白駒: {stats.p1Captured} / 12
-                </div>
-              </div>
-
-              <div
-                className={`rounded-2xl border p-3.5 transition ${
-                  turn === 2 && !winner
-                    ? 'border-sky-400/70 bg-sky-950/30 shadow-lg shadow-sky-950/30'
-                    : 'border-slate-800 bg-slate-900/80'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-200">
-                    {gameMode === 'cpu' ? '白（CPU・上側）' : '白（後手・上側）'}
-                  </span>
-                  <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
-                    {gameMode === 'cpu' ? difficulty.toUpperCase() : '2P'}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <span className="text-2xl font-extrabold text-white">{stats.p2Total}</span>
-                  <span className="text-xs text-slate-400">
-                    👑 キング: <strong className="text-amber-300">{stats.p2Kings}</strong>
-                  </span>
-                </div>
-                <div className="mt-1 text-[11px] text-slate-400">
-                  捕獲した赤駒: {stats.p2Captured} / 12
-                </div>
-              </div>
-            </div>
-
-            {/* Rules Quick Reference */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <h3 className="text-sm font-bold text-white">📖 チェッカー（ドラフツ）公式ルール</h3>
-              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-slate-300">
-                <li>
-                  ・<strong>斜め前進</strong>: 通常駒は黒マスに沿って斜め前方の空きマスへ1マス進みます。
-                </li>
-                <li>
-                  ・<strong>ジャンプ捕獲</strong>: 斜め隣に相手の駒があり、その1つ奥が空いている場合、飛び越えて相手駒を捕獲します。
-                </li>
-                <li>
-                  ・<strong>連続ジャンプ</strong>: ジャンプ着地後、同じ駒でさらに相手駒を飛び越えられる場合は連続してジャンプできます。
-                </li>
-                <li>
-                  ・<strong>キング昇格 (👑)</strong>: 相手側の最奥列に到達した駒はキングに昇格し、斜め前後4方向へ移動・ジャンプできるようになります。
-                </li>
-              </ul>
-            </div>
-
-            {/* Move Log */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">📜 棋譜・対局ログ</h3>
-                <span className="text-[11px] text-slate-400">{moveLogs.length} 手</span>
-              </div>
-              <div className="mt-2 max-h-48 space-y-1 overflow-y-auto pr-1 text-xs">
-                {moveLogs.length === 0 ? (
-                  <p className="py-4 text-center text-slate-500">
-                    まだ指し手がありません。赤の駒を選択して対局を開始してください。
-                  </p>
-                ) : (
-                  moveLogs.map((log, i) => (
-                    <div
-                      key={`${i}-${log}`}
-                      className="rounded-lg border border-slate-800/90 bg-slate-950/60 px-2.5 py-1.5 text-slate-300"
-                    >
-                      <span className="mr-1.5 font-mono text-[10px] text-slate-500">
-                        #{moveLogs.length - i}
-                      </span>
-                      {log}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        </aside>
+      </main>
     </div>
   );
 }
