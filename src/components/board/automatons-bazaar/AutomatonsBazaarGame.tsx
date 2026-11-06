@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
@@ -653,9 +653,71 @@ export default function AutomatonsBazaarGame() {
   const [roundResolution, setRoundResolution] = useState<RoundResolution | null>(null);
   const [history, setHistory] = useState<RoundResolution[]>([]);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [showAnalyzer, setShowAnalyzer] = useState<boolean>(true);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Procedural Steampunk Clockwork Waltz Music-Box BGM
+  useEffect(() => {
+    if (!bgmOn || typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    let timerId: number | null = null;
+    // 3/4 waltz patterns in D minor / A7 steampunk clockwork style
+    const waltzBars = [
+      [146.83, 293.66, 349.23, 440.0], // Dm
+      [130.81, 261.63, 329.63, 392.0], // C
+      [116.54, 233.08, 293.66, 349.23], // Bb
+      [110.0, 220.0, 277.18, 329.63], // A7
+    ];
+    let bar = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          if (!audioCtxRef.current) {
+            audioCtxRef.current = new AudioCtx();
+          }
+          const ctx = audioCtxRef.current;
+          if (ctx.state === 'suspended') {
+            void ctx.resume();
+          }
+          const now = ctx.currentTime;
+          const notes = waltzBars[bar % waltzBars.length];
+          // Beat 1: Bass, Beat 2 & 3: Clockwork upper chimes
+          [0, 1, 2].forEach((beat) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const start = now + beat * 0.55;
+            const freq = beat === 0 ? notes[0] : beat === 1 ? notes[2] : notes[3];
+            osc.type = beat === 0 ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(beat === 0 ? 0.022 : 0.013, start + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.52);
+          });
+          bar += 1;
+        }
+      } catch {
+        // ignore audio errors
+      }
+      timerId = window.setTimeout(tick, 1650);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bgmOn]);
 
   const playSound = useCallback(
     (type: 'coin' | 'gavel' | 'win' | 'collision' | 'scrap' | 'fanfare') => {
@@ -1037,6 +1099,17 @@ export default function AutomatonsBazaarGame() {
               }`}
             >
               {showAnalyzer ? '⚙ 競売参謀 AI ON' : '⚙ 競売参謀 AI OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBgmOn((v) => !v)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
+                  : 'border-amber-500/25 bg-amber-950/30 text-stone-300 hover:border-amber-400/60'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
             </button>
             <button
               type="button"

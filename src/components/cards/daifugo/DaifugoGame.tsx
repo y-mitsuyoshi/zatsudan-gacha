@@ -48,6 +48,15 @@ interface PlayerState {
   finishedOrder: number | null; // 1..4
 }
 
+interface ExchangeSummaryInfo {
+  humanRank: SocialRank;
+  partnerRank: SocialRank;
+  partnerName: string;
+  cardCount: number;
+  tributedCards: CardItem[];
+  receivedFromUpperCards: CardItem[];
+}
+
 const RANK_ORDER_NORMAL: Record<number, number> = {
   3: 1,
   4: 2,
@@ -307,9 +316,70 @@ export default function DaifugoGame() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [phase, setPhase] = useState<'exchange' | 'playing' | 'roundEnd'>('playing');
   const [exchangeRequiredCount, setExchangeRequiredCount] = useState<number>(0);
+  const [exchangeInfo, setExchangeInfo] = useState<ExchangeSummaryInfo | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [banner, setBanner] = useState<string>('');
+
+  // Procedural Web Audio BGM loop
+  useEffect(() => {
+    if (!bgmOn || typeof window === 'undefined') return;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+    // Upbeat salón / card-table pentatonic progression (shifts in revolution)
+    const normalNotes = [261.63, 329.63, 392.0, 440.0, 523.25, 440.0, 392.0, 329.63];
+    const revNotes = [293.66, 349.23, 440.0, 466.16, 587.33, 466.16, 440.0, 349.23];
+    const bassNotes = [130.81, 164.81, 146.83, 196.0];
+    let step = 0;
+
+    const tick = () => {
+      if (ctx.state === 'suspended') {
+        void ctx.resume().catch(() => {});
+      }
+      const now = ctx.currentTime;
+      const melodyList = isRevolution ? revNotes : normalNotes;
+      const freq = melodyList[step % melodyList.length];
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = isRevolution ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.018, now);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.24);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+
+      if (step % 2 === 0) {
+        const bassOsc = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+        bassOsc.type = 'sine';
+        bassOsc.frequency.setValueAtTime(bassNotes[(step / 2) % bassNotes.length], now);
+        bassGain.gain.setValueAtTime(0.022, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.45);
+        bassOsc.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bassOsc.start(now);
+        bassOsc.stop(now + 0.46);
+      }
+
+      step += 1;
+    };
+
+    tick();
+    const intervalId = window.setInterval(tick, 280);
+
+    return () => {
+      window.clearInterval(intervalId);
+      void ctx.close().catch(() => {});
+    };
+  }, [bgmOn, isRevolution]);
 
   const addLog = useCallback((msg: string) => {
     setLogs((prev) => [msg, ...prev.slice(0, 14)]);
@@ -344,6 +414,8 @@ export default function DaifugoGame() {
       setIsRevolution(false);
       setTablePlay(null);
       setSelectedIds([]);
+      setExchangeInfo(null);
+      setExchangeRequiredCount(0);
 
       // Perform Round 2+ card exchange if rankings exist
       if (nextRound > 1 && prevRanks) {
@@ -352,60 +424,116 @@ export default function DaifugoGame() {
         const fugoIdx = initialPlayers.findIndex((p) => p.socialRank === '富豪');
         const hinminIdx = initialPlayers.findIndex((p) => p.socialRank === '貧民');
 
+        let daihinminTributed: CardItem[] = [];
+        let daifugoGivenBack: CardItem[] = [];
+        let hinminTributed: CardItem[] = [];
+        let fugoGivenBack: CardItem[] = [];
+
         // Daihinmin gives 2 strongest cards to Daifugo automatically
         if (daifugoIdx !== -1 && daihinminIdx !== -1) {
           const sortedLow = sortHand(initialPlayers[daihinminIdx].hand, false);
           const bestTwo = sortedLow.slice(-2);
-          initialPlayers[daihinminIdx].hand = sortedLow.slice(0, -2);
-          initialPlayers[daifugoIdx].hand = sortHand(
-            [...initialPlayers[daifugoIdx].hand, ...bestTwo],
-            false
-          );
+          const lowRemaining = sortedLow.slice(0, -2);
+          daihinminTributed = bestTwo;
 
           if (!initialPlayers[daifugoIdx].isHuman) {
-            // AI Daifugo gives 2 weakest cards back
-            const aiSorted = sortHand(initialPlayers[daifugoIdx].hand, false);
-            const giveBack = aiSorted.slice(0, 2);
-            initialPlayers[daifugoIdx].hand = aiSorted.slice(2);
-            initialPlayers[daihinminIdx].hand = sortHand(
-              [...initialPlayers[daihinminIdx].hand, ...giveBack],
+            // AI Daifugo picks 2 weakest cards from its initial hand BEFORE merging tributed cards
+            const aiInitialSorted = sortHand(initialPlayers[daifugoIdx].hand, false);
+            const giveBack = aiInitialSorted.slice(0, 2);
+            const aiRemaining = aiInitialSorted.slice(2);
+            daifugoGivenBack = giveBack;
+            initialPlayers[daifugoIdx].hand = sortHand([...aiRemaining, ...bestTwo], false);
+            initialPlayers[daihinminIdx].hand = sortHand([...lowRemaining, ...giveBack], false);
+          } else {
+            initialPlayers[daihinminIdx].hand = lowRemaining;
+            initialPlayers[daifugoIdx].hand = sortHand(
+              [...initialPlayers[daifugoIdx].hand, ...bestTwo],
               false
             );
           }
         }
 
-        // Hinmin gives 1 strongest card to Fugo
+        // Hinmin gives 1 strongest card to Fugo automatically
         if (fugoIdx !== -1 && hinminIdx !== -1) {
           const sortedLow = sortHand(initialPlayers[hinminIdx].hand, false);
           const bestOne = sortedLow.slice(-1);
-          initialPlayers[hinminIdx].hand = sortedLow.slice(0, -1);
-          initialPlayers[fugoIdx].hand = sortHand(
-            [...initialPlayers[fugoIdx].hand, ...bestOne],
-            false
-          );
+          const lowRemaining = sortedLow.slice(0, -1);
+          hinminTributed = bestOne;
 
           if (!initialPlayers[fugoIdx].isHuman) {
-            const aiSorted = sortHand(initialPlayers[fugoIdx].hand, false);
-            const giveBack = aiSorted.slice(0, 1);
-            initialPlayers[fugoIdx].hand = aiSorted.slice(1);
-            initialPlayers[hinminIdx].hand = sortHand(
-              [...initialPlayers[hinminIdx].hand, ...giveBack],
+            // AI Fugo picks 1 weakest card from its initial hand BEFORE merging tributed card
+            const aiInitialSorted = sortHand(initialPlayers[fugoIdx].hand, false);
+            const giveBack = aiInitialSorted.slice(0, 1);
+            const aiRemaining = aiInitialSorted.slice(1);
+            fugoGivenBack = giveBack;
+            initialPlayers[fugoIdx].hand = sortHand([...aiRemaining, ...bestOne], false);
+            initialPlayers[hinminIdx].hand = sortHand([...lowRemaining, ...giveBack], false);
+          } else {
+            initialPlayers[hinminIdx].hand = lowRemaining;
+            initialPlayers[fugoIdx].hand = sortHand(
+              [...initialPlayers[fugoIdx].hand, ...bestOne],
               false
             );
           }
         }
 
-        // If human is Daifugo or Fugo, let human pick 2 or 1 card to give!
         const humanRank = initialPlayers[0].socialRank;
+
+        // Upper rank (大富豪 / 富豪): Human freely selects 2 or 1 unneeded cards to give down
         if (humanRank === '大富豪' || humanRank === '富豪') {
           const req = humanRank === '大富豪' ? 2 : 1;
+          const partnerRank: SocialRank = humanRank === '大富豪' ? '大貧民' : '貧民';
+          const partnerPlayer = initialPlayers.find((p) => p.socialRank === partnerRank);
+          const tributed = humanRank === '大富豪' ? daihinminTributed : hinminTributed;
+
           setPlayers(initialPlayers);
           setRoundNumber(nextRound);
           setExchangeRequiredCount(req);
+          setExchangeInfo({
+            humanRank,
+            partnerRank,
+            partnerName: partnerPlayer?.name ?? partnerRank,
+            cardCount: req,
+            tributedCards: tributed,
+            receivedFromUpperCards: [],
+          });
           setPhase('exchange');
           setBanner(
-            `階級カード交換：あなたは「${humanRank}」です！下位から最強カードを受け取りました。渡す不要なカードを${req}枚選んでください。`
+            `👑 階級カード交換：あなたは「${humanRank}」です！「${partnerRank}（${partnerPlayer?.name ?? ''}）」から最強カード${req}枚を受け取りました。渡す不要なカードを${req}枚選んでください。`
           );
+          setLogs([
+            `第${nextRound}ラウンド配牌完了。階級カード交換フェーズです（あなた：${humanRank}）。`,
+          ]);
+          return;
+        }
+
+        // Lower rank (貧民 / 大貧民): Automatic tribute of strongest card(s); human CANNOT choose cards!
+        if (humanRank === '大貧民' || humanRank === '貧民') {
+          const count = humanRank === '大貧民' ? 2 : 1;
+          const partnerRank: SocialRank = humanRank === '大貧民' ? '大富豪' : '富豪';
+          const partnerPlayer = initialPlayers.find((p) => p.socialRank === partnerRank);
+          const tributed = humanRank === '大貧民' ? daihinminTributed : hinminTributed;
+          const received = humanRank === '大貧民' ? daifugoGivenBack : fugoGivenBack;
+
+          setPlayers(initialPlayers);
+          setRoundNumber(nextRound);
+          setExchangeRequiredCount(0);
+          setSelectedIds([]);
+          setExchangeInfo({
+            humanRank,
+            partnerRank,
+            partnerName: partnerPlayer?.name ?? partnerRank,
+            cardCount: count,
+            tributedCards: tributed,
+            receivedFromUpperCards: received,
+          });
+          setPhase('exchange');
+          setBanner(
+            `⛓️ 階級カード交換：あなたは「${humanRank}」のため交換カードは選べません。最強カード${count}枚が「${partnerRank}（${partnerPlayer?.name ?? ''}）」へ自動献上されました。`
+          );
+          setLogs([
+            `第${nextRound}ラウンド配牌完了。あなたは「${humanRank}」のため最強カード${count}枚が自動献上されました（手動選択不可）。`,
+          ]);
           return;
         }
       }
@@ -469,6 +597,7 @@ export default function DaifugoGame() {
         });
 
         setPlayers(updated);
+        setSelectedIds([]);
         setPhase('roundEnd');
         playCardSound('win', soundOn);
         setBanner(
@@ -532,8 +661,10 @@ export default function DaifugoGame() {
 
       // Check if actor finished hand
       if (actor.hand.length === 0) {
-        const finishedCount = updatedPlayers.filter((p) => p.finishedOrder !== null).length;
-        const myOrder = finishedCount + 1;
+        const usedOrders = new Set(
+          updatedPlayers.map((p) => p.finishedOrder).filter((n): n is number => n !== null)
+        );
+        const myOrder = [1, 2, 3, 4].find((ord) => !usedOrders.has(ord)) ?? 4;
         actor.finishedOrder = myOrder;
         addLog(`🎉 ${actor.name} が ${myOrder}位であがりました！`);
 
@@ -557,7 +688,11 @@ export default function DaifugoGame() {
         return;
       }
 
-      if (clearsTable) {
+      const otherActiveUnpassed = updatedPlayers.filter(
+        (p) => p.id !== actor.id && p.finishedOrder === null && !p.passed
+      );
+
+      if (clearsTable || otherActiveUnpassed.length === 0) {
         updatedPlayers.forEach((p) => {
           p.passed = false;
         });
@@ -569,7 +704,9 @@ export default function DaifugoGame() {
         setPlayers(updatedPlayers);
         setTurnIndex(nextLead);
         setBanner(
-          `${actor.name}の${isSpade3Counter ? 'スペ3返し' : '8切り'}で場が流れました！${updatedPlayers[nextLead].name}が親になります。`
+          clearsTable
+            ? `${actor.name}の${isSpade3Counter ? 'スペ3返し' : '8切り'}で場が流れました！${updatedPlayers[nextLead].name}が親になります。`
+            : `他プレイヤー全員パス済みの為、場が流れて${updatedPlayers[nextLead].name}が親になります。`
         );
         playCardSound('win', soundOn);
         return;
@@ -610,6 +747,9 @@ export default function DaifugoGame() {
 
   const executePass = useCallback(
     (playerIdx: number) => {
+      if (playerIdx === 0) {
+        setSelectedIds([]);
+      }
       const updatedPlayers = players.map((p) => ({ ...p }));
       const actor = updatedPlayers[playerIdx];
       actor.passed = true;
@@ -709,10 +849,35 @@ export default function DaifugoGame() {
   }, [phase, players, turnIndex, tablePlay, rules, isRevolution, executePass, executePlay]);
 
   const humanPlayer = players[0];
+  const isHumanUpperRank =
+    humanPlayer?.socialRank === '大富豪' || humanPlayer?.socialRank === '富豪';
+  const isHumanLowerRank =
+    humanPlayer?.socialRank === '貧民' || humanPlayer?.socialRank === '大貧民';
+
+  const tributedCardIdSet = useMemo(() => {
+    if (!exchangeInfo) return new Set<string>();
+    return new Set(exchangeInfo.tributedCards.map((c) => c.id));
+  }, [exchangeInfo]);
+
+  const receivedFromUpperIdSet = useMemo(() => {
+    if (!exchangeInfo) return new Set<string>();
+    return new Set(exchangeInfo.receivedFromUpperCards.map((c) => c.id));
+  }, [exchangeInfo]);
+
+  // Strict card selection gating:
+  // ONLY allowed when:
+  // 1) phase === 'playing' && turnIndex === 0 && humanPlayer.finishedOrder === null
+  // 2) phase === 'exchange' && (humanPlayer.socialRank === '大富豪' || humanPlayer.socialRank === '富豪')
+  const canHumanSelectCardsInHand = Boolean(
+    humanPlayer &&
+      ((phase === 'playing' && turnIndex === 0 && humanPlayer.finishedOrder === null) ||
+        (phase === 'exchange' && isHumanUpperRank))
+  );
+
   const selectedCards = useMemo(() => {
-    if (!humanPlayer) return [];
+    if (!humanPlayer || !canHumanSelectCardsInHand) return [];
     return humanPlayer.hand.filter((c) => selectedIds.includes(c.id));
-  }, [humanPlayer, selectedIds]);
+  }, [humanPlayer, canHumanSelectCardsInHand, selectedIds]);
 
   const canHumanPlaySelected = useMemo(() => {
     if (phase !== 'playing' || turnIndex !== 0 || selectedCards.length === 0) return false;
@@ -720,7 +885,9 @@ export default function DaifugoGame() {
   }, [phase, turnIndex, selectedCards, tablePlay, rules, isRevolution]);
 
   const playableCardIdsInHand = useMemo(() => {
-    if (!humanPlayer || phase !== 'playing' || turnIndex !== 0) return new Set<string>();
+    if (!humanPlayer || phase !== 'playing' || turnIndex !== 0 || humanPlayer.finishedOrder !== null) {
+      return new Set<string>();
+    }
     const validCombos = generateAllValidPlays(
       humanPlayer.hand,
       tablePlay,
@@ -732,8 +899,27 @@ export default function DaifugoGame() {
     return idSet;
   }, [humanPlayer, phase, turnIndex, tablePlay, rules, isRevolution]);
 
+  const handleAutoSelectWeakest = useCallback(() => {
+    if (phase !== 'exchange' || !humanPlayer || !isHumanUpperRank || exchangeRequiredCount <= 0) {
+      return;
+    }
+    const selectable = sortHand(
+      humanPlayer.hand.filter((c) => !tributedCardIdSet.has(c.id)),
+      false
+    );
+    const picked = selectable.slice(0, exchangeRequiredCount).map((c) => c.id);
+    setSelectedIds(picked);
+    playCardSound('card', soundOn);
+  }, [phase, humanPlayer, isHumanUpperRank, exchangeRequiredCount, tributedCardIdSet, soundOn]);
+
   const handleConfirmExchange = useCallback(() => {
-    if (phase !== 'exchange' || selectedCards.length !== exchangeRequiredCount) return;
+    if (
+      phase !== 'exchange' ||
+      !isHumanUpperRank ||
+      selectedCards.length !== exchangeRequiredCount
+    ) {
+      return;
+    }
     const updated = players.map((p) => ({ ...p, hand: [...p.hand] }));
     const human = updated[0];
     const targetRank: SocialRank = human.socialRank === '大富豪' ? '大貧民' : '貧民';
@@ -747,17 +933,67 @@ export default function DaifugoGame() {
         false
       );
       receiver.hand = sortHand([...receiver.hand, ...given], false);
+      const givenNames = given
+        .map((c) => (c.suit === 'joker' ? 'JOKER' : `${SUIT_SYMBOL[c.suit]}${formatRank(c.rank)}`))
+        .join('・');
+      addLog(`👑 階級交換：あなたが「${targetRank}（${receiver.name}）」へ ${givenNames} を渡しました。`);
     }
 
     setPlayers(updated);
     setSelectedIds([]);
+    setExchangeInfo(null);
     setPhase('playing');
     setTurnIndex(0);
-    setBanner(`カード交換が完了しました！第${roundNumber}ラウンド開始です。`);
+    setBanner(`カード交換が完了しました！第${roundNumber}ラウンド開始です。あなたの手番からスタートします。`);
     playCardSound('card', soundOn);
-  }, [phase, selectedCards.length, exchangeRequiredCount, players, selectedIds, roundNumber, soundOn]);
+  }, [
+    phase,
+    isHumanUpperRank,
+    selectedCards.length,
+    exchangeRequiredCount,
+    players,
+    selectedIds,
+    addLog,
+    roundNumber,
+    soundOn,
+  ]);
+
+  const handleAcknowledgeLowerExchange = useCallback(() => {
+    if (phase !== 'exchange' || !isHumanLowerRank) return;
+    if (exchangeInfo) {
+      const tributedNames = exchangeInfo.tributedCards
+        .map((c) => (c.suit === 'joker' ? 'JOKER' : `${SUIT_SYMBOL[c.suit]}${formatRank(c.rank)}`))
+        .join('・');
+      addLog(
+        `⛓️ 階級交換（自動献上）：「${exchangeInfo.humanRank}」のあなたから最強カード（${tributedNames}）が「${exchangeInfo.partnerRank}（${exchangeInfo.partnerName}）」へ自動献上されました。`
+      );
+    }
+    setSelectedIds([]);
+    setExchangeInfo(null);
+    setPhase('playing');
+    setTurnIndex(0);
+    setBanner(`第${roundNumber}ラウンド開始！あなたの手番からスタートします。`);
+    playCardSound('card', soundOn);
+  }, [phase, isHumanLowerRank, exchangeInfo, addLog, roundNumber, soundOn]);
 
   const toggleCardSelection = (cardId: string) => {
+    if (!canHumanSelectCardsInHand) return;
+    if (phase === 'exchange') {
+      // Upper rank cannot return the just-tributed strongest cards
+      if (tributedCardIdSet.has(cardId)) return;
+      setSelectedIds((prev) => {
+        if (prev.includes(cardId)) {
+          return prev.filter((id) => id !== cardId);
+        }
+        if (prev.length >= exchangeRequiredCount) {
+          return [...prev.slice(1), cardId];
+        }
+        return [...prev, cardId];
+      });
+      playCardSound('card', soundOn);
+      return;
+    }
+
     setSelectedIds((prev) =>
       prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId]
     );
@@ -790,6 +1026,17 @@ export default function DaifugoGame() {
             <span className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-200">
               第{roundNumber}ラウンド {isRevolution ? '【⚡革命中：3最強】' : '【通常：2最強】'}
             </span>
+            <button
+              type="button"
+              onClick={() => setBgmOn((prev) => !prev)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-amber-400/50 bg-amber-400/20 text-amber-200'
+                  : 'border-white/15 bg-white/5 text-slate-200 hover:bg-white/10'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setSoundOn((prev) => !prev)}
@@ -884,6 +1131,109 @@ export default function DaifugoGame() {
             {banner}
           </div>
 
+          {/* Dedicated Round 2+ Card Exchange Panel */}
+          {phase === 'exchange' && exchangeInfo && isHumanLowerRank && (
+            <div className="mb-3 rounded-2xl border border-rose-400/40 bg-rose-950/60 p-3.5 shadow-lg">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black text-rose-200 sm:text-sm">
+                    ⛓️ 階級カード交換（下位階級：最強カード自動献上・選択不可）
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-200">
+                    あなたは「<span className="font-black text-amber-300">{exchangeInfo.humanRank}</span>
+                    」のため、交換するカードを自分で選ぶことはできません。大富豪ルールにより、配られた手札の中で最も強いカード（
+                    {exchangeInfo.cardCount}枚）が自動的に「
+                    <span className="font-black text-amber-300">
+                      {exchangeInfo.partnerRank}（{exchangeInfo.partnerName}）
+                    </span>
+                    」へ強制献上され、相手が選んだカード（{exchangeInfo.cardCount}枚）を受け取りました。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAcknowledgeLowerExchange}
+                  className="shrink-0 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 shadow hover:bg-amber-300 sm:text-sm"
+                >
+                  強制交換を確認して第{roundNumber}ラウンド開始 →
+                </button>
+              </div>
+
+              <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+                <div className="rounded-xl border border-rose-400/30 bg-black/40 p-2.5">
+                  <p className="mb-1.5 text-[11px] font-bold text-rose-300">
+                    📤 自動献上された最強カード（{exchangeInfo.cardCount}枚・選択不可）
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {exchangeInfo.tributedCards.map((c) => (
+                      <PlayingCardView key={c.id} card={c} size="xs" badgeText="強制献上" />
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-emerald-400/30 bg-black/40 p-2.5">
+                  <p className="mb-1.5 text-[11px] font-bold text-emerald-300">
+                    📥 {exchangeInfo.partnerRank}から渡されたカード（{exchangeInfo.cardCount}枚）
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {exchangeInfo.receivedFromUpperCards.map((c) => (
+                      <PlayingCardView key={c.id} card={c} size="xs" badgeText="受取" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {phase === 'exchange' && exchangeInfo && isHumanUpperRank && (
+            <div className="mb-3 rounded-2xl border border-amber-400/40 bg-amber-950/40 p-3.5 shadow-lg">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black text-amber-200 sm:text-sm">
+                    👑 階級カード交換（上位階級：渡すカードを任意選択）
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-200">
+                    あなたは「<span className="font-black text-amber-300">{exchangeInfo.humanRank}</span>
+                    」です！「
+                    <span className="font-black text-amber-300">
+                      {exchangeInfo.partnerRank}（{exchangeInfo.partnerName}）
+                    </span>
+                    」から最強カード{exchangeInfo.cardCount}
+                    枚が自動献上されました。下の手札から相手に渡す不要なカードを
+                    <span className="font-black text-amber-300">{exchangeRequiredCount}枚</span>
+                    選んでください（献上されたカードは返却できません）。
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAutoSelectWeakest}
+                    className="rounded-xl border border-amber-300/40 bg-amber-400/15 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-400/25"
+                  >
+                    弱い順から{exchangeRequiredCount}枚を自動選択
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmExchange}
+                    disabled={selectedCards.length !== exchangeRequiredCount}
+                    className="rounded-xl bg-amber-400 px-4 py-1.5 text-xs font-black text-slate-950 shadow hover:bg-amber-300 disabled:opacity-40 sm:text-sm"
+                  >
+                    選択した{exchangeRequiredCount}枚を渡して第{roundNumber}ラウンド開始 →
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/25 bg-black/35 px-3 py-2">
+                <span className="text-[11px] font-bold text-amber-300">
+                  🎁 {exchangeInfo.partnerRank}からの自動献上カード：
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {exchangeInfo.tributedCards.map((c) => (
+                    <PlayingCardView key={c.id} card={c} size="xs" badgeText="献上受取" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Human Player Hand & Action Bar */}
           {humanPlayer && (
             <div className="rounded-2xl border border-white/15 bg-black/35 p-3">
@@ -894,19 +1244,34 @@ export default function DaifugoGame() {
                     階級: {humanPlayer.socialRank}
                   </span>
                   <span className="text-xs text-slate-400">
-                    （緑枠＝現在場に出せるカード）
+                    {phase === 'exchange'
+                      ? isHumanUpperRank
+                        ? `（渡す不要なカードをあと${Math.max(0, exchangeRequiredCount - selectedCards.length)}枚選択）`
+                        : '（下位階級のためカードの選択はできません・自動交換済み）'
+                      : phase === 'roundEnd'
+                        ? '（ラウンド終了・カード選択不可）'
+                        : turnIndex === 0 && humanPlayer.finishedOrder === null
+                          ? '（緑枠＝現在場に出せるカード）'
+                          : '（相手の手番中・カード選択不可）'}
                   </span>
                 </div>
 
                 {phase === 'exchange' ? (
-                  <button
-                    type="button"
-                    onClick={handleConfirmExchange}
-                    disabled={selectedCards.length !== exchangeRequiredCount}
-                    className="rounded-xl bg-amber-400 px-4 py-1.5 text-xs font-black text-slate-950 shadow hover:bg-amber-300 disabled:opacity-40"
-                  >
-                    選択した{exchangeRequiredCount}枚を渡して開始
-                  </button>
+                  isHumanUpperRank ? (
+                    <button
+                      type="button"
+                      onClick={handleConfirmExchange}
+                      disabled={selectedCards.length !== exchangeRequiredCount}
+                      className="rounded-xl bg-amber-400 px-4 py-1.5 text-xs font-black text-slate-950 shadow hover:bg-amber-300 disabled:opacity-40"
+                    >
+                      選択した{exchangeRequiredCount}枚を渡して開始 ({selectedCards.length}/
+                      {exchangeRequiredCount})
+                    </button>
+                  ) : (
+                    <span className="rounded-lg border border-rose-400/30 bg-rose-500/15 px-3 py-1 text-xs font-bold text-rose-200">
+                      🔒 下位階級のため手札選択不可（自動献上）
+                    </span>
+                  )
                 ) : phase === 'roundEnd' ? (
                   <div className="flex gap-2">
                     <button
@@ -927,7 +1292,7 @@ export default function DaifugoGame() {
                     <button
                       type="button"
                       onClick={() => setSelectedIds([])}
-                      disabled={selectedIds.length === 0}
+                      disabled={!canHumanSelectCardsInHand || selectedIds.length === 0}
                       className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:bg-white/10 disabled:opacity-40"
                     >
                       選択解除
@@ -954,8 +1319,15 @@ export default function DaifugoGame() {
 
               <div className="flex flex-wrap items-center justify-center gap-1 pt-2 sm:gap-1.5">
                 {humanPlayer.hand.map((card) => {
-                  const isSelected = selectedIds.includes(card.id);
+                  const isSelected = canHumanSelectCardsInHand && selectedIds.includes(card.id);
                   const isPlayable = playableCardIdsInHand.has(card.id);
+                  const isTributedReceived =
+                    phase === 'exchange' && isHumanUpperRank && tributedCardIdSet.has(card.id);
+                  const isLowerReceived =
+                    phase === 'exchange' && isHumanLowerRank && receivedFromUpperIdSet.has(card.id);
+                  const canClickThisCard =
+                    canHumanSelectCardsInHand && !isTributedReceived;
+
                   return (
                     <PlayingCardView
                       key={card.id}
@@ -963,7 +1335,14 @@ export default function DaifugoGame() {
                       size="sm"
                       selected={isSelected}
                       highlighted={!isSelected && isPlayable}
-                      onClick={() => toggleCardSelection(card.id)}
+                      badgeText={
+                        isTributedReceived
+                          ? '献上受取'
+                          : isLowerReceived
+                            ? '受取'
+                            : undefined
+                      }
+                      onClick={canClickThisCard ? () => toggleCardSelection(card.id) : undefined}
                     />
                   );
                 })}

@@ -17,6 +17,7 @@ import {
   SUIT_LABEL_JA,
   SUIT_SYMBOL,
   SuitVectorIcon,
+  useCardTableBgm,
 } from '@/components/cards/shared/cardUtils';
 
 interface FreecellState {
@@ -149,7 +150,9 @@ export default function FreecellGame() {
   const [selected, setSelected] = useState<FreecellSelection | null>(null);
   const [oneTapAuto, setOneTapAuto] = useState<boolean>(true);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
+  useCardTableBgm(bgmOn, 'lounge');
   const [hintCardId, setHintCardId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>(
     'ゲーム番号 #1：すべてのカードが最初から表向きの完全情報パズルです'
@@ -375,10 +378,15 @@ export default function FreecellGame() {
           return true;
         }
       }
-      // Then empty tableau columns
-      for (let c = 0; c < 8; c += 1) {
-        if (gameState.tableau[c].length === 0 && tryMoveToTableauCol(src, c)) {
-          return true;
+      // Then empty tableau columns (unless moving a whole tableau column from index 0 to another empty column)
+      const isWholeTableauCol =
+        src.zone === 'tableau' &&
+        (src.cardIndex ?? gameState.tableau[src.index].length - 1) === 0;
+      if (!isWholeTableauCol) {
+        for (let c = 0; c < 8; c += 1) {
+          if (gameState.tableau[c].length === 0 && tryMoveToTableauCol(src, c)) {
+            return true;
+          }
         }
       }
       // Finally freeCell if top card from tableau
@@ -580,6 +588,17 @@ export default function FreecellGame() {
               </button>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setBgmOn((prev) => !prev)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-teal-400/60 bg-teal-500/20 text-teal-200'
+                  : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setSoundOn((prev) => !prev)}

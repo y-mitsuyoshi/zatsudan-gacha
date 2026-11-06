@@ -9,6 +9,7 @@ import {
   playCardSound,
   PlayingCardView,
   shuffleWithRng,
+  useCardTableBgm,
 } from '@/components/cards/shared/cardUtils';
 
 const SHOE_DECKS = 6;
@@ -299,6 +300,8 @@ export default function BlackjackGame() {
   const [insuranceBet, setInsuranceBet] = useState<number>(0);
   const [showStrategyNav, setShowStrategyNav] = useState<boolean>(true);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
+  useCardTableBgm(bgmOn, 'jazz');
   const [bannerText, setBannerText] = useState<string>(
     'ベット額を決めて「DEAL（カードを配る）」をタップしてください'
   );
@@ -472,6 +475,9 @@ export default function BlackjackGame() {
       setDealerCards(revealedDealer);
       setPlayerHands(settledHands);
       setChips(updatedChips);
+      if (updatedChips >= 10) {
+        setBetInput((prev) => Math.min(prev, updatedChips));
+      }
       setStats(nextStats);
       setPhase('settled');
       saveProgress(updatedChips, nextStats);
@@ -563,7 +569,11 @@ export default function BlackjackGame() {
       return;
     }
 
-    if (pEval.isBlackjack) {
+    // Dealer 10-value upcard peek for natural Blackjack
+    const dealerHasTenUp = d1.rank >= 10;
+    const dealerNaturalBj = dealerHasTenUp && d2.rank === 1;
+
+    if (pEval.isBlackjack || dealerNaturalBj) {
       settleAllHands(workingShoe, [d1, d2], [initialHand], 0, remainingChips, nextCount);
       return;
     }
@@ -818,6 +828,17 @@ export default function BlackjackGame() {
               }`}
             >
               📊 期待値ナビ: {showStrategyNav ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBgmOn((prev) => !prev)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
+                  : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
             </button>
             <button
               type="button"

@@ -16,6 +16,7 @@ import {
   SUIT_LABEL_JA,
   SUIT_SYMBOL,
   SuitVectorIcon,
+  useCardTableBgm,
 } from '@/components/cards/shared/cardUtils';
 
 type DrawCount = 1 | 3;
@@ -114,7 +115,9 @@ export default function KlondikeGame() {
   const [selected, setSelected] = useState<SelectionSource | null>(null);
   const [oneTapAuto, setOneTapAuto] = useState<boolean>(true);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
+  useCardTableBgm(bgmOn, 'salon');
   const [hint, setHint] = useState<HintSuggestion | null>(null);
   const [gamesWon, setGamesWon] = useState<number>(0);
   const [bestTimeSec, setBestTimeSec] = useState<number | null>(null);
@@ -324,6 +327,23 @@ export default function KlondikeGame() {
         const headCard = srcCol[source.cardIndex];
         if (!headCard.faceUp || !canMoveToTableauColumn(headCard, targetCol)) return false;
 
+        // Validate that the entire face-up moving slice is a legal alternating descending stack
+        const candidateSlice = srcCol.slice(source.cardIndex);
+        for (let i = 0; i < candidateSlice.length - 1; i += 1) {
+          const upper = candidateSlice[i];
+          const lower = candidateSlice[i + 1];
+          if (
+            !upper.faceUp ||
+            !lower.faceUp ||
+            upper.suit === 'joker' ||
+            lower.suit === 'joker' ||
+            !isAlternatingColor(upper.suit, lower.suit) ||
+            upper.rank !== lower.rank + 1
+          ) {
+            return false;
+          }
+        }
+
         const movingSlice = srcCol.splice(source.cardIndex);
         targetCol.push(...movingSlice);
         if (srcCol.length > 0 && !srcCol[srcCol.length - 1].faceUp) {
@@ -352,12 +372,17 @@ export default function KlondikeGame() {
         return true;
       }
       // 2. Try non-empty tableau columns first, then empty tableau columns for Kings
+      // (Avoid moving a King that is already at index 0 of a tableau column into another empty column)
+      const isAlreadyAtTableauBottom =
+        source.zone === 'tableau' && source.cardIndex === 0;
       const candidateCols: number[] = [];
       for (let c = 0; c < 7; c += 1) {
         if (gameState.tableau[c].length > 0) candidateCols.push(c);
       }
-      for (let c = 0; c < 7; c += 1) {
-        if (gameState.tableau[c].length === 0) candidateCols.push(c);
+      if (!isAlreadyAtTableauBottom) {
+        for (let c = 0; c < 7; c += 1) {
+          if (gameState.tableau[c].length === 0) candidateCols.push(c);
+        }
       }
       for (const colIdx of candidateCols) {
         if (executeMoveToTableau(source, colIdx)) {
@@ -584,6 +609,17 @@ export default function KlondikeGame() {
               </button>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setBgmOn((prev) => !prev)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
+                  : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setSoundOn((prev) => !prev)}

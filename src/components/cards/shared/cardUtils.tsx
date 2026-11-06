@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export type StandardSuit = 'spades' | 'hearts' | 'diamonds' | 'clubs';
 export type Suit = StandardSuit | 'joker';
@@ -93,87 +93,269 @@ export function createSeededRng(seed: number): () => number {
 }
 
 export type SoundEffectType = 'card' | 'flip' | 'chip' | 'win' | 'error' | 'pass';
+export type CardBgmStyle = 'lounge' | 'salon' | 'jazz';
 
 let sharedAudioCtx: AudioContext | null = null;
+
+function getSharedAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    void sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
 
 export function playCardSound(type: SoundEffectType, enabled = true): void {
   if (!enabled || typeof window === 'undefined') return;
   try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    if (!sharedAudioCtx) {
-      sharedAudioCtx = new AudioCtx();
-    }
-    const ctx = sharedAudioCtx;
-    if (ctx.state === 'suspended') {
-      void ctx.resume();
-    }
+    const ctx = getSharedAudioContext();
+    if (!ctx) return;
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
 
     if (type === 'card') {
+      // Crisp felt card snap + warm body
+      const osc = ctx.createOscillator();
+      const sub = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(520, now);
-      osc.frequency.exponentialRampToValueAtTime(760, now + 0.055);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+      sub.type = 'sine';
+      osc.frequency.setValueAtTime(540, now);
+      osc.frequency.exponentialRampToValueAtTime(820, now + 0.055);
+      sub.frequency.setValueAtTime(270, now);
+      sub.frequency.exponentialRampToValueAtTime(410, now + 0.055);
+      gain.gain.setValueAtTime(0.085, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.068);
+      osc.connect(gain);
+      sub.connect(gain);
+      gain.connect(ctx.destination);
       osc.start(now);
+      sub.start(now);
       osc.stop(now + 0.07);
+      sub.stop(now + 0.07);
     } else if (type === 'flip') {
+      // Airy card turn flutter
+      const osc = ctx.createOscillator();
+      const overtone = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(380, now);
-      osc.frequency.exponentialRampToValueAtTime(640, now + 0.05);
-      gain.gain.setValueAtTime(0.07, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      overtone.type = 'triangle';
+      osc.frequency.setValueAtTime(360, now);
+      osc.frequency.exponentialRampToValueAtTime(680, now + 0.055);
+      overtone.frequency.setValueAtTime(720, now + 0.01);
+      overtone.frequency.exponentialRampToValueAtTime(1120, now + 0.06);
+      gain.gain.setValueAtTime(0.075, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+      osc.connect(gain);
+      overtone.connect(gain);
+      gain.connect(ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.065);
+      overtone.start(now + 0.01);
+      osc.stop(now + 0.068);
+      overtone.stop(now + 0.068);
     } else if (type === 'chip') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1150, now);
-      osc.frequency.exponentialRampToValueAtTime(1680, now + 0.06);
-      gain.gain.setValueAtTime(0.07, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-      osc.start(now);
-      osc.stop(now + 0.075);
+      // Dual-harmonic ceramic casino chip clink
+      [1240, 1860].forEach((baseFreq, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = i === 0 ? 'sine' : 'triangle';
+        o.frequency.setValueAtTime(baseFreq, now + i * 0.012);
+        o.frequency.exponentialRampToValueAtTime(baseFreq * 1.35, now + i * 0.012 + 0.065);
+        g.gain.setValueAtTime(i === 0 ? 0.075 : 0.045, now + i * 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.012 + 0.075);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(now + i * 0.012);
+        o.stop(now + i * 0.012 + 0.08);
+      });
     } else if (type === 'error') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(210, now);
-      osc.frequency.linearRampToValueAtTime(150, now + 0.12);
+      osc.frequency.setValueAtTime(215, now);
+      osc.frequency.linearRampToValueAtTime(145, now + 0.13);
       gain.gain.setValueAtTime(0.06, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.14);
+      osc.stop(now + 0.145);
     } else if (type === 'pass') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.linearRampToValueAtTime(260, now + 0.08);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.linearRampToValueAtTime(255, now + 0.085);
+      gain.gain.setValueAtTime(0.055, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.095);
+      osc.stop(now + 0.1);
     } else if (type === 'win') {
-      const notes = [523.25, 659.25, 783.99, 1046.5];
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
       notes.forEach((freq, idx) => {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = 'triangle';
-        o.frequency.setValueAtTime(freq, now + idx * 0.08);
-        g.gain.setValueAtTime(0.08, now + idx * 0.08);
-        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.24);
+        o.frequency.setValueAtTime(freq, now + idx * 0.075);
+        g.gain.setValueAtTime(0.085, now + idx * 0.075);
+        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.075 + 0.28);
         o.connect(g);
         g.connect(ctx.destination);
-        o.start(now + idx * 0.08);
-        o.stop(now + idx * 0.08 + 0.25);
+        o.start(now + idx * 0.075);
+        o.stop(now + idx * 0.075 + 0.29);
       });
     }
   } catch {
     // Ignore audio context restrictions
   }
+}
+
+const BGM_PATTERNS: Record<
+  CardBgmStyle,
+  {
+    tempoMs: number;
+    chords: number[][];
+    melody: (number | null)[];
+  }
+> = {
+  lounge: {
+    tempoMs: 520,
+    chords: [
+      [261.63, 329.63, 392.0, 493.88], // Cmaj7
+      [220.0, 261.63, 329.63, 392.0], // Am7
+      [293.66, 349.23, 440.0, 523.25], // Dm7
+      [196.0, 246.94, 293.66, 349.23], // G7
+    ],
+    melody: [523.25, null, 659.25, 587.33, 493.88, null, 440.0, 392.0, 587.33, null, 523.25, 440.0, 392.0, null, 493.88, 523.25],
+  },
+  salon: {
+    tempoMs: 480,
+    chords: [
+      [196.0, 246.94, 293.66, 392.0], // G
+      [220.0, 261.63, 329.63, 440.0], // Am
+      [261.63, 329.63, 392.0, 523.25], // C
+      [293.66, 369.99, 440.0, 587.33], // D
+    ],
+    melody: [587.33, 659.25, 783.99, null, 659.25, 587.33, 523.25, null, 659.25, 783.99, 880.0, null, 783.99, 698.46, 587.33, null],
+  },
+  jazz: {
+    tempoMs: 440,
+    chords: [
+      [293.66, 349.23, 440.0, 523.25], // Dm7
+      [196.0, 246.94, 329.63, 349.23], // G13
+      [261.63, 329.63, 392.0, 493.88], // Cmaj7
+      [220.0, 277.18, 329.63, 392.0], // A7
+    ],
+    melody: [659.25, null, 587.33, 523.25, null, 493.88, 659.25, null, 587.33, 523.25, 440.0, null, 493.88, 523.25, 587.33, null],
+  },
+};
+
+let activeBgmInterval: number | null = null;
+
+export function stopCardTableBgm(): void {
+  if (activeBgmInterval !== null && typeof window !== 'undefined') {
+    window.clearInterval(activeBgmInterval);
+    activeBgmInterval = null;
+  }
+}
+
+export function startCardTableBgm(style: CardBgmStyle = 'lounge'): void {
+  stopCardTableBgm();
+  if (typeof window === 'undefined') return;
+  const pattern = BGM_PATTERNS[style];
+  let step = 0;
+
+  const tick = () => {
+    try {
+      const ctx = getSharedAudioContext();
+      if (!ctx || ctx.state !== 'running') return;
+      const now = ctx.currentTime;
+      const chordIdx = Math.floor(step / 4) % pattern.chords.length;
+      const beatInBar = step % 4;
+      const chord = pattern.chords[chordIdx];
+
+      // Warm low-volume chord pad on beat 0 & walking bass on beat 0 and 2
+      if (beatInBar === 0) {
+        chord.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.linearRampToValueAtTime(idx === 0 ? 0.018 : 0.012, now + 0.06);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + (pattern.tempoMs * 3.6) / 1000);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + (pattern.tempoMs * 3.8) / 1000);
+        });
+      } else if (beatInBar === 2) {
+        // Gentle walking fifth bass note
+        const bassOsc = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+        bassOsc.type = 'triangle';
+        bassOsc.frequency.setValueAtTime(chord[0] * 0.75, now);
+        bassGain.gain.setValueAtTime(0.015, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.0008, now + (pattern.tempoMs * 1.5) / 1000);
+        bassOsc.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bassOsc.start(now);
+        bassOsc.stop(now + (pattern.tempoMs * 1.6) / 1000);
+      }
+
+      // Soft electric piano / harp melody note
+      const melFreq = pattern.melody[step % pattern.melody.length];
+      if (melFreq) {
+        const mOsc = ctx.createOscillator();
+        const mGain = ctx.createGain();
+        mOsc.type = style === 'salon' ? 'triangle' : 'sine';
+        mOsc.frequency.setValueAtTime(melFreq, now);
+        mGain.gain.setValueAtTime(0.0001, now);
+        mGain.gain.linearRampToValueAtTime(0.016, now + 0.02);
+        mGain.gain.exponentialRampToValueAtTime(0.0008, now + (pattern.tempoMs * 0.9) / 1000);
+        mOsc.connect(mGain);
+        mGain.connect(ctx.destination);
+        mOsc.start(now);
+        mOsc.stop(now + pattern.tempoMs / 1000);
+      }
+
+      step = (step + 1) % 16;
+    } catch {
+      // Ignore Web Audio errors
+    }
+  };
+
+  tick();
+  activeBgmInterval = window.setInterval(tick, pattern.tempoMs);
+}
+
+export function useCardTableBgm(enabled: boolean, style: CardBgmStyle = 'lounge'): void {
+  useEffect(() => {
+    if (!enabled) {
+      stopCardTableBgm();
+      return;
+    }
+    startCardTableBgm(style);
+    const resumeOnGesture = () => {
+      const ctx = getSharedAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        void ctx.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('pointerdown', resumeOnGesture, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', resumeOnGesture);
+      stopCardTableBgm();
+    };
+  }, [enabled, style]);
 }
 
 export function SuitVectorIcon({

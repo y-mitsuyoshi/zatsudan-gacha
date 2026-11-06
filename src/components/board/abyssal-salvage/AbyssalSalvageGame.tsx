@@ -438,7 +438,67 @@ function CardArtworkSvg({ card, isFatal }: { card: AbyssalCard; isFatal?: boolea
 
 export default function AbyssalSalvageGame() {
   const audioRef = useRef<SonarAudioEngine | null>(null);
+  const bgmCtxRef = useRef<AudioContext | null>(null);
   const [muted, setMuted] = useState(false);
+  const [bgmOn, setBgmOn] = useState(false);
+
+  // Procedural Deep-Sea Submersible Ambient & Sonar Echo BGM
+  useEffect(() => {
+    if (!bgmOn || typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    let timerId: number | null = null;
+    const chords = [
+      [110.0, 164.81, 220.0, 261.63, 329.63], // Am7 deep
+      [87.31, 130.81, 174.61, 220.0, 261.63], // Fmaj7 deep
+      [98.0, 146.83, 196.0, 246.94, 293.66], // G6 deep
+      [82.41, 123.47, 164.81, 196.0, 246.94], // Em7 deep
+    ];
+    let step = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          if (!bgmCtxRef.current) {
+            bgmCtxRef.current = new AudioCtx();
+          }
+          const ctx = bgmCtxRef.current;
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
+          const now = ctx.currentTime;
+          const chord = chords[step % chords.length];
+          chord.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = idx === 0 ? 'triangle' : 'sine';
+            const start = now + idx * 0.32;
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(idx === 0 ? 0.022 : 0.01, start + 0.14);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 2.6);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 2.65);
+          });
+          step += 1;
+        }
+      } catch {
+        // ignore audio errors
+      }
+      timerId = window.setTimeout(tick, 3000);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bgmOn]);
 
   const getAudio = useCallback(() => {
     if (!audioRef.current) {
@@ -831,6 +891,20 @@ export default function AbyssalSalvageGame() {
 
       // If no divers remain in the trench (or deck is empty), the dive ends safely!
       if (divingPilotIds.length === 0 || diveDeck.length === 0) {
+        if (divingPilotIds.length > 0 && diveDeck.length === 0) {
+          nextPilots = nextPilots.map((p) =>
+            p.status === 'diving'
+              ? {
+                  ...p,
+                  vaultScore: p.vaultScore + p.bagScore,
+                  bagScore: 0,
+                  status: 'docked' as DiverStatus,
+                  thoughtText: `海溝最深部に到達し安全帰還！（今回確定 +${p.bagScore}pt）`,
+                  roundHistory: [...p.roundHistory, p.bagScore],
+                }
+              : p
+          );
+        }
         setPathCards(updatedPath);
         setPilots(nextPilots);
         if (currentDive >= TOTAL_DIVES) {
@@ -1030,6 +1104,17 @@ export default function AbyssalSalvageGame() {
               <span className="text-slate-400 mr-1.5">自己ベスト金庫記録:</span>
               <span className="font-mono font-bold text-amber-300">{bestRecord} pt</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setBgmOn((v) => !v)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
+                bgmOn
+                  ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}

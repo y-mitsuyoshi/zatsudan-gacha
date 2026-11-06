@@ -949,6 +949,7 @@ export default function DiceHarborGame() {
   const [cpuCount, setCpuCount] = useState<number>(2); // 1 to 3 CPUs (2 to 4 players total)
   const [primaryAiStyle, setPrimaryAiStyle] = useState<AiStyle>('balanced');
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
 
   // Core Match State
   const [players, setPlayers] = useState<PlayerState[]>(() =>
@@ -976,8 +977,75 @@ export default function DiceHarborGame() {
   const [selectedMarketFilter, setSelectedMarketFilter] = useState<'all' | CardColor>('all');
   const [inspectedCardId, setInspectedCardId] = useState<string | null>(null);
 
-  // Audio Context Ref
+  // Audio Context & Timer Refs
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const rollIntervalRef = useRef<number | null>(null);
+  const resolveTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rollIntervalRef.current !== null) window.clearInterval(rollIntervalRef.current);
+      if (resolveTimeoutRef.current !== null) window.clearTimeout(resolveTimeoutRef.current);
+    };
+  }, []);
+
+  // Procedural Harbor Port Town Marimba BGM
+  useEffect(() => {
+    if (!bgmOn || typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    let timerId: number | null = null;
+    const chords = [
+      [261.63, 329.63, 392.0, 523.25], // C
+      [196.0, 246.94, 293.66, 392.0], // G
+      [220.0, 261.63, 329.63, 440.0], // Am
+      [174.61, 220.0, 261.63, 349.23], // F
+    ];
+    let step = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextClass) {
+          if (!audioCtxRef.current) {
+            audioCtxRef.current = new AudioContextClass();
+          }
+          const ctx = audioCtxRef.current;
+          if (ctx.state === 'suspended') {
+            void ctx.resume();
+          }
+          const now = ctx.currentTime;
+          const chord = chords[step % chords.length];
+          chord.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = idx === 0 ? 'triangle' : 'sine';
+            const start = now + idx * 0.22;
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(idx === 0 ? 0.02 : 0.012, start + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.4);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 1.45);
+          });
+          step += 1;
+        }
+      } catch {
+        // ignore audio errors
+      }
+      timerId = window.setTimeout(tick, 2200);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bgmOn]);
 
   const playSound = useCallback(
     (type: 'roll' | 'coin' | 'steal' | 'build' | 'wonder' | 'win') => {
@@ -1075,6 +1143,14 @@ export default function DiceHarborGame() {
   // Reset / Start New Game
   const startNewGame = useCallback(
     (nextMode = mode, nextCpuCount = cpuCount, nextAiStyle = primaryAiStyle) => {
+      if (rollIntervalRef.current !== null) {
+        window.clearInterval(rollIntervalRef.current);
+        rollIntervalRef.current = null;
+      }
+      if (resolveTimeoutRef.current !== null) {
+        window.clearTimeout(resolveTimeoutRef.current);
+        resolveTimeoutRef.current = null;
+      }
       setPlayers(createInitialPlayers(nextMode, nextCpuCount, nextAiStyle));
       setMarketStock(createInitialMarket());
       setTurnIndex(0);
@@ -1192,7 +1268,11 @@ export default function DiceHarborGame() {
         sum === 6 && (activePlayer.cards['merchant_exchange'] ?? 0) > 0;
 
       setPhase('resolving');
-      window.setTimeout(() => {
+      if (resolveTimeoutRef.current !== null) {
+        window.clearTimeout(resolveTimeoutRef.current);
+      }
+      resolveTimeoutRef.current = window.setTimeout(() => {
+        resolveTimeoutRef.current = null;
         setFloatingDeltas([]);
         if (hasMerchantExchange && !activePlayer.isCpu) {
           setPhase('purple_swap');
@@ -1272,6 +1352,9 @@ export default function DiceHarborGame() {
       const finalRoll = diceCount === 2 ? [d1, d2] : [d1];
 
       let ticks = 0;
+      if (rollIntervalRef.current !== null) {
+        window.clearInterval(rollIntervalRef.current);
+      }
       const timer = window.setInterval(() => {
         ticks += 1;
         setAnimDiceValues([
@@ -1280,6 +1363,7 @@ export default function DiceHarborGame() {
         ]);
         if (ticks >= 7) {
           window.clearInterval(timer);
+          rollIntervalRef.current = null;
           setDiceValues(finalRoll);
           const activePlayer = players[turnIndex];
           // Check if player has Steam Station and hasn't rerolled yet
@@ -1290,6 +1374,7 @@ export default function DiceHarborGame() {
           }
         }
       }, 65);
+      rollIntervalRef.current = timer;
     },
     [phase, playSound, players, resolveConfirmedRoll, turnIndex]
   );
@@ -1420,6 +1505,9 @@ export default function DiceHarborGame() {
       const activePlayer = players[turnIndex];
       const targetPlayer = players.find((p) => p.id === targetPlayerId);
       if (!targetPlayer) return;
+      if ((activePlayer.cards[giveCardId] ?? 0) <= 0 || (targetPlayer.cards[takeCardId] ?? 0) <= 0) {
+        return;
+      }
 
       setPlayers((prev) =>
         prev.map((p) => {
@@ -1674,6 +1762,17 @@ export default function DiceHarborGame() {
               </button>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setBgmOn((v) => !v)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
+                  : 'border-white/15 bg-white/[0.05] text-slate-300 hover:border-cyan-400/50'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}

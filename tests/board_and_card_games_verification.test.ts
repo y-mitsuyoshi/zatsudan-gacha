@@ -20,6 +20,11 @@ const BOARD_GAMES = [
   { slug: 'abyssal-salvage', componentPath: 'src/components/board/abyssal-salvage/AbyssalSalvageGame.tsx' },
   { slug: 'automatons-bazaar', componentPath: 'src/components/board/automatons-bazaar/AutomatonsBazaarGame.tsx' },
   { slug: 'dice-harbor', componentPath: 'src/components/board/dice-harbor/DiceHarborGame.tsx' },
+  { slug: 'stained-glass-mosaic', componentPath: 'src/components/board/stained-glass-mosaic/StainedGlassMosaicGame.tsx' },
+  { slug: 'royal-courier', componentPath: 'src/components/board/royal-courier/RoyalCourierGame.tsx' },
+  { slug: 'sky-botanist', componentPath: 'src/components/board/sky-botanist/SkyBotanistGame.tsx' },
+  { slug: 'totem-bluff', componentPath: 'src/components/board/totem-bluff/TotemBluffGame.tsx' },
+  { slug: 'clockwork-railways', componentPath: 'src/components/board/clockwork-railways/ClockworkRailwaysGame.tsx' },
 ];
 
 const CARD_GAMES = [
@@ -47,13 +52,13 @@ describe('Board and Card games', () => {
       assert.ok(page.includes('canonical:') && page.includes(game.slug), `${pagePath} has wrong canonical`);
       assert.ok(page.includes('openGraph') && page.includes('twitter'), `${pagePath} needs OGP metadata`);
       assert.ok(component.includes("'use client'") || component.includes('"use client"'), `${game.componentPath} must be a client component`);
-      const forbiddenTrademarks = /オセロ|Othello|カタン|カルカソンヌ|宝石の煌き|Splendor|Carcassonne|インカの黄金|海底探険|街コロ|Machi Koro|ハゲタカのえじき|すごろくや/i;
+      const forbiddenTrademarks = /オセロ|Othello|カタン|カルカソンヌ|宝石の煌き|Splendor|Carcassonne|インカの黄金|海底探険|街コロ|Machi Koro|ハゲタカのえじき|すごろくや|アズール|Azul|サグラダ|Sagrada|ラブレター|Love Letter|ウイングスパン|Wingspan|スカル|Skull|チケット・トゥ・ライド|Ticket to Ride/i;
       assert.ok(!forbiddenTrademarks.test(page), `${pagePath} must not use trademarked board game names`);
       assert.ok(!forbiddenTrademarks.test(component), `${game.componentPath} must not use trademarked board game names`);
     }
   });
 
-  it('registers all 18 board and card games in hub, sitemap, llms, footer, and harness', () => {
+  it('registers all 23 board and card games in hub, sitemap, llms, footer, and harness', () => {
     const hub = read('src/app/games/page.tsx');
     const sitemap = read('src/app/sitemap.ts');
     const llms = read('src/app/llms.txt/route.ts');
@@ -71,7 +76,21 @@ describe('Board and Card games', () => {
     assert.ok(hub.includes('id="card-games"'));
     assert.ok(footer.includes('/games#board-games'));
     assert.ok(footer.includes('/games#card-games'));
-    assert.equal(SITE_COUNTS.boardGames, 13);
+    assert.equal(SITE_COUNTS.boardGames, 18);
     assert.equal(SITE_COUNTS.cardGames, 5);
+  });
+
+  it('enforces Daifugo card exchange lock for lower ranks and commercial Texas Holdem features', () => {
+    const daifugo = read('src/components/cards/daifugo/DaifugoGame.tsx');
+    assert.ok(
+      daifugo.includes('canHumanSelectCardsInHand') && daifugo.includes('強制献上'),
+      'Daifugo must lock manual card selection for Hinmin/Daihinmin during exchange and perform automatic tribute'
+    );
+    assert.ok(daifugo.includes('bgmOn'), 'Daifugo must include procedural BGM toggle');
+
+    const holdem = read('src/components/cards/texas-holdem/TexasHoldemGame.tsx');
+    assert.ok(holdem.includes('CharacterPortraitSvg'), 'Texas Holdem must include custom SVG character portraits');
+    assert.ok(holdem.includes('ChipStackVisual'), 'Texas Holdem must include 3D chip stack visuals');
+    assert.ok(holdem.includes('bgmOn') && holdem.includes('voiceOn'), 'Texas Holdem must include BGM and Voice toggles');
   });
 });

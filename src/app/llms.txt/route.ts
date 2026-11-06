@@ -161,6 +161,11 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [深海サルベージ：酸素限界の遺跡探査（深海チキンレース盤ゲーム）](${BASE_URL}/abyssal-salvage)
 - [からくりバザール：歯車都市の競売人（同時入札オークション盤ゲーム）](${BASE_URL}/automatons-bazaar)
 - [サイコロ港町（ダイス・ハーバー）：出目で育つ交易都市](${BASE_URL}/dice-harbor)
+- [硝子工房のモザイク師（色硝子ドラフト＆5×5ステンドグラス窓パズル盤ゲーム）](${BASE_URL}/stained-glass-mosaic)
+- [王宮の密使（16枚デッキ・手札1枚の宮廷心理推理カード盤ゲーム）](${BASE_URL}/royal-courier)
+- [天空の植物園（3層ビオトープ＆右から左への連鎖エンジン構築盤ゲーム）](${BASE_URL}/sky-botanist)
+- [仮面の円卓（太陽の黄金盤と災厄の仮面の心理ブラフ＆発掘競り盤ゲーム）](${BASE_URL}/totem-bluff)
+- [蒸気機関の鉄路王（機関士ワーカー配置＆蒸気大陸ネットワーク開拓盤ゲーム）](${BASE_URL}/clockwork-railways)
 `;
 
   return new Response(body, {

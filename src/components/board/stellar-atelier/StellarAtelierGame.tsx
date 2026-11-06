@@ -40,7 +40,7 @@ export const ELEMENTS: ElementMeta[] = [
   },
   {
     id: 'azure',
-    name: '蒼氷（アズール）',
+    name: '蒼氷（サファイア）',
     shortName: '蒼氷',
     sub: '氷晶星片',
     bgClass: 'bg-sky-950/80',
@@ -937,6 +937,7 @@ export default function StellarAtelierGame() {
   const [playerCount, setPlayerCount] = useState<number>(3);
   const [aiPersonas, setAiPersonas] = useState<AiPersona[]>(['steady', 'rush', 'patron']);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
 
   // Core Game Snapshot & Undo Stack
   const [gameState, setGameState] = useState<GameSnapshot>(() =>
@@ -953,6 +954,65 @@ export default function StellarAtelierGame() {
 
   // Audio Context Ref
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Procedural Celestial Starlight Music-Box BGM
+  useEffect(() => {
+    if (!bgmOn || typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    let timerId: number | null = null;
+    const chords = [
+      [261.63, 329.63, 392.0, 493.88, 659.25], // Cmaj9
+      [220.0, 261.63, 329.63, 392.0, 587.33], // Am9
+      [174.61, 220.0, 261.63, 329.63, 523.25], // Fmaj9
+      [196.0, 246.94, 293.66, 392.0, 587.33], // G6
+    ];
+    let step = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        if (AudioCtx) {
+          if (!audioCtxRef.current) {
+            audioCtxRef.current = new AudioCtx();
+          }
+          const ctx = audioCtxRef.current;
+          if (ctx.state === 'suspended') {
+            void ctx.resume();
+          }
+          const now = ctx.currentTime;
+          const chord = chords[step % chords.length];
+          chord.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = idx === 0 ? 'triangle' : 'sine';
+            const start = now + idx * 0.28;
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(idx === 0 ? 0.018 : 0.011, start + 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 2.2);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 2.25);
+          });
+          step += 1;
+        }
+      } catch {
+        // ignore audio errors
+      }
+      timerId = window.setTimeout(tick, 2800);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bgmOn]);
 
   const playSound = useCallback(
     (kind: 'shard' | 'craft' | 'reserve' | 'patron' | 'win' | 'click') => {
@@ -1095,214 +1155,197 @@ export default function StellarAtelierGame() {
       returnShards: ShardType[] = [],
       recordUndo = true
     ) => {
-      setGameState((prev) => {
-        if (recordUndo) {
-          setHistory((h) => [...h.slice(-15), cloneSnapshot(prev)]);
+      if (recordUndo) {
+        setHistory((h) => [...h.slice(-15), cloneSnapshot(gameState)]);
+      }
+      const next = cloneSnapshot(gameState);
+      const player = next.players[next.turnIndex];
+
+      for (const c of takeColors) {
+        if (next.supply[c] > 0) {
+          next.supply[c] -= 1;
+          player.shards[c] += 1;
         }
-        const next = cloneSnapshot(prev);
-        const player = next.players[next.turnIndex];
+      }
 
-        for (const c of takeColors) {
-          if (next.supply[c] > 0) {
-            next.supply[c] -= 1;
-            player.shards[c] += 1;
-          }
+      for (const r of returnShards) {
+        if (player.shards[r] > 0) {
+          player.shards[r] -= 1;
+          next.supply[r] += 1;
         }
+      }
 
-        for (const r of returnShards) {
-          if (player.shards[r] > 0) {
-            player.shards[r] -= 1;
-            next.supply[r] += 1;
-          }
-        }
-
-        // Enforce 10-shard cap automatically if AI or any overflow remains
-        while (getTotalShards(player.shards) > MAX_SHARDS) {
-          const removable = ELEMENTS.map((e) => e.id).find(
-            (c) => player.shards[c] > 0
-          );
-          if (removable) {
-            player.shards[removable] -= 1;
-            next.supply[removable] += 1;
-          } else {
-            break;
-          }
-        }
-
-        const summary =
-          takeColors.length === 2 && takeColors[0] === takeColors[1]
-            ? `${ELEMENT_MAP[takeColors[0]].shortName}の星片を2個採取`
-            : `星片を採取（${takeColors.map((c) => ELEMENT_MAP[c].shortName).join('・')}）`;
-
-        const returnText =
-          returnShards.length > 0
-            ? `（上限10個調整のため${returnShards.length}個返却）`
-            : '';
-
-        return advanceTurnAndCheckPatrons(
-          next,
-          prev.turnIndex,
-          `${summary}${returnText}`
+      // Enforce 10-shard cap automatically if AI or any overflow remains
+      while (getTotalShards(player.shards) > MAX_SHARDS) {
+        const removable = ELEMENTS.map((e) => e.id).find(
+          (c) => player.shards[c] > 0
         );
-      });
+        if (removable) {
+          player.shards[removable] -= 1;
+          next.supply[removable] += 1;
+        } else {
+          break;
+        }
+      }
 
+      const summary =
+        takeColors.length === 2 && takeColors[0] === takeColors[1]
+          ? `${ELEMENT_MAP[takeColors[0]].shortName}の星片を2個採取`
+          : `星片を採取（${takeColors.map((c) => ELEMENT_MAP[c].shortName).join('・')}）`;
+
+      const returnText =
+        returnShards.length > 0
+          ? `（上限10個調整のため${returnShards.length}個返却）`
+          : '';
+
+      const updated = advanceTurnAndCheckPatrons(
+        next,
+        gameState.turnIndex,
+        `${summary}${returnText}`
+      );
+      setGameState(updated);
       setSelectedShards([]);
       setSelectedReturnShards([]);
       setHintMove(null);
       playSound('shard');
     },
-    [advanceTurnAndCheckPatrons, playSound]
+    [gameState, advanceTurnAndCheckPatrons, playSound]
   );
 
   // Action 2: Craft a Recipe Card (from Market or Reserved)
   const executeCraftCard = useCallback(
     (cardId: string, recordUndo = true) => {
-      let craftedTitle = '';
-      let gotPatron = false;
+      const player = gameState.players[gameState.turnIndex];
 
-      setGameState((prev) => {
-        const player = prev.players[prev.turnIndex];
+      // Find card in market or reserved
+      let targetCard: RecipeCard | null = null;
+      let fromReservedIdx = -1;
+      let fromMarketTier: Tier | null = null;
+      let fromMarketSlot = -1;
 
-        // Find card in market or reserved
-        let targetCard: RecipeCard | null = null;
-        let fromReservedIdx = -1;
-        let fromMarketTier: Tier | null = null;
-        let fromMarketSlot = -1;
-
-        fromReservedIdx = player.reserved.findIndex((c) => c.id === cardId);
-        if (fromReservedIdx !== -1) {
-          targetCard = player.reserved[fromReservedIdx];
-        } else {
-          for (const tier of [1, 2, 3] as Tier[]) {
-            const idx = prev.market[tier].findIndex((c) => c?.id === cardId);
-            if (idx !== -1 && prev.market[tier][idx]) {
-              targetCard = prev.market[tier][idx];
-              fromMarketTier = tier;
-              fromMarketSlot = idx;
-              break;
-            }
+      fromReservedIdx = player.reserved.findIndex((c) => c.id === cardId);
+      if (fromReservedIdx !== -1) {
+        targetCard = player.reserved[fromReservedIdx];
+      } else {
+        for (const tier of [1, 2, 3] as Tier[]) {
+          const idx = gameState.market[tier].findIndex((c) => c?.id === cardId);
+          if (idx !== -1 && gameState.market[tier][idx]) {
+            targetCard = gameState.market[tier][idx];
+            fromMarketTier = tier;
+            fromMarketSlot = idx;
+            break;
           }
         }
-
-        if (!targetCard) return prev;
-        const analysis = analyzeCardCost(player, targetCard);
-        if (!analysis.canCraftNow) return prev;
-
-        if (recordUndo) {
-          setHistory((h) => [...h.slice(-15), cloneSnapshot(prev)]);
-        }
-
-        const next = cloneSnapshot(prev);
-        const nextPlayer = next.players[next.turnIndex];
-
-        // Spend shards and return to supply
-        for (const el of ELEMENTS) {
-          const c = el.id;
-          const spend = analysis.spendByColor[c];
-          if (spend > 0) {
-            nextPlayer.shards[c] -= spend;
-            next.supply[c] += spend;
-          }
-        }
-        if (analysis.prismNeeded > 0) {
-          nextPlayer.shards.prism -= analysis.prismNeeded;
-          next.supply.prism += analysis.prismNeeded;
-        }
-
-        // Remove from source & refill market if needed
-        if (fromReservedIdx !== -1) {
-          nextPlayer.reserved.splice(fromReservedIdx, 1);
-        } else if (fromMarketTier !== null && fromMarketSlot !== -1) {
-          const replacement = next.decks[fromMarketTier].shift() || null;
-          next.market[fromMarketTier][fromMarketSlot] = replacement;
-        }
-
-        nextPlayer.crafted.push(targetCard);
-        craftedTitle = targetCard.title;
-
-        const prevPatrons = nextPlayer.patrons.length;
-        const updated = advanceTurnAndCheckPatrons(
-          next,
-          prev.turnIndex,
-          `『${targetCard.title}』を錬成（+${targetCard.prestige}★ / ${ELEMENT_MAP[targetCard.bonus].shortName}共鳴+1）`
-        );
-        gotPatron = updated.players[prev.turnIndex].patrons.length > prevPatrons;
-        return updated;
-      });
-
-      if (craftedTitle) {
-        setSelectedShards([]);
-        setSelectedReturnShards([]);
-        setHintMove(null);
-        playSound(gotPatron ? 'patron' : 'craft');
       }
+
+      if (!targetCard) return;
+      const analysis = analyzeCardCost(player, targetCard);
+      if (!analysis.canCraftNow) return;
+
+      if (recordUndo) {
+        setHistory((h) => [...h.slice(-15), cloneSnapshot(gameState)]);
+      }
+
+      const next = cloneSnapshot(gameState);
+      const nextPlayer = next.players[next.turnIndex];
+
+      // Spend shards and return to supply
+      for (const el of ELEMENTS) {
+        const c = el.id;
+        const spend = analysis.spendByColor[c];
+        if (spend > 0) {
+          nextPlayer.shards[c] -= spend;
+          next.supply[c] += spend;
+        }
+      }
+      if (analysis.prismNeeded > 0) {
+        nextPlayer.shards.prism -= analysis.prismNeeded;
+        next.supply.prism += analysis.prismNeeded;
+      }
+
+      // Remove from source & refill market if needed
+      if (fromReservedIdx !== -1) {
+        nextPlayer.reserved.splice(fromReservedIdx, 1);
+      } else if (fromMarketTier !== null && fromMarketSlot !== -1) {
+        const replacement = next.decks[fromMarketTier].shift() || null;
+        next.market[fromMarketTier][fromMarketSlot] = replacement;
+      }
+
+      nextPlayer.crafted.push(targetCard);
+
+      const prevPatrons = nextPlayer.patrons.length;
+      const updated = advanceTurnAndCheckPatrons(
+        next,
+        gameState.turnIndex,
+        `『${targetCard.title}』を錬成（+${targetCard.prestige}★ / ${ELEMENT_MAP[targetCard.bonus].shortName}共鳴+1）`
+      );
+      const gotPatron = updated.players[gameState.turnIndex].patrons.length > prevPatrons;
+
+      setGameState(updated);
+      setSelectedShards([]);
+      setSelectedReturnShards([]);
+      setHintMove(null);
+      playSound(gotPatron ? 'patron' : 'craft');
     },
-    [advanceTurnAndCheckPatrons, playSound]
+    [gameState, advanceTurnAndCheckPatrons, playSound]
   );
 
   // Action 3: Reserve a Market Recipe Card (+1 Prism Wild if available)
   const executeReserveCard = useCallback(
     (cardId: string, recordUndo = true) => {
-      let reservedTitle = '';
+      const player = gameState.players[gameState.turnIndex];
+      if (player.reserved.length >= MAX_RESERVED) return;
 
-      setGameState((prev) => {
-        const player = prev.players[prev.turnIndex];
-        if (player.reserved.length >= MAX_RESERVED) return prev;
+      let targetCard: RecipeCard | null = null;
+      let foundTier: Tier | null = null;
+      let foundSlot = -1;
 
-        let targetCard: RecipeCard | null = null;
-        let foundTier: Tier | null = null;
-        let foundSlot = -1;
-
-        for (const tier of [1, 2, 3] as Tier[]) {
-          const idx = prev.market[tier].findIndex((c) => c?.id === cardId);
-          if (idx !== -1 && prev.market[tier][idx]) {
-            targetCard = prev.market[tier][idx];
-            foundTier = tier;
-            foundSlot = idx;
-            break;
-          }
+      for (const tier of [1, 2, 3] as Tier[]) {
+        const idx = gameState.market[tier].findIndex((c) => c?.id === cardId);
+        if (idx !== -1 && gameState.market[tier][idx]) {
+          targetCard = gameState.market[tier][idx];
+          foundTier = tier;
+          foundSlot = idx;
+          break;
         }
-
-        if (!targetCard || foundTier === null) return prev;
-
-        if (recordUndo) {
-          setHistory((h) => [...h.slice(-15), cloneSnapshot(prev)]);
-        }
-
-        const next = cloneSnapshot(prev);
-        const nextPlayer = next.players[next.turnIndex];
-
-        const replacement = next.decks[foundTier].shift() || null;
-        next.market[foundTier][foundSlot] = replacement;
-        nextPlayer.reserved.push(targetCard);
-        reservedTitle = targetCard.title;
-
-        let prismMsg = '（サプライの虹プリズム在庫0）';
-        if (next.supply.prism > 0) {
-          if (getTotalShards(nextPlayer.shards) < MAX_SHARDS) {
-            next.supply.prism -= 1;
-            nextPlayer.shards.prism += 1;
-            prismMsg = '（+虹プリズム結晶1個）';
-          } else {
-            prismMsg = '（所持星片10個上限のため虹プリズム受取なし）';
-          }
-        }
-
-        return advanceTurnAndCheckPatrons(
-          next,
-          prev.turnIndex,
-          `設計図『${targetCard.title}』を予約${prismMsg}`
-        );
-      });
-
-      if (reservedTitle) {
-        setSelectedShards([]);
-        setSelectedReturnShards([]);
-        setHintMove(null);
-        playSound('reserve');
       }
+
+      if (!targetCard || foundTier === null) return;
+
+      if (recordUndo) {
+        setHistory((h) => [...h.slice(-15), cloneSnapshot(gameState)]);
+      }
+
+      const next = cloneSnapshot(gameState);
+      const nextPlayer = next.players[next.turnIndex];
+
+      const replacement = next.decks[foundTier].shift() || null;
+      next.market[foundTier][foundSlot] = replacement;
+      nextPlayer.reserved.push(targetCard);
+
+      let prismMsg = '（サプライの虹プリズム在庫0）';
+      if (next.supply.prism > 0) {
+        if (getTotalShards(nextPlayer.shards) < MAX_SHARDS) {
+          next.supply.prism -= 1;
+          nextPlayer.shards.prism += 1;
+          prismMsg = '（+虹プリズム結晶1個）';
+        } else {
+          prismMsg = '（所持星片10個上限のため虹プリズム受取なし）';
+        }
+      }
+
+      const updated = advanceTurnAndCheckPatrons(
+        next,
+        gameState.turnIndex,
+        `設計図『${targetCard.title}』を予約${prismMsg}`
+      );
+      setGameState(updated);
+      setSelectedShards([]);
+      setSelectedReturnShards([]);
+      setHintMove(null);
+      playSound('reserve');
     },
-    [advanceTurnAndCheckPatrons, playSound]
+    [gameState, advanceTurnAndCheckPatrons, playSound]
   );
 
   // ============================================================================
@@ -1489,6 +1532,17 @@ export default function StellarAtelierGame() {
               className="rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-40"
             >
               💡 AI推奨手ナビ
+            </button>
+            <button
+              type="button"
+              onClick={() => setBgmOn((v) => !v)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-indigo-400/60 bg-indigo-500/20 text-indigo-200'
+                  : 'border-white/15 bg-white/[0.05] text-slate-300 hover:border-indigo-400/50'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
             </button>
             <button
               type="button"

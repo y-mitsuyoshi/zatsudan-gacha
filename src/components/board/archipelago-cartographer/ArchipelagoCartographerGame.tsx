@@ -1362,6 +1362,66 @@ export default function ArchipelagoCartographerGame() {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [humanSide, setHumanSide] = useState<PlayerId>(1);
   const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [bgmOn, setBgmOn] = useState<boolean>(false);
+  const bgmCtxRef = useRef<AudioContext | null>(null);
+
+  // Procedural Nautical Ocean Harp BGM
+  useEffect(() => {
+    if (!bgmOn || typeof window === 'undefined') return undefined;
+    let cancelled = false;
+    let timerId: number | null = null;
+    const chords = [
+      [196.0, 293.66, 392.0, 493.88, 587.33], // Gmaj7
+      [164.81, 246.94, 329.63, 392.0, 493.88], // Em7
+      [130.81, 196.0, 261.63, 329.63, 392.0], // Cmaj7
+      [146.83, 220.0, 293.66, 369.99, 440.0], // D6
+    ];
+    let step = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          if (!bgmCtxRef.current) {
+            bgmCtxRef.current = new AudioCtx();
+          }
+          const ctx = bgmCtxRef.current;
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
+          const now = ctx.currentTime;
+          const chord = chords[step % chords.length];
+          chord.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = idx === 0 ? 'sine' : 'triangle';
+            const start = now + idx * 0.25;
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(idx === 0 ? 0.02 : 0.011, start + 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 2.1);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 2.15);
+          });
+          step += 1;
+        }
+      } catch {
+        // ignore audio errors
+      }
+      timerId = window.setTimeout(tick, 2600);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bgmOn]);
 
   const [board, setBoard] = useState<(PlacedTile | null)[][]>(() => createInitialBoard());
   const [deck, setDeck] = useState<TileTemplate[]>(() => createShuffledDeck());
@@ -1720,7 +1780,7 @@ export default function ArchipelagoCartographerGame() {
       return mode === 'cpu'
         ? humanSide === 1
           ? `あなたの勝利！（${p1Total} 対 ${p2Total}）`
-          : `CPUの勝利（${p2Total} 対 ${p1Total}）`
+          : `CPUの勝利（${p1Total} 対 ${p2Total}）`
         : `プレイヤー1（琥珀船団）の勝利！（${p1Total} 対 ${p2Total}）`;
     }
     if (p2Total > p1Total) {
@@ -1756,6 +1816,17 @@ export default function ArchipelagoCartographerGame() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBgmOn((v) => !v)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                bgmOn
+                  ? 'border-sky-400/60 bg-sky-500/20 text-sky-200'
+                  : 'border-white/15 bg-white/[0.05] text-slate-300 hover:border-sky-400/50'
+              }`}
+            >
+              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
