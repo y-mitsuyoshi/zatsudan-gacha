@@ -582,7 +582,7 @@ export default function AbyssalSalvageGame() {
 
       getAudio().playSonarPing();
       pushLog(
-        `🌊 【第${diveNumber}潜水 開始】海溝デッキ（全${freshDeck.length}枚）に『${coreMeta.name}（+${coreMeta.value}pt）』が投入されました！`
+        ` 【第${diveNumber}潜水 開始】海溝デッキ（全${freshDeck.length}枚）に『${coreMeta.name}（+${coreMeta.value}pt）』が投入されました！`
       );
     },
     [masterDeck, getAudio, pushLog]
@@ -860,14 +860,14 @@ export default function AbyssalSalvageGame() {
 
         if (returningPilotIds.length === 1 && soloCoreClaimed > 0) {
           pushLog(
-            `🏆 【単独帰還ボーナス発動】${returningNames}が単独帰還に成功！海溝端数+${remainderSharePerRetreater}ptに加え、古代コア（+${soloCoreClaimed}pt）を独占回収しました！`
+            ` 【単独帰還ボーナス発動】${returningNames}が単独帰還に成功！海溝端数+${remainderSharePerRetreater}ptに加え、古代コア（+${soloCoreClaimed}pt）を独占回収しました！`
           );
         } else if (remainderSharePerRetreater > 0) {
           pushLog(
-            `⚓ 【母艦帰還】${returningNames}が帰還を選択し、海溝に残っていた端数から各自 +${remainderSharePerRetreater}pt を回収して金庫へ格納しました。`
+            ` 【母艦帰還】${returningNames}が帰還を選択し、海溝に残っていた端数から各自 +${remainderSharePerRetreater}pt を回収して金庫へ格納しました。`
           );
         } else {
-          pushLog(`⚓ 【母艦帰還】${returningNames}が調査バッグの遺物を母艦金庫へ安全に格納しました。`);
+          pushLog(` 【母艦帰還】${returningNames}が調査バッグの遺物を母艦金庫へ安全に格納しました。`);
         }
         getAudio().playVaultLock();
       }
@@ -922,10 +922,10 @@ export default function AbyssalSalvageGame() {
               window.localStorage.setItem('abyssal_salvage_best_score', String(finalPlayer.vaultScore));
             }
           }
-          pushLog('🏁 全3回の深海サルベージ作戦が完了しました！最終スコアを集計します。');
+          pushLog(' 全3回の深海サルベージ作戦が完了しました！最終スコアを集計します。');
         } else {
           setPhase('roundEnd');
-          pushLog(`✅ 第${currentDive}潜水：全操縦士が母艦へ帰還完了。次の潜水へ備えます。`);
+          pushLog(` 第${currentDive}潜水：全操縦士が母艦へ帰還完了。次の潜水へ備えます。`);
         }
         return;
       }
@@ -952,7 +952,7 @@ export default function AbyssalSalvageGame() {
         );
         getAudio().playRelicChime();
         pushLog(
-          `💎 【遺物発見：${drawnCard.name}（価値 ${drawnCard.value}pt）】潜行中の${activeCount}名で山分け（各自 +${share}pt / 海溝端数 +${remainder}pt）！`
+          ` 【遺物発見：${drawnCard.name}（価値 ${drawnCard.value}pt）】潜行中の${activeCount}名で山分け（各自 +${share}pt / 海溝端数 +${remainder}pt）！`
         );
         setPathCards(updatedPath);
         setDiveDeck(restDeck);
@@ -965,7 +965,7 @@ export default function AbyssalSalvageGame() {
         updatedPath = [...updatedPath, cardOnPath];
         getAudio().playRelicChime();
         pushLog(
-          `✨ 【古代コア発見：${drawnCard.name}（+${drawnCard.value}pt）】海溝ルート上に出現！以降、単独（1人だけ）で帰還した操縦士が丸ごと獲得します！`
+          ` 【古代コア発見：${drawnCard.name}（+${drawnCard.value}pt）】海溝ルート上に出現！以降、単独（1人だけ）で帰還した操縦士が丸ごと獲得します！`
         );
         setPathCards(updatedPath);
         setDiveDeck(restDeck);
@@ -981,13 +981,13 @@ export default function AbyssalSalvageGame() {
           // 1st Hazard of this type -> First Warning (リーチ)
           getAudio().playWarningBeep();
           pushLog(
-            `⚠️ 【第1警報（リーチ）：${HAZARDS[hType].name}】次回以降もう1枚『${HAZARDS[hType].name}』が出ると強制浮上（バースト）となります！`
+            `️ 【第1警報（リーチ）：${HAZARDS[hType].name}】次回以降もう1枚『${HAZARDS[hType].name}』が出ると強制浮上（バースト）となります！`
           );
           setPathCards(updatedPath);
           setDiveDeck(restDeck);
           setPilots(nextPilots);
         } else {
-          // 2nd Hazard of the SAME type -> Emergency Abort (`🚨 緊急浮上！`)
+          // 2nd Hazard of the SAME type -> Emergency Abort (` 緊急浮上！`)
           getAudio().playEmergencyAbort();
           setAbortHazard(hType);
           // Permanently remove this triggering hazard card from masterDeck for subsequent dives
@@ -1000,14 +1000,14 @@ export default function AbyssalSalvageGame() {
                   ...p,
                   bagScore: 0,
                   status: 'aborted' as DiverStatus,
-                  thoughtText: `🚨 ${HAZARDS[hType].name}の2枚目に遭遇し緊急浮上！未格納の調査バッグ遺物をすべて喪失…`,
+                  thoughtText: ` ${HAZARDS[hType].name}の2枚目に遭遇し緊急浮上！未格納の調査バッグ遺物をすべて喪失…`,
                   roundHistory: [...p.roundHistory, 0],
                 }
               : p
           );
 
           pushLog(
-            `🚨 【緊急浮上発生！】2枚目の『${HAZARDS[hType].name}』に遭遇！海溝に残っていた操縦士は調査バッグの遺物をすべて失いました（この災害カード1枚は以降の潜水から永久排除されます）。`
+            ` 【緊急浮上発生！】2枚目の『${HAZARDS[hType].name}』に遭遇！海溝に残っていた操縦士は調査バッグの遺物をすべて失いました（この災害カード1枚は以降の潜水から永久排除されます）。`
           );
 
           setPathCards(updatedPath);
@@ -1107,7 +1107,7 @@ export default function AbyssalSalvageGame() {
                 bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
-              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+              {bgmOn ? ' BGM ON' : ' BGM OFF'}
             </button>
             <button
               type="button"
@@ -1115,7 +1115,7 @@ export default function AbyssalSalvageGame() {
               className="tabletop-button min-h-11 px-3 text-xs"
               aria-label={muted ? '効果音をオンにする' : '効果音をミュートする'}
             >
-              {muted ? '🔇 消音中' : '🔊 ソナー音ON'}
+              {muted ? ' 消音中' : ' ソナー音ON'}
             </button>
             <button
               type="button"
@@ -1154,7 +1154,7 @@ export default function AbyssalSalvageGame() {
                     onClick={() => startDive(1)}
                     className="tabletop-button-primary min-h-12 px-8 text-base"
                   >
-                    🚀 第1潜水を開始する（ハッチ開放）
+                     第1潜水を開始する（ハッチ開放）
                   </button>
                 </div>
               </div>
@@ -1197,7 +1197,7 @@ export default function AbyssalSalvageGame() {
                       className="group relative flex min-h-24 flex-col items-center justify-center rounded-md border-2 border-[#3f5f78] bg-[#3f5f78]/14 p-4 transition hover:bg-[#3f5f78]/22"
                     >
                       <span className="text-base sm:text-lg font-extrabold text-[#9db8c8] group-hover:text-[var(--table-ink)] flex items-center gap-2">
-                        <span>⏬</span>
+                        <span></span>
                         <span>さらに潜行する（DIVE DEEPER）</span>
                       </span>
                       <span className="text-xs text-[#9db8c8]/80 mt-1">
@@ -1217,7 +1217,7 @@ export default function AbyssalSalvageGame() {
                       }`}
                     >
                       <span className="text-base sm:text-lg font-extrabold text-[var(--table-accent-strong)] group-hover:text-[var(--table-ink)] flex items-center gap-2">
-                        <span>⚓</span>
+                        <span></span>
                         <span>母艦へ帰還する（RETURN TO SUB）</span>
                       </span>
                       <span className="text-xs text-[var(--table-accent-strong)]/85 mt-1">
@@ -1230,14 +1230,14 @@ export default function AbyssalSalvageGame() {
                 ) : (
                   <div className="tabletop-panel-soft flex items-center justify-between border-[#3f5f78] px-4 py-3">
                     <span className="text-sm text-[#9db8c8] ">
-                      📡 残存AIダイバーが深度 {(pathCards.length + 1) * 100}m を探査中…
+                       残存AIダイバーが深度 {(pathCards.length + 1) * 100}m を探査中…
                     </span>
                     <button
                       type="button"
                       onClick={() => handlePlayerDecision('return')}
                       className="tabletop-button min-h-11 px-4 text-xs"
                     >
-                      即時ステップ送り ⏭
+                      即時ステップ送り
                     </button>
                   </div>
                 )}
@@ -1248,11 +1248,11 @@ export default function AbyssalSalvageGame() {
               <div className="text-center py-3 space-y-4">
                 {abortHazard ? (
                   <div className="tabletop-chip border-[#9f4540] px-4 py-1.5 text-xs font-bold text-[#d9a19b]">
-                    🚨 緊急浮上（バースト）発生：{HAZARDS[abortHazard].name}（2枚目）
+                     緊急浮上（バースト）発生：{HAZARDS[abortHazard].name}（2枚目）
                   </div>
                 ) : (
                   <div className="tabletop-chip border-[#315d4e] px-4 py-1.5 text-xs font-bold text-[#9dc4af]">
-                    ✅ 第{currentDive}潜水 全員帰還完了
+                     第{currentDive}潜水 全員帰還完了
                   </div>
                 )}
                 <h3 className="tabletop-title text-xl">
@@ -1268,7 +1268,7 @@ export default function AbyssalSalvageGame() {
                   onClick={() => startDive(currentDive + 1)}
                   className="tabletop-button-primary min-h-11 px-7 text-sm"
                 >
-                  🌊 第{currentDive + 1}潜水へ進む（古代コア +{CORE_BY_DIVE[currentDive + 1]?.value ?? 12}pt 追加）
+                   第{currentDive + 1}潜水へ進む（古代コア +{CORE_BY_DIVE[currentDive + 1]?.value ?? 12}pt 追加）
                 </button>
               </div>
             )}
@@ -1276,7 +1276,7 @@ export default function AbyssalSalvageGame() {
             {phase === 'gameOver' && (
               <div className="text-center py-4 space-y-4">
                 <div className="tabletop-chip border-[var(--table-accent)] px-4 py-1.5 text-xs font-bold text-[var(--table-accent-strong)]">
-                  🏆 全3潜水 最終サルベージ結果発表
+                   全3潜水 最終サルベージ結果発表
                 </div>
                 <h3 className="tabletop-title text-2xl">
                   優勝：{rankedPilots[0]?.name}（母艦金庫 {rankedPilots[0]?.vaultScore} pt）
@@ -1305,7 +1305,7 @@ export default function AbyssalSalvageGame() {
                     onClick={startNewExpedition}
                     className="tabletop-button-primary min-h-11 px-8 text-sm"
                   >
-                    🔄 もう一度深海サルベージに挑戦する
+                     もう一度深海サルベージに挑戦する
                   </button>
                 </div>
               </div>
@@ -1345,7 +1345,7 @@ export default function AbyssalSalvageGame() {
                           : 'border-[#3f5f78] bg-[#3f5f78]/14 text-[#9db8c8]'
                       }`}
                     >
-                      {isWarn ? '🚨 緊急浮上' : isDocked ? '⚓ 母艦帰還済' : '🤿 潜行中'}
+                      {isWarn ? ' 緊急浮上' : isDocked ? ' 母艦帰還済' : ' 潜行中'}
                     </span>
                   </div>
 
@@ -1380,7 +1380,7 @@ export default function AbyssalSalvageGame() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="tabletop-title flex items-center gap-2 text-base">
-                  <span>🗺️</span>
+                  <span>️</span>
                   <span>深海海溝探査ルート（めくられた深度カード履歴）</span>
                 </h3>
                 <p className="text-xs text-[var(--table-muted)]">
@@ -1421,7 +1421,7 @@ export default function AbyssalSalvageGame() {
                           : 'tabletop-panel border-[#9f4540]'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-[10px] font-mono text-[var(--table-muted)] mb-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-[var(--table-muted)] mb-1.5">
                         <span>DEPTH {depthMeters}m</span>
                         {card.kind === 'relic' && (
                           <span className="px-1.5 py-0.5 rounded bg-[#3f5f78]/18 text-[#9db8c8] font-bold">
@@ -1441,7 +1441,7 @@ export default function AbyssalSalvageGame() {
                                 : 'bg-[#c99555]/20 text-[var(--table-accent-strong)]'
                             }`}
                           >
-                            {priorSameHazard ? '🚨 2枚目バースト' : '⚠️ 第1警報'}
+                            {priorSameHazard ? ' 2枚目バースト' : '️ 第1警報'}
                           </span>
                         )}
                       </div>
@@ -1491,7 +1491,7 @@ export default function AbyssalSalvageGame() {
           <div className="tabletop-panel space-y-4 p-5">
             <div className="tabletop-divider flex items-center justify-between border-b pb-3">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#9db8c8]">
+                <span className="text-[11px] font-mono uppercase tracking-widest text-[#9db8c8]">
                   REAL-TIME PROBABILITY & EV HUD
                 </span>
                 <h3 className="tabletop-title text-base">深海ソナー確率アナライザー</h3>
@@ -1551,7 +1551,7 @@ export default function AbyssalSalvageGame() {
                 <div className="font-mono text-lg font-extrabold text-[var(--table-accent-strong)] mt-0.5">
                   {sonarStats.guaranteedReturnScore} pt
                 </div>
-                <div className="text-[10px] text-[var(--table-muted)] mt-0.5">
+                <div className="text-[11px] text-[var(--table-muted)] mt-0.5">
                   バッグ{playerPilot.bagScore} + 残留{sonarStats.pathRemainderTotal + sonarStats.pathCoreTotal}
                 </div>
               </div>
@@ -1560,13 +1560,13 @@ export default function AbyssalSalvageGame() {
                 <div className="font-mono text-lg font-extrabold text-[#9db8c8] mt-0.5">
                   {sonarStats.expectedContinueBagValue.toFixed(1)} pt
                 </div>
-                <div className="text-[10px] text-[var(--table-muted)] mt-0.5">
+                <div className="text-[11px] text-[var(--table-muted)] mt-0.5">
                   生存率 {(100 - sonarStats.burstProbability).toFixed(0)}% × 次深度期待加算
                 </div>
               </div>
             </div>
 
-            {/* Visual Tracker of the 5 Hazard Types (`安全 / ⚠️リーチ / 排除済み`) */}
+            {/* Visual Tracker of the 5 Hazard Types (`安全 / ️リーチ / 排除済み`) */}
             <div className="tabletop-divider space-y-2 border-t pt-2">
               <div className="text-xs font-bold text-[var(--table-ink)] flex items-center justify-between">
                 <span>5大深海災害トラッカー（初期各3枚）</span>
@@ -1611,7 +1611,7 @@ export default function AbyssalSalvageGame() {
                               : 'bg-[#315d4e]/22 text-[#9dc4af]'
                           }`}
                         >
-                          {isWarned ? '⚠️ リーチ' : '安全'}
+                          {isWarned ? '️ リーチ' : '安全'}
                         </span>
                       </div>
                     </div>

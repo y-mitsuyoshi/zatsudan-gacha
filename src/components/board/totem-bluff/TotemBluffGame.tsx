@@ -1052,7 +1052,7 @@ export default function TotemBluffGame() {
       setTurnIndex(challengerId);
       if (gameMode === 'pass_play') setPassCurtainOpen(false);
       appendLog(
-        `🔥 ${challenger.name} が「${targetBid}枚発掘」の挑戦者に決定！まずは自分の祭壇の山を上からすべてめくります！`,
+        ` ${challenger.name} が「${targetBid}枚発掘」の挑戦者に決定！まずは自分の祭壇の山を上からすべてめくります！`,
         'bid'
       );
     },
@@ -1213,7 +1213,7 @@ export default function TotemBluffGame() {
         return { ...p, stack: nextStack };
       });
 
-      // Case A: Hit a Cursed Mask (`🎭 災厄の仮面`) -> Immediate Round Failure!
+      // Case A: Hit a Cursed Mask (` 災厄の仮面`) -> Immediate Round Failure!
       if (flippedDisc.type === 'mask') {
         audioRef.current?.playMaskExplosion();
 
@@ -1260,8 +1260,8 @@ export default function TotemBluffGame() {
 
         const failMsg =
           targetPlayerId === highestBidderId
-            ? `💥 ${challenger.name} は自分自身の「🎭 災厄の仮面」をめくって自爆！ランダムに石盤1枚を永久ロストしました。`
-            : `💥 ${challenger.name} が ${targetPlayer.name} の「🎭 災厄の仮面」を踏んで発掘失敗！ランダムに石盤1枚を永久ロストしました。`;
+            ? ` ${challenger.name} は自分自身の「 災厄の仮面」をめくって自爆！ランダムに石盤1枚を永久ロストしました。`
+            : ` ${challenger.name} が ${targetPlayer.name} の「 災厄の仮面」を踏んで発掘失敗！ランダムに石盤1枚を永久ロストしました。`;
 
         appendLog(failMsg, 'danger');
 
@@ -1276,7 +1276,7 @@ export default function TotemBluffGame() {
           );
           setPhase('game_over');
           audioRef.current?.playCrownFanfare();
-          appendLog(`👑 ${soleWinner.name} が最後の生存者として完全勝利！`, 'crown');
+          appendLog(` ${soleWinner.name} が最後の生存者として完全勝利！`, 'crown');
           return;
         }
 
@@ -1293,7 +1293,7 @@ export default function TotemBluffGame() {
         return;
       }
 
-      // Case B: Flipped a Sun Gold Disc (`☀️ 太陽の黄金盤`)!
+      // Case B: Flipped a Sun Gold Disc (`️ 太陽の黄金盤`)!
       const nextSafeCount = revealedSafeCount + 1;
       audioRef.current?.playSunReveal(nextSafeCount);
       setRevealedSafeCount(nextSafeCount);
@@ -1314,14 +1314,14 @@ export default function TotemBluffGame() {
           };
         });
 
-        const successMsg = `👑 発掘大成功！ ${challenger.name} が宣言通り ${currentBid}枚の「☀️ 太陽の黄金盤」をすべて発掘し、太陽の王冠（${nextCrowns}/2）を獲得！`;
+        const successMsg = ` 発掘大成功！ ${challenger.name} が宣言通り ${currentBid}枚の「️ 太陽の黄金盤」をすべて発掘し、太陽の王冠（${nextCrowns}/2）を獲得！`;
         appendLog(successMsg, 'crown');
 
         if (nextCrowns >= 2) {
           setPlayers(withCrown);
           setWinnerId(highestBidderId);
           setWinReason(
-            `${challenger.name} が2つ目の「👑 太陽の王冠」を獲得し、見事円卓の覇者となりました！`
+            `${challenger.name} が2つ目の「 太陽の王冠」を獲得し、見事円卓の覇者となりました！`
           );
           setPhase('game_over');
           return;
@@ -1346,13 +1346,13 @@ export default function TotemBluffGame() {
                 ? AI_PERSONAS[p.persona].quotes.revealOwnSafe
                 : AI_PERSONAS[p.persona].quotes.revealTargetSafe
             )
-          : `よし、「☀️ 太陽の黄金盤」！（${nextSafeCount}/${currentBid}枚クリア）`;
+          : `よし、「️ 太陽の黄金盤」！（${nextSafeCount}/${currentBid}枚クリア）`;
         return { ...p, speech: quote };
       });
 
       setPlayers(withSpeech);
       appendLog(
-        `☀️ ${challenger.name} が ${targetPlayer.name} の山から「太陽の黄金盤」を発掘！（${nextSafeCount} / ${currentBid}枚成功）`,
+        `️ ${challenger.name} が ${targetPlayer.name} の山から「太陽の黄金盤」を発掘！（${nextSafeCount} / ${currentBid}枚成功）`,
         'safe'
       );
     },
@@ -1645,7 +1645,7 @@ export default function TotemBluffGame() {
       return {
         overallSafePct: 0,
         advice:
-          '⚠️ あなた自身の祭壇に「🎭 災厄の仮面」が伏せられています！挑戦者になると自分の山をすべてめくるルールのため自爆します（ブラフで競り上げて相手にパスさせるのは有効ですが、自分が最高ビッドで残らないよう注意！）。',
+          '️ あなた自身の祭壇に「 災厄の仮面」が伏せられています！挑戦者になると自分の山をすべてめくるルールのため自爆します（ブラフで競り上げて相手にパスさせるのは有効ですが、自分が最高ビッドで残らないよう注意！）。',
       };
     }
 
@@ -1654,7 +1654,7 @@ export default function TotemBluffGame() {
       return {
         overallSafePct: 100,
         advice:
-          '✅ 自分の祭壇の太陽盤だけで達成できる枚数です！100%安全に発掘成功できます。',
+          ' 自分の祭壇の太陽盤だけで達成できる枚数です！100%安全に発掘成功できます。',
       };
     }
 
@@ -1677,10 +1677,10 @@ export default function TotemBluffGame() {
     const pct = Math.round(combined * 100);
     const advice =
       pct >= 70
-        ? `🟢 推定安全発掘率は ${pct}% と高めです。太陽盤を多く積んでいる相手の上段を狙いましょう！`
+        ? ` 推定安全発掘率は ${pct}% と高めです。太陽盤を多く積んでいる相手の上段を狙いましょう！`
         : pct >= 40
-          ? `🟡 推定安全発掘率は ${pct}% の五分五分勝負です。罠師ゾルタンや1枚しか伏せていない相手の山には要注意！`
-          : `🔴 推定安全発掘率は ${pct}% と危険域です！相手がパスしそうになければ「パスして自爆を誘う」のも賢明な戦略です。`;
+          ? ` 推定安全発掘率は ${pct}% の五分五分勝負です。罠師ゾルタンや1枚しか伏せていない相手の山には要注意！`
+          : ` 推定安全発掘率は ${pct}% と危険域です！相手がパスしそうになければ「パスして自爆を誘う」のも賢明な戦略です。`;
 
     return { overallSafePct: pct, advice };
   }, [
@@ -1779,7 +1779,7 @@ export default function TotemBluffGame() {
                 bgmOn ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🎵 BGM {bgmOn ? 'ON' : 'OFF'}
+               BGM {bgmOn ? 'ON' : 'OFF'}
             </button>
 
             {/* SFX Toggle */}
@@ -1790,7 +1790,7 @@ export default function TotemBluffGame() {
                 sfxOn ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🔊 効果音 {sfxOn ? 'ON' : 'OFF'}
+               効果音 {sfxOn ? 'ON' : 'OFF'}
             </button>
 
             {/* Rules Modal Button */}
@@ -1799,14 +1799,14 @@ export default function TotemBluffGame() {
               onClick={() => setShowRulesModal(true)}
               className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs"
             >
-              📖 ルール・役一覧
+               ルール・役一覧
             </button>
 
             {/* Reset Button */}
             <button
               type="button"
               onClick={() => startNewGame(gameMode, passPlayCount)}
-              className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#e3b6ad]"
+              className="tabletop-button-primary inline-flex min-h-11 items-center px-3 text-xs font-bold"
             >
               ↻ 最初から
             </button>
@@ -1836,13 +1836,13 @@ export default function TotemBluffGame() {
                     {phase === 'revealing' &&
                       `④ 発掘めくり：挑戦者 ${challengerPlayer?.name ?? ''}（${revealedSafeCount} / ${currentBid}枚成功）`}
                     {phase === 'round_summary' && 'ラウンド決着。結果を確認して次へ進みます'}
-                    {phase === 'game_over' && '🏆 決着！仮面の円卓の覇者が決定しました'}
+                    {phase === 'game_over' && ' 決着！仮面の円卓の覇者が決定しました'}
                   </h2>
                   <p className="mt-1 text-[13px] leading-relaxed text-[#b9a88f]">
                     {phase === 'initial_placement' &&
-                      '手元の4枚（☀️太陽の黄金盤3枚・🎭災厄の仮面1枚）から最初の1枚を選んで祭壇に伏せてください。'}
+                      '手元の4枚（️太陽の黄金盤3枚・災厄の仮面1枚）から最初の1枚を選んで祭壇に伏せてください。'}
                     {phase === 'placing_or_bidding' &&
-                      '「さらに1枚石盤を伏せて重ねる」か、「場の石盤から何枚連続で☀️太陽盤をめくれるか宣言（ビッド）」します。'}
+                      '「さらに1枚石盤を伏せて重ねる」か、「場の石盤から何枚連続で️太陽盤をめくれるか宣言（ビッド）」します。'}
                     {phase === 'bidding_auction' &&
                       '前の宣言より多い枚数を「競り上げる（レイズ）」か、「パスして降りる」かを選択します。'}
                     {phase === 'revealing' &&
@@ -1853,14 +1853,14 @@ export default function TotemBluffGame() {
 
               <div className="tabletop-panel-soft flex items-center gap-4 px-3.5 py-2 text-xs">
                 <div>
-                  <span className="block text-[10px] text-[#9c8d78]">場の総石盤数</span>
+                  <span className="block text-[11px] text-[#9c8d78]">場の総石盤数</span>
                   <span className="text-base font-bold text-[#dfb06d]">
                     {totalDiscsOnTable} 枚
                   </span>
                 </div>
                 <div className="h-6 w-px bg-[#4d3d2d]" />
                 <div>
-                  <span className="block text-[10px] text-[#9c8d78]">現在の宣言枚数</span>
+                  <span className="block text-[11px] text-[#9c8d78]">現在の宣言枚数</span>
                   <span className="text-base font-bold text-[#e0a9a2]">
                     {currentBid > 0 ? `${currentBid} 枚` : '未宣言'}
                   </span>
@@ -1926,22 +1926,22 @@ export default function TotemBluffGame() {
                                 {p.name}
                               </span>
                               {isCurrentTurn && (
-                                <span className="inline-flex min-h-6 items-center rounded-sm bg-[#c99555] px-2 text-[10px] font-bold text-[#1b120b]">
+                                <span className="inline-flex min-h-6 items-center rounded-sm bg-[#c99555] px-2 text-[11px] font-bold text-[#1b120b]">
                                   手番
                                 </span>
                               )}
                               {isChallenger && (
-                                <span className="inline-flex min-h-6 items-center rounded-sm bg-[#6b3a36] px-2 text-[10px] font-bold text-[#f4ead8]">
-                                  🔥 挑戦者 ({currentBid}枚)
+                                <span className="inline-flex min-h-6 items-center rounded-sm bg-[#6b3a36] px-2 text-[11px] font-bold text-[#f4ead8]">
+                                   挑戦者 ({currentBid}枚)
                                 </span>
                               )}
                               {p.passed && (
-                                <span className="tabletop-chip inline-flex min-h-6 items-center px-2 text-[10px] font-bold">
+                                <span className="tabletop-chip inline-flex min-h-6 items-center px-2 text-[11px] font-bold">
                                   PASS
                                 </span>
                               )}
                               {p.eliminated && (
-                                <span className="inline-flex min-h-6 items-center rounded-sm border border-[#6b3a36] bg-[#241615] px-2 text-[10px] font-bold text-[#e0a9a2]">
+                                <span className="inline-flex min-h-6 items-center rounded-sm border border-[#6b3a36] bg-[#241615] px-2 text-[11px] font-bold text-[#e0a9a2]">
                                   脱落
                                 </span>
                               )}
@@ -1959,7 +1959,7 @@ export default function TotemBluffGame() {
                           }`}
                           title="太陽の王冠（2個先取で勝利）"
                         >
-                          <span>👑</span>
+                          <span></span>
                           <span>{p.crowns} / 2</span>
                         </div>
                       </div>
@@ -1974,7 +1974,7 @@ export default function TotemBluffGame() {
                     <div className="my-3 flex flex-col items-center justify-center rounded-md border border-[#4d3d2d] bg-[#171310] p-3">
                       <div className="mb-2 flex w-full flex-wrap items-center justify-between gap-1 text-[11px] text-[#b9a88f]">
                         <span>
-                          🪨 祭壇の山：<strong className="text-[#e8dcc8]">{p.stack.length}枚</strong>
+                           祭壇の山：<strong className="text-[#e8dcc8]">{p.stack.length}枚</strong>
                           {unrevealedInStack > 0 && `（未公開 ${unrevealedInStack}枚）`}
                         </span>
                         <span className="text-[#c99555]">
@@ -2012,12 +2012,12 @@ export default function TotemBluffGame() {
                                 ) : (
                                   <StoneBackDiscSvg size={54} />
                                 )}
-                                <span className="mt-1 rounded-sm bg-[#241c15] px-1.5 py-0.5 text-[10px] font-bold text-[#c9b79d]">
+                                <span className="mt-1 rounded-sm bg-[#241c15] px-1.5 py-0.5 text-[11px] font-bold text-[#c9b79d]">
                                   {idx + 1}段目
                                   {disc.revealed
                                     ? disc.type === 'sun'
-                                      ? ' ☀️太陽'
-                                      : ' 🎭仮面!'
+                                      ? ' ️太陽'
+                                      : ' 仮面!'
                                     : isTopUnrevealed
                                       ? ' (最上段)'
                                       : ''}
@@ -2036,8 +2036,8 @@ export default function TotemBluffGame() {
                           className="tabletop-button-primary mt-2.5 min-h-11 w-full px-4 text-xs font-bold"
                         >
                           {p.id === highestBidderId
-                            ? `✨ 自分の祭壇の最上段をめくる（残り${unrevealedInStack}枚）`
-                            : `🔍 ${p.name} の祭壇の最上段をめくる（推定安全率 ${safeProbPct}%）`}
+                            ? ` 自分の祭壇の最上段をめくる（残り${unrevealedInStack}枚）`
+                            : ` ${p.name} の祭壇の最上段をめくる（推定安全率 ${safeProbPct}%）`}
                         </button>
                       )}
                     </div>
@@ -2049,7 +2049,7 @@ export default function TotemBluffGame() {
                       </span>
                       {!p.eliminated && p.stack.length > 0 && (
                         <span>
-                          最上段の☀️安全率：{' '}
+                          最上段の️安全率：{' '}
                           <strong
                             className={
                               safeProbPct >= 75
@@ -2091,7 +2091,7 @@ export default function TotemBluffGame() {
                 onClick={() => setPassCurtainOpen(false)}
                 className="tabletop-button-primary mt-4 inline-flex min-h-11 items-center px-5 text-sm font-bold"
               >
-                👁️ {controlledPlayer.name} の手札を表示して操作する
+                ️ {controlledPlayer.name} の手札を表示して操作する
               </button>
             </div>
           ) : (
@@ -2108,8 +2108,8 @@ export default function TotemBluffGame() {
                 >
                   <h3 className="text-base font-bold">
                     {roundOutcome.type === 'success'
-                      ? '👑 発掘チャレンジ大成功！太陽の王冠を獲得'
-                      : '💥 災厄の仮面が出現。発掘チャレンジ失敗…'}
+                      ? ' 発掘チャレンジ大成功！太陽の王冠を獲得'
+                      : ' 災厄の仮面が出現。発掘チャレンジ失敗…'}
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed">
                     {roundOutcome.summaryText}
@@ -2127,7 +2127,7 @@ export default function TotemBluffGame() {
               {/* Game Over Banner */}
               {phase === 'game_over' && winnerId !== null && (
                 <div className="rounded-md border border-[#6b543d] bg-[#3a2a1c] p-4 text-center sm:p-5">
-                  <div className="text-3xl">👑🏆👑</div>
+                  <div className="text-3xl"></div>
                   <h3 className="tabletop-title mt-1 text-xl text-[#dfb06d]">
                     {players[winnerId]?.name} の勝利！
                   </h3>
@@ -2146,7 +2146,7 @@ export default function TotemBluffGame() {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-3">
                 <div>
                   <span className="text-xs font-bold text-[#dfb06d]">
-                    🎴 {controlledPlayer.name} の手札（残り {controlledPlayer.hand.length}枚）
+                     {controlledPlayer.name} の手札（残り {controlledPlayer.hand.length}枚）
                   </span>
                   <p className="mt-0.5 text-[11px] text-[#b9a88f]">
                     祭壇に伏せた石盤：
@@ -2155,7 +2155,7 @@ export default function TotemBluffGame() {
                       : controlledPlayer.stack
                           .map(
                             (d, i) =>
-                              ` [${i + 1}段目: ${d.type === 'sun' ? '☀️太陽盤' : '🎭災厄の仮面'}]`
+                              ` [${i + 1}段目: ${d.type === 'sun' ? '️太陽盤' : '災厄の仮面'}]`
                           )
                           .join('')}
                   </p>
@@ -2164,7 +2164,7 @@ export default function TotemBluffGame() {
                   phase !== 'round_summary' &&
                   phase !== 'game_over' && (
                     <span className="rounded-md border border-[#4d3d2d] bg-[#2a211a] px-3 py-1 text-[11px] font-bold text-[#b9a88f]">
-                      ⏳ AIプレイヤーが思考中…
+                       AIプレイヤーが思考中…
                     </span>
                   )}
               </div>
@@ -2201,13 +2201,13 @@ export default function TotemBluffGame() {
                           isSun ? 'text-[#dfb06d]' : 'text-[#e0a9a2]'
                         }`}
                       >
-                        {isSun ? '☀️ 太陽の黄金盤' : '🎭 災厄の仮面'}
+                        {isSun ? '️ 太陽の黄金盤' : ' 災厄の仮面'}
                       </span>
-                      <span className="mt-0.5 text-[10px] text-[#9c8d78]">
+                      <span className="mt-0.5 text-[11px] text-[#9c8d78]">
                         {isSun ? 'セーフ（発掘成功）' : 'アウト（踏むと爆発）'}
                       </span>
                       {canPlace && (
-                        <span className="mt-2 rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-2.5 py-1 text-[10px] font-bold text-[#dfb06d] group-hover:bg-[#c99555] group-hover:text-[#1b120b]">
+                        <span className="mt-2 rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-2.5 py-1 text-[11px] font-bold text-[#dfb06d] group-hover:bg-[#c99555] group-hover:text-[#1b120b]">
                           {phase === 'initial_placement'
                             ? 'この1枚を伏せる'
                             : '祭壇に重ねて伏せる'}
@@ -2229,14 +2229,14 @@ export default function TotemBluffGame() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h4 className="text-xs font-bold text-[#dfb06d]">
-                        📣{' '}
+                        {' '}
                         {phase === 'placing_or_bidding'
                           ? '発掘チャレンジを宣言（競りを開始）'
                           : `発掘枚数の競り上げ（現在最高 ${currentBid}枚 / 場 ${totalDiscsOnTable}枚）`}
                       </h4>
                       <p className="mt-0.5 text-[11px] leading-relaxed text-[#b9a88f]">
                         {phase === 'placing_or_bidding'
-                          ? '石盤を重ねる代わりに、場の石盤のうち何枚連続で「☀️ 太陽の黄金盤」をめくれるか宣言できます。'
+                          ? '石盤を重ねる代わりに、場の石盤のうち何枚連続で「️ 太陽の黄金盤」をめくれるか宣言できます。'
                           : '現在の宣言枚数より高い枚数を宣言するか、パスして競りから降ります。'}
                       </p>
                     </div>
@@ -2291,7 +2291,7 @@ export default function TotemBluffGame() {
                         }
                         className="tabletop-button-primary inline-flex min-h-11 items-center px-4 text-xs font-bold disabled:opacity-40"
                       >
-                        🔥 {selectedBidInput}枚で
+                         {selectedBidInput}枚で
                         {phase === 'placing_or_bidding' ? '発掘宣言' : '競り上げる'}
                       </button>
 
@@ -2303,7 +2303,7 @@ export default function TotemBluffGame() {
                           onClick={() => handlePassBid(controlledPlayer.id)}
                           className="tabletop-button inline-flex min-h-11 items-center px-4 text-xs font-bold disabled:opacity-40"
                         >
-                          🛡️ パスして降りる
+                          ️ パスして降りる
                         </button>
                       )}
                     </div>
@@ -2320,7 +2320,7 @@ export default function TotemBluffGame() {
           <div className="tabletop-panel p-3.5 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-2.5">
               <h3 className="tabletop-title text-sm">
-                📊 安全発掘確率＆手札残数
+                 安全発掘確率＆手札残数
               </h3>
               <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-bold">
                 確率アナライザー
@@ -2378,7 +2378,7 @@ export default function TotemBluffGame() {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-1">
                       <span className="font-bold text-[#e8dcc8]">
-                        {p.name} {p.crowns > 0 ? '👑' : ''}
+                        {p.name} {p.crowns > 0 ? '' : ''}
                       </span>
                       <span className="text-[11px] text-[#b9a88f]">
                         所持 <strong className="text-[#dfb06d]">{totalOwned}枚</strong>（手札
@@ -2386,7 +2386,7 @@ export default function TotemBluffGame() {
                       </span>
                     </div>
                     <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                      <span className="text-[#9c8d78]">山の一番上が☀️太陽盤の確率</span>
+                      <span className="text-[#9c8d78]">山の一番上が️太陽盤の確率</span>
                       <span
                         className={`font-bold ${
                           topSafePct >= 75
@@ -2408,16 +2408,16 @@ export default function TotemBluffGame() {
           {/* Round-Table AI Personalities Guide */}
           <div className="tabletop-panel p-3.5 sm:p-4">
             <h3 className="tabletop-title text-sm">
-              🗿 円卓のAIパーソナリティ
+               円卓のAIパーソナリティ
             </h3>
             <div className="mt-2.5 space-y-2 text-[11px] text-[#c9b79d]">
               <div className="tabletop-panel-soft border-l-2 border-l-[#5b4668] p-2">
                 <strong className="text-[#c4a3d4]">罠師ゾルタン：</strong>
-                初手から「🎭災厄の仮面」を伏せ、あえて2〜3枚の宣言で誘い込むブラフの名手。
+                初手から「災厄の仮面」を伏せ、あえて2〜3枚の宣言で誘い込むブラフの名手。
               </div>
               <div className="tabletop-panel-soft border-l-2 border-l-[#6b543d] p-2">
                 <strong className="text-[#dfb06d]">強気の発掘家エレナ：</strong>
-                自分の祭壇に「☀️太陽の黄金盤」を2枚以上重ねてから高ビッドを狙う本格派。
+                自分の祭壇に「️太陽の黄金盤」を2枚以上重ねてから高ビッドを狙う本格派。
               </div>
               <div className="tabletop-panel-soft border-l-2 border-l-[#3f5f78] p-2">
                 <strong className="text-[#a9c8da]">慎重派の学者セオドア：</strong>
@@ -2428,7 +2428,7 @@ export default function TotemBluffGame() {
 
           {/* Action Log */}
           <div className="tabletop-panel p-3.5 sm:p-4">
-            <h3 className="tabletop-title text-sm">📜 円卓の発掘記録</h3>
+            <h3 className="tabletop-title text-sm"> 円卓の発掘記録</h3>
             <div className="mt-2.5 max-h-60 space-y-1.5 overflow-y-auto pr-1 text-xs">
               {logs.map((entry) => (
                 <div
@@ -2462,7 +2462,7 @@ export default function TotemBluffGame() {
               <div>
                 <span className="tabletop-kicker !text-[11px]">Rulebook</span>
                 <h3 className="tabletop-title text-lg">
-                  📖 『仮面の円卓（Totem Bluff）』ルールガイド
+                   『仮面の円卓（Totem Bluff）』ルールガイド
                 </h3>
               </div>
               <button
@@ -2480,9 +2480,9 @@ export default function TotemBluffGame() {
                   1. 勝利条件（太陽の王冠 2ポイント先取 または 最後の生存者）
                 </h4>
                 <p className="mt-1">
-                  各プレイヤーは初期手札として<strong>「☀️ 太陽の黄金盤（セーフ）×3枚」</strong>と
-                  <strong>「🎭 災厄の仮面（アウト）×1枚」</strong>の計4枚の古代石盤を持ちます。
-                  発掘チャレンジに2回成功して<strong>「👑 太陽の王冠」を2つ先取</strong>するか、他の全員がすべての石盤を失い<strong>最後の1人として生き残れば勝利</strong>です。
+                  各プレイヤーは初期手札として<strong>「️ 太陽の黄金盤（セーフ）×3枚」</strong>と
+                  <strong>「 災厄の仮面（アウト）×1枚」</strong>の計4枚の古代石盤を持ちます。
+                  発掘チャレンジに2回成功して<strong>「 太陽の王冠」を2つ先取</strong>するか、他の全員がすべての石盤を失い<strong>最後の1人として生き残れば勝利</strong>です。
                 </p>
               </div>
 
@@ -2491,7 +2491,7 @@ export default function TotemBluffGame() {
                   2. フェーズ①：伏せ配置 または 発掘枚数ビッド（挑戦宣言）
                 </h4>
                 <p className="mt-1">
-                  ラウンド開始時、全員が自分の祭壇マットに1枚ずつ石盤を裏向きで伏せます。その後、手番のプレイヤーは<strong>「① 手札からもう1枚石盤を自分の山の上に伏せて重ねる」</strong>か、<strong>「② 場にある石盤のうち何枚連続で☀️太陽の黄金盤をめくれるか発掘枚数を宣言する」</strong>かのどちらかを選びます。
+                  ラウンド開始時、全員が自分の祭壇マットに1枚ずつ石盤を裏向きで伏せます。その後、手番のプレイヤーは<strong>「① 手札からもう1枚石盤を自分の山の上に伏せて重ねる」</strong>か、<strong>「② 場にある石盤のうち何枚連続で️太陽の黄金盤をめくれるか発掘枚数を宣言する」</strong>かのどちらかを選びます。
                 </p>
               </div>
 
@@ -2513,10 +2513,10 @@ export default function TotemBluffGame() {
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   <li>
-                    <strong>👑 発掘成功：</strong>1枚も「🎭 災厄の仮面」を出さずに宣言枚数の「☀️ 太陽の黄金盤」をめくり切ったら成功！太陽の王冠を+1獲得します。
+                    <strong> 発掘成功：</strong>1枚も「 災厄の仮面」を出さずに宣言枚数の「️ 太陽の黄金盤」をめくり切ったら成功！太陽の王冠を+1獲得します。
                   </li>
                   <li>
-                    <strong>💥 発掘失敗（自爆・罠発動）：</strong>1枚でも「🎭 災厄の仮面」が出た瞬間ラウンド終了！挑戦者はペナルティとして<strong>自分の所持石盤からランダムに1枚をゲームから永久に失います</strong>。
+                    <strong> 発掘失敗（自爆・罠発動）：</strong>1枚でも「 災厄の仮面」が出た瞬間ラウンド終了！挑戦者はペナルティとして<strong>自分の所持石盤からランダムに1枚をゲームから永久に失います</strong>。
                   </li>
                 </ul>
               </div>

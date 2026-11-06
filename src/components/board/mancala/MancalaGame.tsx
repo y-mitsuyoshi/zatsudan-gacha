@@ -405,11 +405,11 @@ export default function MancalaGame() {
           playGemSound(720, 0.25);
           if (outcome.winner === 1) {
             setBanner(
-              `🎉 先手（下段・あなた）の勝利！（ストア ${outcome.finalPits[6]} 対 ${outcome.finalPits[13]}）`
+              ` 先手（下段・あなた）の勝利！（ストア ${outcome.finalPits[6]} 対 ${outcome.finalPits[13]}）`
             );
           } else if (outcome.winner === 2) {
             setBanner(
-              `🏆 後手（${mode === 'cpu' ? 'CPU' : 'P2'}）の勝利！（ストア ${outcome.finalPits[13]} 対 ${outcome.finalPits[6]}）`
+              ` 後手（${mode === 'cpu' ? 'CPU' : 'P2'}）の勝利！（ストア ${outcome.finalPits[13]} 対 ${outcome.finalPits[6]}）`
             );
           } else {
             setBanner(`引き分け！（${outcome.finalPits[6]} 対 ${outcome.finalPits[13]}）`);
@@ -421,7 +421,7 @@ export default function MancalaGame() {
           playGemSound(620, 0.14);
           setTurn(turn);
           setBanner(
-            `✨ ぴったりゴールストアに入ったため連続手番！（${
+            ` ぴったりゴールストアに入ったため連続手番！（${
               turn === 1 ? '先手・下段' : mode === 'cpu' ? 'CPU・上段' : '後手・上段'
             }がもう1手！）`
           );
@@ -429,7 +429,7 @@ export default function MancalaGame() {
           setTurn(outcome.nextTurn);
           if (outcome.capturedCount > 0) {
             setBanner(
-              `🎯 横取りキャプチャー（+${outcome.capturedCount}個）成功！次は${
+              ` 横取りキャプチャー（+${outcome.capturedCount}個）成功！次は${
                 outcome.nextTurn === 1 ? '先手（下段）' : mode === 'cpu' ? 'CPU（上段）' : '後手（上段）'
               }の手番です`
             );
@@ -675,7 +675,7 @@ export default function MancalaGame() {
           <div className="tabletop-board-frame p-1.5 sm:p-3">
             <div className="rounded-lg border border-[#6b4423] bg-gradient-to-b from-[#432611] via-[#341c0b] to-[#261407] p-2.5 shadow-inner sm:p-4">
               <div className="mb-2 flex flex-col items-center justify-between gap-1 text-[11px] font-medium text-[#d8b98a] sm:mb-3 sm:flex-row">
-                <span>⬅ 上段（後手・{mode === 'cpu' ? 'CPU' : 'P2'}）は右から左へ</span>
+                <span> 上段（後手・{mode === 'cpu' ? 'CPU' : 'P2'}）は右から左へ</span>
                 <span>反時計回り（CCW）</span>
               </div>
 
@@ -828,7 +828,7 @@ export default function MancalaGame() {
                     ? 'カラハ（ストアの石が多い方が勝利）'
                     : 'ベーシック（先に自陣を空にした方が勝利）'}
                 </span>
-                <span>下段（先手・あなた）は左から右へ ➡</span>
+                <span>下段（先手・あなた）は左から右へ </span>
               </div>
             </div>
           </div>

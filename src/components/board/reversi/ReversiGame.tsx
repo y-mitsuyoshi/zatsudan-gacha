@@ -1069,7 +1069,7 @@ export default function ReversiGame() {
                       type="button"
                       onClick={() => applyCameraPreset(presetKey)}
                       aria-pressed={cameraPreset === presetKey}
-                      className={`inline-flex min-h-10 items-center rounded-md border px-2.5 text-[11px] font-semibold transition ${
+                      className={`inline-flex min-h-11 items-center rounded-md border px-2.5 text-[11px] font-semibold transition ${
                         cameraPreset === presetKey
                           ? 'border-[#c99555] bg-[#3a2a1c] text-[#dfb06d]'
                           : 'border-[#4d3d2d] bg-[#17120f]/95 text-[#b9a88f] hover:border-[#6b543d] hover:text-[#f4ead8]'

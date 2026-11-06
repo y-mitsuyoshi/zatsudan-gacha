@@ -28,8 +28,8 @@ export function PartyGameShell({ seo, children }: { seo: PartyGameSeo; children:
       headline: seo.h1,
       description: seo.description,
       url,
-      image: `${APP_URL}/ogp.png`,
-      screenshot: `${APP_URL}/ogp.png`,
+      image: `${APP_URL}/og${seo.slug}.png`,
+      screenshot: `${APP_URL}/og${seo.slug}.png`,
       genre: [seo.category, 'パーティーゲーム'],
       playMode: 'MultiPlayer',
       gamePlatform: ['Web browser', 'Desktop Web browser', 'Mobile Web browser'],
@@ -48,8 +48,8 @@ export function PartyGameShell({ seo, children }: { seo: PartyGameSeo; children:
       headline: seo.h1,
       description: seo.description,
       url,
-      image: `${APP_URL}/ogp.png`,
-      screenshot: `${APP_URL}/ogp.png`,
+      image: `${APP_URL}/og${seo.slug}.png`,
+      screenshot: `${APP_URL}/og${seo.slug}.png`,
       applicationCategory: 'GameApplication',
       operatingSystem: 'Any',
       browserRequirements: 'JavaScript',
@@ -82,15 +82,6 @@ export function PartyGameShell({ seo, children }: { seo: PartyGameSeo; children:
         name: faq.q,
         acceptedAnswer: { '@type': 'Answer', text: faq.a },
       })),
-    },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '雑談テーマガチャ', item: `${APP_URL}/` },
-        { '@type': 'ListItem', position: 2, name: '無料ゲーム一覧', item: `${APP_URL}/games` },
-        { '@type': 'ListItem', position: 3, name: seo.name, item: url },
-      ],
     },
   ];
 

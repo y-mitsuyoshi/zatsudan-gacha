@@ -1230,7 +1230,7 @@ function NauticalTileSvg({
             fontWeight="900"
             fill="#fde047"
           >
-            ⚓
+
           </text>
         </g>
       );
@@ -1833,14 +1833,14 @@ export default function ArchipelagoCartographerGame() {
                 bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
-              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+              {bgmOn ? ' BGM ON' : ' BGM OFF'}
             </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
               className="tabletop-button min-h-11 px-3 text-xs"
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              {soundOn ? ' 効果音 ON' : ' 効果音 OFF'}
             </button>
             <ThemeToggleButton />
           </div>
@@ -1944,7 +1944,7 @@ export default function ArchipelagoCartographerGame() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black text-[#9dc4af]">
-                    📍 測量ブイ（開拓コマ）配置フェーズ — {formatCoord(pendingCoord[0], pendingCoord[1])}
+                     測量ブイ（開拓コマ）配置フェーズ — {formatCoord(pendingCoord[0], pendingCoord[1])}
                   </p>
                   <p className="text-[11px] text-[var(--table-ink)]">
                     配置したタイル上の未占有エリアにブイを1個置くか、置かずにブイを温存できます。
@@ -1989,7 +1989,7 @@ export default function ArchipelagoCartographerGame() {
           {/* 9x9 Ocean Map Grid */}
           <div className="tabletop-board-frame relative overflow-hidden p-2 sm:p-3.5">
             {/* Column Headers (A - I) */}
-            <div className="mb-1 grid grid-cols-[22px_repeat(9,minmax(0,1fr))] gap-1 text-center text-[10px] font-bold text-[var(--table-muted)]">
+            <div className="mb-1 grid grid-cols-[22px_repeat(9,minmax(0,1fr))] gap-1 text-center text-[11px] font-bold text-[var(--table-muted)]">
               <span />
               {COL_LABELS.map((col) => (
                 <span key={col}>{col}</span>
@@ -1998,7 +1998,7 @@ export default function ArchipelagoCartographerGame() {
 
             <div className="grid grid-cols-[22px_minmax(0,1fr)] gap-1">
               {/* Row Headers (1 - 9) */}
-              <div className="grid grid-rows-9 gap-1 text-center text-[10px] font-bold text-[var(--table-muted)]">
+              <div className="grid grid-rows-9 gap-1 text-center text-[11px] font-bold text-[var(--table-muted)]">
                 {ROW_LABELS.map((row) => (
                   <span key={row} className="flex items-center justify-center">
                     {row}
@@ -2076,7 +2076,7 @@ export default function ArchipelagoCartographerGame() {
                         ) : isValid ? (
                           <div className="flex h-full w-full flex-col items-center justify-center">
                             <span className="h-2 w-2 rounded-full bg-[#4f806b]" />
-                            <span className="mt-0.5 text-[9px] font-bold text-[#9dc4af]/80">
+                            <span className="mt-0.5 text-[11px] font-bold text-[#9dc4af]/80">
                               {formatCoord(r, c)}
                             </span>
                           </div>
@@ -2084,7 +2084,7 @@ export default function ArchipelagoCartographerGame() {
 
                         {/* Coordinate Watermark on Placed Tiles */}
                         {cell && (
-                          <span className="pointer-events-none absolute bottom-0.5 right-1 text-[8px] font-bold text-[#f4ead8]/55 drop-shadow">
+                          <span className="pointer-events-none absolute bottom-0.5 right-1 text-[11px] font-bold text-[#f4ead8]/55 drop-shadow">
                             {formatCoord(r, c)}
                           </span>
                         )}
@@ -2103,7 +2103,7 @@ export default function ArchipelagoCartographerGame() {
                     key={p.id}
                     className="rounded-full border border-[var(--table-accent)] bg-[var(--table-bg-deep)] px-4 py-1.5 text-xs font-black text-[var(--table-accent-strong)] "
                   >
-                    🎉 {formatCoord(p.r, p.c)}: {p.text}
+                     {formatCoord(p.r, p.c)}: {p.text}
                   </div>
                 ))}
               </div>
@@ -2117,7 +2117,7 @@ export default function ArchipelagoCartographerGame() {
           <div className="tabletop-panel p-3.5">
             <div className="flex items-center justify-between">
               <h3 className="tabletop-title text-sm">
-                🧭 現在の海域タイル（山札残り {deck.length} 枚）
+                 現在の海域タイル（山札残り {deck.length} 枚）
               </h3>
               <span className="rounded-md bg-[#3f5f78]/18 px-2 py-0.5 font-mono text-[11px] font-bold text-[#9db8c8]">
                 回転角: {rotation}°
@@ -2144,7 +2144,7 @@ export default function ArchipelagoCartographerGame() {
                     <span>西: {terrainLabel(currentRotatedEdges[3])}</span>
                   </div>
                   {currentTemplate.center !== 'none' && (
-                    <span className="inline-block w-fit rounded bg-[#c99555]/16 px-2 py-0.5 text-[10px] font-bold text-[var(--table-accent-strong)]">
+                    <span className="inline-block w-fit rounded bg-[#c99555]/16 px-2 py-0.5 text-[11px] font-bold text-[var(--table-accent-strong)]">
                       中央特性:{' '}
                       {currentTemplate.center === 'lighthouse'
                         ? '古代灯台（周囲8マス完成で最大11点）'
@@ -2172,7 +2172,7 @@ export default function ArchipelagoCartographerGame() {
                       onClick={handleRequestHint}
                       className="tabletop-button min-h-11 px-3 text-xs text-[var(--table-accent-strong)] disabled:opacity-40"
                     >
-                      💡 AIヒント
+                       AIヒント
                     </button>
                   </div>
                 </div>
@@ -2188,7 +2188,7 @@ export default function ArchipelagoCartographerGame() {
 
             {hint && phase === 'place_tile' && (
               <div className="tabletop-panel-soft mt-2.5 border-[var(--table-accent)] p-2.5 text-xs text-[var(--table-accent-strong)]">
-                <p className="font-black text-[var(--table-accent-strong)]">💡 航海士AIの推奨手:</p>
+                <p className="font-black text-[var(--table-accent-strong)]"> 航海士AIの推奨手:</p>
                 <p className="mt-0.5">{hint.reason}</p>
               </div>
             )}
@@ -2196,7 +2196,7 @@ export default function ArchipelagoCartographerGame() {
 
           {/* Mode & Difficulty Settings */}
           <div className="tabletop-panel p-3.5">
-            <h3 className="tabletop-title text-sm">⚙️ 対戦モード・設定</h3>
+            <h3 className="tabletop-title text-sm">️ 対戦モード・設定</h3>
 
             <div className="mt-2.5 grid grid-cols-2 gap-1.5">
               <button
@@ -2208,7 +2208,7 @@ export default function ArchipelagoCartographerGame() {
                     : 'tabletop-button border-transparent bg-transparent'
                 }`}
               >
-                🤖 CPU対戦
+                 CPU対戦
               </button>
               <button
                 type="button"
@@ -2219,7 +2219,7 @@ export default function ArchipelagoCartographerGame() {
                     : 'tabletop-button border-transparent bg-transparent'
                 }`}
               >
-                👥 1台で2人対戦
+                 1台で2人対戦
               </button>
             </div>
 
@@ -2280,14 +2280,14 @@ export default function ArchipelagoCartographerGame() {
               onClick={() => startNewGame(mode, difficulty, humanSide)}
               className="tabletop-button-primary mt-2.5 min-h-11 w-full text-xs"
             >
-              🔄 新しい海図で最初から対局
+               新しい海図で最初から対局
             </button>
           </div>
 
           {/* Scoring Reference Card */}
           <div className="tabletop-panel p-3.5 text-xs">
             <h3 className="tabletop-title text-sm">
-              📐 得点と測量ブイ回収ルール
+               得点と測量ブイ回収ルール
             </h3>
             <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-[var(--table-muted)]">
               <li>
@@ -2303,9 +2303,9 @@ export default function ArchipelagoCartographerGame() {
               </li>
               <li>
                 <strong className="text-[var(--table-accent-strong)]">3. 完成ボーナス:</strong>
-                <div className="mt-0.5 grid grid-cols-1 gap-0.5 pl-2 text-[10.5px]">
+                <div className="mt-0.5 grid grid-cols-1 gap-0.5 pl-2 text-[11px]">
                   <span>・珊瑚航路（両端閉鎖・環状）: 1タイル2点（未完1点）</span>
-                  <span>・群島陸地（全周閉鎖）: 1タイル3点＋交易港⚓2点（未完1点）</span>
+                  <span>・群島陸地（全周閉鎖）: 1タイル3点＋交易港2点（未完1点）</span>
                   <span>・古代灯台（周囲3×3マス完成）: 最大11点（未完は周囲枚数×1点）</span>
                 </div>
               </li>
@@ -2314,7 +2314,7 @@ export default function ArchipelagoCartographerGame() {
 
           {/* Move Log */}
           <div className="tabletop-panel p-3.5">
-            <h3 className="tabletop-title text-sm">📜 航海測量ログ</h3>
+            <h3 className="tabletop-title text-sm"> 航海測量ログ</h3>
             <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1 text-[11px]">
               {moveLogs.length === 0 ? (
                 <p className="text-[var(--table-muted)]">
@@ -2334,9 +2334,9 @@ export default function ArchipelagoCartographerGame() {
                       >
                         #{log.turn} {log.player === 1 ? '琥珀船団(P1)' : '珊瑚船団(P2)'} → {log.coord}
                       </span>
-                      <span className="text-[10px] text-[var(--table-muted)]">{log.tileName}</span>
+                      <span className="text-[11px] text-[var(--table-muted)]">{log.tileName}</span>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-[var(--table-muted)]">
+                    <div className="mt-0.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[var(--table-muted)]">
                       <span>{log.beaconText}</span>
                       {log.scoredText && (
                         <span className="font-bold text-[#9dc4af]">★ {log.scoredText}</span>

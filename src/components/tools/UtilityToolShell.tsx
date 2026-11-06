@@ -28,8 +28,8 @@ export function UtilityToolShell({ seo, children }: { seo: UtilityToolSeo; child
       headline: seo.h1,
       description: seo.description,
       url,
-      image: `${APP_URL}/ogp.png`,
-      screenshot: `${APP_URL}/ogp.png`,
+      image: `${APP_URL}/og${seo.slug}.png`,
+      screenshot: `${APP_URL}/og${seo.slug}.png`,
       applicationCategory: 'UtilitiesApplication',
       operatingSystem: 'Any',
       browserRequirements: 'JavaScript',
@@ -63,15 +63,6 @@ export function UtilityToolShell({ seo, children }: { seo: UtilityToolSeo; child
         name: faq.q,
         acceptedAnswer: { '@type': 'Answer', text: faq.a },
       })),
-    },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '雑談テーマガチャ', item: `${APP_URL}/` },
-        { '@type': 'ListItem', position: 2, name: '無料ツール一覧', item: `${APP_URL}/tools` },
-        { '@type': 'ListItem', position: 3, name: seo.name, item: url },
-      ],
     },
   ];
 

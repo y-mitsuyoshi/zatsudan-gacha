@@ -1150,7 +1150,7 @@ export default function QubicFourGame() {
               <span className="text-[11px] font-medium text-[#b9a88f]">タップでも投下可能</span>
             </div>
 
-            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[0, 1, 2, 3].map((levelY) => (
                 <div
                   key={levelY}

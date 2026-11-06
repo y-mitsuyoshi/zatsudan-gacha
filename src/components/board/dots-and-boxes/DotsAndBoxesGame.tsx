@@ -389,7 +389,7 @@ export default function DotsAndBoxesGame() {
         turn === 1 ? '深緑(先手)' : gameMode === 'cpu' ? '朱(CPU)' : '朱(後手)';
       const claimMsg =
         claimedBoxes.length > 0
-          ? ` 🎉 ボックス ${claimedBoxes.length} 個獲得！ボーナスターン発動！`
+          ? `  ボックス ${claimedBoxes.length} 個獲得！ボーナスターン発動！`
           : '';
 
       setState(nextState);

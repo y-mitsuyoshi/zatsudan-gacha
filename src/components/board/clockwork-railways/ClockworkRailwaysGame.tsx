@@ -154,7 +154,7 @@ export const CITIES: CityNode[] = [
     region: '中央王都圏',
     x: 490,
     y: 265,
-    icon: '👑',
+    icon: '',
     arrivalBonusText: '名声+1★・金貨+1',
     arrivalBonus: { prestige: 1, gold: 1 },
   },
@@ -165,7 +165,7 @@ export const CITIES: CityNode[] = [
     region: '北部黒鉄山脈',
     x: 270,
     y: 115,
-    icon: '⛏️',
+    icon: '️',
     arrivalBonusText: '石炭+2',
     arrivalBonus: { coal: 2 },
   },
@@ -176,7 +176,7 @@ export const CITIES: CityNode[] = [
     region: '西海岸蒸気湾',
     x: 115,
     y: 255,
-    icon: '⚓',
+    icon: '',
     arrivalBonusText: '金貨+2',
     arrivalBonus: { gold: 2 },
   },
@@ -187,7 +187,7 @@ export const CITIES: CityNode[] = [
     region: '北東時計塔高地',
     x: 685,
     y: 120,
-    icon: '🕰️',
+    icon: '️',
     arrivalBonusText: '名声+2★',
     arrivalBonus: { prestige: 2 },
   },
@@ -198,7 +198,7 @@ export const CITIES: CityNode[] = [
     region: '西部赤銅峡谷',
     x: 255,
     y: 235,
-    icon: '🏜️',
+    icon: '️',
     arrivalBonusText: '石炭+1・金貨+1',
     arrivalBonus: { coal: 1, gold: 1 },
   },
@@ -209,7 +209,7 @@ export const CITIES: CityNode[] = [
     region: '中央大河流域',
     x: 380,
     y: 350,
-    icon: '🌉',
+    icon: '',
     arrivalBonusText: '鋼鉄+1・金貨+1',
     arrivalBonus: { steel: 1, gold: 1 },
   },
@@ -220,7 +220,7 @@ export const CITIES: CityNode[] = [
     region: '北部白雲連峰',
     x: 485,
     y: 105,
-    icon: '🏔️',
+    icon: '️',
     arrivalBonusText: '鋼鉄+1・名声+1★',
     arrivalBonus: { steel: 1, prestige: 1 },
   },
@@ -231,7 +231,7 @@ export const CITIES: CityNode[] = [
     region: '南西緑銅盆地',
     x: 195,
     y: 415,
-    icon: '🏭',
+    icon: '',
     arrivalBonusText: '石炭+1・鋼鉄+1',
     arrivalBonus: { coal: 1, steel: 1 },
   },
@@ -242,7 +242,7 @@ export const CITIES: CityNode[] = [
     region: '東部銀鏡湖畔',
     x: 660,
     y: 280,
-    icon: '🌊',
+    icon: '',
     arrivalBonusText: '金貨+2',
     arrivalBonus: { gold: 2 },
   },
@@ -253,7 +253,7 @@ export const CITIES: CityNode[] = [
     region: '南東火成工業帯',
     x: 615,
     y: 430,
-    icon: '🔥',
+    icon: '',
     arrivalBonusText: '鋼鉄+2',
     arrivalBonus: { steel: 2 },
   },
@@ -264,7 +264,7 @@ export const CITIES: CityNode[] = [
     region: '南部豊穣平原',
     x: 425,
     y: 465,
-    icon: '🌾',
+    icon: '',
     arrivalBonusText: '金貨+1・名声+1★',
     arrivalBonus: { gold: 1, prestige: 1 },
   },
@@ -275,7 +275,7 @@ export const CITIES: CityNode[] = [
     region: '極東星見岬',
     x: 865,
     y: 225,
-    icon: '🔭',
+    icon: '',
     arrivalBonusText: '名声+3★',
     arrivalBonus: { prestige: 3 },
   },
@@ -819,7 +819,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 1,
     name: '黒鉄炭鉱',
     enName: 'Black-Iron Coal Mine',
-    icon: '⛏️',
+    icon: '️',
     primeDesc: '主任枠（無料）：「石炭+3」または「石炭+2 ＆ 金貨+1」を獲得',
     overtimeDesc: '残業枠（金貨1枚）：「石炭+2」を獲得',
     accentClass: 'from-[#2a211a] to-[#1d1712]',
@@ -830,7 +830,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 2,
     name: '高炉製鉄所',
     enName: 'Blast Steel Foundry',
-    icon: '🔥',
+    icon: '',
     primeDesc: '主任枠（無料）：「鋼鉄+2」または「石炭1消費 → 鋼鉄+3」を精錬',
     overtimeDesc: '残業枠（金貨1枚）：「鋼鉄+2」を獲得',
     accentClass: 'from-[#2f1b19] to-[#1d1712]',
@@ -841,7 +841,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 3,
     name: '王立機関車ドック',
     enName: 'Royal Locomotive Works',
-    icon: '🚂',
+    icon: '',
     primeDesc: '主任枠（無料）：鋼鉄-1割引で「蒸気機関出力Lv」を強化（Lv.3で4人目の機関士解放！）',
     overtimeDesc: '残業枠（金貨1枚）：通常コストで「蒸気機関出力Lv」を1段階強化',
     accentClass: 'from-[#182530] to-[#131d24]',
@@ -852,7 +852,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 4,
     name: '大陸鉄道敷設局',
     enName: 'Continental Railway Bureau',
-    icon: '🛤️',
+    icon: '️',
     primeDesc: '主任枠（無料）：隣接都市間に「鉄路リンク」を最大2区間敷設（1区間目の石炭コスト-1割引）',
     overtimeDesc: '残業枠（金貨1枚）：隣接都市間に「鉄路リンク」を最大2区間敷設（通常コスト）',
     accentClass: 'from-[#14211b] to-[#131d24]',
@@ -863,7 +863,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 5,
     name: '中央貨物取引所',
     enName: 'Central Freight Exchange',
-    icon: '📦',
+    icon: '',
     primeDesc: '主任枠（無料）：「特急輸送指令書」の獲得 ＆ 接続済み鉄路での「貨物輸送（名声＆金貨獲得）」＋ボーナス金貨+1',
     overtimeDesc: '残業枠（金貨1枚）：「特急輸送指令書」の獲得 ＆ 接続済み鉄路での「貨物輸送」を実行',
     accentClass: 'from-[#282033] to-[#1d1712]',
@@ -874,7 +874,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 6,
     name: '蒸気銀行＆総督府',
     enName: 'Steam Bank & Governorate',
-    icon: '🕰️',
+    icon: '️',
     primeDesc: '主任枠（無料）：「金貨+4 ＆ 名声+1★」を獲得し、「次ラウンド先手懐中時計」を確保！',
     overtimeDesc: '残業枠（金貨1枚）：差し引き「金貨+3 ＆ 石炭+1」を獲得',
     accentClass: 'from-[#3a2a1c] to-[#241c15]',
@@ -885,7 +885,7 @@ export const FACILITIES: FacilityMeta[] = [
     number: 7,
     name: '万国博覧会パビリオン',
     enName: 'Grand Expo Pavilion',
-    icon: '🏛️',
+    icon: '️',
     primeDesc: '主任枠（無料）：資材を奉納して「産業勲章（+6〜+9★）」を獲得＋主任ボーナス名声+1★',
     overtimeDesc: '残業枠（金貨1枚）：資材を奉納して「産業勲章（+6〜+9★）」を獲得',
     accentClass: 'from-[#35201e] to-[#241c15]',
@@ -1231,7 +1231,7 @@ function createInitialGame(mode: GameMode, playerCount: number): GameSnapshot {
     contractDeck: contracts,
     expoMedals: INITIAL_EXPO_MEDALS.map((m) => ({ ...m })),
     logs: [
-      '🚂 第1期（全6期）が幕を開けました！各プレイヤーに初期資材（石炭2・鋼鉄2・金貨3〜4）と初期「特急輸送指令書」1枚が配られました。',
+      ' 第1期（全6期）が幕を開けました！各プレイヤーに初期資材（石炭2・鋼鉄2・金貨3〜4）と初期「特急輸送指令書」1枚が配られました。',
     ],
     gameOver: false,
   };
@@ -1580,7 +1580,7 @@ export default function ClockworkRailwaysGame() {
           maxRoutes > 0 && p.ownedRoutes.length === maxRoutes ? 3 : 0;
         p.prestige += resourceBonus + networkBonus;
         next.logs.unshift(
-          `🏁 【最終決算】${p.name}：残余資材ボーナス+${resourceBonus}★${networkBonus > 0 ? `・最大鉄路網ボーナス+${networkBonus}★` : ''} → 最終名声 ${p.prestige}★！`
+          ` 【最終決算】${p.name}：残余資材ボーナス+${resourceBonus}★${networkBonus > 0 ? `・最大鉄路網ボーナス+${networkBonus}★` : ''} → 最終名声 ${p.prestige}★！`
         );
       });
       next.gameOver = true;
@@ -1603,7 +1603,7 @@ export default function ClockworkRailwaysGame() {
     });
 
     next.logs.unshift(
-      `🔔 第${next.round}期（全${next.maxRounds}期）開始！全機関士ワーカーが帰還し、各自の「蒸気機関出力」に応じた定期収入が支給されました。先手は ${next.players[next.firstPlayerIndex].name} です。`
+      ` 第${next.round}期（全${next.maxRounds}期）開始！全機関士ワーカーが帰還し、各自の「蒸気機関出力」に応じた定期収入が支給されました。先手は ${next.players[next.firstPlayerIndex].name} です。`
     );
   }, []);
 
@@ -1625,7 +1625,7 @@ export default function ClockworkRailwaysGame() {
     if (city.arrivalBonus.gold) player.gold += city.arrivalBonus.gold;
     if (city.arrivalBonus.prestige) player.prestige += city.arrivalBonus.prestige;
     logs.unshift(
-      `✨ ${player.name} が新都市「${city.name}」に鉄路を接続！初到達ボーナス（${city.arrivalBonusText}）を獲得！`
+      ` ${player.name} が新都市「${city.name}」に鉄路を接続！初到達ボーナス（${city.arrivalBonusText}）を獲得！`
     );
   };
 
@@ -1663,18 +1663,18 @@ export default function ClockworkRailwaysGame() {
             player.coal += 2;
             player.gold += 1;
             next.logs.unshift(
-              `⛏️ ${player.name} が【黒鉄炭鉱・主任枠】に機関士を配置し、石炭+2・金貨+1を獲得しました。`
+              `️ ${player.name} が【黒鉄炭鉱・主任枠】に機関士を配置し、石炭+2・金貨+1を獲得しました。`
             );
           } else {
             player.coal += 3;
             next.logs.unshift(
-              `⛏️ ${player.name} が【黒鉄炭鉱・主任枠】に機関士を配置し、石炭+3を獲得しました。`
+              `️ ${player.name} が【黒鉄炭鉱・主任枠】に機関士を配置し、石炭+3を獲得しました。`
             );
           }
         } else {
           player.coal += 2;
           next.logs.unshift(
-            `⛏️ ${player.name} が【黒鉄炭鉱・残業枠（金貨-1）】に機関士を配置し、石炭+2を獲得しました。`
+            `️ ${player.name} が【黒鉄炭鉱・残業枠（金貨-1）】に機関士を配置し、石炭+2を獲得しました。`
           );
         }
         triggerSfx('piston');
@@ -1684,13 +1684,13 @@ export default function ClockworkRailwaysGame() {
           player.coal -= 1;
           player.steel += 3;
           next.logs.unshift(
-            `🔥 ${player.name} が【高炉製鉄所・主任枠】で石炭1を投入し、高純度鋼鉄+3を精錬しました！`
+            ` ${player.name} が【高炉製鉄所・主任枠】で石炭1を投入し、高純度鋼鉄+3を精錬しました！`
           );
         } else {
           player.gold -= overtimeCost;
           player.steel += 2;
           next.logs.unshift(
-            `🔥 ${player.name} が【高炉製鉄所・${slotType === 'prime' ? '主任枠' : '残業枠'}】で鋼鉄+2を獲得しました。`
+            ` ${player.name} が【高炉製鉄所・${slotType === 'prime' ? '主任枠' : '残業枠'}】で鋼鉄+2を獲得しました。`
           );
         }
         triggerSfx('anvil');
@@ -1717,7 +1717,7 @@ export default function ClockworkRailwaysGame() {
         }
 
         next.logs.unshift(
-          `🚂 ${player.name} が【王立機関車ドック】で蒸気機関出力を「Lv.${player.engineLv}」へ強化！名声+${nextSpec.upgradePrestigeGain}★を獲得！${workerMsg}`
+          ` ${player.name} が【王立機関車ドック】で蒸気機関出力を「Lv.${player.engineLv}」へ強化！名声+${nextSpec.upgradePrestigeGain}★を獲得！${workerMsg}`
         );
         triggerSfx('whistle');
       } else if (facilityId === 'railway_construction') {
@@ -1759,11 +1759,11 @@ export default function ClockworkRailwaysGame() {
           applyCityArrivalBonus(player, r2.from, next.logs);
           applyCityArrivalBonus(player, r2.to, next.logs);
           next.logs.unshift(
-            `🛤️ ${player.name} が【大陸鉄道敷設局】で2区間（「${CITY_MAP[r1.from].shortName}〜${CITY_MAP[r1.to].shortName}」＆「${CITY_MAP[r2.from].shortName}〜${CITY_MAP[r2.to].shortName}」）を同時敷設！名声+${r1.prestige + r2.prestige}★！`
+            `️ ${player.name} が【大陸鉄道敷設局】で2区間（「${CITY_MAP[r1.from].shortName}〜${CITY_MAP[r1.to].shortName}」＆「${CITY_MAP[r2.from].shortName}〜${CITY_MAP[r2.to].shortName}」）を同時敷設！名声+${r1.prestige + r2.prestige}★！`
           );
         } else {
           next.logs.unshift(
-            `🛤️ ${player.name} が【大陸鉄道敷設局】で「${CITY_MAP[r1.from].shortName} ⇄ ${CITY_MAP[r1.to].shortName}」に鉄路を敷設！名声+${r1.prestige}★！`
+            `️ ${player.name} が【大陸鉄道敷設局】で「${CITY_MAP[r1.from].shortName} ⇄ ${CITY_MAP[r1.to].shortName}」に鉄路を敷設！名声+${r1.prestige}★！`
           );
         }
         triggerSfx('anvil');
@@ -1788,7 +1788,7 @@ export default function ClockworkRailwaysGame() {
           if (fulfilled.rewardSteel) player.steel += fulfilled.rewardSteel;
           didSomething = true;
           next.logs.unshift(
-            `📦 ${player.name} が特急輸送指令「${fulfilled.title}」を達成！名声+${fulfilled.rewardPrestige}★・金貨+${fulfilled.rewardGold}を獲得！`
+            ` ${player.name} が特急輸送指令「${fulfilled.title}」を達成！名声+${fulfilled.rewardPrestige}★・金貨+${fulfilled.rewardGold}を獲得！`
           );
           triggerSfx('whistle');
         }
@@ -1804,7 +1804,7 @@ export default function ClockworkRailwaysGame() {
             }
             didSomething = true;
             next.logs.unshift(
-              `📜 ${player.name} が新規指令書「${taken.title}（${CITY_MAP[taken.fromCity].shortName}→${CITY_MAP[taken.toCity].shortName}）」を受注しました。`
+              ` ${player.name} が新規指令書「${taken.title}（${CITY_MAP[taken.fromCity].shortName}→${CITY_MAP[taken.toCity].shortName}）」を受注しました。`
             );
           }
         }
@@ -1817,7 +1817,7 @@ export default function ClockworkRailwaysGame() {
           player.gold += localGold;
           didSomething = true;
           next.logs.unshift(
-            `📦 ${player.name} が【中央貨物取引所】で定期貨物便を運行し、名声+${localPrestige}★・金貨+${localGold}を獲得しました。`
+            ` ${player.name} が【中央貨物取引所】で定期貨物便を運行し、名声+${localPrestige}★・金貨+${localGold}を獲得しました。`
           );
           triggerSfx('coin');
         }
@@ -1831,13 +1831,13 @@ export default function ClockworkRailwaysGame() {
           next.nextFirstPlayerIndex = player.id;
           next.pocketWatchClaimedThisRound = true;
           next.logs.unshift(
-            `🕰️ ${player.name} が【蒸気銀行＆総督府・主任枠】で金貨+4・名声+1★と「次ラウンド先手懐中時計」を獲得しました！`
+            `️ ${player.name} が【蒸気銀行＆総督府・主任枠】で金貨+4・名声+1★と「次ラウンド先手懐中時計」を獲得しました！`
           );
         } else {
           player.gold += 4; // net +3 after 1 overtime cost
           player.coal += 1;
           next.logs.unshift(
-            `🕰️ ${player.name} が【蒸気銀行＆総督府・残業枠】で差し引き金貨+3・石炭+1を獲得しました。`
+            `️ ${player.name} が【蒸気銀行＆総督府・残業枠】で差し引き金貨+3・石炭+1を獲得しました。`
           );
         }
         triggerSfx('coin');
@@ -1871,7 +1871,7 @@ export default function ClockworkRailwaysGame() {
         medal.claimedBy = player.id;
 
         next.logs.unshift(
-          `🏛️ ${player.name} が【万国博覧会パビリオン】で産業勲章「${medal.title}」を授与されました！名声+${medal.prestige + primeBonus}★！`
+          `️ ${player.name} が【万国博覧会パビリオン】で産業勲章「${medal.title}」を授与されました！名声+${medal.prestige + primeBonus}★！`
         );
         triggerSfx('fanfare');
       }
@@ -2051,7 +2051,7 @@ export default function ClockworkRailwaysGame() {
               disabled={history.length === 0}
               className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs disabled:pointer-events-none disabled:opacity-40"
             >
-              ↩ 1手戻す
+               1手戻す
             </button>
 
             {/* Hint Toggle */}
@@ -2062,7 +2062,7 @@ export default function ClockworkRailwaysGame() {
                 showHint ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🧭 AI推奨ナビ {showHint ? 'ON' : 'OFF'}
+               AI推奨ナビ {showHint ? 'ON' : 'OFF'}
             </button>
 
             {/* BGM Toggle */}
@@ -2073,7 +2073,7 @@ export default function ClockworkRailwaysGame() {
                 bgmEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🎵 BGM {bgmEnabled ? 'ON' : 'OFF'}
+               BGM {bgmEnabled ? 'ON' : 'OFF'}
             </button>
 
             {/* SFX Toggle */}
@@ -2084,7 +2084,15 @@ export default function ClockworkRailwaysGame() {
                 sfxEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🔊 効果音 {sfxEnabled ? 'ON' : 'OFF'}
+               効果音 {sfxEnabled ? 'ON' : 'OFF'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleNewGame(gameMode, playerCount)}
+              className="tabletop-button-primary inline-flex min-h-11 items-center px-3 text-xs font-bold"
+            >
+              ↻ 新規対局
             </button>
 
             <ThemeToggleButton />
@@ -2098,7 +2106,7 @@ export default function ClockworkRailwaysGame() {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#4d3d2d] pb-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="tabletop-chip tabletop-chip-active inline-flex min-h-7 items-center px-2.5 text-[11px] font-bold">
-                🕰️ 第 {state.round} / {state.maxRounds} 期
+                ️ 第 {state.round} / {state.maxRounds} 期
               </span>
               <span className="text-xs text-[#b9a88f]">
                 現在の手番：
@@ -2112,18 +2120,11 @@ export default function ClockworkRailwaysGame() {
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[#b9a88f]">
               <span>
-                ⏱️ 次ラウンド先手：
+                ️ 次ラウンド先手：
                 <strong className="ml-1 text-[#dfb06d]">
                   {state.players[state.nextFirstPlayerIndex]?.name}
                 </strong>
               </span>
-              <button
-                type="button"
-                onClick={() => handleNewGame(gameMode, playerCount)}
-                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs font-semibold text-[#e3b6ad]"
-              >
-                ↻ 新規対局
-              </button>
             </div>
           </div>
 
@@ -2157,19 +2158,19 @@ export default function ClockworkRailwaysGame() {
                   {/* Resources & Workers */}
                   <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-center text-[11px]">
                     <div className="rounded-sm border border-[#6b543d] bg-[#2a211a] px-1.5 py-1">
-                      <div className="text-[#b9a88f]">⛏️石炭</div>
+                      <div className="text-[#b9a88f]">️石炭</div>
                       <div className="font-bold text-[#dfb06d]">{p.coal}</div>
                     </div>
                     <div className="rounded-sm border border-[#3f5f78] bg-[#182530] px-1.5 py-1">
-                      <div className="text-[#a9c8da]">🔩鋼鉄</div>
+                      <div className="text-[#a9c8da]">鋼鉄</div>
                       <div className="font-bold text-[#d6e4ed]">{p.steel}</div>
                     </div>
                     <div className="rounded-sm border border-[#6b543d] bg-[#3a2a1c] px-1.5 py-1">
-                      <div className="text-[#c99555]">🪙金貨</div>
+                      <div className="text-[#c99555]">金貨</div>
                       <div className="font-bold text-[#f0d9ae]">{p.gold}</div>
                     </div>
                     <div className="rounded-sm border border-[#315d4e] bg-[#14211b] px-1.5 py-1">
-                      <div className="text-[#a9cdb7]">👷機関士</div>
+                      <div className="text-[#a9cdb7]">機関士</div>
                       <div className="font-bold text-[#cfe4d8]">
                         {p.availableWorkers}/{p.totalWorkers}
                       </div>
@@ -2179,12 +2180,12 @@ export default function ClockworkRailwaysGame() {
                   {/* Steam Engine Output & Network Stats */}
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#b9a88f]">
                     <span className="rounded-sm border border-[#4d3d2d] bg-[#241c15] px-2 py-0.5 font-semibold text-[#d8cbb8]">
-                      🚂 機関出力 Lv.{p.engineLv}（毎期 炭+{engineSpec.incomeCoal}
+                       機関出力 Lv.{p.engineLv}（毎期 炭+{engineSpec.incomeCoal}
                       {engineSpec.incomeSteel > 0 ? `/鋼+${engineSpec.incomeSteel}` : ''}/金+
                       {engineSpec.incomeGold}）
                     </span>
                     <span>
-                      🛤️ 鉄路 {p.ownedRoutes.length}本 / 📜 契約 {p.completedContracts.length}件
+                      ️ 鉄路 {p.ownedRoutes.length}本 /  契約 {p.completedContracts.length}件
                     </span>
                   </div>
                 </div>
@@ -2202,7 +2203,7 @@ export default function ClockworkRailwaysGame() {
                   Grand Steam Industrial Revolution Completed
                 </span>
                 <h2 className="tabletop-title mt-1 text-xl sm:text-2xl">
-                  🏆 第6期終了！優勝：{rankedPlayers[0]?.name}（最終名声 ★{rankedPlayers[0]?.prestige}）
+                   第6期終了！優勝：{rankedPlayers[0]?.name}（最終名声 ★{rankedPlayers[0]?.prestige}）
                 </h2>
                 <p className="mt-1 text-xs text-[#c9b79d]">
                   残余資材ボーナス（合計4個につき+1★）および最大鉄路網ボーナス（+3★）を加算した最終順位です。
@@ -2213,7 +2214,7 @@ export default function ClockworkRailwaysGame() {
                 onClick={() => handleNewGame(gameMode, playerCount)}
                 className="tabletop-button-primary inline-flex min-h-11 items-center px-5 text-sm font-bold"
               >
-                🚂 もう一度対局する
+                 もう一度対局する
               </button>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -2243,7 +2244,7 @@ export default function ClockworkRailwaysGame() {
           <section className="tabletop-panel-soft flex flex-wrap items-center justify-between gap-3 border-l-2 border-l-[#315d4e] px-3.5 py-3">
             <div className="space-y-0.5">
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#a9cdb7]">
-                <span>🧭 AI推奨アクション（期待値トップ手）</span>
+                <span> AI推奨アクション（期待値トップ手）</span>
                 <span className="rounded-sm border border-[#315d4e] bg-[#14211b] px-2 py-0.5 text-[11px] text-[#cfe4d8]">
                   推奨：{recommendedMove.title}
                 </span>
@@ -2268,7 +2269,7 @@ export default function ClockworkRailwaysGame() {
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="tabletop-title text-sm sm:text-base">
-                    🗺️ 蒸気大陸鉄路マップ（12都市・22路線）
+                    ️ 蒸気大陸鉄路マップ（12都市・22路線）
                   </h2>
                   <p className="mt-0.5 text-[11px] leading-relaxed text-[#b9a88f]">
                     路線をクリックすると「4. 大陸鉄道敷設局」の敷設対象として直接選択できます。金枠の都市は現在の手番プレイヤーの「特急輸送指令書」の目的地です。
@@ -2437,7 +2438,7 @@ export default function ClockworkRailwaysGame() {
                             fill={owner ? '#0c0a09' : '#fef3c7'}
                           >
                             {owner
-                              ? `🚂 +${route.prestige}★`
+                              ? ` +${route.prestige}★`
                               : route.terrain === 'plains'
                                 ? `炭1鋼1 +2★`
                                 : route.terrain === 'bridge'
@@ -2540,7 +2541,7 @@ export default function ClockworkRailwaysGame() {
                 <div className="tabletop-panel-soft border-l-2 border-l-[#5b4668] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-1">
                     <h3 className="text-xs font-bold text-[#e8dcc8]">
-                      📜 特急輸送指令書
+                       特急輸送指令書
                     </h3>
                     <span className="text-[11px] text-[#b9a88f]">
                       達成済み {currentPlayer.completedContracts.length}件
@@ -2578,7 +2579,7 @@ export default function ClockworkRailwaysGame() {
                             </div>
                             <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-[11px]">
                               <span>
-                                📍 {CITY_MAP[c.fromCity].shortName} ➔{' '}
+                                 {CITY_MAP[c.fromCity].shortName} ➔{' '}
                                 {CITY_MAP[c.toCity].shortName}
                               </span>
                               <span
@@ -2591,7 +2592,7 @@ export default function ClockworkRailwaysGame() {
                                 }`}
                               >
                                 {ready
-                                  ? '✅ 輸送可能（貨物取引所で達成）'
+                                  ? ' 輸送可能（貨物取引所で達成）'
                                   : dist !== null
                                     ? `鉄路開通済（要 機関出力Lv.${c.minEngineLv}）`
                                     : '鉄路未接続'}
@@ -2607,7 +2608,7 @@ export default function ClockworkRailwaysGame() {
                 {/* Grand Expo Medals Overview */}
                 <div className="tabletop-panel-soft border-l-2 border-l-[#6b3a36] p-3">
                   <h3 className="text-xs font-bold text-[#e8dcc8]">
-                    🏛️ 万国博覧会・産業勲章
+                    ️ 万国博覧会・産業勲章
                   </h3>
                   <div className="mt-2 space-y-1.5">
                     {state.expoMedals.map((m) => {
@@ -2662,7 +2663,7 @@ export default function ClockworkRailwaysGame() {
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <h2 className="tabletop-title text-sm sm:text-base">
-                    ⚙️ 7大ギルド施設
+                    ️ 7大ギルド施設
                   </h2>
                   <p className="mt-0.5 text-[11px] leading-relaxed text-[#b9a88f]">
                     先着1名の「主任枠（無料・高出力）」と、金貨1枚で入れる「残業枠」があります。
@@ -2702,7 +2703,7 @@ export default function ClockworkRailwaysGame() {
                             {fac.number}. {fac.name}
                           </span>
                           {isRecommended && showHint && (
-                            <span className="tabletop-chip tabletop-chip-active inline-flex min-h-6 items-center px-2 text-[10px] font-bold">
+                            <span className="tabletop-chip tabletop-chip-active inline-flex min-h-6 items-center px-2 text-[11px] font-bold">
                               AI推奨
                             </span>
                           )}
@@ -2722,7 +2723,7 @@ export default function ClockworkRailwaysGame() {
                             </span>
                           ) : (
                             <span className="rounded-sm border border-[#315d4e] bg-[#14211b] px-2 py-0.5 font-bold text-[#a9cdb7]">
-                              🟢 主任枠 空き（無料）
+                               主任枠 空き（無料）
                             </span>
                           )}
                           <span className="rounded-sm border border-[#6b543d] bg-[#241c15] px-2 py-0.5 text-[#dfb06d]">
@@ -2744,7 +2745,7 @@ export default function ClockworkRailwaysGame() {
               <div className="mt-4 rounded-md border border-[#6b543d] bg-[#1d1712] p-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-xs font-bold text-[#e8dcc8] sm:text-sm">
-                    🛠️ 配置先：{FACILITIES.find((f) => f.id === selectedFacility)?.name}
+                    ️ 配置先：{FACILITIES.find((f) => f.id === selectedFacility)?.name}
                   </h3>
                   <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-bold">
                     {isPrimeSlotAvailable(state.placements, selectedFacility)
@@ -2767,7 +2768,7 @@ export default function ClockworkRailwaysGame() {
                               : 'tabletop-button text-[11px]'
                           }`}
                         >
-                          ⛏️ 石炭 +3 を受け取る
+                          ️ 石炭 +3 を受け取る
                         </button>
                         <button
                           type="button"
@@ -2778,7 +2779,7 @@ export default function ClockworkRailwaysGame() {
                               : 'tabletop-button text-[11px]'
                           }`}
                         >
-                          ⛏️ 石炭 +2 ＆ 🪙 金貨 +1
+                          ️ 石炭 +2 ＆  金貨 +1
                         </button>
                       </div>
                     )}
@@ -2795,7 +2796,7 @@ export default function ClockworkRailwaysGame() {
                               : 'tabletop-button text-[11px]'
                           }`}
                         >
-                          🔩 鋼鉄 +2 を受け取る（無料）
+                           鋼鉄 +2 を受け取る（無料）
                         </button>
                         <button
                           type="button"
@@ -2806,7 +2807,7 @@ export default function ClockworkRailwaysGame() {
                               : 'tabletop-button text-[11px]'
                           }`}
                         >
-                          🔥 石炭1を消費して 鋼鉄 +3
+                           石炭1を消費して 鋼鉄 +3
                         </button>
                       </div>
                     )}
@@ -2836,7 +2837,7 @@ export default function ClockworkRailwaysGame() {
                               <div className="mt-1 text-[11px]">
                                 必要コスト：鋼鉄 {reqSteel}個 ＆ 金貨 {reqGold}枚
                                 {nextSpec.level === 3 &&
-                                  ' ／ 🎁 4人目の機関士ワーカーが即座に解放'}
+                                  ' ／  4人目の機関士ワーカーが即座に解放'}
                               </div>
                             </div>
                           );
@@ -2940,7 +2941,7 @@ export default function ClockworkRailwaysGame() {
                             .filter((c) => canFulfillContract(currentPlayer, c))
                             .map((c) => (
                               <option key={c.id} value={c.id}>
-                                ✅ {c.title} を達成！（+{c.rewardPrestige}★・+{c.rewardGold}金）
+                                 {c.title} を達成！（+{c.rewardPrestige}★・+{c.rewardGold}金）
                               </option>
                             ))}
                         </select>
@@ -2986,7 +2987,7 @@ export default function ClockworkRailwaysGame() {
                     }
                     className="tabletop-button-primary w-full min-h-11 text-sm font-bold disabled:opacity-40"
                   >
-                    👷 機関士ワーカーを配置してアクション実行
+                     機関士ワーカーを配置してアクション実行
                   </button>
                 </div>
               </div>
@@ -2995,7 +2996,7 @@ export default function ClockworkRailwaysGame() {
             {/* Action Log */}
             <div className="tabletop-panel p-3.5 sm:p-4">
               <h3 className="tabletop-title text-sm">
-                📖 大陸鉄道年代記
+                 大陸鉄道年代記
               </h3>
               <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs text-[#c9b79d]">
                 {state.logs.slice(0, 18).map((log, i) => (

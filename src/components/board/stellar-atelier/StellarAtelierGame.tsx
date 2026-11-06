@@ -597,7 +597,7 @@ function createInitialGame(
     round: 1,
     finalRoundTriggered: false,
     logs: [
-      `✨ 『星屑のアトリエ』開幕！${numPlayers}人戦（名声星15★到達で最終ラウンド突入）`,
+      ` 『星屑のアトリエ』開幕！${numPlayers}人戦（名声星15★到達で最終ラウンド突入）`,
     ],
   };
 }
@@ -1130,14 +1130,14 @@ export default function StellarAtelierGame() {
       if (eligiblePatronIdx !== -1) {
         const [visitedPatron] = draft.patrons.splice(eligiblePatronIdx, 1);
         player.patrons.push(visitedPatron);
-        patronNote = ` ／ 🌟星座パトロン『${visitedPatron.name}』が来訪（+3★）！`;
+        patronNote = ` ／ 星座パトロン『${visitedPatron.name}』が来訪（+3★）！`;
       }
 
       const newPrestige = getPlayerPrestige(player);
       let triggerNote = '';
       if (!draft.finalRoundTriggered && newPrestige >= TARGET_PRESTIGE) {
         draft.finalRoundTriggered = true;
-        triggerNote = ` ／ 🔔${player.name}が${newPrestige}★に到達！このラウンド終了で終局します！`;
+        triggerNote = ` ／ ${player.name}が${newPrestige}★に到達！このラウンド終了で終局します！`;
       }
 
       draft.logs = [
@@ -1536,7 +1536,7 @@ export default function StellarAtelierGame() {
               disabled={history.length === 0}
               className="tabletop-button min-h-11 px-3 text-xs disabled:opacity-40"
             >
-              ↩ 1手戻す
+               1手戻す
             </button>
             <button
               type="button"
@@ -1544,7 +1544,7 @@ export default function StellarAtelierGame() {
               disabled={!isHumanTurn}
               className="tabletop-button min-h-11 px-3 text-xs text-[var(--table-accent-strong)] disabled:opacity-40"
             >
-              💡 AI推奨手ナビ
+               AI推奨手ナビ
             </button>
             <button
               type="button"
@@ -1553,14 +1553,14 @@ export default function StellarAtelierGame() {
                 bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
-              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+              {bgmOn ? ' BGM ON' : ' BGM OFF'}
             </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
               className="tabletop-button min-h-11 px-3 text-xs"
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              {soundOn ? ' 効果音 ON' : ' 効果音 OFF'}
             </button>
             <ThemeToggleButton />
           </div>
@@ -1586,7 +1586,7 @@ export default function StellarAtelierGame() {
                       : 'tabletop-button border-transparent bg-transparent'
                   }`}
                 >
-                  🤖 CPU対戦（2〜4人）
+                   CPU対戦（2〜4人）
                 </button>
                 <button
                   type="button"
@@ -1600,7 +1600,7 @@ export default function StellarAtelierGame() {
                       : 'tabletop-button border-transparent bg-transparent'
                   }`}
                 >
-                  👥 1台で2人対戦（パス＆プレイ）
+                   1台で2人対戦（パス＆プレイ）
                 </button>
               </div>
 
@@ -1674,7 +1674,7 @@ export default function StellarAtelierGame() {
                 onClick={() => startNewGame()}
                 className="tabletop-button-primary min-h-11 px-3 text-xs"
               >
-                🔄 新規対局
+                 新規対局
               </button>
             </div>
           </div>
@@ -1686,10 +1686,10 @@ export default function StellarAtelierGame() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="tabletop-kicker">
-                  🌟 GRAND ATELIER FINALE — 終局結果発表
+                   GRAND ATELIER FINALE — 終局結果発表
                 </p>
                 <h3 className="tabletop-title mt-1 text-xl sm:text-2xl">
-                  🏆 優勝: {rankedPlayers[0].name}（名声星{' '}
+                   優勝: {rankedPlayers[0].name}（名声星{' '}
                   {getPlayerPrestige(rankedPlayers[0])}★ ／ 錬成数{' '}
                   {rankedPlayers[0].crafted.length}枚）
                 </h3>
@@ -1739,12 +1739,12 @@ export default function StellarAtelierGame() {
               {hintMove ? (
                 <>
                   <span className="font-black text-[var(--table-accent-strong)]">
-                    💡 AI推奨手: {hintMove.label}
+                     AI推奨手: {hintMove.label}
                   </span>{' '}
                   — {hintMove.reason}
                 </>
               ) : (
-                <span>ℹ️ {bannerNotice}</span>
+                <span>️ {bannerNotice}</span>
               )}
             </div>
             <button
@@ -1767,7 +1767,7 @@ export default function StellarAtelierGame() {
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <div>
                 <h3 className="tabletop-title flex items-center gap-1.5 text-sm">
-                  <span>👑 星座パトロンタイル（条件達成で手番終了時に自動来訪 +3★）</span>
+                  <span> 星座パトロンタイル（条件達成で手番終了時に自動来訪 +3★）</span>
                 </h3>
                 <p className="text-[11px] text-[var(--table-muted)]">
                   星片の消費ではなく、錬成済みレシピの「永続共鳴ボーナス数」が条件を満たすと自動で訪れます。
@@ -1791,7 +1791,7 @@ export default function StellarAtelierGame() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-bold text-[#cbb3c9]">
+                      <span className="text-[11px] font-bold text-[#cbb3c9]">
                         {patron.constellation}
                       </span>
                       <span className="rounded bg-[#c99555]/16 px-1.5 py-0.5 font-mono text-xs font-black text-[var(--table-accent-strong)]">
@@ -1810,7 +1810,7 @@ export default function StellarAtelierGame() {
                         return (
                           <span
                             key={el.id}
-                            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-black ${
+                            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-black ${
                               met
                                 ? 'border-[#315d4e]/60 bg-[#315d4e]/22 text-[#9dc4af]'
                                 : el.badgeClass
@@ -1833,7 +1833,7 @@ export default function StellarAtelierGame() {
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div>
                 <h3 className="tabletop-title text-sm">
-                  ⚙️ 錬成エンジン割引＆必要コスト計算ナビ（{analyzerPlayer.name}）
+                  ️ 錬成エンジン割引＆必要コスト計算ナビ（{analyzerPlayer.name}）
                 </h3>
                 <p className="text-[11px] text-[var(--table-muted)]">
                   各属性の「永続共鳴割引」と「手持ち星片」の合計購買力（最大支払可能コスト）をリアルタイム算出
@@ -1861,7 +1861,7 @@ export default function StellarAtelierGame() {
                         {el.shortName}
                       </span>
                     </div>
-                    <div className="mt-1 space-y-0.5 text-[10px]">
+                    <div className="mt-1 space-y-0.5 text-[11px]">
                       <div className="flex justify-between text-[var(--table-muted)]">
                         <span>永続割引</span>
                         <span className="font-mono font-black text-[#9dc4af]">
@@ -1889,7 +1889,7 @@ export default function StellarAtelierGame() {
                   <ShardSvgIcon type="prism" className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-black text-[var(--table-ink)]">虹結晶</span>
                 </div>
-                <div className="mt-1 space-y-0.5 text-[10px]">
+                <div className="mt-1 space-y-0.5 text-[11px]">
                   <div className="flex justify-between text-[var(--table-muted)]">
                     <span>ワイルド</span>
                     <span className="font-mono font-black text-[#d8a4b4]">
@@ -1923,7 +1923,7 @@ export default function StellarAtelierGame() {
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div>
                   <h3 className="tabletop-title flex items-center gap-2 text-sm">
-                    <span>💎 星片サプライ（アクション①：星片の採取）</span>
+                    <span> 星片サプライ（アクション①：星片の採取）</span>
                     <span className="rounded-full border border-[#4b4668]/40 bg-[#4b4668]/18 px-2.5 py-0.5 text-[11px] font-black text-[var(--table-ink)]">
                       手番: {activePlayer.name}
                     </span>
@@ -1987,7 +1987,7 @@ export default function StellarAtelierGame() {
                             選択中 ×{pickedCount}
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-[var(--table-muted)]">
+                          <span className="text-[11px] font-bold text-[var(--table-muted)]">
                             {canTakePair ? '1個 / 同色2個OK' : supplyCount > 0 ? '1個採取OK' : '在庫切れ'}
                           </span>
                         )}
@@ -2009,7 +2009,7 @@ export default function StellarAtelierGame() {
                   <div className="my-2 flex items-center justify-center">
                     <ShardSvgIcon type="prism" className="w-8 h-8" />
                   </div>
-                  <span className="text-[10px] font-bold text-[#d8a4b4] text-center">
+                  <span className="text-[11px] font-bold text-[#d8a4b4] text-center">
                     設計図予約で+1獲得
                   </span>
                 </div>
@@ -2047,7 +2047,7 @@ export default function StellarAtelierGame() {
                     {overflowCount > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5 pt-1">
                         <span className="text-[11px] font-bold text-[#d9a19b]">
-                          ⚠️ 上限10個を超えるため、手元から返却する星片をあと{' '}
+                          ️ 上限10個を超えるため、手元から返却する星片をあと{' '}
                           {overflowCount - selectedReturnShards.length} 個選んでください:
                         </span>
                         {ELEMENTS.map((el) => {
@@ -2083,7 +2083,7 @@ export default function StellarAtelierGame() {
                     }
                     className="tabletop-button-primary min-h-11 px-4 text-xs disabled:opacity-40"
                   >
-                    ✨ この星片を採取して手番終了
+                     この星片を採取して手番終了
                   </button>
                 </div>
               )}
@@ -2094,7 +2094,7 @@ export default function StellarAtelierGame() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="tabletop-title text-sm">
-                    📜 工房レシピマーケット（アクション②：錬成 ／ アクション③：設計図の予約）
+                     工房レシピマーケット（アクション②：錬成 ／ アクション③：設計図の予約）
                   </h3>
                   <p className="text-xs text-[var(--table-muted)]">
                     各カードのコストは<strong className="text-[var(--table-accent-strong)]">永続共鳴ボーナス割引後</strong>の必要星片数を併記しています。
@@ -2110,8 +2110,8 @@ export default function StellarAtelierGame() {
                   }`}
                 >
                   {filterCraftableOnly
-                    ? '✅ 錬成可能・1手圏内のみ表示中'
-                    : '🔍 全レシピ表示中（絞込切替）'}
+                    ? ' 錬成可能・1手圏内のみ表示中'
+                    : ' 全レシピ表示中（絞込切替）'}
                 </button>
               </div>
 
@@ -2197,11 +2197,11 @@ export default function StellarAtelierGame() {
                                     {card.prestige > 0 ? `${card.prestige}★` : '0★'}
                                   </span>
                                   {analysis.canCraftNow ? (
-                                    <span className="rounded-md bg-[#4f806b] px-1.5 py-0.5 text-[10px] font-black text-[#1b120b]">
+                                    <span className="rounded-md bg-[#4f806b] px-1.5 py-0.5 text-[11px] font-black text-[#1b120b]">
                                       錬成可能！
                                     </span>
                                   ) : analysis.isOneTurnAway ? (
-                                    <span className="rounded-md border border-[var(--table-accent)]/60 bg-[#c99555]/16 px-1.5 py-0.5 text-[10px] font-black text-[var(--table-accent-strong)]">
+                                    <span className="rounded-md border border-[var(--table-accent)]/60 bg-[#c99555]/16 px-1.5 py-0.5 text-[11px] font-black text-[var(--table-accent-strong)]">
                                       あと1手圏内
                                     </span>
                                   ) : null}
@@ -2219,7 +2219,7 @@ export default function StellarAtelierGame() {
                                 </span>
                               </div>
 
-                              <h4 className="mt-1.5 text-xs font-black text-[var(--table-ink)] leading-snug">
+                              <h4 className="tabletop-title mt-1.5 text-sm leading-snug">
                                 {card.title}
                               </h4>
                             </div>
@@ -2252,7 +2252,7 @@ export default function StellarAtelierGame() {
                                         {afterDisc}
                                       </span>
                                       {afterDisc < raw && (
-                                        <span className="text-[9px] line-through opacity-60">
+                                        <span className="text-[11px] line-through opacity-60">
                                           {raw}
                                         </span>
                                       )}
@@ -2260,7 +2260,7 @@ export default function StellarAtelierGame() {
                                   );
                                 })}
                               </div>
-                              <p className="text-[10px] text-[var(--table-muted)]">
+                              <p className="text-[11px] text-[var(--table-muted)]">
                                 割引後コスト計:{' '}
                                 <span className="font-mono font-black text-[var(--table-ink)]">
                                   {analysis.totalAfterDiscount}
@@ -2291,7 +2291,7 @@ export default function StellarAtelierGame() {
                                     : 'bg-[var(--table-panel-soft)] text-[var(--table-muted)] cursor-not-allowed'
                                 }`}
                               >
-                                ⚒️ 錬成する
+                                ️ 錬成する
                               </button>
                               <button
                                 type="button"
@@ -2302,7 +2302,7 @@ export default function StellarAtelierGame() {
                                 onClick={() => executeReserveCard(card.id, true)}
                                 className="rounded-lg border border-[#8a4f61]/40 bg-[#8a4f61]/16 px-2 py-1.5 text-[11px] font-black text-[#d8a4b4] transition hover:bg-[#8a4f61]/22 disabled:opacity-35"
                               >
-                                📌 予約(+虹)
+                                 予約(+虹)
                               </button>
                             </div>
                           </div>
@@ -2321,11 +2321,11 @@ export default function StellarAtelierGame() {
             <section className="tabletop-panel space-y-3 p-3.5">
               <div className="flex items-center justify-between">
                 <h3 className="tabletop-title text-sm">
-                  🧙 各錬金術師のアトリエ状況（全{numPlayers}名）
+                   各錬金術師のアトリエ状況（全{numPlayers}名）
                 </h3>
                 {gameState.finalRoundTriggered && !isGameOver && (
-                  <span className="rounded-full bg-[#9f4540]/25 border border-[#9f4540] px-2 py-0.5 text-[10px] font-black text-[#d9a19b] ">
-                    🔥 最終ラウンド進行中
+                  <span className="rounded-full bg-[#9f4540]/25 border border-[#9f4540] px-2 py-0.5 text-[11px] font-black text-[#d9a19b] ">
+                     最終ラウンド進行中
                   </span>
                 )}
               </div>
@@ -2356,7 +2356,7 @@ export default function StellarAtelierGame() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-md bg-[var(--table-panel-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--table-muted)]">
+                          <span className="rounded-md bg-[var(--table-panel-soft)] px-2 py-0.5 text-[11px] font-bold text-[var(--table-muted)]">
                             星片 {shardTotal}/{MAX_SHARDS}
                           </span>
                           <span className="rounded-lg bg-[#c99555]/16 border border-[var(--table-accent)]/50 px-2 py-0.5 font-mono text-sm font-black text-[var(--table-accent-strong)]">
@@ -2374,11 +2374,11 @@ export default function StellarAtelierGame() {
                           >
                             <div className="flex items-center justify-center gap-0.5">
                               <ShardSvgIcon type={el.id} className="w-3 h-3" />
-                              <span className="text-[9px] font-bold text-[var(--table-ink)]">
+                              <span className="text-[11px] font-bold text-[var(--table-ink)]">
                                 {el.shortName}
                               </span>
                             </div>
-                            <div className="mt-0.5 text-[10px] font-mono">
+                            <div className="mt-0.5 text-[11px] font-mono">
                               <span
                                 className="font-black text-[#9dc4af]"
                                 title="永続割引ボーナス"
@@ -2399,25 +2399,25 @@ export default function StellarAtelierGame() {
                         <div className="rounded-lg border border-[#8a4f61]/40 bg-[#8a4f61]/16 px-1 py-1">
                           <div className="flex items-center justify-center gap-0.5">
                             <ShardSvgIcon type="prism" className="w-3 h-3" />
-                            <span className="text-[9px] font-bold text-[#d8a4b4]">
+                            <span className="text-[11px] font-bold text-[#d8a4b4]">
                               虹
                             </span>
                           </div>
-                          <div className="mt-0.5 text-[10px] font-mono font-black text-[#d8a4b4]">
+                          <div className="mt-0.5 text-[11px] font-mono font-black text-[#d8a4b4]">
                             {p.shards.prism}個
                           </div>
                         </div>
                       </div>
 
                       {/* Patrons & Crafted Count */}
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[10px] text-[var(--table-muted)]">
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[var(--table-muted)]">
                         <span>
                           錬成済: <strong className="text-[var(--table-ink)]">{p.crafted.length}</strong>枚 ／ 予約中:{' '}
                           <strong className="text-[var(--table-ink)]">{p.reserved.length}</strong>/{MAX_RESERVED}枚
                         </span>
                         {p.patrons.length > 0 && (
                           <span className="text-[var(--table-accent-strong)] font-bold">
-                            👑 パトロン×{p.patrons.length}（+{p.patrons.length * 3}★）
+                             パトロン×{p.patrons.length}（+{p.patrons.length * 3}★）
                           </span>
                         )}
                       </div>
@@ -2425,8 +2425,8 @@ export default function StellarAtelierGame() {
                       {/* Reserved Cards for this player (Craftable on their turn) */}
                       {p.reserved.length > 0 && (
                         <div className="mt-2 space-y-1.5 border-t border-[var(--table-line)] pt-2">
-                          <p className="text-[10px] font-black text-[#d8a4b4]">
-                            📌 {p.name}の予約済み設計図（{p.reserved.length}枚）:
+                          <p className="text-[11px] font-black text-[#d8a4b4]">
+                             {p.name}の予約済み設計図（{p.reserved.length}枚）:
                           </p>
                           {p.reserved.map((rCard) => {
                             const rAnalysis = analyzeCardCost(p, rCard);
@@ -2442,7 +2442,7 @@ export default function StellarAtelierGame() {
                                       {rCard.prestige}★
                                     </span>
                                     <span
-                                      className={`rounded border px-1 py-0.2 text-[9px] font-black ${rBonus.badgeClass}`}
+                                      className={`rounded border px-1 py-0.2 text-[11px] font-black ${rBonus.badgeClass}`}
                                     >
                                       {rBonus.shortName}+1
                                     </span>
@@ -2450,7 +2450,7 @@ export default function StellarAtelierGame() {
                                       {rCard.title}
                                     </span>
                                   </div>
-                                  <p className="text-[10px] text-[var(--table-muted)] mt-0.5">
+                                  <p className="text-[11px] text-[var(--table-muted)] mt-0.5">
                                     割引後残りコスト: {rAnalysis.totalAfterDiscount}（不足{' '}
                                     {rAnalysis.missingAfterPrism}）
                                   </p>
@@ -2484,7 +2484,7 @@ export default function StellarAtelierGame() {
             {/* Action History Log */}
             <section className="tabletop-panel p-3.5">
               <h3 className="tabletop-title mb-2 text-sm">
-                📜 アトリエ錬成ログ（行動履歴）
+                 アトリエ錬成ログ（行動履歴）
               </h3>
               <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 text-xs">
                 {gameState.logs.map((entry, i) => (

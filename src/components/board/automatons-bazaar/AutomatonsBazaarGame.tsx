@@ -1104,7 +1104,7 @@ export default function AutomatonsBazaarGame() {
                 showAnalyzer ? 'tabletop-chip-active' : ''
               }`}
             >
-              {showAnalyzer ? '⚙ 競売参謀 AI ON' : '⚙ 競売参謀 AI OFF'}
+              {showAnalyzer ? ' 競売参謀 AI ON' : ' 競売参謀 AI OFF'}
             </button>
             <button
               type="button"
@@ -1113,14 +1113,14 @@ export default function AutomatonsBazaarGame() {
                 bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
-              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+              {bgmOn ? ' BGM ON' : ' BGM OFF'}
             </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
               className="tabletop-button min-h-11 px-3 text-xs"
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              {soundOn ? ' 効果音 ON' : ' 効果音 OFF'}
             </button>
             <button
               type="button"
@@ -1153,7 +1153,7 @@ export default function AutomatonsBazaarGame() {
               </div>
               {carryOverLots.length > 0 && (
                 <span className=" rounded-full border border-[#9f4540]/50 bg-[#9f4540]/20 px-3 py-0.5 text-xs font-black text-[#d9a19b]">
-                  🔥 キャリーオーバー中（+{carryOverLots.length}品累積）
+                   キャリーオーバー中（+{carryOverLots.length}品累積）
                 </span>
               )}
             </div>
@@ -1166,7 +1166,7 @@ export default function AutomatonsBazaarGame() {
                 return (
                   <div
                     key={lot.id}
-                    className={`flex flex-col items-center justify-center rounded-lg border py-1 text-[10px] font-black transition ${
+                    className={`flex flex-col items-center justify-center rounded-lg border py-1 text-[11px] font-black transition ${
                       isCurrent
                         ? 'border-[var(--table-accent)] bg-[#c99555]/22 text-[var(--table-ink)] '
                         : isPast
@@ -1205,7 +1205,7 @@ export default function AutomatonsBazaarGame() {
                         : 'bg-[var(--table-accent)] text-[#1b120b]'
                     }`}
                   >
-                    {isCurrentScrap ? '⚠ 暴走スクラップ回（逆競り）' : '👑 名匠からくり出品ロット'}
+                    {isCurrentScrap ? ' 暴走スクラップ回（逆競り）' : ' 名匠からくり出品ロット'}
                   </span>
                   <span className="text-xs font-bold text-[var(--table-accent-strong)]/90">
                     {isCurrentScrap
@@ -1247,7 +1247,7 @@ export default function AutomatonsBazaarGame() {
                         <div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             {idx < lotsAtStake.length - 1 && (
-                              <span className="rounded bg-[#c99555]/20 px-1.5 py-0.5 text-[10px] font-black text-[var(--table-accent-strong)]">
+                              <span className="rounded bg-[#c99555]/20 px-1.5 py-0.5 text-[11px] font-black text-[var(--table-accent-strong)]">
                                 前回キャリーオーバー品
                               </span>
                             )}
@@ -1255,18 +1255,18 @@ export default function AutomatonsBazaarGame() {
                               <span
                                 className={`rounded-full border px-2.5 py-0.5 text-[11px] font-black ${emblemInfo.badge}`}
                               >
-                                ⚙ {emblemInfo.name}
+                                 {emblemInfo.name}
                               </span>
                             ) : (
                               <span className="rounded-full border border-[#9f4540]/50 bg-[#9f4540]/20 px-2.5 py-0.5 text-[11px] font-black text-[#d9a19b]">
-                                💥 負債スクラップ
+                                 負債スクラップ
                               </span>
                             )}
                             <span className="text-xs font-semibold text-[var(--table-accent-strong)]/70">
                               {lot.subtitle}
                             </span>
                           </div>
-                          <h3 className="mt-1 text-lg font-black tracking-tight text-[var(--table-ink)] sm:text-xl">
+                          <h3 className="tabletop-title mt-1 text-lg sm:text-xl">
                             {lot.name}
                           </h3>
                           <p className="mt-0.5 text-xs leading-relaxed text-[var(--table-accent-strong)]/75">
@@ -1277,7 +1277,7 @@ export default function AutomatonsBazaarGame() {
 
                       <div className="flex shrink-0 flex-row items-center justify-between gap-2 border-t border-[var(--table-line)] pt-2.5 sm:flex-col sm:items-end sm:border-t-0 sm:pt-0">
                         <div className="text-right">
-                          <span className="block text-[10px] font-bold tracking-wider text-[var(--table-accent-strong)]/70 uppercase">
+                          <span className="block text-[11px] font-bold tracking-wider text-[var(--table-accent-strong)]/70 uppercase">
                             基本評価値
                           </span>
                           <span
@@ -1310,8 +1310,8 @@ export default function AutomatonsBazaarGame() {
               {roundResolution ? (
                 <div className="tabletop-panel-soft mt-4 border-[var(--table-accent)] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="text-sm font-black text-[var(--table-accent-strong)]">
-                      🔔 第{roundResolution.round}ラウンド 一斉公開結果
+                    <h4 className="tabletop-title text-sm">
+                       第{roundResolution.round}ラウンド 一斉公開結果
                     </h4>
                     <span className="rounded-full border border-[var(--table-accent)]/40 bg-[#c99555]/16 px-3 py-0.5 text-xs font-black text-[var(--table-accent-strong)]">
                       {roundResolution.isCarryOver ? '全員相殺・キャリーオーバー' : '落札確定'}
@@ -1350,7 +1350,7 @@ export default function AutomatonsBazaarGame() {
                           {entry.bid} 金貨
                         </span>
                         <span
-                          className={`rounded px-2 py-0.5 text-[10px] font-black ${
+                          className={`rounded px-2 py-0.5 text-[11px] font-black ${
                             entry.isWinner
                               ? isCurrentScrap
                                 ? 'bg-[#9f4540] text-[var(--table-ink)]'
@@ -1362,10 +1362,10 @@ export default function AutomatonsBazaarGame() {
                         >
                           {entry.isWinner
                             ? isCurrentScrap
-                              ? '💥 スクラップ引取'
-                              : '👑 単独落札！'
+                              ? ' スクラップ引取'
+                              : ' 単独落札！'
                             : entry.isCancelled
-                              ? '⚡ バッティング無効'
+                              ? ' バッティング無効'
                               : '次点・見送り'}
                         </span>
                       </div>
@@ -1379,7 +1379,7 @@ export default function AutomatonsBazaarGame() {
                       className="tabletop-button-primary min-h-11 w-full px-5 text-sm sm:w-auto"
                     >
                       {roundIndex + 1 >= deck.length
-                        ? '🏆 最終決算スコアボードへ進む'
+                        ? ' 最終決算スコアボードへ進む'
                         : `次の第${roundIndex + 2}ラウンドへ進む →`}
                     </button>
                   </div>
@@ -1388,8 +1388,8 @@ export default function AutomatonsBazaarGame() {
                 <div className="tabletop-panel-soft mt-4 p-3.5 sm:p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-xs font-black tracking-wider text-[var(--table-accent-strong)] uppercase sm:text-sm">
-                        🪙 あなたの入札手札（残り {humanPlayer.remainingBids.length} 枚・使い切り）
+                      <h4 className="tabletop-kicker text-xs sm:text-sm">
+                         あなたの入札手札（残り {humanPlayer.remainingBids.length} 枚・使い切り）
                       </h4>
                       <p className="text-[11px] text-[var(--table-accent-strong)]/70">
                         金貨カードを選んで「一斉公開で入札する」を押してください（数字ボタンダブルタップでも即入札可能）
@@ -1397,7 +1397,7 @@ export default function AutomatonsBazaarGame() {
                     </div>
                     {bestRecommendation && showAnalyzer && (
                       <div className="rounded-lg border border-[#315d4e]/40 bg-[#315d4e]/18 px-2.5 py-1 text-xs font-bold text-[#9dc4af]">
-                        💡 参謀推奨: <strong className="text-[#9dc4af]">{bestRecommendation.bid}金貨</strong>（{bestRecommendation.tag}）
+                         参謀推奨: <strong className="text-[#9dc4af]">{bestRecommendation.bid}金貨</strong>（{bestRecommendation.tag}）
                       </div>
                     )}
                   </div>
@@ -1435,13 +1435,13 @@ export default function AutomatonsBazaarGame() {
                           }`}
                         >
                           {isRecommended && isAvailable && showAnalyzer && (
-                            <span className="absolute -top-2 rounded-full bg-[#4f806b] px-1.5 py-0.2 text-[9px] font-black text-[#1b120b]">
+                            <span className="absolute -top-2 rounded-full bg-[#4f806b] px-1.5 py-0.2 text-[11px] font-black text-[#1b120b]">
                               推奨
                             </span>
                           )}
                           <span className="font-mono text-lg font-black sm:text-xl">{coin}</span>
                           <span
-                            className={`text-[9px] font-bold ${
+                            className={`text-[11px] font-bold ${
                               !isAvailable
                                 ? 'text-[var(--table-muted)]'
                                 : isSelected
@@ -1480,7 +1480,7 @@ export default function AutomatonsBazaarGame() {
                         })()
                       ) : (
                         <span className="text-[var(--table-accent-strong)]/70">
-                          👆 上の1〜10金貨カードから、このラウンドで入札する1枚を選択してください
+                           上の1〜10金貨カードから、このラウンドで入札する1枚を選択してください
                         </span>
                       )}
                     </div>
@@ -1496,7 +1496,7 @@ export default function AutomatonsBazaarGame() {
                       }`}
                     >
                       {selectedBid !== null
-                        ? `🔨 ${selectedBid} 金貨で一斉公開入札する！`
+                        ? ` ${selectedBid} 金貨で一斉公開入札する！`
                         : '金貨カードを選択してください'}
                     </button>
                   </div>
@@ -1512,7 +1512,7 @@ export default function AutomatonsBazaarGame() {
                     GRAND CLOCKWORK BAZAAR FINALE
                   </span>
                   <h3 className="tabletop-title text-xl sm:text-2xl">
-                    🏆 歯車都市の競売会 最終決算ランキング
+                     歯車都市の競売会 最終決算ランキング
                   </h3>
                 </div>
                 <button
@@ -1520,7 +1520,7 @@ export default function AutomatonsBazaarGame() {
                   onClick={handleNewMatch}
                   className="tabletop-button-primary min-h-11 px-4 text-xs"
                 >
-                  🔄 新しいデッキで再戦する
+                   新しいデッキで再戦する
                 </button>
               </div>
 
@@ -1576,7 +1576,7 @@ export default function AutomatonsBazaarGame() {
                         <span className="font-mono text-2xl font-black text-[var(--table-accent-strong)]">
                           {sc.totalScore} pt
                         </span>
-                        <span className="block text-[10px] text-[var(--table-accent-strong)]/60">
+                        <span className="block text-[11px] text-[var(--table-accent-strong)]/60">
                           落札数 {p.wonLots.length}品
                         </span>
                       </div>
@@ -1591,7 +1591,7 @@ export default function AutomatonsBazaarGame() {
           <div className="tabletop-panel p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="tabletop-title text-sm">
-                🏛 4大商人ギルドの獲得コレクション＆セットボーナス状況
+                 4大商人ギルドの獲得コレクション＆セットボーナス状況
               </h3>
               <div className="flex flex-wrap gap-2 text-[11px] font-bold text-[var(--table-accent-strong)]/80">
                 <span className="rounded border border-[var(--table-accent)]/30 bg-[#c99555]/10 px-2 py-0.5">
@@ -1625,7 +1625,7 @@ export default function AutomatonsBazaarGame() {
                           {sc.totalScore} pt
                         </span>
                         {sc.setBonusPoints + sc.grandMasterBonus > 0 && (
-                          <span className="ml-1.5 rounded bg-[#315d4e]/22 px-1.5 py-0.5 text-[10px] font-black text-[#9dc4af]">
+                          <span className="ml-1.5 rounded bg-[#315d4e]/22 px-1.5 py-0.5 text-[11px] font-black text-[#9dc4af]">
                             ボーナス+{sc.setBonusPoints + sc.grandMasterBonus}
                           </span>
                         )}
@@ -1647,14 +1647,14 @@ export default function AutomatonsBazaarGame() {
                                 : 'border-[var(--table-line)] bg-black/20 opacity-60'
                             }`}
                           >
-                            <span className={`block text-[10px] font-bold ${meta.color}`}>
+                            <span className={`block text-[11px] font-bold ${meta.color}`}>
                               {meta.shortName}
                             </span>
                             <span className="font-mono text-sm font-black text-[var(--table-ink)]">
                               {count}個
                             </span>
                             {bonus > 0 && (
-                              <span className="block text-[9px] font-black text-[#9dc4af]">
+                              <span className="block text-[11px] font-black text-[#9dc4af]">
                                 +{bonus}pt
                               </span>
                             )}
@@ -1671,7 +1671,7 @@ export default function AutomatonsBazaarGame() {
                         p.wonLots.map((lot) => (
                           <span
                             key={lot.id}
-                            className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${
+                            className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${
                               lot.kind === 'scrap'
                                 ? 'border-[#9f4540]/40 bg-[#9f4540]/18 text-[#d9a19b]'
                                 : 'border-[var(--table-accent)]/30 bg-[#c99555]/10 text-[var(--table-accent-strong)]'
@@ -1695,14 +1695,14 @@ export default function AutomatonsBazaarGame() {
           <div className="tabletop-panel p-4">
             <div className="flex items-center justify-between border-b border-[var(--table-line-strong)]/20 pb-2.5">
               <div>
-                <span className="text-[10px] font-black tracking-widest text-[var(--table-accent)] uppercase">
+                <span className="text-[11px] font-black tracking-widest text-[var(--table-accent)] uppercase">
                   COMPLETE INFORMATION COUNTER
                 </span>
                 <h3 className="tabletop-title text-sm">
-                  📊 全プレイヤー残り手札カウンティング表
+                   全プレイヤー残り手札カウンティング表
                 </h3>
               </div>
-              <span className="rounded-md border border-[var(--table-accent)]/30 bg-[#c99555]/12 px-2 py-0.5 text-[10px] font-bold text-[var(--table-accent-strong)]">
+              <span className="rounded-md border border-[var(--table-accent)]/30 bg-[#c99555]/12 px-2 py-0.5 text-[11px] font-bold text-[var(--table-accent-strong)]">
                 公開情報
               </span>
             </div>
@@ -1763,7 +1763,7 @@ export default function AutomatonsBazaarGame() {
 
             {/* Number scarcity summary */}
             <div className="mt-3 rounded-md border border-[var(--table-line)] bg-black/20 p-2.5 text-[11px]">
-              <span className="font-bold text-[var(--table-accent-strong)]">🔍 単独確定カード（あなただけが保持）: </span>
+              <span className="font-bold text-[var(--table-accent-strong)]"> 単独確定カード（あなただけが保持）: </span>
               {(() => {
                 const uniqueToHuman = humanPlayer.remainingBids.filter((c) =>
                   players.filter((p) => !p.isHuman).every((ai) => !ai.remainingBids.includes(c))
@@ -1784,11 +1784,11 @@ export default function AutomatonsBazaarGame() {
             <div className="tabletop-panel p-4">
               <div className="flex items-center justify-between border-b border-[#315d4e]/20 pb-2">
                 <div>
-                  <span className="text-[10px] font-black tracking-widest text-[#9dc4af] uppercase">
+                  <span className="text-[11px] font-black tracking-widest text-[#9dc4af] uppercase">
                     COLLISION RISK &amp; EV ANALYZER
                   </span>
                   <h3 className="tabletop-title text-sm">
-                    🧠 バッティング確率＆推奨入札アナライザー
+                     バッティング確率＆推奨入札アナライザー
                   </h3>
                 </div>
               </div>
@@ -1819,7 +1819,7 @@ export default function AutomatonsBazaarGame() {
                             {rec.bid} ソヴリン金貨
                           </span>
                           <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
+                            className={`rounded px-1.5 py-0.5 text-[11px] font-black ${
                               i === 0
                                 ? 'bg-[#4f806b] text-[#1b120b]'
                                 : 'bg-[var(--table-panel-soft)] text-[var(--table-accent-strong)]'
@@ -1844,7 +1844,7 @@ export default function AutomatonsBazaarGame() {
 
           {/* Round History Log */}
           <div className="tabletop-panel p-4">
-            <h3 className="tabletop-title text-sm">📜 競売ラウンド履歴</h3>
+            <h3 className="tabletop-title text-sm"> 競売ラウンド履歴</h3>
             <div className="mt-2.5 max-h-56 space-y-2 overflow-y-auto pr-1">
               {history.length === 0 ? (
                 <p className="text-xs text-[var(--table-muted)]">

@@ -132,7 +132,7 @@ function addMeta(html, attribute, value, content) {
     return html;
   }
   const tag = `<meta ${attribute}="${value}" content="${escapeXml(content)}"/>`;
-  return html.replace(/<\/head>/i, `${tag}</head>`);
+  return /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${tag}</head>`) : `${html}${tag}`;
 }
 
 function setOrAddMeta(html, attribute, value, content) {
@@ -548,43 +548,50 @@ async function main() {
       await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(imageFilePath);
     }
 
-    let updated = html.split(OLD_IMAGE_URL).join(imageAbsoluteUrl);
-    if (!hasMeta(updated, 'property', 'og:title')) {
-      updated = addMeta(updated, 'property', 'og:title', title);
+    const headStart = html.search(/<head\b/i);
+    const headEnd = headStart >= 0 ? html.indexOf('</head>', headStart) : -1;
+    if (headStart < 0 || headEnd < 0) {
+      continue;
     }
-    if (!hasMeta(updated, 'property', 'og:description')) {
-      updated = addMeta(updated, 'property', 'og:description', description);
+
+    let head = html.slice(headStart, headEnd);
+    if (!hasMeta(head, 'property', 'og:title')) {
+      head = addMeta(head, 'property', 'og:title', title);
     }
-    if (!hasMeta(updated, 'property', 'og:url')) {
-      updated = addMeta(updated, 'property', 'og:url', `${BASE_URL}${route === '/' ? '' : route}`);
+    if (!hasMeta(head, 'property', 'og:description')) {
+      head = addMeta(head, 'property', 'og:description', description);
     }
-    if (!hasMeta(updated, 'name', 'twitter:title')) {
-      updated = addMeta(updated, 'name', 'twitter:title', title);
+    if (!hasMeta(head, 'property', 'og:url')) {
+      head = addMeta(head, 'property', 'og:url', `${BASE_URL}${route === '/' ? '' : route}`);
     }
-    if (!hasMeta(updated, 'name', 'twitter:description')) {
-      updated = addMeta(updated, 'name', 'twitter:description', description);
+    if (!hasMeta(head, 'name', 'twitter:title')) {
+      head = addMeta(head, 'name', 'twitter:title', title);
     }
-    updated = setOrAddMeta(updated, 'property', 'og:site_name', SITE_NAME);
-    updated = setOrAddMeta(updated, 'property', 'og:locale', 'ja_JP');
-    updated = setOrAddMeta(updated, 'property', 'og:image', imageAbsoluteUrl);
-    updated = setOrAddMeta(updated, 'property', 'og:image:width', '1200');
-    updated = setOrAddMeta(updated, 'property', 'og:image:height', '630');
-    updated = setOrAddMeta(updated, 'property', 'og:image:type', 'image/png');
-    updated = setOrAddMeta(updated, 'name', 'twitter:card', 'summary_large_image');
-    updated = setOrAddMeta(updated, 'name', 'twitter:site', TWITTER_SITE);
-    updated = setOrAddMeta(updated, 'name', 'twitter:image', imageAbsoluteUrl);
-    if (!hasMeta(updated, 'property', 'og:image:alt')) {
-      const alt = getMetaContent(updated, 'name', 'twitter:image:alt') || title;
-      updated = addMeta(updated, 'property', 'og:image:alt', alt);
+    if (!hasMeta(head, 'name', 'twitter:description')) {
+      head = addMeta(head, 'name', 'twitter:description', description);
     }
-    if (!hasMeta(updated, 'name', 'twitter:image:alt')) {
+    head = setOrAddMeta(head, 'property', 'og:site_name', SITE_NAME);
+    head = setOrAddMeta(head, 'property', 'og:locale', 'ja_JP');
+    head = setOrAddMeta(head, 'property', 'og:image', imageAbsoluteUrl);
+    head = setOrAddMeta(head, 'property', 'og:image:width', '1200');
+    head = setOrAddMeta(head, 'property', 'og:image:height', '630');
+    head = setOrAddMeta(head, 'property', 'og:image:type', 'image/png');
+    head = setOrAddMeta(head, 'name', 'twitter:card', 'summary_large_image');
+    head = setOrAddMeta(head, 'name', 'twitter:site', TWITTER_SITE);
+    head = setOrAddMeta(head, 'name', 'twitter:image', imageAbsoluteUrl);
+    if (!hasMeta(head, 'property', 'og:image:alt')) {
+      const alt = getMetaContent(head, 'name', 'twitter:image:alt') || title;
+      head = addMeta(head, 'property', 'og:image:alt', alt);
+    }
+    if (!hasMeta(head, 'name', 'twitter:image:alt')) {
       const alt =
-        getMetaContent(updated, 'property', 'og:image:alt') ||
-        getMetaContent(updated, 'name', 'twitter:title') ||
+        getMetaContent(head, 'property', 'og:image:alt') ||
+        getMetaContent(head, 'name', 'twitter:title') ||
         title;
-      updated = addMeta(updated, 'name', 'twitter:image:alt', alt);
+      head = addMeta(head, 'name', 'twitter:image:alt', alt);
     }
-    updated = updated.split(OLD_IMAGE_URL).join(imageAbsoluteUrl);
+
+    const updated = html.slice(0, headStart) + head + html.slice(headEnd);
 
     fs.writeFileSync(htmlFile, updated);
     generated += 1;

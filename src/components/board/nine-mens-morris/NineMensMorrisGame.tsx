@@ -528,7 +528,7 @@ export default function NineMensMorrisGame() {
       if (formedMill) {
         setMustRemove(true);
         setLogs((prev) => [
-          `${pLabel}: ${POINTS[id].label} に配置 → ⚡ミル成立！除去する相手石を選んでください`,
+          `${pLabel}: ${POINTS[id].label} に配置 → ミル成立！除去する相手石を選んでください`,
           ...prev.slice(0, 29),
         ]);
       } else {
@@ -561,7 +561,7 @@ export default function NineMensMorrisGame() {
       if (formedMill) {
         setMustRemove(true);
         setLogs((prev) => [
-          `${pLabel}: ${POINTS[selectedPoint].label} → ${POINTS[id].label} → ⚡ミル成立！除去する相手石を選んでください`,
+          `${pLabel}: ${POINTS[selectedPoint].label} → ${POINTS[id].label} → ミル成立！除去する相手石を選んでください`,
           ...prev.slice(0, 29),
         ]);
       } else {

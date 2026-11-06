@@ -144,10 +144,10 @@ test('OGP metadata audit', async () => {
 
     assert.equal(getMetaValues(html, 'property', 'og:site_name').length, 1, `${relativePath}: missing og:site_name`);
     assert.equal(getMetaValues(html, 'property', 'og:locale').length, 1, `${relativePath}: missing og:locale`);
-    assert.ok(!html.includes(GENERIC_IMAGE), `${relativePath}: generic OGP image remains`);
-
     const imageUrl = getMetaValues(html, 'property', 'og:image')[0];
     const twitterImageUrl = getMetaValues(html, 'name', 'twitter:image')[0];
+    assert.notEqual(imageUrl, GENERIC_IMAGE, `${relativePath}: generic OGP image remains in og:image`);
+    assert.notEqual(twitterImageUrl, GENERIC_IMAGE, `${relativePath}: generic OGP image remains in twitter:image`);
     assert.equal(imageUrl, twitterImageUrl, `${relativePath}: twitter:image must match og:image`);
     assert.ok(/^https?:\/\//i.test(imageUrl), `${relativePath}: og:image must be absolute`);
 

@@ -1437,8 +1437,8 @@ export default function StainedGlassMosaicGame() {
         setGameOver(true);
         setShowResultModal(true);
         setLogs((prev) => [
-          `🏆 大聖堂ステンドグラス窓の横1列が完成！最終ボーナス集計を行い対局終了となりました。`,
-          `✨ 第${round}ラウンドの焼き入れ＆ステンドグラス嵌め込みフェーズ完了！`,
+          ` 大聖堂ステンドグラス窓の横1列が完成！最終ボーナス集計を行い対局終了となりました。`,
+          ` 第${round}ラウンドの焼き入れ＆ステンドグラス嵌め込みフェーズ完了！`,
           actionLog,
           ...prev.slice(0, 37),
         ]);
@@ -1468,7 +1468,7 @@ export default function StainedGlassMosaicGame() {
       setHoveredWorkbenchRow(null);
       setHintMove(null);
       setLogs((prev) => [
-        `✨ 第${round}ラウンドの焼き入れ完了！第${nextRound}ラウンドを開始します（先手：${nextPlayers[nextStartPlayerIndex].name}）。`,
+        ` 第${round}ラウンドの焼き入れ完了！第${nextRound}ラウンドを開始します（先手：${nextPlayers[nextStartPlayerIndex].name}）。`,
         actionLog,
         ...prev.slice(0, 38),
       ]);
@@ -1610,7 +1610,7 @@ export default function StainedGlassMosaicGame() {
                 bgmEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🎵 BGM {bgmEnabled ? 'ON' : 'OFF'}
+               BGM {bgmEnabled ? 'ON' : 'OFF'}
             </button>
 
             <button
@@ -1620,7 +1620,7 @@ export default function StainedGlassMosaicGame() {
                 sfxEnabled ? 'tabletop-chip tabletop-chip-active border font-bold' : 'tabletop-chip'
               }`}
             >
-              🔊 効果音 {sfxEnabled ? 'ON' : 'OFF'}
+               効果音 {sfxEnabled ? 'ON' : 'OFF'}
             </button>
 
             <button
@@ -1629,7 +1629,7 @@ export default function StainedGlassMosaicGame() {
               disabled={undoStack.length === 0}
               className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs disabled:pointer-events-none disabled:opacity-40"
             >
-              ↩ 1手戻す
+               1手戻す
             </button>
 
             <button
@@ -1638,7 +1638,7 @@ export default function StainedGlassMosaicGame() {
               disabled={!isHumanTurn}
               className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs text-[#dfb06d] disabled:pointer-events-none disabled:opacity-40"
             >
-              💡 ヒント
+               ヒント
             </button>
 
             <button
@@ -1646,7 +1646,15 @@ export default function StainedGlassMosaicGame() {
               onClick={() => setShowRuleModal(true)}
               className="tabletop-button inline-flex min-h-11 items-center px-2.5 text-xs"
             >
-              📖 遊び方・得点表
+               遊び方・得点表
+            </button>
+
+            <button
+              type="button"
+              onClick={() => startNewGame(gameMode, playerCount, leadAiPersona)}
+              className="tabletop-button-primary inline-flex min-h-11 items-center px-3 text-xs font-bold"
+            >
+              ↻ 新規対局
             </button>
 
             <ThemeToggleButton />
@@ -1668,7 +1676,7 @@ export default function StainedGlassMosaicGame() {
                   gameMode === 'cpu' ? 'tabletop-chip tabletop-chip-active border' : 'tabletop-chip'
                 }`}
               >
-                🤖 CPU対戦（2〜4人）
+                 CPU対戦（2〜4人）
               </button>
               <button
                 type="button"
@@ -1677,7 +1685,7 @@ export default function StainedGlassMosaicGame() {
                   gameMode === 'pvp' ? 'tabletop-chip tabletop-chip-active border' : 'tabletop-chip'
                 }`}
               >
-                👥 1台で2人対戦
+                 1台で2人対戦
               </button>
 
               {gameMode === 'cpu' && (
@@ -1728,18 +1736,9 @@ export default function StainedGlassMosaicGame() {
                   onClick={() => setShowResultModal(true)}
                   className="tabletop-button-primary inline-flex min-h-11 items-center px-3 text-xs"
                 >
-                  🏆 最終結果
+                   最終結果
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() =>
-                  startNewGame(gameMode, playerCount, leadAiPersona)
-                }
-                className="tabletop-button inline-flex min-h-11 items-center px-3 text-xs text-[#e3b6ad]"
-              >
-                ↻ 新規対局
-              </button>
             </div>
           </div>
         </section>
@@ -1772,7 +1771,7 @@ export default function StainedGlassMosaicGame() {
             <div className="tabletop-panel-soft w-full space-y-1 p-3 text-xs md:w-auto">
               <div className="flex items-center justify-between gap-3">
                 <span className="font-bold text-[#dfb06d]">
-                  ✨ 配置時の獲得点・減点プレビュー
+                   配置時の獲得点・減点プレビュー
                 </span>
                 <button
                   type="button"
@@ -1824,7 +1823,7 @@ export default function StainedGlassMosaicGame() {
                   </div>
                 ) : (
                   <p className="font-medium text-[#e0a9a2]">
-                    ⚠️ {activePreviewEval.invalidReason}
+                    ️ {activePreviewEval.invalidReason}
                   </p>
                 )
               ) : (
@@ -1841,7 +1840,7 @@ export default function StainedGlassMosaicGame() {
           <div className="tabletop-panel-soft flex flex-wrap items-center justify-between gap-2 border-l-2 border-l-[#315d4e] px-3.5 py-2.5 text-xs sm:text-[13px]">
             <div>
               <span className="mr-2 font-bold text-[#a9cdb7]">
-                💡 AI推奨手：
+                 AI推奨手：
               </span>
               <span className="text-[#e8dcc8]">
                 {hintMove.selection.sourceType === 'kiln'
@@ -1875,7 +1874,7 @@ export default function StainedGlassMosaicGame() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="tabletop-title flex flex-wrap items-center gap-2 text-sm sm:text-base">
-                  <span>🔥 硝子窯（キルン）</span>
+                  <span> 硝子窯（キルン）</span>
                   <span className="font-sans text-[11px] font-normal text-[#b9a88f]">
                     同色ピースをすべて獲得し、残りは中庭ストックへ移動
                   </span>
@@ -1954,7 +1953,7 @@ export default function StainedGlassMosaicGame() {
             <div>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="tabletop-title text-sm sm:text-base">
-                  ⛲ 中庭ストック
+                   中庭ストック
                 </h3>
                 <span className="tabletop-chip inline-flex min-h-7 items-center px-2.5 text-[11px]">
                   合計 {courtyard.length}枚
@@ -1968,7 +1967,7 @@ export default function StainedGlassMosaicGame() {
               {courtyardHasMaster && (
                 <div className="tabletop-panel-soft mb-3 flex items-center justify-between border-l-2 border-l-[#c99555] px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#c99555] text-[10px] font-black text-[#1b120b]">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#c99555] text-[11px] font-black text-[#1b120b]">
                       親方
                     </span>
                     <div className="text-xs">
@@ -2082,7 +2081,7 @@ export default function StainedGlassMosaicGame() {
                     </h3>
                     {(startPlayerIndex === pIdx || hasMasterInBroken) && (
                       <span className="tabletop-chip inline-flex min-h-7 items-center px-2 text-[11px] font-semibold">
-                        👑 次ラウンド先手
+                         次ラウンド先手
                       </span>
                     )}
                   </div>
@@ -2104,8 +2103,8 @@ export default function StainedGlassMosaicGame() {
                 <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-12">
                   {/* Column Headers */}
                   <div className="flex items-center justify-between px-1 text-[11px] font-bold text-[#c9b79d] sm:col-span-5">
-                    <span>🛠️ 準備作業台（1〜5段）</span>
-                    <span className="text-[10px] text-[#9c8d78]">
+                    <span>️ 準備作業台（1〜5段）</span>
+                    <span className="text-[11px] text-[#9c8d78]">
                       右端から充填
                     </span>
                   </div>
@@ -2113,8 +2112,8 @@ export default function StainedGlassMosaicGame() {
                     ➔
                   </div>
                   <div className="flex items-center justify-between px-1 text-[11px] font-bold text-[#dfb06d] sm:col-span-6">
-                    <span>🏰 大聖堂ステンドグラス窓（5×5）</span>
-                    <span className="text-[10px] text-[#9c8d78]">
+                    <span> 大聖堂ステンドグラス窓（5×5）</span>
+                    <span className="text-[11px] text-[#9c8d78]">
                       横1列完成で終了
                     </span>
                   </div>
@@ -2166,11 +2165,11 @@ export default function StainedGlassMosaicGame() {
                               <span className="text-[11px] font-bold text-[#e8dcc8]">
                                 {rowIndex + 1}段目
                               </span>
-                              <span className="text-[10px] text-[#9c8d78]">
+                              <span className="text-[11px] text-[#9c8d78]">
                                 容量 {wb.count}/{wb.capacity}
                               </span>
                               {isInteractiveBoard && rowEval && canPlace && (
-                                <span className="mt-0.5 text-[10px] font-bold text-[#a9cdb7]">
+                                <span className="mt-0.5 text-[11px] font-bold text-[#a9cdb7]">
                                   {rowEval.willCompleteWorkbench
                                     ? `完成 +${rowEval.projectedGlazePoints}点`
                                     : `+${rowEval.placedInWorkbench}枚`}
@@ -2214,7 +2213,7 @@ export default function StainedGlassMosaicGame() {
                                           highlighted
                                         />
                                       ) : (
-                                        <span className="text-[10px] text-[#5e5140]">
+                                        <span className="text-[11px] text-[#5e5140]">
                                           •
                                         </span>
                                       )}
@@ -2229,13 +2228,13 @@ export default function StainedGlassMosaicGame() {
                         {/* Arrow Connector */}
                         <div className="hidden justify-center sm:col-span-1 sm:flex">
                           <span
-                            className={`text-[10px] font-bold ${
+                            className={`text-[11px] font-bold ${
                               wb.count === wb.capacity
                                 ? 'text-[#dfb06d]'
                                 : 'text-[#6b543d]'
                             }`}
                           >
-                            {wb.count === wb.capacity ? '🔥完成' : '→'}
+                            {wb.count === wb.capacity ? '完成' : '→'}
                           </span>
                         </div>
 
@@ -2267,7 +2266,7 @@ export default function StainedGlassMosaicGame() {
                                 />
                                 {isGlazed && (
                                   <span
-                                    className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#c99555] text-[9px] font-black text-[#1b120b]"
+                                    className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#c99555] text-[10px] font-black text-[#1b120b]"
                                     title="嵌め込み済み"
                                   >
                                     ✓
@@ -2287,7 +2286,7 @@ export default function StainedGlassMosaicGame() {
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[11px] font-bold text-[#e0a9a2]">
-                        💥 破損ガラス枠（減点ライン）
+                         破損ガラス枠（減点ライン）
                       </span>
                       <span className="text-[11px] text-[#b9a88f]">
                         現在の減点予定：
@@ -2312,17 +2311,17 @@ export default function StainedGlassMosaicGame() {
                                 : 'border-[#3a2e23] bg-[#171310]'
                             }`}
                           >
-                            <span className="text-[10px] font-bold text-[#e0a9a2]">
+                            <span className="text-[11px] font-bold text-[#e0a9a2]">
                               {pen}
                             </span>
                             {item === 'master' ? (
-                              <span className="rounded-sm bg-[#c99555] px-1 py-0.5 text-[9px] font-black text-[#1b120b]">
+                              <span className="rounded-sm bg-[#c99555] px-1 py-0.5 text-[10px] font-black text-[#1b120b]">
                                 親方
                               </span>
                             ) : item ? (
                               <StainedGlassTileSvg color={item} size="sm" />
                             ) : (
-                              <span className="text-[10px] text-[#5e5140]">
+                              <span className="text-[11px] text-[#5e5140]">
                                 -
                               </span>
                             )}
@@ -2341,7 +2340,7 @@ export default function StainedGlassMosaicGame() {
                       onClick={() => executeMove(selectedDraft, -1, true)}
                       className="tabletop-button inline-flex min-h-11 items-center self-start px-3 text-xs font-bold text-[#e0a9a2] sm:self-end"
                     >
-                      💥 破損ガラス枠へ直接破棄（
+                       破損ガラス枠へ直接破棄（
                       {rowEvaluations?.[-1]?.projectedPenaltyDelta ?? 0}点）
                     </button>
                   )}
@@ -2356,7 +2355,7 @@ export default function StainedGlassMosaicGame() {
           {/* Round Glazing Summary */}
           <div className="tabletop-panel p-3.5 sm:p-4 lg:col-span-5">
             <h3 className="tabletop-title mb-2 text-sm">
-              🔥 第2フェーズ：焼き入れ＆嵌め込み集計
+               第2フェーズ：焼き入れ＆嵌め込み集計
             </h3>
             {!lastGlazeSummary ? (
               <p className="text-xs leading-relaxed text-[#b9a88f]">
@@ -2397,7 +2396,7 @@ export default function StainedGlassMosaicGame() {
           {/* Match Logs */}
           <div className="tabletop-panel p-3.5 sm:p-4 lg:col-span-7">
             <h3 className="tabletop-title mb-2 text-sm">
-              📜 工房モザイク対局ログ
+               工房モザイク対局ログ
             </h3>
             <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs text-[#c9b79d]">
               {logs.map((log, i) => (
@@ -2425,7 +2424,7 @@ export default function StainedGlassMosaicGame() {
                   Cathedral Masterpiece Complete
                 </span>
                 <h3 className="tabletop-title text-lg sm:text-xl">
-                  🏆 大聖堂ステンドグラス窓 完成・最終得点内訳
+                   大聖堂ステンドグラス窓 完成・最終得点内訳
                 </h3>
               </div>
               <button
@@ -2445,15 +2444,15 @@ export default function StainedGlassMosaicGame() {
                     <th className="px-2 py-2 text-right">基本連鎖点</th>
                     <th className="px-2 py-2 text-right">
                       横列ボーナス
-                      <span className="block text-[10px]">(+2点×列)</span>
+                      <span className="block text-[11px]">(+2点×列)</span>
                     </th>
                     <th className="px-2 py-2 text-right">
                       縦列ボーナス
-                      <span className="block text-[10px]">(+7点×列)</span>
+                      <span className="block text-[11px]">(+7点×列)</span>
                     </th>
                     <th className="px-2 py-2 text-right">
                       5色コンプ
-                      <span className="block text-[10px]">(+10点×色)</span>
+                      <span className="block text-[11px]">(+10点×色)</span>
                     </th>
                     <th className="px-2 py-2 text-right">破損減点累計</th>
                     <th className="py-2 pl-2 text-right text-[#dfb06d]">
@@ -2470,7 +2469,7 @@ export default function StainedGlassMosaicGame() {
                       }
                     >
                       <td className="py-2.5 pr-2 text-[#f4ead8]">
-                        {rankIdx === 0 ? '🥇 1位 ' : `${rankIdx + 1}位 `}
+                        {rankIdx === 0 ? ' 1位 ' : `${rankIdx + 1}位 `}
                         {pl.name}
                       </td>
                       <td className="px-2 py-2.5 text-right text-[#e8dcc8]">
@@ -2512,7 +2511,7 @@ export default function StainedGlassMosaicGame() {
                 }
                 className="tabletop-button-primary inline-flex min-h-11 items-center px-4 text-xs font-black"
               >
-                🔄 もう一度対局する
+                 もう一度対局する
               </button>
             </div>
           </div>
@@ -2529,7 +2528,7 @@ export default function StainedGlassMosaicGame() {
               <div>
                 <span className="tabletop-kicker !text-[11px]">Rulebook</span>
                 <h3 className="tabletop-title text-lg">
-                  📖 『硝子工房のモザイク師』ルール＆得点早見表
+                   『硝子工房のモザイク師』ルール＆得点早見表
                 </h3>
               </div>
               <button

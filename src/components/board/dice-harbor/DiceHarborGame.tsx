@@ -85,7 +85,7 @@ export const WONDER_DEFS: WonderDef[] = [
     id: 'lighthouse',
     name: '双子灯台',
     cost: 4,
-    icon: '🗼',
+    icon: '',
     title: '1ダイス / 2ダイス選択解放',
     effectText: '手番のダイスロール時に「1個（1〜6）」か「2個（2〜12）」を自由に選んで振れるようになります。',
   },
@@ -93,7 +93,7 @@ export const WONDER_DEFS: WonderDef[] = [
     id: 'station',
     name: '蒸気鉄道駅',
     cost: 10,
-    icon: '🚂',
+    icon: '',
     title: '振り直し特権（1ターン1回）',
     effectText: 'ダイスを振った出目が気に入らない時、1ターンに1度だけダイスを振り直すことができます（個数変更も可）。',
   },
@@ -101,7 +101,7 @@ export const WONDER_DEFS: WonderDef[] = [
     id: 'shipyard',
     name: '交易造船所',
     cost: 16,
-    icon: '⚓',
+    icon: '',
     title: '商業・歓楽街の収益+1G強化',
     effectText: '自分が所有する「商業市場（商船タグ）」と「歓楽街（赤カード）」の1枚あたりの獲得コインが常時+1Gされます。',
   },
@@ -109,7 +109,7 @@ export const WONDER_DEFS: WonderDef[] = [
     id: 'clocktower',
     name: '天空時計塔',
     cost: 24,
-    icon: '🕰️',
+    icon: '️',
     title: 'ゾロ目で追加ターン発動',
     effectText: 'ダイスを2個振って同じ出目（ゾロ目）が出た場合、このターンの都市建設フェーズ終了後にもう1回連続で自分の手番を行えます。',
   },
@@ -126,7 +126,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '農水資源',
     cost: 1,
     maxStock: 6,
-    icon: '🌾',
+    icon: '',
     shortDesc: '誰の番でも出目[1]で +1G',
     detailDesc: '一次産業ブルーカード：誰のターンでもダイス合計が1なら銀行から1Gを獲得（初期所有）。',
     baseIncome: 1,
@@ -141,7 +141,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '農水資源',
     cost: 1,
     maxStock: 6,
-    icon: '🌿',
+    icon: '',
     shortDesc: '誰の番でも出目[2]で +1G',
     detailDesc: '一次産業ブルーカード：誰のターンでもダイス合計が2なら銀行から1Gを獲得。',
     baseIncome: 1,
@@ -156,7 +156,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '商業市場',
     cost: 1,
     maxStock: 6,
-    icon: '🥐',
+    icon: '',
     shortDesc: '自分の番に出目[2・3]で +1G',
     detailDesc: '商業グリーンカード：自分のターンにダイス合計が2または3なら銀行から1Gを獲得（交易造船所で+1G）。',
     baseIncome: 1,
@@ -171,7 +171,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '歓楽街',
     cost: 2,
     maxStock: 6,
-    icon: '🍺',
+    icon: '',
     shortDesc: '他人の番に出目[3]で手番者から 1G徴収',
     detailDesc: '歓楽街レッドカード：他プレイヤーのターンに出目3が出た時、手番プレイヤーから1Gを徴収（交易造船所で2G徴収）。',
     baseIncome: 1,
@@ -186,7 +186,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '商業市場',
     cost: 2,
     maxStock: 6,
-    icon: '🏪',
+    icon: '',
     shortDesc: '自分の番に出目[4]で +3G',
     detailDesc: '商業グリーンカード：自分のターンにダイス合計が4なら銀行から3Gを獲得（交易造船所で+1G）。',
     baseIncome: 3,
@@ -201,7 +201,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '工業資材',
     cost: 3,
     maxStock: 6,
-    icon: '🌲',
+    icon: '',
     shortDesc: '誰の番でも出目[5]で +1G',
     detailDesc: '一次産業ブルーカード：誰のターンでもダイス合計が5なら銀行から1Gを獲得。後半の大型工房のシナジー源になります。',
     baseIncome: 1,
@@ -217,7 +217,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     cost: 6,
     maxStock: 4,
     maxPerPlayer: 1,
-    icon: '🏛️',
+    icon: '️',
     shortDesc: '自分の番に出目[6]で全員から 2Gずつ徴収',
     detailDesc: 'ギルドパープルカード（1人1枚制限）：自分のターンに出目6が出た時、他の全プレイヤーから最大2Gずつを徴収します。',
     baseIncome: 2,
@@ -233,7 +233,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     cost: 7,
     maxStock: 4,
     maxPerPlayer: 1,
-    icon: '⚖️',
+    icon: '️',
     shortDesc: '自分の番に出目[6]で 施設1枚トレード＋2G',
     detailDesc: 'ギルドパープルカード（1人1枚制限）：自分のターンに出目6が出た時、銀行から2Gを得て、さらに他人の非紫カード1枚と自分のカード1枚を交換できます。',
     baseIncome: 2,
@@ -248,7 +248,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '大型商団',
     cost: 5,
     maxStock: 6,
-    icon: '🫙',
+    icon: '',
     shortDesc: '自分の番[7]で「農水資源」1枚につき +3G',
     detailDesc: '商業グリーンカード：自分のターンに出目7が出た時、自分が持つ「農水資源（潮風小麦畑・海藻牧場・遠洋トロール船）」1枚につき3Gを獲得！',
     baseIncome: 3,
@@ -264,7 +264,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '大型商団',
     cost: 3,
     maxStock: 6,
-    icon: '🛠️',
+    icon: '️',
     shortDesc: '自分の番[8]で「工業資材」1枚につき +3G',
     detailDesc: '商業グリーンカード：自分のターンに出目8が出た時、自分が持つ「工業資材（帆船杉林・海底鉄鉱脈）」1枚につき3Gを獲得！',
     baseIncome: 3,
@@ -280,7 +280,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '工業資材',
     cost: 6,
     maxStock: 6,
-    icon: '⛏️',
+    icon: '️',
     shortDesc: '誰の番でも出目[9]で +5G',
     detailDesc: '一次産業ブルーカード：誰のターンでもダイス合計が9なら銀行から一気に5Gを獲得。大樽造船工房の倍率も跳ね上がります。',
     baseIncome: 5,
@@ -295,7 +295,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '歓楽街',
     cost: 3,
     maxStock: 6,
-    icon: '🍷',
+    icon: '',
     shortDesc: '他人の番に出目[9・10]で手番者から 2G徴収',
     detailDesc: '歓楽街レッドカード：他プレイヤーが2ダイスを振って9または10を出した時、手番プレイヤーから2Gを徴収（交易造船所で3G徴収）。',
     baseIncome: 2,
@@ -310,7 +310,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '農水資源',
     cost: 3,
     maxStock: 6,
-    icon: '🚢',
+    icon: '',
     shortDesc: '誰の番でも出目[10]で +3G',
     detailDesc: '一次産業ブルーカード：誰のターンでもダイス合計が10なら銀行から3Gを獲得。香辛料熟成庫のシナジー対象にもなります。',
     baseIncome: 3,
@@ -325,7 +325,7 @@ export const DISTRICT_DEFS: DistrictDef[] = [
     tagLabel: '大型商団',
     cost: 2,
     maxStock: 6,
-    icon: '🏛️',
+    icon: '️',
     shortDesc: '自分の番[11・12]で「農水資源」1枚につき +2G',
     detailDesc: '商業グリーンカード：自分のターンに出目11または12が出た時、自分が持つ「農水資源」カード1枚につき2Gを獲得。',
     baseIncome: 2,
@@ -431,7 +431,7 @@ export function simulateRollOutcome(
           ownerId: owner.id,
           ownerName: owner.name,
           deltaByPlayer: { [roller.id]: -actualTaken, [owner.id]: actualTaken },
-          summary: `🔴 ${owner.name}の『${def.name}×${qty}』が発動！ ${roller.name}から ${actualTaken}G を徴収`,
+          summary: ` ${owner.name}の『${def.name}×${qty}』が発動！ ${roller.name}から ${actualTaken}G を徴収`,
         });
       } else {
         events.push({
@@ -442,7 +442,7 @@ export function simulateRollOutcome(
           ownerId: owner.id,
           ownerName: owner.name,
           deltaByPlayer: {},
-          summary: `🔴 ${owner.name}の『${def.name}×${qty}』が発動（${roller.name}の所持金0Gのため徴収なし）`,
+          summary: ` ${owner.name}の『${def.name}×${qty}』が発動（${roller.name}の所持金0Gのため徴収なし）`,
         });
       }
     }
@@ -469,7 +469,7 @@ export function simulateRollOutcome(
         ownerId: owner.id,
         ownerName: owner.name,
         deltaByPlayer: { [owner.id]: gain },
-        summary: `🔵 ${owner.name}の『${def.name}×${qty}』が生産！ +${gain}G`,
+        summary: ` ${owner.name}の『${def.name}×${qty}』が生産！ +${gain}G`,
       });
     }
   }
@@ -502,7 +502,7 @@ export function simulateRollOutcome(
         ownerId: roller.id,
         ownerName: roller.name,
         deltaByPlayer: { [roller.id]: gain },
-        summary: `🟢 ${roller.name}の『${def.name}×${qty}』が稼働！ +${gain}G`,
+        summary: ` ${roller.name}の『${def.name}×${qty}』が稼働！ +${gain}G`,
       });
     } else {
       events.push({
@@ -513,7 +513,7 @@ export function simulateRollOutcome(
         ownerId: roller.id,
         ownerName: roller.name,
         deltaByPlayer: {},
-        summary: `🟢 ${roller.name}の『${def.name}×${qty}』が発動（対象資源0枚のため +0G）`,
+        summary: ` ${roller.name}の『${def.name}×${qty}』が発動（対象資源0枚のため +0G）`,
       });
     }
   }
@@ -551,7 +551,7 @@ export function simulateRollOutcome(
         ownerId: roller.id,
         ownerName: roller.name,
         deltaByPlayer: deltaMap,
-        summary: `🟣 ${roller.name}の『${def.name}』が発動！ 全プレイヤーから合計 +${totalCollected}G 徴収`,
+        summary: ` ${roller.name}の『${def.name}』が発動！ 全プレイヤーから合計 +${totalCollected}G 徴収`,
       });
     } else if (def.id === 'merchant_exchange') {
       const gain = 2 * qty;
@@ -564,7 +564,7 @@ export function simulateRollOutcome(
         ownerId: roller.id,
         ownerName: roller.name,
         deltaByPlayer: { [roller.id]: gain },
-        summary: `🟣 ${roller.name}の『${def.name}』が発動！ +${gain}G ＆ 施設トレード権獲得`,
+        summary: ` ${roller.name}の『${def.name}』が発動！ +${gain}G ＆ 施設トレード権獲得`,
       });
     }
   }
@@ -743,7 +743,7 @@ function createInitialPlayers(mode: GameMode, cpuCount: number, primaryAiStyle: 
         name: '第1港長（P1）',
         isCpu: false,
         aiStyle: 'balanced',
-        colorClass: 'border-[#3f5f78]/60 bg-sky-950/35',
+        colorClass: 'border-[#3f5f78]/60 bg-[#3f5f78]/12',
         badgeBg: 'bg-[#3f5f78] text-[#1b120b]',
         gold: 3,
         cards: { ...baseCards },
@@ -971,7 +971,7 @@ export default function DiceHarborGame() {
   const [resolutionEvents, setResolutionEvents] = useState<ResolutionEvent[]>([]);
   const [floatingDeltas, setFloatingDeltas] = useState<FloatingDelta[]>([]);
   const [turnLogs, setTurnLogs] = useState<string[]>([
-    '⚓ 『サイコロ港町（ダイス・ハーバー）』へようこそ！ 4つの港湾モニュメントを最初に完成させた港長が勝利します。',
+    ' 『サイコロ港町（ダイス・ハーバー）』へようこそ！ 4つの港湾モニュメントを最初に完成させた港長が勝利します。',
   ]);
   const [winnerId, setWinnerId] = useState<number | null>(null);
   const [selectedMarketFilter, setSelectedMarketFilter] = useState<'all' | CardColor>('all');
@@ -1164,7 +1164,7 @@ export default function DiceHarborGame() {
       setFloatingDeltas([]);
       setWinnerId(null);
       setTurnLogs([
-        '⚓ 新しい交易シーズンが開幕！ ダイスを振って港町を発展させ、4つの港湾モニュメントを完成させましょう。',
+        ' 新しい交易シーズンが開幕！ ダイスを振って港町を発展させ、4つの港湾モニュメントを完成させましょう。',
       ]);
     },
     [cpuCount, mode, primaryAiStyle]
@@ -1248,10 +1248,10 @@ export default function DiceHarborGame() {
           : `【${sum}】`;
 
       if (outcome.events.length === 0) {
-        appendLog(`🎲 ${activePlayer.name}の出目 ${diceText} → 発動した施設はありませんでした。`);
+        appendLog(` ${activePlayer.name}の出目 ${diceText} → 発動した施設はありませんでした。`);
       } else {
         appendLog(
-          `🎲 ${activePlayer.name}の出目 ${diceText} → ${outcome.events
+          ` ${activePlayer.name}の出目 ${diceText} → ${outcome.events
             .map((e) => e.summary)
             .join(' / ')}`
         );
@@ -1259,7 +1259,7 @@ export default function DiceHarborGame() {
 
       if (grantsExtraTurn) {
         appendLog(
-          `🕰️ 『天空時計塔』が共鳴！ ゾロ目ボーナスにより、このターンの後に${activePlayer.name}の追加ターンが発生します！`
+          `️ 『天空時計塔』が共鳴！ ゾロ目ボーナスにより、このターンの後に${activePlayer.name}の追加ターンが発生します！`
         );
       }
 
@@ -1389,7 +1389,7 @@ export default function DiceHarborGame() {
       if (hasExtraTurn) {
         setExtraTurnQueued(false);
         setPhase('choose_roll');
-        appendLog(`🕰️ 『天空時計塔』の効果で ${updatedPlayers[turnIndex].name} の連続ターン開始！`);
+        appendLog(`️ 『天空時計塔』の効果で ${updatedPlayers[turnIndex].name} の連続ターン開始！`);
         return;
       }
 
@@ -1435,7 +1435,7 @@ export default function DiceHarborGame() {
       }));
 
       appendLog(
-        `🏗️ ${activePlayer.name}が『${def.name}』（${def.cost}G）を建設しました！（所有: ${
+        `️ ${activePlayer.name}が『${def.name}』（${def.cost}G）を建設しました！（所有: ${
           (activePlayer.cards[cardId] ?? 0) + 1
         }枚）`
       );
@@ -1471,7 +1471,7 @@ export default function DiceHarborGame() {
 
       setPlayers(nextPlayers);
       appendLog(
-        `🌟 ${activePlayer.name}が港湾モニュメント『${wonder.name}』（${wonder.cost}G）を竣工！（完成 ${completedCount}/4）`
+        ` ${activePlayer.name}が港湾モニュメント『${wonder.name}』（${wonder.cost}G）を竣工！（完成 ${completedCount}/4）`
       );
 
       if (completedCount >= 4) {
@@ -1479,7 +1479,7 @@ export default function DiceHarborGame() {
         setWinnerId(activePlayer.id);
         setPhase('game_over');
         appendLog(
-          `👑 祝砲！ ${activePlayer.name}が4つすべての港湾モニュメントを完成させ、海洋交易都市の覇者となりました！`
+          ` 祝砲！ ${activePlayer.name}が4つすべての港湾モニュメントを完成させ、海洋交易都市の覇者となりました！`
         );
         return;
       }
@@ -1494,7 +1494,7 @@ export default function DiceHarborGame() {
   const handleSkipBuild = useCallback(() => {
     if (phase !== 'build') return;
     const activePlayer = players[turnIndex];
-    appendLog(`💰 ${activePlayer.name}は建設を見送り、資金（${activePlayer.gold}G）を温存しました。`);
+    appendLog(` ${activePlayer.name}は建設を見送り、資金（${activePlayer.gold}G）を温存しました。`);
     advanceTurn(players);
   }, [advanceTurn, appendLog, phase, players, turnIndex]);
 
@@ -1536,7 +1536,7 @@ export default function DiceHarborGame() {
       );
 
       appendLog(
-        `⚖️ 『海運取引所』トレード成立！ ${activePlayer.name}の『${DISTRICT_MAP[giveCardId]?.name}』と${targetPlayer.name}の『${DISTRICT_MAP[takeCardId]?.name}』を交換しました。`
+        `️ 『海運取引所』トレード成立！ ${activePlayer.name}の『${DISTRICT_MAP[giveCardId]?.name}』と${targetPlayer.name}の『${DISTRICT_MAP[takeCardId]?.name}』を交換しました。`
       );
       playSound('build');
       setPhase('build');
@@ -1769,21 +1769,21 @@ export default function DiceHarborGame() {
                 bgmOn ? 'tabletop-chip-active' : ''
               }`}
             >
-              {bgmOn ? '🎵 BGM ON' : '🎵 BGM OFF'}
+              {bgmOn ? ' BGM ON' : ' BGM OFF'}
             </button>
             <button
               type="button"
               onClick={() => setSoundOn((v) => !v)}
               className="tabletop-button min-h-11 px-3 text-xs"
             >
-              {soundOn ? '🔊 効果音 ON' : '🔇 効果音 OFF'}
+              {soundOn ? ' 効果音 ON' : ' 効果音 OFF'}
             </button>
             <button
               type="button"
               onClick={() => startNewGame(mode, cpuCount, primaryAiStyle)}
               className="tabletop-button-primary min-h-11 px-3 text-xs"
             >
-              🔄 新規ゲーム
+               新規ゲーム
             </button>
             <ThemeToggleButton />
           </div>
@@ -1805,13 +1805,13 @@ export default function DiceHarborGame() {
             <span className="text-[var(--table-muted)]">|</span>
             <span className="font-bold text-[#9dc4af]">
               フェーズ:{' '}
-              {phase === 'choose_roll' && '🎲 ダイスロール選択'}
-              {phase === 'rolling' && '🎲 ダイス回転中...'}
-              {phase === 'reroll_prompt' && '🚂 蒸気鉄道駅・振り直し確認'}
-              {phase === 'resolving' && '💰 施設発動＆収入計算中'}
-              {phase === 'purple_swap' && '⚖️ 海運取引所・施設トレード選択'}
-              {phase === 'build' && '🏗️ 都市建設フェーズ（1枚建設 または 資金温存）'}
-              {phase === 'game_over' && '👑 対局決着！'}
+              {phase === 'choose_roll' && ' ダイスロール選択'}
+              {phase === 'rolling' && ' ダイス回転中...'}
+              {phase === 'reroll_prompt' && ' 蒸気鉄道駅・振り直し確認'}
+              {phase === 'resolving' && ' 施設発動＆収入計算中'}
+              {phase === 'purple_swap' && '️ 海運取引所・施設トレード選択'}
+              {phase === 'build' && '️ 都市建設フェーズ（1枚建設 または 資金温存）'}
+              {phase === 'game_over' && ' 対局決着！'}
             </span>
           </div>
 
@@ -1877,15 +1877,15 @@ export default function DiceHarborGame() {
                   {currentPlayer.name} のターン
                 </span>
                 <h3 className="tabletop-title mt-1 text-base sm:text-lg">
-                  {phase === 'choose_roll' && '🎲 ダイスを振って港湾施設を発動させましょう！'}
-                  {phase === 'rolling' && '🎲 運命のダイスが港町を駆け巡っています...'}
-                  {phase === 'reroll_prompt' && '🚂 『蒸気鉄道駅』特権：この出目で確定しますか？'}
-                  {phase === 'resolving' && `💰 出目合計【${diceSum}】の施設を順番に処理中！`}
-                  {phase === 'purple_swap' && '⚖️ 『海運取引所』発動：交換する施設を選んでください'}
+                  {phase === 'choose_roll' && ' ダイスを振って港湾施設を発動させましょう！'}
+                  {phase === 'rolling' && ' 運命のダイスが港町を駆け巡っています...'}
+                  {phase === 'reroll_prompt' && ' 『蒸気鉄道駅』特権：この出目で確定しますか？'}
+                  {phase === 'resolving' && ` 出目合計【${diceSum}】の施設を順番に処理中！`}
+                  {phase === 'purple_swap' && '️ 『海運取引所』発動：交換する施設を選んでください'}
                   {phase === 'build' &&
-                    `🏗️ 出目【${diceSum}】完了！ 市場から1枚建設するかモニュメントを着工できます`}
+                    `️ 出目【${diceSum}】完了！ 市場から1枚建設するかモニュメントを着工できます`}
                   {phase === 'game_over' &&
-                    `👑 ${players.find((p) => p.id === winnerId)?.name} が全4モニュメントを完成させて勝利！`}
+                    ` ${players.find((p) => p.id === winnerId)?.name} が全4モニュメントを完成させて勝利！`}
                 </h3>
               </div>
 
@@ -1902,14 +1902,14 @@ export default function DiceHarborGame() {
                   )
                 )}
                 <div className="pl-1 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--table-muted)]">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--table-muted)]">
                     TOTAL
                   </p>
                   <p className="font-mono text-3xl font-black text-[var(--table-accent-strong)]">
                     {phase === 'rolling' ? '?' : diceSum}
                   </p>
                   {diceValues.length === 2 && diceValues[0] === diceValues[1] && phase !== 'rolling' && (
-                    <span className="inline-block rounded bg-[var(--table-accent)] px-1.5 py-0.5 text-[10px] font-black text-[#1b120b]">
+                    <span className="inline-block rounded bg-[var(--table-accent)] px-1.5 py-0.5 text-[11px] font-black text-[#1b120b]">
                       ゾロ目!
                     </span>
                   )}
@@ -1926,7 +1926,7 @@ export default function DiceHarborGame() {
                     onClick={() => handleRollDice(1, false)}
                     className="tabletop-button-primary min-h-12 flex-1 px-4 py-3 text-sm"
                   >
-                    🎲 1ダイスを振る（出目 1〜6）
+                     1ダイスを振る（出目 1〜6）
                     <span className="ml-2 rounded bg-black/20 px-2 py-0.5 text-xs">
                       期待値 +{currentEvAnalysis.ev1d.toFixed(2)}G
                     </span>
@@ -1938,14 +1938,14 @@ export default function DiceHarborGame() {
                       onClick={() => handleRollDice(2, false)}
                       className="tabletop-button-primary min-h-12 flex-1 px-4 py-3 text-sm"
                     >
-                      🎲🎲 2ダイスを振る（出目 2〜12）
+                       2ダイスを振る（出目 2〜12）
                       <span className="ml-2 rounded bg-black/20 px-2 py-0.5 text-xs">
                         期待値 +{currentEvAnalysis.ev2d.toFixed(2)}G
                       </span>
                     </button>
                   ) : (
                     <div className="rounded-md border border-[var(--table-line)] bg-[var(--table-panel-soft)] px-3 py-2 text-xs text-[var(--table-muted)]">
-                      🔒 <strong>双子灯台（4G）</strong>を建設すると2ダイス（2〜12）が解放されます
+                       <strong>双子灯台（4G）</strong>を建設すると2ダイス（2〜12）が解放されます
                     </div>
                   )}
                 </div>
@@ -1958,14 +1958,14 @@ export default function DiceHarborGame() {
                     onClick={() => resolveConfirmedRoll(diceValues)}
                     className="tabletop-button-primary min-h-11 px-4 text-xs"
                   >
-                    ✅ 出目【{diceSum}】のまま確定する
+                     出目【{diceSum}】のまま確定する
                   </button>
                   <button
                     type="button"
                     onClick={() => handleRollDice(1, true)}
                     className="tabletop-button min-h-11 px-3.5 text-xs"
                   >
-                    🚂 1ダイスで振り直す
+                     1ダイスで振り直す
                   </button>
                   {currentPlayer.wonders.lighthouse && (
                     <button
@@ -1973,7 +1973,7 @@ export default function DiceHarborGame() {
                       onClick={() => handleRollDice(2, true)}
                       className="tabletop-button min-h-11 px-3.5 text-xs"
                     >
-                      🚂 2ダイスで振り直す
+                       2ダイスで振り直す
                     </button>
                   )}
                   {usedReroll && (
@@ -1985,7 +1985,7 @@ export default function DiceHarborGame() {
               {phase === 'purple_swap' && !currentPlayer.isCpu && (
                 <div className="tabletop-panel-soft border-[#6a4a66] p-3">
                   <p className="text-xs font-bold text-[#cbb3c9]">
-                    ⚖️ 『海運取引所』の効果：あなたの施設1枚と、他プレイヤーの施設（紫以外）1枚を交換できます。
+                    ️ 『海運取引所』の効果：あなたの施設1枚と、他プレイヤーの施設（紫以外）1枚を交換できます。
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {players
@@ -2027,7 +2027,7 @@ export default function DiceHarborGame() {
               {phase === 'build' && !currentPlayer.isCpu && (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-bold text-[#9db8c8]">
-                    💡 下の「港湾モニュメント」または「港町カード市場」から1つ選んで建設できます（所持金:{' '}
+                     下の「港湾モニュメント」または「港町カード市場」から1つ選んで建設できます（所持金:{' '}
                     <strong className="text-[var(--table-accent-strong)]">{currentPlayer.gold}G</strong>）
                   </p>
                   <button
@@ -2035,28 +2035,28 @@ export default function DiceHarborGame() {
                     onClick={handleSkipBuild}
                     className="tabletop-button min-h-11 px-4 text-xs"
                   >
-                    💰 何も建設せず資金を貯めてターン終了 →
+                     何も建設せず資金を貯めてターン終了 →
                   </button>
                 </div>
               )}
 
               {currentPlayer.isCpu && phase !== 'game_over' && (
                 <p className="text-xs font-bold text-[var(--table-accent-strong)]">
-                  🤖 {currentPlayer.name} が港湾データを分析して行動しています...
+                   {currentPlayer.name} が港湾データを分析して行動しています...
                 </p>
               )}
 
               {phase === 'game_over' && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm font-black text-[var(--table-accent-strong)]">
-                    🎉 全ての港湾モニュメントが完成しました！ もう一度新しい街づくりに挑戦しますか？
+                     全ての港湾モニュメントが完成しました！ もう一度新しい街づくりに挑戦しますか？
                   </p>
                   <button
                     type="button"
                     onClick={() => startNewGame(mode, cpuCount, primaryAiStyle)}
                     className="rounded-md bg-[var(--table-accent)] px-4 py-2 text-xs font-black text-[#1b120b] shadow hover:bg-[var(--table-accent-strong)]"
                   >
-                    🔄 もう一度プレイする
+                     もう一度プレイする
                   </button>
                 </div>
               )}
@@ -2088,15 +2088,15 @@ export default function DiceHarborGame() {
                   REAL-TIME EXPECTED VALUE SIMULATOR
                 </p>
                 <h3 className="tabletop-title text-sm sm:text-base">
-                  📊 1ダイス vs 2ダイス 期待収益シミュレーター（{evFocusPlayer.name}）
+                   1ダイス vs 2ダイス 期待収益シミュレーター（{evFocusPlayer.name}）
                 </h3>
               </div>
               <span className="tabletop-chip px-2.5 py-1 text-[11px] font-black text-[#9db8c8]">
                 推奨:{' '}
                 {evFocusPlayer.wonders.lighthouse &&
                 currentEvAnalysis.ev2d > currentEvAnalysis.ev1d
-                  ? '🎲🎲 2ダイス'
-                  : '🎲 1ダイス'}
+                  ? ' 2ダイス'
+                  : ' 1ダイス'}
               </span>
             </div>
 
@@ -2111,8 +2111,8 @@ export default function DiceHarborGame() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#9db8c8]">🎲 1ダイス期待値 (1〜6)</span>
-                  <span className="text-[10px] font-bold text-[var(--table-muted)]">各 16.7%</span>
+                  <span className="text-xs font-black text-[#9db8c8]"> 1ダイス期待値 (1〜6)</span>
+                  <span className="text-[11px] font-bold text-[var(--table-muted)]">各 16.7%</span>
                 </div>
                 <p className="mt-1 font-mono text-2xl font-black text-[var(--table-ink)]">
                   +{currentEvAnalysis.ev1d.toFixed(2)}{' '}
@@ -2122,7 +2122,7 @@ export default function DiceHarborGame() {
                   {currentEvAnalysis.breakdown1d.map((b) => (
                     <span
                       key={b.sum}
-                      className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                      className={`rounded px-1.5 py-0.5 font-mono text-[11px] font-bold ${
                         b.net > 0
                           ? 'bg-[#3f5f78]/20 text-[#9db8c8]'
                           : b.net < 0
@@ -2146,9 +2146,9 @@ export default function DiceHarborGame() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-[var(--table-accent-strong)]">
-                    🎲🎲 2ダイス期待値 (2〜12)
+                     2ダイス期待値 (2〜12)
                   </span>
-                  <span className="text-[10px] font-bold text-[var(--table-muted)]">
+                  <span className="text-[11px] font-bold text-[var(--table-muted)]">
                     {evFocusPlayer.wonders.lighthouse ? '解放済' : '双子灯台で解放'}
                   </span>
                 </div>
@@ -2162,7 +2162,7 @@ export default function DiceHarborGame() {
                     .map((b) => (
                       <span
                         key={b.sum}
-                        className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                        className={`rounded px-1.5 py-0.5 font-mono text-[11px] font-bold ${
                           b.net > 0
                             ? 'bg-[#c99555]/20 text-[var(--table-accent-strong)]'
                             : b.net < 0
@@ -2180,7 +2180,7 @@ export default function DiceHarborGame() {
             {/* Best Investment Recommendation */}
             <div className="mt-3 rounded-md border border-[#315d4e]/30 bg-[#315d4e]/12 px-3 py-2">
               <p className="text-[11px] font-black text-[#9dc4af]">
-                💡 1ゴールドあたりの期待収益（EV投資効率）TOP3 市場カード:
+                 1ゴールドあたりの期待収益（EV投資効率）TOP3 市場カード:
               </p>
               <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-3">
                 {marketEfficiencyList.slice(0, 3).map((item, idx) => {
@@ -2192,7 +2192,7 @@ export default function DiceHarborGame() {
                       className="flex items-center justify-between rounded-lg border border-[var(--table-line)] bg-black/20 px-2 py-1 text-[11px]"
                     >
                       <span className="truncate font-bold text-[var(--table-ink)]">
-                        {idx === 0 ? '👑' : `${idx + 1}.`} {def.icon} {def.name}
+                        {idx === 0 ? '' : `${idx + 1}.`} {def.icon} {def.name}
                       </span>
                       <span className="ml-1 shrink-0 font-mono font-black text-[#9dc4af]">
                         +{item.deltaEvPerRound.toFixed(2)}G/周
@@ -2241,20 +2241,20 @@ export default function DiceHarborGame() {
                     <span
                       className={`rounded-lg px-2 py-0.5 text-xs font-black ${player.badgeBg}`}
                     >
-                      {isTurn ? '▶ 手番中' : `P${pIdx + 1}`}
+                      {isTurn ? ' 手番中' : `P${pIdx + 1}`}
                     </span>
-                    <h4 className="text-sm font-black text-[var(--table-ink)] sm:text-base">{player.name}</h4>
+                    <h4 className="tabletop-title text-sm sm:text-base">{player.name}</h4>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div className="rounded-md border border-[var(--table-accent)]/40 bg-black/20 px-3 py-1 text-right">
-                      <span className="text-[10px] font-bold text-[var(--table-accent-strong)]">GOLD</span>
+                      <span className="text-[11px] font-bold text-[var(--table-accent-strong)]">GOLD</span>
                       <span className="ml-1.5 font-mono text-lg font-black text-[var(--table-accent-strong)]">
                         {player.gold} G
                       </span>
                     </div>
                     <div className="rounded-md border border-[#3f5f78]/30 bg-black/20 px-2.5 py-1 text-xs font-black text-[#9db8c8]">
-                      🏛️ モニュメント {completedWonders}/4
+                      ️ モニュメント {completedWonders}/4
                     </div>
                   </div>
                 </div>
@@ -2290,7 +2290,7 @@ export default function DiceHarborGame() {
                             {wonder.icon} {wonder.name}
                           </span>
                           <span
-                            className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-black ${
+                            className={`rounded px-1.5 py-0.5 font-mono text-[11px] font-black ${
                               built
                                 ? 'bg-[var(--table-accent)] text-[#1b120b]'
                                 : canBuildNow
@@ -2301,12 +2301,12 @@ export default function DiceHarborGame() {
                             {built ? '完成!' : `${wonder.cost}G`}
                           </span>
                         </div>
-                        <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-[var(--table-muted)]">
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-tight text-[var(--table-muted)]">
                           {wonder.title}
                         </p>
                         {canBuildNow && (
-                          <span className="mt-1 inline-block rounded bg-[#315d4e]/22 px-1.5 py-0.5 text-center text-[10px] font-black text-[#9dc4af]">
-                            ✨ クリックで着工
+                          <span className="mt-1 inline-block rounded bg-[#315d4e]/22 px-1.5 py-0.5 text-center text-[11px] font-black text-[#9dc4af]">
+                             クリックで着工
                           </span>
                         )}
                       </button>
@@ -2335,7 +2335,7 @@ export default function DiceHarborGame() {
                             : 'hover:border-[var(--table-accent)]'
                         }`}
                       >
-                        <span className={`rounded px-1 font-mono text-[10px] font-black ${cStyle.badge}`}>
+                        <span className={`rounded px-1 font-mono text-[11px] font-black ${cStyle.badge}`}>
                           {def.diceLabel}
                         </span>
                         <span className="font-bold text-[var(--table-ink)]">
@@ -2361,7 +2361,7 @@ export default function DiceHarborGame() {
                 HARBOR DISTRICT MARKETPLACE
               </p>
               <h3 className="tabletop-title text-base sm:text-lg">
-                🏪 港町カード市場（全14施設・都市建設フェーズに1ターン1枚まで購入可能）
+                 港町カード市場（全14施設・都市建設フェーズに1ターン1枚まで購入可能）
               </h3>
             </div>
 
@@ -2370,10 +2370,10 @@ export default function DiceHarborGame() {
               {(
                 [
                   ['all', 'すべて表示'],
-                  ['blue', '🔵 一次産業 (青)'],
-                  ['green', '🟢 商業 (緑)'],
-                  ['red', '🔴 歓楽街 (赤)'],
-                  ['purple', '🟣 ギルド (紫)'],
+                  ['blue', ' 一次産業 (青)'],
+                  ['green', ' 商業 (緑)'],
+                  ['red', ' 歓楽街 (赤)'],
+                  ['purple', ' ギルド (紫)'],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -2454,7 +2454,7 @@ export default function DiceHarborGame() {
 
                       <div className="flex items-center gap-1">
                         {isBestEv && (
-                          <span className="rounded-full bg-[#4f806b] px-2 py-0.5 text-[10px] font-black text-[#1b120b] shadow">
+                          <span className="rounded-full bg-[#4f806b] px-2 py-0.5 text-[11px] font-black text-[#1b120b] shadow">
                             ★ 最高EV効率
                           </span>
                         )}
@@ -2466,10 +2466,10 @@ export default function DiceHarborGame() {
 
                     {/* Title & Tag */}
                     <div className="mt-2 flex items-baseline justify-between gap-1">
-                      <h4 className="text-sm font-black text-[var(--table-ink)]">
+                      <h4 className="tabletop-title text-sm">
                         {def.icon} {def.name}
                       </h4>
-                      <span className="text-[10px] font-bold text-[var(--table-muted)]">
+                      <span className="text-[11px] font-bold text-[var(--table-muted)]">
                         {def.tagLabel}
                       </span>
                     </div>
@@ -2514,7 +2514,7 @@ export default function DiceHarborGame() {
                         ? '建設フェーズで購入可'
                         : currentPlayer.gold < def.cost
                         ? `資金不足（あと ${def.cost - currentPlayer.gold}G）`
-                        : `🏗️ ${def.cost}G で建設する`}
+                        : `️ ${def.cost}G で建設する`}
                     </button>
                   </div>
                 </div>
@@ -2527,7 +2527,7 @@ export default function DiceHarborGame() {
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
           <div className="tabletop-panel p-3.5">
             <h4 className="tabletop-kicker">
-              📜 航海＆都市開発ログ（最新30件）
+               航海＆都市開発ログ（最新30件）
             </h4>
             <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1 text-xs">
               {turnLogs.map((log, i) => (
@@ -2543,7 +2543,7 @@ export default function DiceHarborGame() {
 
           <div className="tabletop-panel p-3.5 text-xs">
             <h4 className="tabletop-kicker">
-              🧭 施設カラーと収入解決の順番ルール
+               施設カラーと収入解決の順番ルール
             </h4>
             <ul className="mt-2 space-y-1.5 text-[var(--table-muted)]">
               <li>

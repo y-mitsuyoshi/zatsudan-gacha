@@ -546,7 +546,7 @@ export default function CheckersGame() {
       const nextBoard = applyStepMove(board, step);
       const playerLabel = turn === 1 ? '赤(先手)' : gameMode === 'cpu' ? '白(CPU)' : '白(後手)';
       const actionLabel = step.captured ? 'ジャンプ捕獲' : '移動';
-      const promoLabel = step.promoted ? ' 👑キング昇格！' : '';
+      const promoLabel = step.promoted ? ' キング昇格！' : '';
       const logEntry = `${playerLabel}: ${formatCoord(step.from)} → ${formatCoord(step.to)} (${actionLabel}${promoLabel})`;
 
       // Check if multi-jump chain continues
@@ -1053,7 +1053,7 @@ export default function CheckersGame() {
                   <button
                     type="button"
                     onClick={() => setViewMode('2d')}
-                    className="font-semibold text-[#dfb06d] underline decoration-[#8a6a3f] underline-offset-2 hover:text-[#f0c98f]"
+                    className="inline-flex min-h-11 items-center font-semibold text-[#dfb06d] underline decoration-[#8a6a3f] underline-offset-2 hover:text-[#f0c98f]"
                   >
                     2D盤面に切替
                   </button>
@@ -1068,7 +1068,7 @@ export default function CheckersGame() {
                 </div>
 
                 <div
-                  className="grid aspect-square w-full grid-cols-8 overflow-hidden rounded-md border-2 border-[#5a3d24]"
+                  className="grid aspect-square w-full auto-rows-fr grid-cols-8 overflow-hidden rounded-md border-2 border-[#5a3d24]"
                   style={{ touchAction: 'manipulation' }}
                 >
                   {board.map((row, r) =>
