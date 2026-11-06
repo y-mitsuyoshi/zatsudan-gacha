@@ -7,6 +7,9 @@ const WORLD_W = 720;
 const WORLD_H = 900;
 const LAUNCH_X = 360;
 const LAUNCH_Y = 800;
+const SENSOR_X = 360;
+const SENSOR_Y = 155;
+const SENSOR_RADIUS = 52;
 const PROBE_RADIUS = 5;
 const MAX_PROBES = 12;
 const MIN_LAUNCH_SPEED = 60;
@@ -18,11 +21,11 @@ const MAX_ACCEL = 12000;
 const G_BASE = 1.15e7;
 const SOFTENING = 42;
 const FIXED_STEP = 1 / 120;
-const PREDICT_DT = 1 / 90;
-const PREDICT_STEPS = 540;
+const PREDICT_STEPS = 720;
 const MAX_PARTICLES = 260;
 const MAX_GHOSTS = 6;
 const MAX_GHOST_POINTS = 600;
+const MAX_TELEMETRY_POINTS = 120;
 
 const PROBE_COLORS = [
   '#67e8f9',
@@ -33,6 +36,10 @@ const PROBE_COLORS = [
   '#fb7185',
   '#38bdf8',
   '#fde68a',
+  '#34d399',
+  '#f97316',
+  '#e879f9',
+  '#60a5fa',
 ] as const;
 
 const SPEEDS = [0.5, 1, 2] as const;
@@ -68,14 +75,24 @@ interface TrailPoint {
   y: number;
 }
 
+interface TelemetrySample {
+  t: number;
+  speed: number;
+  distance: number;
+}
+
 interface Probe {
   id: number;
   x: number;
   y: number;
   vx: number;
   vy: number;
+  initialAngleDeg: number;
   color: string;
   trail: TrailPoint[];
+  hitSensor: boolean;
+  minSensorDist: number;
+  maxDeflectionDeg: number;
 }
 
 interface GhostTrail {
@@ -100,6 +117,7 @@ interface Particle {
 interface AimState {
   active: boolean;
   pointerId: number | null;
+  draggingBodyIndex: number | null;
   x: number;
   y: number;
   startX: number;
@@ -116,6 +134,7 @@ interface Settings {
   launchAngle: number;
   trailLength: number;
   starEnabled: boolean;
+  sensorEnabled: boolean;
   running: boolean;
   speed: Speed;
 }
@@ -125,11 +144,18 @@ interface GameState {
   probes: Probe[];
   ghosts: GhostTrail[];
   particles: Particle[];
+  telemetry: TelemetrySample[];
+  telemetryTimer: number;
+  simTime: number;
   aim: AimState;
   selectedId: number | null;
   nextProbeId: number;
   nextGhostId: number;
   visual: number;
+  sensorHits: number;
+  sensorFlash: number;
+  bestSensorApproach: number | null;
+  lastDeflectionDeg: number;
 }
 
 interface Metrics {
@@ -140,12 +166,18 @@ interface Metrics {
   trail: number;
   target: string;
   color: string;
+  sensorHits: number;
+  bestSensorApproach: number | null;
+  lastDeflectionDeg: number;
+  predictedHitsSensor: boolean;
+   predictedMinDist: number;
+  telemetry: TelemetrySample[];
 }
 
 const PRESETS: Record<PresetKey, SystemPreset> = {
   single: {
     name: 'ソロ・スター',
-    tagline: 'ひとつの恒星と2つの惑星。基本の重力井戸を観察する',
+    tagline: 'ひとつの恒星と2つの惑星。スイングバイと周回軌道を観察する',
     bodies: [
       {
         x: 360,
@@ -193,7 +225,7 @@ const PRESETS: Record<PresetKey, SystemPreset> = {
   },
   binary: {
     name: '連星',
-    tagline: '2つの恒星がつくる非対称な重力場を横切る',
+    tagline: '2つの恒星がつくる非対称な重力場と8の字スイングバイを観察する',
     bodies: [
       {
         x: 228,
@@ -241,7 +273,7 @@ const PRESETS: Record<PresetKey, SystemPreset> = {
   },
   triple: {
     name: '三体',
-    tagline: '3つの重力源が重なり合うカオス的な軌道を試す',
+    tagline: '3つの重力源が重なり合うカオス的な三体軌道を試す',
     bodies: [
       {
         x: 360,
@@ -379,14 +411,16 @@ const PRESETS: Record<PresetKey, SystemPreset> = {
   },
 };
 
+// Default settings pre-configured to a verified swingby trajectory that curves around SOL and hits the behind-the-star sensor ring at (360, 155)!
 const INITIAL_SETTINGS: Settings = {
   preset: 'single',
   planetMass: 1,
   gravity: 1,
-  launchSpeed: 160,
-  launchAngle: -170,
-  trailLength: 420,
+  launchSpeed: 130,
+  launchAngle: -59,
+  trailLength: 560,
   starEnabled: true,
+  sensorEnabled: true,
   running: true,
   speed: 1,
 };
@@ -407,6 +441,7 @@ function createAim(angle: number): AimState {
   return {
     active: false,
     pointerId: null,
+    draggingBodyIndex: null,
     x: LAUNCH_X,
     y: LAUNCH_Y - 150,
     startX: LAUNCH_X,
@@ -416,17 +451,67 @@ function createAim(angle: number): AimState {
   };
 }
 
+function makeProbeAt(
+  id: number,
+  x: number,
+  y: number,
+  vx: number,
+  vy: number,
+  color: string
+): Probe {
+  const initialAngleDeg = (Math.atan2(vy, vx) * 180) / Math.PI;
+  const distToSensor = Math.hypot(x - SENSOR_X, y - SENSOR_Y);
+  return {
+    id,
+    x,
+    y,
+    vx,
+    vy,
+    initialAngleDeg,
+    color,
+    trail: [{ x, y }],
+    hitSensor: distToSensor <= SENSOR_RADIUS,
+    minSensorDist: distToSensor,
+    maxDeflectionDeg: 0,
+  };
+}
+
 function createGame(): GameState {
+  const rad1 = (-59 * Math.PI) / 180;
+  const rad2 = (-146 * Math.PI) / 180;
+  const p1 = makeProbeAt(
+    1,
+    LAUNCH_X,
+    LAUNCH_Y,
+    Math.cos(rad1) * 130,
+    Math.sin(rad1) * 130,
+    PROBE_COLORS[0]
+  );
+  const p2 = makeProbeAt(
+    2,
+    LAUNCH_X,
+    LAUNCH_Y,
+    Math.cos(rad2) * 140,
+    Math.sin(rad2) * 140,
+    PROBE_COLORS[1]
+  );
   return {
     bodies: createBodies('single'),
-    probes: [],
+    probes: [p1, p2],
     ghosts: [],
     particles: [],
+    telemetry: [],
+    telemetryTimer: 0,
+    simTime: 0,
     aim: createAim(INITIAL_SETTINGS.launchAngle),
-    selectedId: null,
-    nextProbeId: 1,
+    selectedId: 1,
+    nextProbeId: 3,
     nextGhostId: 1,
     visual: 0,
+    sensorHits: 0,
+    sensorFlash: 0,
+    bestSensorApproach: null,
+    lastDeflectionDeg: 0,
   };
 }
 
@@ -467,6 +552,12 @@ function accelerationAt(x: number, y: number, bodies: Body[], settings: Settings
     return { ax: ax * ratio, ay: ay * ratio };
   }
   return { ax, ay };
+}
+
+function angleDiffDeg(a: number, b: number): number {
+  let diff = ((a - b + 540) % 360) - 180;
+  if (diff < -180) diff += 360;
+  return Math.abs(diff);
 }
 
 function pushTrailPoint(probe: Probe, cap: number) {
@@ -532,13 +623,17 @@ function updateEffects(game: GameState, dt: number) {
     ghost.life -= dt;
   }
   game.ghosts = game.ghosts.filter((ghost) => ghost.life > 0);
+  if (game.sensorFlash > 0) {
+    game.sensorFlash = Math.max(0, game.sensorFlash - dt * 1.8);
+  }
 }
 
 function integrateProbe(
   probe: Probe,
   bodies: Body[],
   settings: Settings,
-  dt: number
+  dt: number,
+  game: GameState
 ): 'ok' | 'crash' | 'escape' | 'invalid' {
   const acceleration = accelerationAt(probe.x, probe.y, bodies, settings);
   probe.vx += acceleration.ax * dt;
@@ -553,6 +648,31 @@ function integrateProbe(
   probe.x += probe.vx * dt;
   probe.y += probe.vy * dt;
   if (!Number.isFinite(probe.x) || !Number.isFinite(probe.y)) return 'invalid';
+
+  const currentAngleDeg = (Math.atan2(probe.vy, probe.vx) * 180) / Math.PI;
+  const deflection = angleDiffDeg(currentAngleDeg, probe.initialAngleDeg);
+  if (deflection > probe.maxDeflectionDeg) {
+    probe.maxDeflectionDeg = deflection;
+  }
+  game.lastDeflectionDeg = Math.round(probe.maxDeflectionDeg);
+
+  if (settings.sensorEnabled) {
+    const dSensor = Math.hypot(probe.x - SENSOR_X, probe.y - SENSOR_Y);
+    if (dSensor < probe.minSensorDist) {
+      probe.minSensorDist = dSensor;
+    }
+    if (game.bestSensorApproach === null || dSensor < game.bestSensorApproach) {
+      game.bestSensorApproach = dSensor;
+    }
+    if (!probe.hitSensor && dSensor <= SENSOR_RADIUS) {
+      probe.hitSensor = true;
+      game.sensorHits += 1;
+      game.sensorFlash = 1;
+      spawnBurst(game, probe.x, probe.y, '#34d399', 18);
+      sound.sensorPass();
+    }
+  }
+
   for (const body of bodies) {
     const dx = body.x - probe.x;
     const dy = body.y - probe.y;
@@ -569,11 +689,12 @@ function advanceSteps(game: GameState, settings: Settings, count: number) {
   const bodies = getActiveBodies(game, settings);
   const trailCap = clampTrail(settings.trailLength);
   for (let index = 0; index < count; index += 1) {
+    game.simTime += FIXED_STEP;
     const survivors: Probe[] = [];
     for (const probe of game.probes) {
       let result: 'ok' | 'crash' | 'escape' | 'invalid' = 'ok';
       for (let sub = 0; sub < 2; sub += 1) {
-        result = integrateProbe(probe, bodies, settings, FIXED_STEP / 2);
+        result = integrateProbe(probe, bodies, settings, FIXED_STEP / 2, game);
         if (result !== 'ok') break;
       }
       if (result === 'ok') {
@@ -581,6 +702,7 @@ function advanceSteps(game: GameState, settings: Settings, count: number) {
         survivors.push(probe);
       } else {
         pushGhost(game, probe);
+        if (result === 'crash') sound.impact();
         spawnBurst(
           game,
           clamp(probe.x, 0, WORLD_W),
@@ -594,11 +716,96 @@ function advanceSteps(game: GameState, settings: Settings, count: number) {
     if (game.selectedId !== null && !game.probes.some((probe) => probe.id === game.selectedId)) {
       game.selectedId = game.probes.length > 0 ? game.probes[game.probes.length - 1].id : null;
     }
+
+    game.telemetryTimer += FIXED_STEP;
+    if (game.telemetryTimer >= 0.08) {
+      game.telemetryTimer = 0;
+      const activeProbe =
+        game.probes.find((item) => item.id === game.selectedId) ??
+        game.probes[game.probes.length - 1] ??
+        null;
+      if (activeProbe && bodies.length > 0) {
+        let minDist = Number.POSITIVE_INFINITY;
+        for (const body of bodies) {
+          const dist = Math.max(0, Math.hypot(body.x - activeProbe.x, body.y - activeProbe.y) - body.radius);
+          if (dist < minDist) minDist = dist;
+        }
+        game.telemetry.push({
+          t: game.simTime,
+          speed: Math.hypot(activeProbe.vx, activeProbe.vy),
+          distance: Number.isFinite(minDist) ? minDist : 0,
+        });
+        if (game.telemetry.length > MAX_TELEMETRY_POINTS) {
+          game.telemetry.shift();
+        }
+      }
+    }
+
     updateEffects(game, FIXED_STEP);
   }
 }
 
+function computeAimPrediction(
+  bodies: Body[],
+  settings: Settings
+): { points: TrailPoint[]; hitsSensor: boolean; minSensorDist: number } {
+  const angle = (settings.launchAngle * Math.PI) / 180;
+  let x = LAUNCH_X;
+  let y = LAUNCH_Y;
+  let vx = Math.cos(angle) * settings.launchSpeed;
+  let vy = Math.sin(angle) * settings.launchSpeed;
+  const points: TrailPoint[] = [{ x, y }];
+  let hitsSensor = false;
+  let minSensorDist = Math.hypot(x - SENSOR_X, y - SENSOR_Y);
+
+  for (let step = 0; step < PREDICT_STEPS; step += 1) {
+    let hit = false;
+    for (let sub = 0; sub < 2; sub += 1) {
+      const dt = FIXED_STEP / 2;
+      const acceleration = accelerationAt(x, y, bodies, settings);
+      vx += acceleration.ax * dt;
+      vy += acceleration.ay * dt;
+      const speed = Math.hypot(vx, vy);
+      if (!Number.isFinite(speed)) {
+        hit = true;
+        break;
+      }
+      if (speed > MAX_SPEED) {
+        const ratio = MAX_SPEED / speed;
+        vx *= ratio;
+        vy *= ratio;
+      }
+      x += vx * dt;
+      y += vy * dt;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        hit = true;
+        break;
+      }
+      const dSensor = Math.hypot(x - SENSOR_X, y - SENSOR_Y);
+      if (dSensor < minSensorDist) minSensorDist = dSensor;
+      if (dSensor <= SENSOR_RADIUS) hitsSensor = true;
+
+      for (const body of bodies) {
+        const dx = body.x - x;
+        const dy = body.y - y;
+        const radius = body.radius + PROBE_RADIUS;
+        if (dx * dx + dy * dy < radius * radius) {
+          hit = true;
+          break;
+        }
+      }
+      if (hit) break;
+    }
+    if (step % 2 === 0) points.push({ x, y });
+    if (hit) break;
+    if (x < -180 || x > WORLD_W + 180 || y < -240 || y > WORLD_H + 180) break;
+  }
+  return { points, hitsSensor, minSensorDist };
+}
+
 function computeMetrics(game: GameState, settings: Settings): Metrics {
+  const bodies = getActiveBodies(game, settings);
+  const prediction = computeAimPrediction(bodies, settings);
   const probe =
     game.probes.find((item) => item.id === game.selectedId) ??
     game.probes[game.probes.length - 1] ??
@@ -612,10 +819,15 @@ function computeMetrics(game: GameState, settings: Settings): Metrics {
       trail: 0,
       target: '—',
       color: '#67e8f9',
+      sensorHits: game.sensorHits,
+      bestSensorApproach: game.bestSensorApproach,
+      lastDeflectionDeg: game.lastDeflectionDeg,
+      predictedHitsSensor: prediction.hitsSensor,
+      predictedMinDist: prediction.minSensorDist,
+      telemetry: [...game.telemetry],
     };
   }
 
-  const bodies = getActiveBodies(game, settings);
   let nearestBody: Body | null = null;
   let nearestDistance = Number.POSITIVE_INFINITY;
   let dominantBody: Body | null = null;
@@ -664,40 +876,13 @@ function computeMetrics(game: GameState, settings: Settings): Metrics {
     trail: probe.trail.length,
     target: nearestBody?.name ?? '—',
     color: probe.color,
+    sensorHits: game.sensorHits,
+    bestSensorApproach: game.bestSensorApproach,
+    lastDeflectionDeg: Math.round(probe.maxDeflectionDeg),
+    predictedHitsSensor: prediction.hitsSensor,
+    predictedMinDist: prediction.minSensorDist,
+    telemetry: [...game.telemetry],
   };
-}
-
-function computeAimPath(bodies: Body[], settings: Settings): TrailPoint[] {
-  const angle = (settings.launchAngle * Math.PI) / 180;
-  let x = LAUNCH_X;
-  let y = LAUNCH_Y;
-  let vx = Math.cos(angle) * settings.launchSpeed;
-  let vy = Math.sin(angle) * settings.launchSpeed;
-  const points: TrailPoint[] = [{ x, y }];
-  for (let step = 0; step < PREDICT_STEPS; step += 1) {
-    const acceleration = accelerationAt(x, y, bodies, settings);
-    vx += acceleration.ax * PREDICT_DT;
-    vy += acceleration.ay * PREDICT_DT;
-    const speed = Math.hypot(vx, vy);
-    if (!Number.isFinite(speed) || speed > MAX_SPEED) break;
-    x += vx * PREDICT_DT;
-    y += vy * PREDICT_DT;
-    if (!Number.isFinite(x) || !Number.isFinite(y)) break;
-    if (step % 3 === 0) points.push({ x, y });
-    let hit = false;
-    for (const body of bodies) {
-      const dx = body.x - x;
-      const dy = body.y - y;
-      const radius = body.radius + PROBE_RADIUS;
-      if (dx * dx + dy * dy < radius * radius) {
-        hit = true;
-        break;
-      }
-    }
-    if (hit) break;
-    if (x < -180 || x > WORLD_W + 180 || y < -240 || y > WORLD_H + 180) break;
-  }
-  return points;
 }
 
 function makeBackgroundStars() {
@@ -762,8 +947,13 @@ class OrbitSound {
   }
 
   launch() {
-    this.tone(170, 520, 0.2, 'sine', 0.1);
-    this.tone(420, 180, 0.1, 'triangle', 0.045, 0.02);
+    this.tone(170, 520, 0.2, 'sine', 0.09);
+    this.tone(420, 180, 0.1, 'triangle', 0.04, 0.02);
+  }
+
+  sensorPass() {
+    this.tone(520, 880, 0.16, 'sine', 0.07);
+    this.tone(660, 1040, 0.18, 'triangle', 0.05, 0.05);
   }
 
   impact() {
@@ -825,15 +1015,74 @@ function drawOrbitGuides(ctx: CanvasRenderingContext2D, bodies: Body[]) {
   ctx.setLineDash([3, 11]);
   ctx.lineWidth = 1;
   for (const body of bodies) {
-    ctx.strokeStyle = hexToRgba(body.glow, 0.1);
+    ctx.strokeStyle = hexToRgba(body.glow, 0.12);
     ctx.beginPath();
-    ctx.arc(body.x, body.y, body.radius + 118, 0, Math.PI * 2);
+    ctx.arc(body.x, body.y, body.radius + 98, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(253,230,138,0.045)';
+    ctx.strokeStyle = 'rgba(253,230,138,0.05)';
     ctx.beginPath();
-    ctx.arc(body.x, body.y, body.radius + 202, 0, Math.PI * 2);
+    ctx.arc(body.x, body.y, body.radius + 185, 0, Math.PI * 2);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawSensorZone(
+  ctx: CanvasRenderingContext2D,
+  game: GameState,
+  settings: Settings,
+  time: number,
+  predictedHits: boolean
+) {
+  if (!settings.sensorEnabled) return;
+  const pulse = 0.5 + 0.5 * Math.sin(time * 3.2);
+  const flash = game.sensorFlash;
+  ctx.save();
+  ctx.translate(SENSOR_X, SENSOR_Y);
+
+  const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, SENSOR_RADIUS * 1.45);
+  glow.addColorStop(
+    0,
+    predictedHits || flash > 0
+      ? `rgba(52, 211, 153, ${0.26 + flash * 0.35})`
+      : 'rgba(56, 189, 248, 0.14)'
+  );
+  glow.addColorStop(0.65, 'rgba(16, 185, 129, 0.06)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, SENSOR_RADIUS * 1.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle =
+    predictedHits || flash > 0
+      ? `rgba(52, 211, 153, ${0.65 + pulse * 0.25})`
+      : `rgba(103, 232, 249, ${0.38 + pulse * 0.18})`;
+  ctx.lineWidth = 2 + flash * 2;
+  ctx.setLineDash([8, 6]);
+  ctx.lineDashOffset = -time * 18;
+  ctx.beginPath();
+  ctx.arc(0, 0, SENSOR_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = 'rgba(167, 243, 208, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, SENSOR_RADIUS * 0.45, 0, Math.PI * 2);
+  ctx.moveTo(-14, 0);
+  ctx.lineTo(14, 0);
+  ctx.moveTo(0, -14);
+  ctx.lineTo(0, 14);
+  ctx.stroke();
+
+  ctx.fillStyle = predictedHits ? '#6ee7b7' : '#a5f3fc';
+  ctx.font = '700 9px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SWING-BY SENSOR (星の背後観測ゾーン)', 0, -SENSOR_RADIUS - 10);
+  ctx.fillStyle = 'rgba(209, 250, 229, 0.85)';
+  ctx.font = '700 10px ui-monospace, monospace';
+  ctx.fillText(`通過数: ${game.sensorHits}`, 0, SENSOR_RADIUS + 16);
   ctx.restore();
 }
 
@@ -848,9 +1097,9 @@ function strokeTrail(
   const last = points[points.length - 1];
   const gradient = ctx.createLinearGradient(first.x, first.y, last.x, last.y);
   gradient.addColorStop(0, hexToRgba(color, 0));
-  gradient.addColorStop(0.35, hexToRgba(color, alpha * 0.24));
-  gradient.addColorStop(0.82, hexToRgba(color, alpha * 0.72));
-  gradient.addColorStop(1, hexToRgba(color, alpha * 0.92));
+  gradient.addColorStop(0.35, hexToRgba(color, alpha * 0.28));
+  gradient.addColorStop(0.82, hexToRgba(color, alpha * 0.78));
+  gradient.addColorStop(1, hexToRgba(color, alpha * 0.95));
 
   ctx.save();
   ctx.lineCap = 'round';
@@ -858,7 +1107,7 @@ function strokeTrail(
   ctx.shadowColor = color;
   ctx.shadowBlur = 12;
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.moveTo(first.x, first.y);
   for (let index = 1; index < points.length; index += 1) {
@@ -866,8 +1115,8 @@ function strokeTrail(
   }
   ctx.stroke();
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = hexToRgba(color, alpha * 0.28);
-  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = hexToRgba(color, alpha * 0.32);
+  ctx.lineWidth = 0.9;
   ctx.stroke();
   ctx.restore();
 }
@@ -879,7 +1128,7 @@ function drawGhosts(ctx: CanvasRenderingContext2D, ghosts: GhostTrail[]) {
   }
 }
 
-function drawBody(ctx: CanvasRenderingContext2D, body: Body, time: number) {
+function drawBody(ctx: CanvasRenderingContext2D, body: Body, time: number, isDragging: boolean) {
   if (body.ring) {
     ctx.save();
     ctx.translate(body.x, body.y);
@@ -935,11 +1184,11 @@ function drawBody(ctx: CanvasRenderingContext2D, body: Body, time: number) {
   ctx.restore();
 
   ctx.save();
-  ctx.globalAlpha = 0.5;
-  ctx.strokeStyle = body.glow;
-  ctx.lineWidth = 1.4;
+  ctx.globalAlpha = isDragging ? 0.9 : 0.5;
+  ctx.strokeStyle = isDragging ? '#fde68a' : body.glow;
+  ctx.lineWidth = isDragging ? 2.5 : 1.4;
   ctx.beginPath();
-  ctx.arc(body.x, body.y, body.radius + 1.5, 0, Math.PI * 2);
+  ctx.arc(body.x, body.y, body.radius + (isDragging ? 6 : 1.5), 0, Math.PI * 2);
   ctx.stroke();
   ctx.globalAlpha = 0.2;
   ctx.lineWidth = 6;
@@ -949,29 +1198,10 @@ function drawBody(ctx: CanvasRenderingContext2D, body: Body, time: number) {
   ctx.restore();
 
   ctx.save();
-  ctx.globalAlpha = 0.16;
-  ctx.strokeStyle = body.light;
-  ctx.lineWidth = 1;
-  for (let index = 1; index <= 2; index += 1) {
-    ctx.beginPath();
-    ctx.ellipse(
-      body.x,
-      body.y,
-      body.radius * (0.45 + index * 0.18),
-      body.radius * (0.22 + index * 0.12),
-      -0.3 + time * body.spin * 0.12,
-      0,
-      Math.PI * 2
-    );
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = hexToRgba(body.light, 0.62);
+  ctx.fillStyle = hexToRgba(body.light, 0.72);
   ctx.font = '600 10px ui-monospace, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(body.name, body.x, body.y + body.radius + 20);
+  ctx.fillText(`${body.name} (ドラッグ移動可)`, body.x, body.y + body.radius + 20);
   ctx.restore();
 }
 
@@ -1018,76 +1248,53 @@ function drawLaunchPad(ctx: CanvasRenderingContext2D, time: number, ready: boole
   ctx.fillStyle = 'rgba(165,243,252,0.66)';
   ctx.font = '700 9px ui-monospace, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('LAUNCH', 0, 58);
+  ctx.fillText('LAUNCH PAD', 0, 58);
   ctx.restore();
 }
 
-function drawAim(
+function drawPredictedPathAndAim(
   ctx: CanvasRenderingContext2D,
   aim: AimState,
-  bodies: Body[],
+  prediction: { points: TrailPoint[]; hitsSensor: boolean; minSensorDist: number },
   settings: Settings
 ) {
-  if (!aim.active || !aim.moved) return;
-  const points = computeAimPath(bodies, settings);
+  const { points, hitsSensor } = prediction;
   if (points.length < 2) return;
   ctx.save();
-  ctx.setLineDash([4, 9]);
-  ctx.strokeStyle = 'rgba(165,243,252,0.16)';
-  ctx.lineWidth = 1;
+
+  // Always render the predicted trajectory curve from current launchSpeed + launchAngle
+  ctx.setLineDash([5, 6]);
+  ctx.strokeStyle = hitsSensor ? 'rgba(52, 211, 153, 0.58)' : 'rgba(165, 243, 252, 0.32)';
+  ctx.lineWidth = hitsSensor ? 2.2 : 1.5;
   ctx.beginPath();
-  ctx.moveTo(LAUNCH_X, LAUNCH_Y);
-  ctx.lineTo(aim.x, aim.y);
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i += 1) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
   ctx.stroke();
   ctx.setLineDash([]);
 
-  for (let index = 0; index < points.length; index += 2) {
-    const point = points[index];
-    const alpha = 0.62 * (1 - index / points.length) + 0.07;
-    ctx.fillStyle = `rgba(165,243,252,${alpha})`;
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  const angle = (settings.launchAngle * Math.PI) / 180;
+  ctx.strokeStyle = hitsSensor ? 'rgba(52, 211, 153, 0.85)' : 'rgba(103, 232, 249, 0.75)';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(LAUNCH_X + Math.cos(angle) * 24, LAUNCH_Y + Math.sin(angle) * 24);
+  ctx.lineTo(LAUNCH_X + Math.cos(angle) * 68, LAUNCH_Y + Math.sin(angle) * 68);
+  ctx.stroke();
 
-  const last = points[points.length - 1];
-  if (last) {
-    ctx.strokeStyle = 'rgba(253,230,138,0.72)';
+  if (aim.active && aim.moved && aim.draggingBodyIndex === null) {
+    ctx.strokeStyle = 'rgba(253,230,138,0.88)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(last.x, last.y, 8, 0, Math.PI * 2);
-    ctx.moveTo(last.x - 12, last.y);
-    ctx.lineTo(last.x + 12, last.y);
-    ctx.moveTo(last.x, last.y - 12);
-    ctx.lineTo(last.x, last.y + 12);
+    ctx.arc(aim.x, aim.y, 13, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(aim.x - 18, aim.y);
+    ctx.lineTo(aim.x + 18, aim.y);
+    ctx.moveTo(aim.x, aim.y - 18);
+    ctx.lineTo(aim.x, aim.y + 18);
     ctx.stroke();
   }
-
-  const angle = (settings.launchAngle * Math.PI) / 180;
-  ctx.strokeStyle = 'rgba(103,232,249,0.74)';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.arc(LAUNCH_X, LAUNCH_Y, 49, -Math.PI / 2, -Math.PI / 2 + angle + Math.PI / 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = 'rgba(103,232,249,0.45)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(LAUNCH_X + Math.cos(angle) * 30, LAUNCH_Y + Math.sin(angle) * 30);
-  ctx.lineTo(LAUNCH_X + Math.cos(angle) * 72, LAUNCH_Y + Math.sin(angle) * 72);
-  ctx.stroke();
-
-  ctx.strokeStyle = 'rgba(253,230,138,0.88)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(aim.x, aim.y, 13, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(aim.x - 18, aim.y);
-  ctx.lineTo(aim.x + 18, aim.y);
-  ctx.moveTo(aim.x, aim.y - 18);
-  ctx.lineTo(aim.x, aim.y + 18);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -1142,17 +1349,21 @@ function renderScene(
   visualTime: number
 ) {
   const bodies = getActiveBodies(game, settings);
+  const prediction = computeAimPrediction(bodies, settings);
   drawBackground(ctx, visualTime);
   drawOrbitGuides(ctx, bodies);
+  drawSensorZone(ctx, game, settings, visualTime, prediction.hitsSensor);
   drawGhosts(ctx, game.ghosts);
   for (const probe of game.probes) {
     strokeTrail(ctx, probe.trail, probe.color, 1);
   }
-  for (const body of bodies) {
-    drawBody(ctx, body, visualTime);
+  for (let i = 0; i < game.bodies.length; i += 1) {
+    const body = game.bodies[i];
+    if (!settings.starEnabled && body.kind === 'star') continue;
+    drawBody(ctx, body, visualTime, game.aim.draggingBodyIndex === i);
   }
   drawLaunchPad(ctx, visualTime, game.probes.length < MAX_PROBES);
-  drawAim(ctx, game.aim, bodies, settings);
+  drawPredictedPathAndAim(ctx, game.aim, prediction, settings);
   for (const probe of game.probes) {
     drawProbe(ctx, probe, visualTime);
   }
@@ -1172,27 +1383,112 @@ function renderScene(
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 }
 
+function KeplerTelemetryGraph({ samples }: { samples: TelemetrySample[] }) {
+  const width = 280;
+  const height = 88;
+  const pad = { top: 8, right: 8, bottom: 16, left: 26 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+
+  if (samples.length < 2) {
+    return (
+      <div className="mt-2 flex h-20 items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 text-[10px] text-slate-400">
+        探査機が飛行すると軌道速度と距離の波形を記録します
+      </div>
+    );
+  }
+
+  const maxSpeed = Math.max(200, ...samples.map((s) => s.speed));
+  const maxDist = Math.max(200, ...samples.map((s) => s.distance));
+
+  const speedPoints = samples
+    .map((s, idx) => {
+      const x = pad.left + (idx / Math.max(1, samples.length - 1)) * plotW;
+      const y = pad.top + (1 - Math.min(1, s.speed / maxSpeed)) * plotH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  const distPoints = samples
+    .map((s, idx) => {
+      const x = pad.left + (idx / Math.max(1, samples.length - 1)) * plotW;
+      const y = pad.top + (1 - Math.min(1, s.distance / maxDist)) * plotH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="mt-1.5 h-auto w-full rounded-lg bg-black/25 p-1"
+      role="img"
+      aria-label="軌道速度と天体距離のリアルタイム推移グラフ"
+    >
+      <line
+        x1={pad.left}
+        y1={pad.top + plotH}
+        x2={width - pad.right}
+        y2={pad.top + plotH}
+        stroke="rgba(148,163,184,0.2)"
+      />
+      <line
+        x1={pad.left}
+        y1={pad.top}
+        x2={pad.left}
+        y2={pad.top + plotH}
+        stroke="rgba(148,163,184,0.2)"
+      />
+      <polyline
+        points={distPoints}
+        fill="none"
+        stroke="#fbbf24"
+        strokeWidth={1.5}
+        strokeDasharray="3 2"
+      />
+      <polyline points={speedPoints} fill="none" stroke="#22d3ee" strokeWidth={2} />
+      <text x={pad.left - 3} y={pad.top + 6} textAnchor="end" fontSize={7} fill="#67e8f9">
+        {Math.round(maxSpeed)}
+      </text>
+      <text x={pad.left - 3} y={pad.top + plotH} textAnchor="end" fontSize={7} fill="#94a3b8">
+        0
+      </text>
+      <text x={pad.left + 4} y={height - 3} fontSize={7} fill="#67e8f9">
+        ― 速度(u/s)
+      </text>
+      <text x={width - pad.right} y={height - 3} textAnchor="end" fontSize={7} fill="#fbbf24">
+        --- 天体距離(u)
+      </text>
+    </svg>
+  );
+}
+
 export default function GravityOrbitGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gameRef = useRef<GameState>(createGame());
+  const gameRef = useRef<GameState | null>(null);
+  if (gameRef.current === null) {
+    gameRef.current = createGame();
+  }
   const settingsRef = useRef<Settings>(INITIAL_SETTINGS);
   const [settings, setSettings] = useState<Settings>(INITIAL_SETTINGS);
   const [metrics, setMetrics] = useState<Metrics>(() =>
-    computeMetrics(gameRef.current, settingsRef.current)
+    computeMetrics(gameRef.current as GameState, settingsRef.current)
   );
   const [soundOn, setSoundOn] = useState(true);
 
   const publishMetrics = useCallback(() => {
+    if (!gameRef.current) return;
     setMetrics(computeMetrics(gameRef.current, settingsRef.current));
   }, []);
 
   const applySettings = useCallback(
     (patch: Partial<Settings>) => {
+      const game = gameRef.current;
+      if (!game) return;
       const next = { ...settingsRef.current, ...patch };
       if (patch.trailLength !== undefined) {
         const cap = clampTrail(next.trailLength);
         next.trailLength = cap;
-        for (const probe of gameRef.current.probes) {
+        for (const probe of game.probes) {
           if (probe.trail.length > cap) {
             probe.trail.splice(0, probe.trail.length - cap);
           }
@@ -1205,40 +1501,210 @@ export default function GravityOrbitGame() {
     [publishMetrics]
   );
 
+  const spawnProbeWithVelocity = useCallback(
+    (x: number, y: number, vx: number, vy: number, customColor?: string) => {
+      const game = gameRef.current;
+      if (!game) return;
+      if (game.probes.length >= MAX_PROBES) {
+        const oldest = game.probes.shift();
+        if (oldest) pushGhost(game, oldest);
+      }
+      const id = game.nextProbeId;
+      game.nextProbeId += 1;
+      const color = customColor ?? PROBE_COLORS[(id - 1) % PROBE_COLORS.length];
+      const probe = makeProbeAt(id, x, y, vx, vy, color);
+      game.probes.push(probe);
+      game.selectedId = id;
+      spawnBurst(game, x, y, color, 10);
+    },
+    []
+  );
+
   const launchProbe = useCallback(() => {
-    const game = gameRef.current;
     const current = settingsRef.current;
-    if (game.probes.length >= MAX_PROBES) {
-      const oldest = game.probes.shift();
-      if (oldest) pushGhost(game, oldest);
-    }
     const angle = (current.launchAngle * Math.PI) / 180;
-    const id = game.nextProbeId;
-    game.nextProbeId += 1;
-    const color = PROBE_COLORS[(id - 1) % PROBE_COLORS.length];
-    game.probes.push({
-      id,
-      x: LAUNCH_X,
-      y: LAUNCH_Y,
-      vx: Math.cos(angle) * current.launchSpeed,
-      vy: Math.sin(angle) * current.launchSpeed,
-      color,
-      trail: [{ x: LAUNCH_X, y: LAUNCH_Y }],
-    });
-    game.selectedId = id;
-    spawnBurst(game, LAUNCH_X, LAUNCH_Y, color, 12);
+    spawnProbeWithVelocity(
+      LAUNCH_X,
+      LAUNCH_Y,
+      Math.cos(angle) * current.launchSpeed,
+      Math.sin(angle) * current.launchSpeed
+    );
     sound.launch();
     publishMetrics();
-  }, [publishMetrics]);
+  }, [publishMetrics, spawnProbeWithVelocity]);
+
+  // 1-Click Orbital Experiment Presets
+  const runExperimentSwingbyBehindStar = useCallback(() => {
+    const game = gameRef.current;
+    if (!game) return;
+    const next: Settings = {
+      ...settingsRef.current,
+      preset: 'single',
+      planetMass: 1,
+      gravity: 1,
+      starEnabled: true,
+      sensorEnabled: true,
+      launchSpeed: 130,
+      launchAngle: -59,
+      running: true,
+    };
+    settingsRef.current = next;
+    setSettings(next);
+    game.bodies = createBodies('single');
+    game.probes = [];
+    game.ghosts = [];
+    game.telemetry = [];
+    // Launch two verified swingby probes (right-side -59° @ 130 u/s & left-side -146° @ 140 u/s) that both curve behind SOL into (360, 155)!
+    const rRight = (-59 * Math.PI) / 180;
+    const rLeft = (-146 * Math.PI) / 180;
+    spawnProbeWithVelocity(
+      LAUNCH_X,
+      LAUNCH_Y,
+      Math.cos(rRight) * 130,
+      Math.sin(rRight) * 130,
+      '#34d399'
+    );
+    spawnProbeWithVelocity(
+      LAUNCH_X,
+      LAUNCH_Y,
+      Math.cos(rLeft) * 140,
+      Math.sin(rLeft) * 140,
+      '#67e8f9'
+    );
+    sound.launch();
+    publishMetrics();
+  }, [publishMetrics, spawnProbeWithVelocity]);
+
+  const runExperimentStableOrbit = useCallback(() => {
+    const game = gameRef.current;
+    if (!game) return;
+    const next: Settings = {
+      ...settingsRef.current,
+      preset: 'single',
+      planetMass: 0.4,
+      gravity: 1,
+      starEnabled: true,
+      launchSpeed: 130,
+      launchAngle: -59,
+      running: true,
+    };
+    settingsRef.current = next;
+    setSettings(next);
+    game.bodies = createBodies('single');
+    game.probes = [];
+    game.ghosts = [];
+    game.telemetry = [];
+
+    // 1. Inner circular orbit around SOL (r = 150, y = 210)
+    const r1 = 150;
+    const v1 = Math.sqrt((G_BASE * r1 * r1) / Math.pow(r1 * r1 + SOFTENING * SOFTENING, 1.5));
+    spawnProbeWithVelocity(360, 360 - r1, v1, 0, '#fbbf24');
+
+    // 2. Outer elliptical orbit around SOL (r = 220, y = 580)
+    const r2 = 220;
+    const v2 =
+      Math.sqrt((G_BASE * r2 * r2) / Math.pow(r2 * r2 + SOFTENING * SOFTENING, 1.5)) * 1.08;
+    spawnProbeWithVelocity(360, 360 + r2, -v2, 0, '#67e8f9');
+
+    // 3. High-inclination bound orbit from launchpad
+    const angle = (-59 * Math.PI) / 180;
+    spawnProbeWithVelocity(
+      LAUNCH_X,
+      LAUNCH_Y,
+      Math.cos(angle) * 130,
+      Math.sin(angle) * 130,
+      '#a78bfa'
+    );
+    sound.launch();
+    publishMetrics();
+  }, [publishMetrics, spawnProbeWithVelocity]);
+
+  const runExperimentSpreadFan = useCallback(() => {
+    const game = gameRef.current;
+    if (!game) return;
+    const next: Settings = {
+      ...settingsRef.current,
+      running: true,
+    };
+    settingsRef.current = next;
+    setSettings(next);
+    game.probes = [];
+    game.ghosts = [];
+    game.telemetry = [];
+
+    const speed = next.launchSpeed;
+    // Launch 11 probes in a fan from -140° to -40°
+    for (let i = 0; i < 11; i += 1) {
+      const deg = -140 + i * 10;
+      const rad = (deg * Math.PI) / 180;
+      spawnProbeWithVelocity(
+        LAUNCH_X,
+        LAUNCH_Y,
+        Math.cos(rad) * speed,
+        Math.sin(rad) * speed,
+        PROBE_COLORS[i % PROBE_COLORS.length]
+      );
+    }
+    sound.launch();
+    publishMetrics();
+  }, [publishMetrics, spawnProbeWithVelocity]);
+
+  const runExperimentBinaryFigure8 = useCallback(() => {
+    const game = gameRef.current;
+    if (!game) return;
+    const nextPreset: PresetKey = settingsRef.current.preset === 'binary' ? 'triple' : 'binary';
+    const launchSpeed = nextPreset === 'binary' ? 120 : 155;
+    const launchAngle = nextPreset === 'binary' ? -131 : -102;
+    const next: Settings = {
+      ...settingsRef.current,
+      preset: nextPreset,
+      planetMass: 1,
+      gravity: 1,
+      starEnabled: true,
+      launchSpeed,
+      launchAngle,
+      running: true,
+    };
+    settingsRef.current = next;
+    setSettings(next);
+    game.bodies = createBodies(nextPreset);
+    game.probes = [];
+    game.ghosts = [];
+    game.telemetry = [];
+
+    const a1 = (launchAngle * Math.PI) / 180;
+    const a2 = ((-180 - launchAngle) * Math.PI) / 180;
+    spawnProbeWithVelocity(
+      LAUNCH_X,
+      LAUNCH_Y,
+      Math.cos(a1) * launchSpeed,
+      Math.sin(a1) * launchSpeed,
+      '#f472b6'
+    );
+    spawnProbeWithVelocity(
+      LAUNCH_X,
+      LAUNCH_Y,
+      Math.cos(a2) * launchSpeed,
+      Math.sin(a2) * launchSpeed,
+      '#a78bfa'
+    );
+    sound.launch();
+    publishMetrics();
+  }, [publishMetrics, spawnProbeWithVelocity]);
 
   const resetSim = useCallback(() => {
     const game = gameRef.current;
+    if (!game) return;
     game.bodies = createBodies(settingsRef.current.preset);
     game.probes = [];
     game.ghosts = [];
     game.particles = [];
+    game.telemetry = [];
     game.aim = createAim(settingsRef.current.launchAngle);
     game.selectedId = null;
+    game.sensorHits = 0;
+    game.bestSensorApproach = null;
+    game.lastDeflectionDeg = 0;
     sound.ui();
     publishMetrics();
   }, [publishMetrics]);
@@ -1246,19 +1712,36 @@ export default function GravityOrbitGame() {
   const selectPreset = useCallback(
     (preset: PresetKey) => {
       const game = gameRef.current;
-      const next = { ...settingsRef.current, preset };
+      if (!game) return;
+      const defaultLaunch =
+        preset === 'single'
+          ? { launchSpeed: 130, launchAngle: -59 }
+          : preset === 'binary'
+            ? { launchSpeed: 120, launchAngle: -131 }
+            : preset === 'triple'
+              ? { launchSpeed: 155, launchAngle: -102 }
+              : { launchSpeed: 145, launchAngle: -64 };
+      const next = { ...settingsRef.current, preset, ...defaultLaunch };
       settingsRef.current = next;
       setSettings(next);
       game.bodies = createBodies(preset);
       game.probes = [];
       game.ghosts = [];
       game.particles = [];
+      game.telemetry = [];
       game.aim = createAim(next.launchAngle);
       game.selectedId = null;
+      const rad = (next.launchAngle * Math.PI) / 180;
+      spawnProbeWithVelocity(
+        LAUNCH_X,
+        LAUNCH_Y,
+        Math.cos(rad) * next.launchSpeed,
+        Math.sin(rad) * next.launchSpeed
+      );
       sound.ui();
       publishMetrics();
     },
-    [publishMetrics]
+    [publishMetrics, spawnProbeWithVelocity]
   );
 
   const toggleRunning = useCallback(() => {
@@ -1267,15 +1750,22 @@ export default function GravityOrbitGame() {
   }, [applySettings]);
 
   const stepOnce = useCallback(() => {
+    const game = gameRef.current;
+    if (!game) return;
     const next = { ...settingsRef.current, running: false };
     settingsRef.current = next;
     setSettings(next);
-    advanceSteps(gameRef.current, next, 2);
+    advanceSteps(game, next, 2);
     publishMetrics();
   }, [publishMetrics]);
 
   const toggleStar = useCallback(() => {
     applySettings({ starEnabled: !settingsRef.current.starEnabled });
+    sound.ui();
+  }, [applySettings]);
+
+  const toggleSensor = useCallback(() => {
+    applySettings({ sensorEnabled: !settingsRef.current.sensorEnabled });
     sound.ui();
   }, [applySettings]);
 
@@ -1301,12 +1791,26 @@ export default function GravityOrbitGame() {
       if (!event.isPrimary) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       const game = gameRef.current;
+      if (!game) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
       const point = getWorldPoint(event.clientX, event.clientY, event.currentTarget);
+
+      // Check if user clicked on a celestial body to drag it!
+      let hitBodyIndex: number | null = null;
+      for (let i = 0; i < game.bodies.length; i += 1) {
+        const body = game.bodies[i];
+        if (!settingsRef.current.starEnabled && body.kind === 'star') continue;
+        if (Math.hypot(point.x - body.x, point.y - body.y) <= body.radius + 16) {
+          hitBodyIndex = i;
+          break;
+        }
+      }
+
       game.aim = {
         active: true,
         pointerId: event.pointerId,
+        draggingBodyIndex: hitBodyIndex,
         x: point.x,
         y: point.y,
         startX: point.x,
@@ -1321,20 +1825,32 @@ export default function GravityOrbitGame() {
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       const game = gameRef.current;
-      if (!game.aim.active || game.aim.pointerId !== event.pointerId) return;
+      if (!game || !game.aim.active || game.aim.pointerId !== event.pointerId) return;
       event.preventDefault();
       const point = getWorldPoint(event.clientX, event.clientY, event.currentTarget);
+
+      if (game.aim.draggingBodyIndex !== null) {
+        const body = game.bodies[game.aim.draggingBodyIndex];
+        if (body) {
+          body.x = clamp(point.x, body.radius + 12, WORLD_W - body.radius - 12);
+          body.y = clamp(point.y, body.radius + 12, WORLD_H - 120);
+        }
+        return;
+      }
+
       const dx = point.x - game.aim.startX;
       const dy = point.y - game.aim.startY;
-      if (dx * dx + dy * dy > 36) game.aim.moved = true;
+      if (dx * dx + dy * dy > 25) game.aim.moved = true;
       game.aim.x = point.x;
       game.aim.y = point.y;
       if (game.aim.moved) {
         const aimX = point.x - LAUNCH_X;
         const aimY = point.y - LAUNCH_Y;
-        if (aimX * aimX + aimY * aimY > 900) {
+        if (aimX * aimX + aimY * aimY > 400) {
           const angle = Math.round((Math.atan2(aimY, aimX) * 180) / Math.PI);
-          settingsRef.current = { ...settingsRef.current, launchAngle: angle };
+          const next = { ...settingsRef.current, launchAngle: angle };
+          settingsRef.current = next;
+          setSettings(next);
         }
       }
     },
@@ -1344,13 +1860,14 @@ export default function GravityOrbitGame() {
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       const game = gameRef.current;
-      if (!game.aim.active || game.aim.pointerId !== event.pointerId) return;
+      if (!game || !game.aim.active || game.aim.pointerId !== event.pointerId) return;
       event.preventDefault();
       const point = getWorldPoint(event.clientX, event.clientY, event.currentTarget);
       const aim = { ...game.aim };
       game.aim = {
         active: false,
         pointerId: null,
+        draggingBodyIndex: null,
         x: point.x,
         y: point.y,
         startX: point.x,
@@ -1361,10 +1878,26 @@ export default function GravityOrbitGame() {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      if (!aim.moved) return;
+      if (aim.draggingBodyIndex !== null) {
+        publishMetrics();
+        return;
+      }
+      if (!aim.moved) {
+        // Single tap on canvas aims toward that point and launches!
+        const tapDx = point.x - LAUNCH_X;
+        const tapDy = point.y - LAUNCH_Y;
+        if (tapDx * tapDx + tapDy * tapDy > 900) {
+          const angle = Math.round((Math.atan2(tapDy, tapDx) * 180) / Math.PI);
+          const next = { ...settingsRef.current, launchAngle: angle };
+          settingsRef.current = next;
+          setSettings(next);
+          launchProbe();
+        }
+        return;
+      }
       const dx = point.x - LAUNCH_X;
       const dy = point.y - LAUNCH_Y;
-      if (dx * dx + dy * dy < 900) {
+      if (dx * dx + dy * dy < 400) {
         settingsRef.current = { ...settingsRef.current, launchAngle: aim.originalAngle };
         return;
       }
@@ -1374,12 +1907,12 @@ export default function GravityOrbitGame() {
       setSettings(next);
       launchProbe();
     },
-    [getWorldPoint, launchProbe]
+    [getWorldPoint, launchProbe, publishMetrics]
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const game = gameRef.current;
-    if (game.aim.active && game.aim.pointerId === event.pointerId) {
+    if (game && game.aim.active && game.aim.pointerId === event.pointerId) {
       settingsRef.current = { ...settingsRef.current, launchAngle: game.aim.originalAngle };
       game.aim = createAim(game.aim.originalAngle);
     }
@@ -1421,36 +1954,38 @@ export default function GravityOrbitGame() {
       last = now;
       const game = gameRef.current;
       const current = settingsRef.current;
-      game.visual += dt;
-      if (current.running) {
-        accumulator += dt * current.speed;
-        let steps = 0;
-        while (accumulator >= FIXED_STEP && steps < 14) {
-          advanceSteps(game, current, 1);
-          accumulator -= FIXED_STEP;
-          steps += 1;
+      if (game) {
+        game.visual += dt;
+        if (current.running) {
+          accumulator += dt * current.speed;
+          let steps = 0;
+          while (accumulator >= FIXED_STEP && steps < 14) {
+            advanceSteps(game, current, 1);
+            accumulator -= FIXED_STEP;
+            steps += 1;
+          }
+          if (accumulator > FIXED_STEP * 10) accumulator = 0;
+        } else {
+          accumulator = 0;
         }
-        if (accumulator > FIXED_STEP * 10) accumulator = 0;
-      } else {
-        accumulator = 0;
-      }
 
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx && canvas.width > 0 && canvas.height > 0) {
-          const scaleX = canvas.width / WORLD_W;
-          const scaleY = canvas.height / WORLD_H;
-          ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-          ctx.clearRect(0, 0, WORLD_W, WORLD_H);
-          renderScene(ctx, game, current, game.visual);
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx && canvas.width > 0 && canvas.height > 0) {
+            const scaleX = canvas.width / WORLD_W;
+            const scaleY = canvas.height / WORLD_H;
+            ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+            ctx.clearRect(0, 0, WORLD_W, WORLD_H);
+            renderScene(ctx, game, current, game.visual);
+          }
         }
-      }
 
-      hudClock += dt;
-      if (hudClock >= 0.12) {
-        hudClock = 0;
-        publishMetrics();
+        hudClock += dt;
+        if (hudClock >= 0.12) {
+          hudClock = 0;
+          publishMetrics();
+        }
       }
       rafId = window.requestAnimationFrame(frame);
     };
@@ -1461,6 +1996,8 @@ export default function GravityOrbitGame() {
   const preset = PRESETS[settings.preset];
   const angleValue = settings.launchAngle;
   const periodLabel = metrics.period === null ? '—' : `${metrics.period.toFixed(1)} s`;
+  const bestApproachLabel =
+    metrics.bestSensorApproach === null ? '—' : `${metrics.bestSensorApproach.toFixed(1)} px`;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#05070f] text-slate-100 select-none">
@@ -1475,9 +2012,9 @@ export default function GravityOrbitGame() {
             </Link>
             <div className="min-w-0">
               <p className="truncate text-[9px] font-bold tracking-[0.18em] text-cyan-300/80 sm:text-[10px]">
-                GRAVITY ORBIT / ORBITAL LAB
+                GRAVITY ORBIT / ORBITAL &amp; SWING-BY LAB
               </p>
-              <h2 className="truncate text-sm font-black sm:text-lg">重力オービット・サンドボックス</h2>
+              <h2 className="truncate text-sm font-black sm:text-lg">重力オービット・軌道実験ラボ</h2>
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1507,8 +2044,48 @@ export default function GravityOrbitGame() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:grid-cols-[minmax(0,600px)_320px] lg:justify-center lg:gap-5">
+      <div className="mx-auto grid max-w-6xl gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:grid-cols-[minmax(0,600px)_340px] lg:justify-center lg:gap-5">
         <div className="min-w-0 sm:mx-auto sm:w-full sm:max-w-[560px] lg:mx-0 lg:max-w-none">
+          {/* 1-Click Orbital Experiment Presets Bar */}
+          <div className="mb-2.5 rounded-xl border border-emerald-400/25 bg-emerald-950/20 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-black tracking-[0.16em] text-emerald-300">
+                ワンタップ軌道実験プリセット（即座に軌道を再現）
+              </span>
+              <span className="text-[9px] font-bold text-emerald-200/70">天体もドラッグで移動可能</span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              <button
+                type="button"
+                onClick={runExperimentSwingbyBehindStar}
+                className="rounded-lg border border-emerald-300/50 bg-emerald-400/15 px-2 py-2 text-[10px] font-black text-emerald-100 transition hover:border-emerald-200 hover:bg-emerald-400/25"
+              >
+                星の背後へスイングバイ命中
+              </button>
+              <button
+                type="button"
+                onClick={runExperimentStableOrbit}
+                className="rounded-lg border border-cyan-300/40 bg-cyan-400/15 px-2 py-2 text-[10px] font-black text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-400/25"
+              >
+                安定周回（円・楕円軌道）
+              </button>
+              <button
+                type="button"
+                onClick={runExperimentSpreadFan}
+                className="rounded-lg border border-amber-300/40 bg-amber-400/15 px-2 py-2 text-[10px] font-black text-amber-100 transition hover:border-amber-200 hover:bg-amber-400/25"
+              >
+                扇状11機スプレッド発射
+              </button>
+              <button
+                type="button"
+                onClick={runExperimentBinaryFigure8}
+                className="rounded-lg border border-fuchsia-300/40 bg-fuchsia-400/15 px-2 py-2 text-[10px] font-black text-fuchsia-100 transition hover:border-fuchsia-200 hover:bg-fuchsia-400/25"
+              >
+                連星8の字・カオス三体実験
+              </button>
+            </div>
+          </div>
+
           <div
             className="relative touch-none overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#060914] shadow-[0_0_70px_rgba(34,211,238,0.08)]"
             style={{ touchAction: 'none' }}
@@ -1537,17 +2114,17 @@ export default function GravityOrbitGame() {
                   {metrics.active}/{MAX_PROBES}
                 </p>
                 <p className="text-[9px] font-bold text-slate-400">PROBES</p>
-                <p className="mt-1 font-mono text-[10px] font-bold text-amber-200">
-                  {metrics.trail} PT TRAIL
+                <p className="mt-1 font-mono text-[10px] font-bold text-emerald-300">
+                  背後ゾーン通過: {metrics.sensorHits}回
                 </p>
               </div>
             </div>
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/75 to-transparent px-2 pb-2.5 pt-6">
               <div className="rounded-full border border-cyan-300/25 bg-black/60 px-3 py-1.5 text-center text-[10px] font-bold text-cyan-100 backdrop-blur sm:text-xs">
-                {settings.running
-                  ? 'ドラッグで角度を決めて発射 / 複数機で軌道を比較'
-                  : '一時停止中 / 1ステップで軌道を観察'}
+                {metrics.predictedHitsSensor
+                  ? '予測軌道が星の背後センサーに命中中！タップまたは発射ボタンで投入'
+                  : '画面タップ/ドラッグで発射 / 恒星・惑星をドラッグして重力場を直接変形'}
               </div>
             </div>
           </div>
@@ -1557,14 +2134,17 @@ export default function GravityOrbitGame() {
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: metrics.color }} />
               <span>選択探査機</span>
               <span className="font-mono text-slate-200">
-                {metrics.active > 0 ? `#${gameRef.current.selectedId ?? '—'}` : '—'}
+                {metrics.active > 0 ? `#${gameRef.current?.selectedId ?? '—'}` : '—'}
               </span>
             </div>
-            <div className="flex items-center gap-3 text-[10px] text-slate-400 sm:text-xs">
+            <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 sm:text-xs">
               <span>
                 速度 <span className="font-mono text-cyan-200">{Math.round(metrics.speed)}</span> u/s
               </span>
-              <span className="hidden sm:inline">
+              <span>
+                最大偏向角 <span className="font-mono text-emerald-300">{metrics.lastDeflectionDeg}°</span>
+              </span>
+              <span>
                 周期 <span className="font-mono text-amber-200">{periodLabel}</span>
               </span>
             </div>
@@ -1572,12 +2152,55 @@ export default function GravityOrbitGame() {
         </div>
 
         <aside className="mx-auto flex w-full max-w-[560px] flex-col gap-2.5 sm:gap-3 lg:mx-0 lg:max-w-none">
+          <div className="rounded-xl border border-emerald-400/20 bg-[#071518]/85 p-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="text-[10px] font-black tracking-[0.16em] text-emerald-300">
+                SWING-BY SENSOR (星の背後到達テスト)
+              </span>
+              <button
+                type="button"
+                onClick={toggleSensor}
+                aria-pressed={settings.sensorEnabled}
+                className={`rounded border px-2 py-0.5 text-[9px] font-bold transition ${
+                  settings.sensorEnabled
+                    ? 'border-emerald-300 bg-emerald-400/20 text-emerald-200'
+                    : 'border-white/10 bg-white/[0.04] text-slate-400'
+                }`}
+              >
+                {settings.sensorEnabled ? 'センサー ON' : 'センサー OFF'}
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[10px]">
+              <div className="rounded-lg bg-black/30 px-2 py-1.5">
+                <p className="text-[9px] text-slate-400">背後ゾーン通過</p>
+                <p className="font-mono text-sm font-black text-emerald-300">{metrics.sensorHits} 機</p>
+              </div>
+              <div className="rounded-lg bg-black/30 px-2 py-1.5">
+                <p className="text-[9px] text-slate-400">最接近距離</p>
+                <p className="font-mono text-sm font-black text-cyan-200">{bestApproachLabel}</p>
+              </div>
+              <div className="rounded-lg bg-black/30 px-2 py-1.5">
+                <p className="text-[9px] text-slate-400">予測軌道判定</p>
+                <p
+                  className={`font-mono text-xs font-black ${
+                    metrics.predictedHitsSensor ? 'text-emerald-300' : 'text-amber-200'
+                  }`}
+                >
+                  {metrics.predictedHitsSensor
+                    ? '命中コース'
+                    : `あと${Math.max(0, Math.round(metrics.predictedMinDist - SENSOR_RADIUS))}px`}
+                </p>
+              </div>
+            </div>
+            <p className="mt-2 text-[9px] leading-4 text-slate-400">
+              重力スイングバイで恒星の背後（上方の緑リング）へ回り込む軌道を検証できます。「星の背後へスイングバイ命中」ボタンで理論命中軌道を即座に再現します。
+            </p>
+          </div>
+
           <div className="rounded-xl border border-cyan-400/15 bg-[#080d1b]/80 p-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <span className="text-[10px] font-black tracking-[0.2em] text-cyan-300">SIMULATION</span>
-              <span className="font-mono text-[10px] font-bold text-slate-400">
-                {settings.speed}x
-              </span>
+              <span className="font-mono text-[10px] font-bold text-slate-400">{settings.speed}x</span>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-1.5">
               <button
@@ -1603,7 +2226,7 @@ export default function GravityOrbitGame() {
                 リセット
               </button>
             </div>
-            <p className="mt-3 text-[9px] font-bold tracking-wider text-slate-400">速度</p>
+            <p className="mt-2.5 text-[9px] font-bold tracking-wider text-slate-400">再生速度</p>
             <div className="mt-1 grid grid-cols-3 gap-1.5">
               {SPEEDS.map((speed) => (
                 <button
@@ -1639,7 +2262,7 @@ export default function GravityOrbitGame() {
                 type="range"
                 min={MIN_LAUNCH_SPEED}
                 max={MAX_LAUNCH_SPEED}
-                step={5}
+                step={2}
                 value={settings.launchSpeed}
                 onChange={(event) => applySettings({ launchSpeed: Number(event.target.value) })}
                 aria-label="発射速度"
@@ -1665,18 +2288,17 @@ export default function GravityOrbitGame() {
             <button
               type="button"
               onClick={launchProbe}
-              className="mt-2 w-full rounded-lg border border-amber-300/40 bg-amber-400/10 py-2 text-[11px] font-black text-amber-200 transition hover:border-amber-300 hover:bg-amber-400/20"
+              className="mt-2 w-full rounded-lg border border-amber-300/40 bg-amber-400/15 py-2 text-[11px] font-black text-amber-200 transition hover:border-amber-300 hover:bg-amber-400/25"
             >
-              探査機を発射
+              現在の角度・速度で探査機を発射
             </button>
-            <p className="mt-2 text-[9px] leading-4 text-slate-500">
-              キャンバスをドラッグすると発射角度が変わり、指を離すと発射します。速度はスライダーで調整できます。
-            </p>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black tracking-[0.2em] text-cyan-300">GRAVITY</span>
+              <span className="text-[10px] font-black tracking-[0.2em] text-cyan-300">
+                GRAVITY &amp; PRESETS
+              </span>
               <button
                 type="button"
                 onClick={toggleStar}
@@ -1690,9 +2312,26 @@ export default function GravityOrbitGame() {
                 恒星 {settings.starEnabled ? 'ON' : 'OFF'}
               </button>
             </div>
+            <div className="mt-2 grid grid-cols-4 gap-1.5">
+              {PRESET_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selectPreset(key)}
+                  aria-pressed={settings.preset === key}
+                  className={`rounded-lg border px-1.5 py-1.5 text-[10px] font-bold transition ${
+                    settings.preset === key
+                      ? 'border-amber-300 bg-amber-400/10 text-amber-200'
+                      : 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-slate-500'
+                  }`}
+                >
+                  {PRESETS[key].name}
+                </button>
+              ))}
+            </div>
             <label className="mt-2 block">
               <span className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300">
-                <span>惑星質量</span>
+                <span>惑星質量倍率</span>
                 <span className="font-mono text-cyan-200">{settings.planetMass.toFixed(1)}x</span>
               </span>
               <input
@@ -1708,7 +2347,7 @@ export default function GravityOrbitGame() {
             </label>
             <label className="mt-1 block">
               <span className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300">
-                <span>重力定数</span>
+                <span>重力定数 G</span>
                 <span className="font-mono text-cyan-200">{settings.gravity.toFixed(2)}x</span>
               </span>
               <input
@@ -1722,44 +2361,10 @@ export default function GravityOrbitGame() {
                 className="mt-1 h-6 w-full accent-cyan-300"
               />
             </label>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black tracking-[0.2em] text-slate-300">PRESET SYSTEMS</span>
-              <span className="font-mono text-[10px] font-bold text-slate-500">{preset.name}</span>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              {PRESET_KEYS.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => selectPreset(key)}
-                  aria-pressed={settings.preset === key}
-                  className={`rounded-lg border px-2 py-2 text-[10px] font-bold transition ${
-                    settings.preset === key
-                      ? 'border-amber-300 bg-amber-400/10 text-amber-200'
-                      : 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-slate-500'
-                  }`}
-                >
-                  {PRESETS[key].name}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-[9px] leading-4 text-slate-500">{preset.tagline}</p>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black tracking-[0.2em] text-slate-300">TRAIL</span>
-              <span className="font-mono text-[10px] font-bold text-slate-400">
-                {settings.trailLength} PT
-              </span>
-            </div>
-            <label className="mt-2 block">
+            <label className="mt-1 block">
               <span className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300">
                 <span>トレイル長</span>
-                <span className="font-mono text-cyan-200">{settings.trailLength} ポイント</span>
+                <span className="font-mono text-cyan-200">{settings.trailLength} PT</span>
               </span>
               <input
                 type="range"
@@ -1776,72 +2381,44 @@ export default function GravityOrbitGame() {
 
           <div className="rounded-xl border border-cyan-400/15 bg-[#080d1b]/80 p-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-cyan-300">OBSERVATION</span>
+              <span className="text-[10px] font-black tracking-[0.16em] text-cyan-300">
+                KEPLER TELEMETRY (速度・天体距離波形)
+              </span>
               <span className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-slate-400">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: metrics.color }} />
                 {metrics.target}
               </span>
             </div>
+            <KeplerTelemetryGraph samples={metrics.telemetry} />
             <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px]">
-              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
                 <p className="text-slate-400">探査機速度</p>
-                <p className="font-mono text-lg font-black text-cyan-200">
+                <p className="font-mono text-base font-black text-cyan-200">
                   {Math.round(metrics.speed)}
                   <span className="ml-1 text-[9px] font-bold">u/s</span>
                 </p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
                 <p className="text-slate-400">最寄り天体距離</p>
-                <p className="font-mono text-lg font-black text-slate-100">
+                <p className="font-mono text-base font-black text-slate-100">
                   {Math.round(metrics.distance)}
                   <span className="ml-1 text-[9px] font-bold">u</span>
                 </p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
                 <p className="text-slate-400">推定公転周期</p>
-                <p className="font-mono text-lg font-black text-amber-200">{periodLabel}</p>
+                <p className="font-mono text-base font-black text-amber-200">{periodLabel}</p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                <p className="text-slate-400">アクティブ探査機</p>
-                <p className="font-mono text-lg font-black text-slate-100">
-                  {metrics.active}
-                  <span className="ml-1 text-[9px] font-bold">/ {MAX_PROBES}</span>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
+                <p className="text-slate-400">スイングバイ最大偏向角</p>
+                <p className="font-mono text-base font-black text-emerald-300">
+                  {metrics.lastDeflectionDeg}°
                 </p>
-              </div>
-              <div className="col-span-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-slate-400">トレイル長</p>
-                  <p className="font-mono text-sm font-black text-cyan-200">{metrics.trail} ポイント</p>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-amber-300 transition-[width] duration-200"
-                    style={{ width: `${Math.min(100, (metrics.trail / settings.trailLength) * 100)}%` }}
-                  />
-                </div>
               </div>
             </div>
             <p className="mt-2 text-[9px] leading-4 text-slate-500">
-              公転周期は最寄りの支配的天体との二体近似による推定値です。離脱軌道では表示されません。
+              ケプラーの第2法則（面積速度一定）により、天体に近づく（近点）ほど速度が急上昇し、離れる（遠点）ほど減速する様子がグラフで確認できます。
             </p>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <h3 className="text-[10px] font-black tracking-[0.2em] text-slate-300">HOW TO OBSERVE</h3>
-            <ul className="mt-2 space-y-1.5 text-[10px] leading-5 text-slate-400">
-              <li>
-                <span className="font-bold text-cyan-200">1.</span> プリセット星系と物理条件を選ぶ
-              </li>
-              <li>
-                <span className="font-bold text-cyan-200">2.</span> ドラッグで角度を決め、離して発射
-              </li>
-              <li>
-                <span className="font-bold text-cyan-200">3.</span> 複数機を追加してトレイルを比較
-              </li>
-              <li>
-                <span className="font-bold text-cyan-200">4.</span> 一時停止と1ステップで軌道を確認
-              </li>
-            </ul>
           </div>
         </aside>
       </div>

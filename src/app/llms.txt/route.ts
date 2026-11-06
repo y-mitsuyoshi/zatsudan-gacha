@@ -143,6 +143,19 @@ ${guides.map((guide) => `- [${guide.title}](${BASE_URL}/guides/${guide.slug})`).
 - [サンド・フロー・サンドボックス](${BASE_URL}/sand-flow)
 - [バブル・マージ・ラボ](${BASE_URL}/bubble-merge)
 - [重力オービット・サンドボックス](${BASE_URL}/gravity-orbit)
+- [リバーシ（3D/2D切替・8×8盤）](${BASE_URL}/reversi)
+- [立体四目並べ 3D（4×4×4空間盤）](${BASE_URL}/qubic-four)
+- [五目並べ（15×15連珠盤）](${BASE_URL}/gomoku)
+- [マンカラ（カラハ・種まき戦略盤）](${BASE_URL}/mancala)
+- [チェッカー（ドラフツ・3D/2D斜め跳び盤）](${BASE_URL}/checkers)
+- [ナイン・メンズ・モリス（古代ローマ三目戦略盤）](${BASE_URL}/nine-mens-morris)
+- [ヘックス（11×11六角形接続戦略盤）](${BASE_URL}/hex-board)
+- [ドット＆ボックス（陣取り線引き盤）](${BASE_URL}/dots-and-boxes)
+- [ソリティア（クロンダイク）](${BASE_URL}/klondike)
+- [ブラックジャック（21・期待値ナビ付）](${BASE_URL}/blackjack)
+- [フリーセル（完全情報トランプパズル）](${BASE_URL}/freecell)
+- [大富豪（大貧民・AI 4人対戦）](${BASE_URL}/daifugo)
+- [テキサスホールデム・ポーカー](${BASE_URL}/texas-holdem)
 `;
 
   return new Response(body, {

@@ -531,8 +531,16 @@ async function main() {
     const imageFilePath = path.join(outDirectory, imageRelativePath);
 
     fs.mkdirSync(path.dirname(imageFilePath), { recursive: true });
-    const svg = renderSvg({ title, description, route, category });
-    await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(imageFilePath);
+    const customMortgageCover = path.resolve('public/assets/mortgage_cover_v2.png');
+    if (route === '/mortgage-life' && fs.existsSync(customMortgageCover)) {
+      await sharp(customMortgageCover)
+        .resize(1200, 630, { fit: 'cover' })
+        .png({ compressionLevel: 9 })
+        .toFile(imageFilePath);
+    } else {
+      const svg = renderSvg({ title, description, route, category });
+      await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(imageFilePath);
+    }
 
     let updated = html.split(OLD_IMAGE_URL).join(imageAbsoluteUrl);
     if (!hasMeta(updated, 'property', 'og:title')) {

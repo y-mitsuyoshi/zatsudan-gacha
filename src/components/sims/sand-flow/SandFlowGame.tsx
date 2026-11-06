@@ -42,15 +42,24 @@ const WIND_DIRECTIONS = [
   { value: 1, label: '右' },
 ] as const;
 
-const INITIAL_BLOCKS = [
-  { x: 18, y: 30, w: 24, h: 2 },
-  { x: 54, y: 46, w: 24, h: 2 },
-  { x: 30, y: 63, w: 36, h: 2 },
-  { x: 8, y: 82, w: 20, h: 2 },
-  { x: 68, y: 82, w: 20, h: 2 },
+export type ApparatusPreset = 'funnel' | 'hourglass' | 'splitter' | 'mixer' | 'empty';
+
+const APPARATUS_PRESETS: { id: ApparatusPreset; label: string; desc: string }[] = [
+  { id: 'funnel', label: '多段ファネル（標準）', desc: '段違いの棚で砂が滝のように分岐・堆積' },
+  { id: 'hourglass', label: '砂時計（アワーグラス）', desc: '中央オリフィスを通過する定常粉体流と安息角' },
+  { id: 'splitter', label: '左右振り分けスプリッター', desc: 'ピラミッド型スプリッターで4色砂を分岐' },
+  { id: 'mixer', label: '混合ミキサー槽', desc: '交互バッフル板で4色砂を合流・混色反応' },
+  { id: 'empty', label: '自由キャンバス（空）', desc: '障害物のない空間で安息角の砂山を観察' },
+];
+
+const NOZZLE_POSITIONS = [
+  { x: 20, y: 6, material: 2, color: '#ff7a6b', label: 'N1' },
+  { x: 38, y: 6, material: 3, color: '#f5c451', label: 'N2' },
+  { x: 58, y: 6, material: 4, color: '#4fd1b5', label: 'N3' },
+  { x: 76, y: 6, material: 5, color: '#b18cff', label: 'N4' },
 ] as const;
 
-const INITIAL_WALL_MASK = (() => {
+function buildWallMask(preset: ApparatusPreset): Uint8Array {
   const mask = new Uint8Array(GRID_W * GRID_H);
   const fill = (x: number, y: number, w: number, h: number) => {
     for (let yy = y; yy < y + h; yy += 1) {
@@ -61,12 +70,54 @@ const INITIAL_WALL_MASK = (() => {
       }
     }
   };
+  const line = (x1: number, y1: number, x2: number, y2: number, thickness = 2) => {
+    const steps = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1)));
+    for (let i = 0; i <= steps; i += 1) {
+      const t = i / steps;
+      const x = Math.round(x1 + (x2 - x1) * t);
+      const y = Math.round(y1 + (y2 - y1) * t);
+      fill(x, y, thickness, thickness);
+    }
+  };
+
+  // Outer frame
   fill(0, 0, 2, GRID_H);
   fill(GRID_W - 2, 0, 2, GRID_H);
   fill(0, GRID_H - 1, GRID_W, 1);
-  for (const block of INITIAL_BLOCKS) fill(block.x, block.y, block.w, block.h);
+
+  if (preset === 'funnel') {
+    fill(14, 30, 24, 2);
+    fill(58, 30, 24, 2);
+    fill(32, 50, 32, 2);
+    fill(12, 72, 24, 2);
+    fill(60, 72, 24, 2);
+    fill(34, 92, 28, 2);
+  } else if (preset === 'hourglass') {
+    line(10, 22, 43, 60, 2);
+    line(84, 22, 52, 60, 2);
+    line(43, 64, 12, 104, 2);
+    line(52, 64, 82, 104, 2);
+    fill(36, 92, 24, 2);
+  } else if (preset === 'splitter') {
+    line(48, 22, 34, 36, 2);
+    line(48, 22, 62, 36, 2);
+    line(28, 48, 16, 62, 2);
+    line(28, 48, 40, 62, 2);
+    line(68, 48, 56, 62, 2);
+    line(68, 48, 80, 62, 2);
+    line(48, 72, 32, 88, 2);
+    line(48, 72, 64, 88, 2);
+    fill(24, 105, 2, 22);
+    fill(48, 105, 2, 22);
+    fill(72, 105, 2, 22);
+  } else if (preset === 'mixer') {
+    line(8, 24, 62, 40, 2);
+    line(86, 44, 32, 60, 2);
+    line(12, 66, 64, 82, 2);
+    line(84, 86, 36, 102, 2);
+  }
   return mask;
-})();
+}
 
 function hexToPixel(hex: string): number {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -89,6 +140,9 @@ type Speed = (typeof SPEEDS)[number];
 type WindDirection = (typeof WIND_DIRECTIONS)[number]['value'];
 
 type Controls = {
+  preset: ApparatusPreset;
+  autoStream: boolean;
+  bottomDrain: boolean;
   tool: Tool;
   colorIndex: number;
   brushSize: number;
@@ -122,6 +176,8 @@ type Sim = {
 type Stats = {
   particles: number;
   settled: number;
+  movingRate: number;
+  settledRatio: number;
   mixed: number;
   fps: number;
   steps: number;
@@ -129,10 +185,13 @@ type Stats = {
 };
 
 const INITIAL_CONTROLS: Controls = {
+  preset: 'funnel',
+  autoStream: true,
+  bottomDrain: true,
   tool: 'sand',
   colorIndex: 0,
   brushSize: 3,
-  flow: 35,
+  flow: 45,
   gravity: 100,
   windDir: 0,
   windStrength: 0,
@@ -140,9 +199,9 @@ const INITIAL_CONTROLS: Controls = {
   running: true,
 };
 
-function createSim(): Sim {
+function createSim(preset: ApparatusPreset = 'funnel'): Sim {
   const cells = new Uint8Array(GRID_W * GRID_H);
-  cells.set(INITIAL_WALL_MASK);
+  cells.set(buildWallMask(preset));
   return {
     cells,
     moved: new Uint8Array(GRID_W * GRID_H),
@@ -176,7 +235,7 @@ function spawnSand(sim: Sim, gx: number, gy: number, material: number, radius: n
     const distance = Math.sqrt(Math.random()) * radius;
     const x = Math.round(centerX + Math.cos(angle) * distance);
     const y = Math.round(centerY + Math.sin(angle) * distance);
-    if (x < 0 || x >= GRID_W || y < 0 || y >= GRID_H) continue;
+    if (x < 2 || x >= GRID_W - 2 || y < 0 || y >= GRID_H - 1) continue;
     const index = y * GRID_W + x;
     if (sim.cells[index] !== EMPTY) continue;
     sim.cells[index] = material;
@@ -300,9 +359,36 @@ function mixSettled(sim: Sim) {
 function stepSim(sim: Sim, controls: Controls) {
   sim.stepCount += 1;
   const flowParticles = Math.round((controls.flow / 100) * MAX_FLOW_PARTICLES);
+
+  // Automatic 4-color top nozzles
+  if (controls.autoStream && flowParticles > 0) {
+    const perNozzle = Math.max(1, Math.round(flowParticles / 3.5));
+    for (let n = 0; n < NOZZLE_POSITIONS.length; n += 1) {
+      if ((sim.stepCount + n) % 2 === 0) {
+        const nozzle = NOZZLE_POSITIONS[n];
+        for (let k = 0; k < perNozzle; k += 1) {
+          spawnSand(sim, nozzle.x + (Math.random() - 0.5) * 2, nozzle.y, nozzle.material, 1.5);
+        }
+      }
+    }
+  }
+
   if (sim.pour.active) {
     spawnPour(sim, MATERIALS[controls.colorIndex], controls.brushSize, flowParticles);
   }
+
+  // Optional bottom drain so continuous flow never stalls when full
+  if (controls.bottomDrain && sim.count > MAX_SAND * 0.72) {
+    const drainY = GRID_H - 2;
+    for (let x = 6; x < GRID_W - 6; x += 3) {
+      const idx = drainY * GRID_W + x;
+      if (sim.cells[idx] >= 2 && Math.random() < 0.35) {
+        sim.cells[idx] = EMPTY;
+        sim.count = Math.max(0, sim.count - 1);
+      }
+    }
+  }
+
   sim.updated.fill(0);
   sim.moved.fill(0);
   sim.movedCount = 0;
@@ -331,11 +417,11 @@ function stampWall(sim: Sim, gx: number, gy: number, radius: number, erase: bool
   const limit = radius * radius + radius;
   for (let dy = -radius; dy <= radius; dy += 1) {
     const y = centerY + dy;
-    if (y < 0 || y >= GRID_H) continue;
+    if (y < 0 || y >= GRID_H - 1) continue;
     for (let dx = -radius; dx <= radius; dx += 1) {
       if (dx * dx + dy * dy > limit) continue;
       const x = centerX + dx;
-      if (x < 0 || x >= GRID_W) continue;
+      if (x < 2 || x >= GRID_W - 2) continue;
       const index = y * GRID_W + x;
       if (erase) {
         if (sim.cells[index] === WALL) sim.cells[index] = EMPTY;
@@ -419,7 +505,7 @@ export function SandFlowGame() {
   const imageDataRef = useRef<ImageData | null>(null);
   const pixelViewRef = useRef<Uint32Array | null>(null);
   const simRef = useRef<Sim | null>(null);
-  if (simRef.current === null) simRef.current = createSim();
+  if (simRef.current === null) simRef.current = createSim(INITIAL_CONTROLS.preset);
   const controlsRef = useRef<Controls>(INITIAL_CONTROLS);
   const pointerDownRef = useRef(false);
   const paintFromRef = useRef<{ x: number; y: number } | null>(null);
@@ -429,6 +515,8 @@ export function SandFlowGame() {
   const [stats, setStats] = useState<Stats>({
     particles: 0,
     settled: 0,
+    movingRate: 0,
+    settledRatio: 0,
     mixed: 0,
     fps: 60,
     steps: 0,
@@ -451,9 +539,13 @@ export function SandFlowGame() {
       if (value >= 2 && value < MIX_BASE) counts[value - 2] += 1;
       else if (value >= MIX_BASE) mixed += 1;
     }
+    const settled = Math.max(0, sim.count - sim.movedCount);
+    const settledRatio = sim.count > 0 ? Math.round((settled / sim.count) * 100) : 0;
     setStats({
       particles: sim.count,
-      settled: Math.max(0, sim.count - sim.movedCount),
+      settled,
+      movingRate: sim.movedCount * 60,
+      settledRatio,
       mixed,
       fps: Math.max(0, Math.round(fps)),
       steps: sim.stepCount,
@@ -461,13 +553,34 @@ export function SandFlowGame() {
     });
   }, []);
 
-  const resetSim = useCallback(() => {
-    simRef.current = createSim();
+  const selectPreset = useCallback((preset: ApparatusPreset) => {
+    const next = { ...controlsRef.current, preset };
+    controlsRef.current = next;
+    setControls(next);
+    simRef.current = createSim(preset);
     pointerDownRef.current = false;
     paintFromRef.current = null;
     setStats({
       particles: 0,
       settled: 0,
+      movingRate: 0,
+      settledRatio: 0,
+      mixed: 0,
+      fps: Math.max(0, Math.round(fpsRef.current)),
+      steps: 0,
+      counts: [0, 0, 0, 0],
+    });
+  }, []);
+
+  const resetSim = useCallback(() => {
+    simRef.current = createSim(controlsRef.current.preset);
+    pointerDownRef.current = false;
+    paintFromRef.current = null;
+    setStats({
+      particles: 0,
+      settled: 0,
+      movingRate: 0,
+      settledRatio: 0,
       mixed: 0,
       fps: Math.max(0, Math.round(fpsRef.current)),
       steps: 0,
@@ -540,10 +653,32 @@ export function SandFlowGame() {
       context.imageSmoothingEnabled = true;
     }
 
+    const sx = canvas.width / WORLD_W;
+    const sy = canvas.height / WORLD_H;
+    context.setTransform(sx, 0, 0, sy, 0, 0);
+
+    // Draw top auto-stream nozzle spouts
+    if (controlsRef.current.autoStream) {
+      for (const nozzle of NOZZLE_POSITIONS) {
+        const nx = nozzle.x * CELL;
+        const ny = nozzle.y * CELL;
+        context.save();
+        context.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        context.strokeStyle = nozzle.color;
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.roundRect(nx - 12, 2, 24, ny - 2, 4);
+        context.fill();
+        context.stroke();
+        context.fillStyle = nozzle.color;
+        context.font = '700 8px ui-monospace, monospace';
+        context.textAlign = 'center';
+        context.fillText(nozzle.label, nx, 16);
+        context.restore();
+      }
+    }
+
     if (sim && sim.brush) {
-      const sx = canvas.width / WORLD_W;
-      const sy = canvas.height / WORLD_H;
-      context.setTransform(sx, 0, 0, sy, 0, 0);
       const current = controlsRef.current;
       const color =
         current.tool === 'sand'
@@ -643,7 +778,7 @@ export function SandFlowGame() {
       }
       draw();
       hudClock += dt;
-      if (hudClock >= 0.25) {
+      if (hudClock >= 0.2) {
         hudClock = 0;
         publishStats(fpsRef.current);
       }
@@ -761,7 +896,6 @@ export function SandFlowGame() {
   };
 
   const flowParticles = Math.round((controls.flow / 100) * MAX_FLOW_PARTICLES);
-  const capRatio = Math.min(1, stats.particles / MAX_SAND);
   const distributionTotal = stats.counts.reduce((sum, value) => sum + value, 0) + stats.mixed;
 
   return (
@@ -777,24 +911,69 @@ export function SandFlowGame() {
             </Link>
             <div className="min-w-0">
               <p className="truncate font-mono text-[9px] font-bold tracking-[0.18em] text-emerald-300 sm:text-[10px]">
-                SAND FLOW / GRAIN LAB
+                SAND FLOW / GRANULAR PHYSICS &amp; ANGLE OF REPOSE LAB
               </p>
-              <h2 className="truncate text-xs font-black sm:text-base">サンド・フロー・サンドボックス</h2>
+              <h2 className="truncate text-xs font-black sm:text-base">
+                サンド・フロー粉体流・安息角ラボ
+              </h2>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={resetSim}
-            className="shrink-0 rounded-lg border border-emerald-400/50 bg-emerald-950/40 px-2.5 py-1.5 text-[10px] font-bold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100 sm:px-3 sm:text-xs"
-          >
-            リセット
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => applyControls({ autoStream: !controls.autoStream })}
+              aria-pressed={controls.autoStream}
+              className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black transition sm:text-xs ${
+                controls.autoStream
+                  ? 'border-emerald-300 bg-emerald-400/20 text-emerald-100'
+                  : 'border-slate-700 bg-slate-900 text-slate-300'
+              }`}
+            >
+              自動ノズル {controls.autoStream ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={resetSim}
+              className="shrink-0 rounded-lg border border-amber-400/50 bg-amber-950/40 px-2.5 py-1.5 text-[10px] font-bold text-amber-200 transition hover:border-amber-300 sm:px-3 sm:text-xs"
+            >
+              リセット
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-2.5 py-2.5 sm:px-4 sm:py-4">
+        {/* 5 Apparatus Presets Bar */}
+        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10px] font-black tracking-[0.16em] text-emerald-300">
+              粉体実験装置プリセット（5種類）
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {APPARATUS_PRESETS.find((p) => p.id === controls.preset)?.desc}
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+            {APPARATUS_PRESETS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => selectPreset(item.id)}
+                aria-pressed={controls.preset === item.id}
+                className={`rounded-lg border px-2 py-1.5 text-[10px] font-bold transition ${
+                  controls.preset === item.id
+                    ? 'border-emerald-300 bg-emerald-400/15 text-emerald-200'
+                    : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-4">
-          <div className="mx-auto w-full max-w-[440px] min-w-0">
+          <div className="mx-auto w-full max-w-[460px] min-w-0">
             <div
               className="relative overflow-hidden rounded-xl border-2 border-slate-800 bg-[#05080d] shadow-2xl"
               style={{ touchAction: 'none' }}
@@ -822,22 +1001,22 @@ export function SandFlowGame() {
                     }`}
                   />
                   <span className="font-mono text-[9px] font-bold tracking-[0.16em] text-slate-200">
-                    {controls.running ? 'RUNNING' : 'PAUSED'}
+                    {controls.running ? 'FLOWING' : 'PAUSED'}
                   </span>
                 </div>
                 <div className="text-right">
                   <p className="font-mono text-[10px] font-black leading-none text-white sm:text-xs">
-                    {stats.particles.toLocaleString()} / {MAX_SAND.toLocaleString()}
+                    {stats.particles.toLocaleString()} 粒 (静止率 {stats.settledRatio}%)
                   </p>
-                  <p className="mt-1 font-mono text-[8px] text-slate-400 sm:text-[9px]">
-                    PARTICLES / LIMIT
+                  <p className="mt-1 font-mono text-[8px] text-emerald-300 sm:text-[9px]">
+                    流下移動: {stats.movingRate.toLocaleString()} 粒/秒
                   </p>
                 </div>
               </div>
 
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-2 bg-gradient-to-t from-black/75 via-black/25 to-transparent px-2.5 pb-2 pt-6 sm:px-3">
-                <p className="text-[9px] leading-4 text-slate-400 sm:text-[10px]">
-                  ドラッグで操作 / ツールは下のパネル
+                <p className="text-[9px] leading-4 text-slate-300 sm:text-[10px]">
+                  ドラッグで砂の追加注入・壁の描画が可能
                 </p>
                 <p className="shrink-0 font-mono text-[9px] text-slate-400 sm:text-[10px]">
                   {stats.steps.toLocaleString()} STEP / {controls.speed}x
@@ -849,8 +1028,36 @@ export function SandFlowGame() {
           <aside className="flex flex-col gap-2.5">
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-emerald-300">SIMULATION</p>
-                <p className="font-mono text-[9px] text-slate-500">{controls.running ? 'LIVE' : 'PAUSED'}</p>
+                <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-emerald-300">
+                  AUTO NOZZLE &amp; SIMULATION
+                </p>
+                <p className="font-mono text-[9px] text-slate-400">{stats.fps} FPS</p>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => applyControls({ autoStream: !controls.autoStream })}
+                  aria-pressed={controls.autoStream}
+                  className={`rounded-lg border px-2 py-2 text-[10px] font-black transition ${
+                    controls.autoStream
+                      ? 'border-emerald-300 bg-emerald-400/20 text-emerald-100'
+                      : 'border-slate-700 bg-slate-800/60 text-slate-400'
+                  }`}
+                >
+                  自動ノズル噴出: {controls.autoStream ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyControls({ bottomDrain: !controls.bottomDrain })}
+                  aria-pressed={controls.bottomDrain}
+                  className={`rounded-lg border px-2 py-2 text-[10px] font-black transition ${
+                    controls.bottomDrain
+                      ? 'border-sky-300 bg-sky-400/20 text-sky-100'
+                      : 'border-slate-700 bg-slate-800/60 text-slate-400'
+                  }`}
+                >
+                  底面ドレイン循環: {controls.bottomDrain ? 'ON' : 'OFF'}
+                </button>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-1.5">
                 <button
@@ -876,8 +1083,7 @@ export function SandFlowGame() {
                   リセット
                 </button>
               </div>
-              <p className="mt-3 text-[9px] font-bold tracking-wider text-slate-400">速度</p>
-              <div className="mt-1 grid grid-cols-3 gap-1.5">
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
                 {SPEEDS.map((speed) => (
                   <button
                     key={speed}
@@ -897,7 +1103,9 @@ export function SandFlowGame() {
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-sky-300">TOOL / COLOR</p>
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-sky-300">
+                TOOL &amp; COLOR PALETTE
+              </p>
               <div className="mt-2 grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
@@ -921,7 +1129,7 @@ export function SandFlowGame() {
                       : 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-slate-500'
                   }`}
                 >
-                  障害物を追加
+                  障害物を描く
                 </button>
                 <button
                   type="button"
@@ -933,7 +1141,7 @@ export function SandFlowGame() {
                       : 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-slate-500'
                   }`}
                 >
-                  障害物を削除
+                  障害物を消す
                 </button>
               </div>
               <div className="mt-2 grid grid-cols-4 gap-1.5">
@@ -959,13 +1167,12 @@ export function SandFlowGame() {
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-[9px] leading-4 text-slate-500">
-                砂ツールでドラッグすると選択色の砂を注ぎます。障害物ブラシは壁の追加と削除に使えます。
-              </p>
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-300">PHYSICS</p>
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-300">
+                GRANULAR PHYSICS
+              </p>
               <label className="mt-2 block">
                 <span className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300">
                   <span>重力</span>
@@ -979,7 +1186,7 @@ export function SandFlowGame() {
                   value={controls.gravity}
                   onChange={(event) => applyControls({ gravity: Number(event.target.value) })}
                   aria-label="重力"
-                  className="mt-1 h-6 w-full accent-amber-300"
+                  className="mt-1 h-5 w-full accent-amber-300"
                 />
               </label>
               <label className="mt-2 block">
@@ -995,29 +1202,29 @@ export function SandFlowGame() {
                   value={controls.brushSize}
                   onChange={(event) => applyControls({ brushSize: Number(event.target.value) })}
                   aria-label="ブラシサイズ"
-                  className="mt-1 h-6 w-full accent-amber-300"
+                  className="mt-1 h-5 w-full accent-amber-300"
                 />
               </label>
               <label className="mt-2 block">
                 <span className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300">
-                  <span>流量</span>
+                  <span>ノズル＆ブラシ流量</span>
                   <span className="font-mono text-amber-200">
                     {controls.flow}% / {flowParticles}粒
                   </span>
                 </span>
                 <input
                   type="range"
-                  min={0}
+                  min={5}
                   max={100}
                   step={5}
                   value={controls.flow}
                   onChange={(event) => applyControls({ flow: Number(event.target.value) })}
                   aria-label="流量"
-                  className="mt-1 h-6 w-full accent-amber-300"
+                  className="mt-1 h-5 w-full accent-amber-300"
                 />
               </label>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold text-slate-300">風向き</span>
+              <div className="mt-2.5 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold text-slate-300">横風方向</span>
                 <div className="grid grid-cols-3 gap-1">
                   {WIND_DIRECTIONS.map((direction) => (
                     <button
@@ -1038,7 +1245,7 @@ export function SandFlowGame() {
               </div>
               <label className="mt-2 block">
                 <span className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300">
-                  <span>風の強さ</span>
+                  <span>横風の強さ</span>
                   <span className="font-mono text-sky-200">{controls.windStrength}%</span>
                 </span>
                 <input
@@ -1049,98 +1256,87 @@ export function SandFlowGame() {
                   value={controls.windStrength}
                   onChange={(event) => applyControls({ windStrength: Number(event.target.value) })}
                   aria-label="風の強さ"
-                  className="mt-1 h-6 w-full accent-sky-300"
+                  className="mt-1 h-5 w-full accent-sky-300"
                 />
               </label>
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-emerald-300">LIVE STATS</p>
-                <p className="font-mono text-[9px] text-slate-500">{stats.fps} FPS</p>
+                <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-emerald-300">
+                  GRAIN TELEMETRY (粉体構成比・流速)
+                </p>
+                <p className="font-mono text-[9px] text-slate-400">
+                  静止率 {stats.settledRatio}%
+                </p>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px]">
                 <div className="rounded-lg border border-slate-800 bg-slate-950/50 px-2 py-1.5">
-                  <p className="text-slate-400">粒子数</p>
-                  <p className="font-mono text-sm font-black text-white">{stats.particles.toLocaleString()}</p>
+                  <p className="text-slate-400">総粒子数</p>
+                  <p className="font-mono text-sm font-black text-white">
+                    {stats.particles.toLocaleString()}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-slate-800 bg-slate-950/50 px-2 py-1.5">
-                  <p className="text-slate-400">静止</p>
-                  <p className="font-mono text-sm font-black text-emerald-200">{stats.settled.toLocaleString()}</p>
+                  <p className="text-slate-400">流下移動レート</p>
+                  <p className="font-mono text-sm font-black text-emerald-200">
+                    {stats.movingRate.toLocaleString()} 粒/s
+                  </p>
                 </div>
                 <div className="rounded-lg border border-slate-800 bg-slate-950/50 px-2 py-1.5">
-                  <p className="text-slate-400">混色</p>
-                  <p className="font-mono text-sm font-black text-sky-200">{stats.mixed.toLocaleString()}</p>
+                  <p className="text-slate-400">安息角堆積(静止)</p>
+                  <p className="font-mono text-sm font-black text-amber-200">
+                    {stats.settled.toLocaleString()} ({stats.settledRatio}%)
+                  </p>
                 </div>
                 <div className="rounded-lg border border-slate-800 bg-slate-950/50 px-2 py-1.5">
-                  <p className="text-slate-400">ステップ</p>
-                  <p className="font-mono text-sm font-black text-amber-200">{stats.steps.toLocaleString()}</p>
+                  <p className="text-slate-400">境界混色粒子</p>
+                  <p className="font-mono text-sm font-black text-sky-200">
+                    {stats.mixed.toLocaleString()}
+                  </p>
                 </div>
               </div>
-              <div className="mt-2">
-                <div className="flex items-center justify-between text-[9px] text-slate-400">
-                  <span>粒子上限</span>
-                  <span className="font-mono">
-                    {stats.particles.toLocaleString()} / {MAX_SAND.toLocaleString()}
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className={`h-full rounded-full transition-[width] duration-200 ${
-                      capRatio >= 0.9 ? 'bg-amber-300' : 'bg-emerald-300'
-                    }`}
-                    style={{ width: `${capRatio * 100}%` }}
-                  />
-                </div>
+
+              {/* Stacked Color Composition Bar */}
+              <p className="mt-3 text-[9px] font-bold tracking-wider text-slate-400">
+                リアルタイム色別構成比バー
+              </p>
+              <div className="mt-1 flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+                {MATERIALS.map((material, index) => {
+                  const count = stats.counts[index] ?? 0;
+                  const pct = distributionTotal > 0 ? (count / distributionTotal) * 100 : 0;
+                  return (
+                    <div
+                      key={material}
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: MATERIAL_COLORS[material],
+                      }}
+                    />
+                  );
+                })}
               </div>
-              <p className="mt-3 text-[9px] font-bold tracking-wider text-slate-400">色の分布</p>
-              <div className="mt-1 space-y-1.5">
+
+              <div className="mt-2 space-y-1">
                 {MATERIALS.map((material, index) => {
                   const count = stats.counts[index] ?? 0;
                   const ratio = distributionTotal > 0 ? count / distributionTotal : 0;
                   return (
-                    <div key={material}>
-                      <div className="flex items-center justify-between gap-2 text-[10px]">
-                        <span className="flex items-center gap-1.5 text-slate-300">
-                          <span
-                            className="h-2.5 w-2.5 rounded-sm"
-                            style={{ backgroundColor: MATERIAL_COLORS[material] }}
-                          />
-                          {COLOR_NAMES[index]}
-                        </span>
-                        <span className="font-mono text-slate-400">
-                          {count} ({Math.round(ratio * 100)}%)
-                        </span>
-                      </div>
-                      <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-slate-800">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${ratio * 100}%`, backgroundColor: MATERIAL_COLORS[material] }}
+                    <div key={material} className="flex items-center justify-between text-[10px]">
+                      <span className="flex items-center gap-1.5 text-slate-300">
+                        <span
+                          className="h-2.5 w-2.5 rounded-sm"
+                          style={{ backgroundColor: MATERIAL_COLORS[material] }}
                         />
-                      </div>
+                        {COLOR_NAMES[index]}
+                      </span>
+                      <span className="font-mono text-slate-400">
+                        {count} ({Math.round(ratio * 100)}%)
+                      </span>
                     </div>
                   );
                 })}
-                <div className="flex items-center justify-between border-t border-slate-800 pt-1 text-[10px] text-slate-400">
-                  <span>混色</span>
-                  <span className="font-mono">{stats.mixed}</span>
-                </div>
               </div>
-              {stats.particles >= MAX_SAND && (
-                <p className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-[9px] leading-4 text-amber-200">
-                  粒子数の上限に達しました。リセットすると再び砂を注げます。
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-slate-400">CONTROLS</p>
-              <ul className="mt-2 space-y-1.5 text-[10px] leading-5 text-slate-400">
-                <li>砂ツールで画面をドラッグすると、選択色の砂を注ぎます。</li>
-                <li>障害物ブラシで壁を追加・削除し、砂の流れを変えられます。</li>
-                <li>一時停止中も配置でき、1ステップで1フレームずつ観察できます。</li>
-                <li>粒子数が上限に達すると生成が止まります。リセットで空にできます。</li>
-              </ul>
             </div>
           </aside>
         </div>

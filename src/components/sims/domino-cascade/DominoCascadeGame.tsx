@@ -8,16 +8,16 @@ const CANVAS_H = 720;
 const TRACK_STEP = 4;
 const DOMINO_W = 26;
 const MIN_GAP = 20;
-const MAX_DOMINOES = 160;
+const MAX_DOMINOES = 180;
 const FALL_LIMIT = Math.PI / 2 - 0.035;
 const ACCENTS = ['#7fd6c2', '#f0b45c', '#ef8a78', '#9db4ff', '#d9a6f2'];
 
-type Preset = 's' | 'loop' | 'zigzag';
+type Preset = 's' | 'loop' | 'zigzag' | 'spiral' | 'branch';
 type Quality = 'good' | 'bad' | 'blocked';
 
 type Vec = { x: number; y: number };
 type TrackPoint = { x: number; y: number; s: number; tx: number; ty: number };
-type TrackShape = { points: TrackPoint[]; length: number };
+type TrackShape = { points: TrackPoint[]; length: number; branches?: TrackShape[] };
 
 type Domino = {
   id: number;
@@ -31,8 +31,16 @@ type Domino = {
   falling: boolean;
   done: boolean;
   triggered: boolean;
+  triggeredAt: number | null;
   nextTriggered: boolean;
   accent: string;
+};
+
+type WaveSample = {
+  index: number;
+  time: number;
+  instSpeedPx: number;
+  instSpeedDom: number;
 };
 
 type Particle = {
@@ -75,13 +83,16 @@ type SimState = {
   settled: boolean;
   toppled: number;
   maxChain: number;
-  propSpeed: number;
+  propSpeedDom: number;
+  propSpeedPx: number;
+  cascadeDuration: number;
   completed: boolean;
   chainBreakS: number | null;
   runTime: number;
   settleTime: number;
   firstTriggerAt: number;
   lastTriggerAt: number;
+  waveSamples: WaveSample[];
   ghost: Ghost | null;
   hoverRemoveId: number | null;
   particles: Particle[];
@@ -92,7 +103,9 @@ type HudState = {
   placed: number;
   toppled: number;
   remaining: number;
-  propSpeed: number;
+  propSpeedDom: number;
+  propSpeedPx: number;
+  cascadeDuration: number;
   maxChain: number;
   completed: boolean;
   settled: boolean;
@@ -100,13 +113,14 @@ type HudState = {
   running: boolean;
   paused: boolean;
   status: string;
+  waveSamples: WaveSample[];
 };
 
 const DEFAULT_SETTINGS: Settings = {
   preset: 's',
-  spacing: 56,
-  height: 92,
-  friction: 0.35,
+  spacing: 52,
+  height: 94,
+  friction: 0.3,
   pushForce: 1.4,
   gravity: 1,
   speed: 1,
@@ -117,12 +131,12 @@ const PRESET_CONTROLS: Record<Preset, Vec[]> = {
     { x: 80, y: 600 },
     { x: 180, y: 560 },
     { x: 270, y: 400 },
-    { x: 390, y: 300 },
-    { x: 520, y: 350 },
+    { x: 390, y: 290 },
+    { x: 520, y: 340 },
     { x: 610, y: 510 },
     { x: 730, y: 570 },
-    { x: 840, y: 460 },
-    { x: 890, y: 280 },
+    { x: 840, y: 450 },
+    { x: 890, y: 260 },
   ],
   loop: [
     { x: 70, y: 590 },
@@ -143,26 +157,75 @@ const PRESET_CONTROLS: Record<Preset, Vec[]> = {
   ],
   zigzag: [
     { x: 80, y: 600 },
-    { x: 170, y: 240 },
+    { x: 170, y: 220 },
     { x: 290, y: 600 },
-    { x: 410, y: 240 },
+    { x: 410, y: 220 },
     { x: 530, y: 600 },
-    { x: 650, y: 240 },
+    { x: 650, y: 220 },
     { x: 770, y: 600 },
-    { x: 880, y: 280 },
+    { x: 880, y: 260 },
+  ],
+  spiral: [
+    { x: 110, y: 610 },
+    { x: 100, y: 340 },
+    { x: 220, y: 140 },
+    { x: 500, y: 110 },
+    { x: 790, y: 170 },
+    { x: 860, y: 390 },
+    { x: 760, y: 585 },
+    { x: 490, y: 615 },
+    { x: 250, y: 535 },
+    { x: 215, y: 355 },
+    { x: 340, y: 235 },
+    { x: 570, y: 235 },
+    { x: 695, y: 360 },
+    { x: 620, y: 485 },
+    { x: 440, y: 485 },
+    { x: 375, y: 380 },
+    { x: 485, y: 350 },
+  ],
+  branch: [
+    { x: 75, y: 360 },
+    { x: 185, y: 360 },
+    { x: 300, y: 360 },
+    { x: 440, y: 360 },
+    { x: 590, y: 360 },
+    { x: 745, y: 360 },
+    { x: 885, y: 360 },
   ],
 };
 
+const BRANCH_ARMS: Vec[][] = [
+  [
+    { x: 300, y: 360 },
+    { x: 395, y: 250 },
+    { x: 540, y: 175 },
+    { x: 715, y: 155 },
+    { x: 880, y: 165 },
+  ],
+  [
+    { x: 300, y: 360 },
+    { x: 395, y: 470 },
+    { x: 540, y: 545 },
+    { x: 715, y: 565 },
+    { x: 880, y: 555 },
+  ],
+];
+
 const PRESET_LABELS: Record<Preset, string> = {
-  s: 'S字',
-  loop: 'ループ',
+  s: 'S字カーブ',
+  loop: 'ループ交差',
   zigzag: 'ジグザグ',
+  spiral: '渦巻きスパイラル',
+  branch: '三股分岐（同時連鎖）',
 };
 
 const PRESET_NAMES: Record<Preset, string> = {
-  s: 'S字カーブ',
-  loop: 'ループコース',
-  zigzag: 'ジグザグコース',
+  s: 'S字カーブ（標準伝播コース）',
+  loop: 'ループ交差（立体交差コース）',
+  zigzag: 'ジグザグ（急角度コーナー減衰実験）',
+  spiral: '渦巻きスパイラル（長距離定常波実験）',
+  branch: '三股分岐（中央・上・下の3ルート同時伝播比較）',
 };
 
 const QUALITY_COLORS: Record<Quality, string> = {
@@ -216,8 +279,7 @@ function sampleDense(dense: Vec[], cumulative: number[], target: number): Vec {
   };
 }
 
-function buildTrack(preset: Preset): TrackShape {
-  const controls = PRESET_CONTROLS[preset];
+function buildSingleSpline(controls: Vec[]): TrackShape {
   const first = controls[0];
   const last = controls[controls.length - 1];
   const extended: Vec[] = [
@@ -267,6 +329,14 @@ function buildTrack(preset: Preset): TrackShape {
   return { points, length: total };
 }
 
+function buildTrack(preset: Preset): TrackShape {
+  const main = buildSingleSpline(PRESET_CONTROLS[preset]);
+  if (preset === 'branch') {
+    main.branches = BRANCH_ARMS.map((arm) => buildSingleSpline(arm));
+  }
+  return main;
+}
+
 function pointAt(track: TrackShape, distance: number): TrackPoint {
   const target = clamp(distance, 0, track.length);
   let index = clamp(Math.floor(target / TRACK_STEP), 0, track.points.length - 2);
@@ -306,11 +376,11 @@ function getReach(height: number): number {
   return Math.max(24, height * 0.94);
 }
 
-function makeDomino(track: TrackShape, distance: number, id: number): Domino {
+function makeDomino(track: TrackShape, distance: number, id: number, sOffset = 0): Domino {
   const point = pointAt(track, distance);
   return {
     id,
-    s: point.s,
+    s: point.s + sOffset,
     x: point.x,
     y: point.y,
     tx: point.tx,
@@ -320,8 +390,9 @@ function makeDomino(track: TrackShape, distance: number, id: number): Domino {
     falling: false,
     done: false,
     triggered: false,
+    triggeredAt: null,
     nextTriggered: false,
-    accent: ACCENTS[Math.floor(point.s / 64) % ACCENTS.length],
+    accent: ACCENTS[Math.floor((point.s + sOffset) / 64) % ACCENTS.length],
   };
 }
 
@@ -332,10 +403,22 @@ function fillTrack(track: TrackShape, spacing: number): Domino[] {
   let id = 0;
   let guard = 0;
   while (distance < track.length - 24 && dominos.length < MAX_DOMINOES && guard < 400) {
-    dominos.push(makeDomino(track, distance, id));
+    dominos.push(makeDomino(track, distance, id, 0));
     id += 1;
     distance += gap;
     guard += 1;
+  }
+  if (track.branches) {
+    let branchOffset = track.length + 200;
+    for (const branch of track.branches) {
+      let bDist = gap * 0.85;
+      while (bDist < branch.length - 20 && dominos.length < MAX_DOMINOES) {
+        dominos.push(makeDomino(branch, bDist, id, branchOffset));
+        id += 1;
+        bDist += gap;
+      }
+      branchOffset += branch.length + 200;
+    }
   }
   return dominos;
 }
@@ -351,6 +434,7 @@ function getPlacementQuality(sim: SimState, distance: number): Quality {
   let prev: Domino | null = null;
   let next: Domino | null = null;
   for (const domino of sim.dominos) {
+    if (domino.s > sim.track.length) continue;
     if (domino.s <= distance) {
       if (!prev || domino.s > prev.s) prev = domino;
     } else if (!next || domino.s < next.s) {
@@ -397,6 +481,7 @@ function resetPose(sim: SimState) {
     domino.falling = false;
     domino.done = false;
     domino.triggered = false;
+    domino.triggeredAt = null;
     domino.nextTriggered = false;
   }
   sim.running = false;
@@ -405,13 +490,16 @@ function resetPose(sim: SimState) {
   sim.settled = false;
   sim.toppled = 0;
   sim.maxChain = 0;
-  sim.propSpeed = 0;
+  sim.propSpeedDom = 0;
+  sim.propSpeedPx = 0;
+  sim.cascadeDuration = 0;
   sim.completed = false;
   sim.chainBreakS = null;
   sim.runTime = 0;
   sim.settleTime = 0;
   sim.firstTriggerAt = 0;
   sim.lastTriggerAt = 0;
+  sim.waveSamples = [];
   sim.ghost = null;
   sim.hoverRemoveId = null;
   sim.particles = [];
@@ -437,13 +525,16 @@ function createInitialSim(settings: Settings): SimState {
     settled: false,
     toppled: 0,
     maxChain: 0,
-    propSpeed: 0,
+    propSpeedDom: 0,
+    propSpeedPx: 0,
+    cascadeDuration: 0,
     completed: false,
     chainBreakS: null,
     runTime: 0,
     settleTime: 0,
     firstTriggerAt: 0,
     lastTriggerAt: 0,
+    waveSamples: [],
     ghost: null,
     hoverRemoveId: null,
     particles: [],
@@ -470,24 +561,37 @@ function spawnDust(sim: SimState, domino: Domino) {
   }
 }
 
-function triggerDomino(sim: SimState, index: number) {
+function triggerDomino(sim: SimState, index: number, fromDomino?: Domino) {
   const domino = sim.dominos[index];
   if (!domino || domino.triggered) return;
   domino.triggered = true;
+  domino.triggeredAt = sim.runTime;
   domino.falling = true;
   domino.vel = clamp(0.55 + sim.pushForce * 0.9, 0.4, 5);
   if (sim.toppled === 0) sim.firstTriggerAt = sim.runTime;
   sim.lastTriggerAt = sim.runTime;
   sim.toppled += 1;
+  sim.cascadeDuration = Math.max(0, sim.lastTriggerAt - sim.firstTriggerAt);
   sim.maxChain = Math.max(sim.maxChain, longestChain(sim.dominos));
-  sim.propSpeed =
-    sim.toppled > 1
-      ? clamp(
-          (sim.toppled - 1) / Math.max(0.001, sim.runTime - sim.firstTriggerAt),
-          0,
-          80,
-        )
-      : 0;
+
+  const elapsed = Math.max(0.001, sim.runTime - sim.firstTriggerAt);
+  sim.propSpeedDom = sim.toppled > 1 ? clamp((sim.toppled - 1) / elapsed, 0, 120) : 0;
+
+  let instSpeedPx = sim.propSpeedDom * sim.spacing;
+  if (fromDomino && fromDomino.triggeredAt !== null) {
+    const dt = Math.max(0.004, sim.runTime - fromDomino.triggeredAt);
+    const dist = Math.hypot(domino.x - fromDomino.x, domino.y - fromDomino.y);
+    instSpeedPx = clamp(dist / dt, 0, 2400);
+  }
+  sim.propSpeedPx =
+    sim.toppled > 1 ? clamp(((sim.toppled - 1) * sim.spacing) / elapsed, 0, 2400) : 0;
+
+  sim.waveSamples.push({
+    index: sim.toppled,
+    time: sim.runTime,
+    instSpeedPx,
+    instSpeedDom: sim.propSpeedDom,
+  });
 }
 
 function updateEffects(sim: SimState, dt: number) {
@@ -505,6 +609,8 @@ function updateRunningSim(sim: SimState, dt: number, force = false) {
   if (!sim.running || (sim.paused && !force)) return;
   sim.runTime += dt;
   let active = false;
+  const reach = getReach(sim.height);
+
   for (let i = 0; i < sim.dominos.length; i += 1) {
     const domino = sim.dominos[i];
     if (!domino.falling || domino.done) continue;
@@ -514,25 +620,50 @@ function updateRunningSim(sim: SimState, dt: number, force = false) {
     domino.vel *= Math.max(0, 1 - sim.friction * 1.4 * dt);
     domino.vel = clamp(domino.vel, 0, 14);
     domino.angle = clamp(domino.angle + domino.vel * dt, 0, FALL_LIMIT);
+
     if (!domino.nextTriggered) {
+      let triggeredAny = false;
+      // Check both next along track AND spatial forward neighbors (for branches/intersections)
+      for (let j = 0; j < sim.dominos.length; j += 1) {
+        if (i === j) continue;
+        const candidate = sim.dominos[j];
+        if (candidate.triggered) continue;
+        const dx = candidate.x - domino.x;
+        const dy = candidate.y - domino.y;
+        const forwardDot = dx * domino.tx + dy * domino.ty;
+        const lateralDist = Math.abs(-dx * domino.ty + dy * domino.tx);
+        const dist = Math.hypot(dx, dy);
+        if (forwardDot > 12 && dist <= reach && lateralDist <= 38) {
+          const contactAngle = Math.asin(
+            clamp(Math.min(dist, sim.height * 0.985) / sim.height, 0.12, 0.985),
+          );
+          if (domino.angle >= contactAngle) {
+            triggerDomino(sim, j, domino);
+            triggeredAny = true;
+          }
+        }
+      }
+
       const next = sim.dominos[i + 1];
-      if (!next) {
-        domino.nextTriggered = true;
-      } else {
+      if (next && Math.abs(next.s - domino.s) < 160) {
         const gap = Math.max(0, next.s - domino.s);
         const contactAngle = Math.asin(
           clamp(Math.min(gap, sim.height * 0.985) / sim.height, 0.12, 0.985),
         );
         if (domino.angle >= contactAngle) {
           domino.nextTriggered = true;
-          if (gap <= getReach(sim.height)) {
-            triggerDomino(sim, i + 1);
-          } else {
+          if (gap <= reach) {
+            triggerDomino(sim, i + 1, domino);
+            triggeredAny = true;
+          } else if (!triggeredAny && domino.s <= sim.track.length) {
             sim.chainBreakS = (domino.s + next.s) / 2;
           }
         }
+      } else if (domino.angle >= 0.65) {
+        domino.nextTriggered = true;
       }
     }
+
     if (domino.angle >= FALL_LIMIT) {
       domino.angle = FALL_LIMIT;
       domino.done = true;
@@ -541,35 +672,30 @@ function updateRunningSim(sim: SimState, dt: number, force = false) {
   }
   if (active) sim.settleTime = 0;
   else sim.settleTime += dt;
-  if (sim.settleTime > 0.8) {
+  if (sim.settleTime > 0.65) {
     sim.running = false;
     sim.paused = false;
     sim.settled = true;
     sim.toppled = sim.dominos.filter((domino) => domino.triggered).length;
     sim.maxChain = longestChain(sim.dominos);
     sim.completed = sim.dominos.length > 0 && sim.toppled === sim.dominos.length;
-    sim.propSpeed =
-      sim.toppled > 1
-        ? clamp(
-            (sim.toppled - 1) / Math.max(0.001, sim.lastTriggerAt - sim.firstTriggerAt),
-            0,
-            80,
-          )
-        : 0;
+    sim.cascadeDuration = Math.max(0, sim.lastTriggerAt - sim.firstTriggerAt);
   }
 }
 
 function toHud(sim: SimState): HudState {
   let status = '待機';
   if (sim.running && sim.paused) status = '一時停止';
-  else if (sim.running) status = '連鎖中';
-  else if (sim.settled) status = sim.completed ? '完走' : '停止';
+  else if (sim.running) status = '連鎖伝播中';
+  else if (sim.settled) status = sim.completed ? '全枚完走' : '連鎖停止';
   else if (sim.launched) status = '停止';
   return {
     placed: sim.dominos.length,
     toppled: sim.toppled,
     remaining: Math.max(0, sim.dominos.length - sim.toppled),
-    propSpeed: sim.propSpeed,
+    propSpeedDom: sim.propSpeedDom,
+    propSpeedPx: sim.propSpeedPx,
+    cascadeDuration: sim.cascadeDuration,
     maxChain: sim.maxChain,
     completed: sim.completed,
     settled: sim.settled,
@@ -577,23 +703,8 @@ function toHud(sim: SimState): HudState {
     running: sim.running,
     paused: sim.paused,
     status,
+    waveSamples: [...sim.waveSamples],
   };
-}
-
-function sameHud(a: HudState, b: HudState): boolean {
-  return (
-    a.placed === b.placed &&
-    a.toppled === b.toppled &&
-    a.remaining === b.remaining &&
-    a.propSpeed === b.propSpeed &&
-    a.maxChain === b.maxChain &&
-    a.completed === b.completed &&
-    a.settled === b.settled &&
-    a.launched === b.launched &&
-    a.running === b.running &&
-    a.paused === b.paused &&
-    a.status === b.status
-  );
 }
 
 function roundRectPath(
@@ -647,14 +758,6 @@ function drawStaticBackground(ctx: CanvasRenderingContext2D) {
     }
   }
 
-  ctx.strokeStyle = 'rgba(222, 180, 104, 0.065)';
-  ctx.lineWidth = 2;
-  for (let radius = 180; radius < 700; radius += 120) {
-    ctx.beginPath();
-    ctx.arc(CANVAS_W * 0.52, CANVAS_H * 0.44, radius, Math.PI * 0.16, Math.PI * 0.84);
-    ctx.stroke();
-  }
-
   const vignette = ctx.createRadialGradient(
     CANVAS_W / 2,
     CANVAS_H / 2,
@@ -667,28 +770,10 @@ function drawStaticBackground(ctx: CanvasRenderingContext2D) {
   vignette.addColorStop(1, 'rgba(0, 0, 0, 0.56)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-  ctx.strokeStyle = 'rgba(216, 176, 106, 0.18)';
-  ctx.lineWidth = 2;
-  const margin = 26;
-  const length = 34;
-  const corners = [
-    [margin, margin, 1, 1],
-    [CANVAS_W - margin, margin, -1, 1],
-    [margin, CANVAS_H - margin, 1, -1],
-    [CANVAS_W - margin, CANVAS_H - margin, -1, -1],
-  ];
-  for (const [x, y, sx, sy] of corners) {
-    ctx.beginPath();
-    ctx.moveTo(x + sx * length, y);
-    ctx.lineTo(x, y);
-    ctx.lineTo(x, y + sy * length);
-    ctx.stroke();
-  }
 }
 
-function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
-  const { points, length } = sim.track;
+function strokeSplineShape(ctx: CanvasRenderingContext2D, shape: TrackShape) {
+  const { points } = shape;
   if (points.length < 2) return;
   const path = new Path2D();
   path.moveTo(points[0].x, points[0].y);
@@ -700,19 +785,19 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.lineWidth = 62;
+  ctx.lineWidth = 58;
   ctx.save();
   ctx.translate(0, 7);
   ctx.stroke(path);
   ctx.restore();
   ctx.strokeStyle = '#0b1715';
-  ctx.lineWidth = 58;
+  ctx.lineWidth = 54;
   ctx.stroke(path);
   ctx.strokeStyle = '#263b35';
-  ctx.lineWidth = 48;
+  ctx.lineWidth = 44;
   ctx.stroke(path);
   ctx.strokeStyle = 'rgba(238, 226, 198, 0.075)';
-  ctx.lineWidth = 30;
+  ctx.lineWidth = 28;
   ctx.stroke(path);
   ctx.strokeStyle = 'rgba(238, 226, 198, 0.16)';
   ctx.lineWidth = 2;
@@ -720,35 +805,14 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.stroke(path);
   ctx.setLineDash([]);
   ctx.restore();
+}
 
-  const tickGap = clamp(sim.spacing, MIN_GAP, 120);
-  for (let distance = 36; distance < length - 24; distance += tickGap) {
-    const point = pointAt(sim.track, distance);
-    const nx = -point.ty;
-    const ny = point.tx;
-    ctx.strokeStyle = 'rgba(240, 224, 190, 0.17)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(point.x - nx * 9, point.y - ny * 9);
-    ctx.lineTo(point.x + nx * 9, point.y + ny * 9);
-    ctx.stroke();
-  }
-
-  for (let distance = 130; distance < length - 70; distance += 190) {
-    const point = pointAt(sim.track, distance);
-    const nx = -point.ty;
-    const ny = point.tx;
-    ctx.save();
-    ctx.translate(point.x, point.y);
-    ctx.strokeStyle = 'rgba(240, 224, 190, 0.2)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-point.tx * 4 - nx * 9, -point.ty * 4 - ny * 9);
-    ctx.lineTo(point.tx * 9, point.ty * 9);
-    ctx.lineTo(-point.tx * 4 + nx * 9, -point.ty * 4 + ny * 9);
-    ctx.stroke();
-    ctx.restore();
+function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
+  strokeSplineShape(ctx, sim.track);
+  if (sim.track.branches) {
+    for (const branch of sim.track.branches) {
+      strokeSplineShape(ctx, branch);
+    }
   }
 
   const start = pointAt(sim.track, 0);
@@ -757,7 +821,7 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.translate(start.x, start.y);
   ctx.fillStyle = 'rgba(8, 18, 16, 0.92)';
   ctx.beginPath();
-  ctx.arc(0, 0, 24 * pulse, 0, Math.PI * 2);
+  ctx.arc(0, 0, 22 * pulse, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = '#d8b06a';
   ctx.lineWidth = 3;
@@ -766,15 +830,9 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.beginPath();
   ctx.arc(0, 0, 6, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(216, 176, 106, 0.55)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(start.tx * 28, start.ty * 28);
-  ctx.stroke();
   ctx.restore();
 
-  const end = pointAt(sim.track, length);
+  const end = pointAt(sim.track, sim.track.length);
   ctx.save();
   ctx.translate(end.x, end.y);
   ctx.strokeStyle = '#d8b06a';
@@ -782,13 +840,13 @@ function drawTrack(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(0, -44);
+  ctx.lineTo(0, -40);
   ctx.stroke();
   ctx.fillStyle = '#7fd6c2';
   ctx.beginPath();
-  ctx.moveTo(0, -44);
-  ctx.lineTo(32, -35);
-  ctx.lineTo(0, -25);
+  ctx.moveTo(0, -40);
+  ctx.lineTo(28, -32);
+  ctx.lineTo(0, -23);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -821,6 +879,7 @@ function drawLinkGuide(
   toS: number,
   color: string,
 ) {
+  if (fromS > sim.track.length || toS > sim.track.length) return;
   const start = Math.min(fromS, toS);
   const end = Math.max(fromS, toS);
   const span = Math.max(1, end - start);
@@ -828,7 +887,7 @@ function drawLinkGuide(
   ctx.save();
   ctx.strokeStyle = color;
   ctx.globalAlpha = 0.58;
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 7;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();
@@ -885,13 +944,6 @@ function drawDomino(
   ctx.beginPath();
   ctx.arc(height * 0.42, 0, 3.8, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.strokeStyle = 'rgba(255, 248, 232, 0.38)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(8, -DOMINO_W / 2 + 4);
-  ctx.lineTo(Math.max(10, height - 26), -DOMINO_W / 2 + 4);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -911,24 +963,11 @@ function drawGhost(ctx: CanvasRenderingContext2D, sim: SimState) {
     falling: false,
     done: false,
     triggered: false,
+    triggeredAt: null,
     nextTriggered: false,
     accent: color,
   };
-  for (const domino of sim.dominos) {
-    const gap = Math.abs(domino.s - point.s);
-    if (gap < 160) {
-      drawLinkGuide(ctx, sim, domino.s, point.s, QUALITY_COLORS[getGapQuality(sim, gap)]);
-    }
-  }
   drawDomino(ctx, ghostDomino, sim.height, color, 0.48);
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.9;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(point.x, point.y, 19 + Math.sin(sim.time * 6) * 2, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawHoverRemove(ctx: CanvasRenderingContext2D, sim: SimState) {
@@ -941,12 +980,6 @@ function drawHoverRemove(ctx: CanvasRenderingContext2D, sim: SimState) {
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(0, 0, 22, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(-7, -7);
-  ctx.lineTo(7, 7);
-  ctx.moveTo(7, -7);
-  ctx.lineTo(-7, 7);
   ctx.stroke();
   ctx.restore();
 }
@@ -966,13 +999,15 @@ function renderSim(
   if (!sim.running) {
     for (let i = 0; i < sim.dominos.length - 1; i += 1) {
       const gap = sim.dominos[i + 1].s - sim.dominos[i].s;
-      drawLinkGuide(
-        ctx,
-        sim,
-        sim.dominos[i].s,
-        sim.dominos[i + 1].s,
-        QUALITY_COLORS[getGapQuality(sim, gap)],
-      );
+      if (gap < 160) {
+        drawLinkGuide(
+          ctx,
+          sim,
+          sim.dominos[i].s,
+          sim.dominos[i + 1].s,
+          QUALITY_COLORS[getGapQuality(sim, gap)],
+        );
+      }
     }
   }
   for (const domino of sim.dominos) {
@@ -989,6 +1024,92 @@ function renderSim(
     ctx.fill();
     ctx.restore();
   }
+}
+
+function PropagationWaveGraph({
+  samples,
+  totalPlaced,
+}: {
+  samples: WaveSample[];
+  totalPlaced: number;
+}) {
+  const width = 280;
+  const height = 92;
+  const pad = { top: 10, right: 8, bottom: 18, left: 28 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+
+  if (samples.length < 2) {
+    return (
+      <div className="mt-2 flex h-20 items-center justify-center rounded-lg border border-dashed border-stone-700 bg-black/25 text-[10px] text-stone-400">
+        「連鎖開始」を押すと伝播速度と転倒時刻の波形を記録します
+      </div>
+    );
+  }
+
+  const maxIdx = Math.max(totalPlaced, samples[samples.length - 1].index, 2);
+  const maxSpeed = Math.max(200, ...samples.map((s) => s.instSpeedPx));
+  const maxTime = Math.max(0.2, samples[samples.length - 1].time);
+
+  const speedPoints = samples
+    .map((s) => {
+      const x = pad.left + (s.index / maxIdx) * plotW;
+      const y = pad.top + (1 - Math.min(1, s.instSpeedPx / maxSpeed)) * plotH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  const timePoints = samples
+    .map((s) => {
+      const x = pad.left + (s.index / maxIdx) * plotW;
+      const y = pad.top + (1 - Math.min(1, s.time / maxTime)) * plotH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="mt-2 h-auto w-full rounded-lg bg-black/30 p-1"
+      role="img"
+      aria-label="ドミノ番号に対する連鎖伝播速度と転倒時刻グラフ"
+    >
+      <line
+        x1={pad.left}
+        y1={pad.top + plotH}
+        x2={width - pad.right}
+        y2={pad.top + plotH}
+        stroke="rgba(168,162,158,0.25)"
+      />
+      <line
+        x1={pad.left}
+        y1={pad.top}
+        x2={pad.left}
+        y2={pad.top + plotH}
+        stroke="rgba(168,162,158,0.25)"
+      />
+      <polyline
+        points={timePoints}
+        fill="none"
+        stroke="#f59e0b"
+        strokeWidth={1.6}
+        strokeDasharray="3 2"
+      />
+      <polyline points={speedPoints} fill="none" stroke="#5eead4" strokeWidth={2} />
+      <text x={pad.left - 3} y={pad.top + 6} textAnchor="end" fontSize={7} fill="#5eead4">
+        {Math.round(maxSpeed)}
+      </text>
+      <text x={pad.left - 3} y={pad.top + plotH} textAnchor="end" fontSize={7} fill="#a8a29e">
+        0
+      </text>
+      <text x={pad.left + 2} y={height - 4} fontSize={7} fill="#5eead4">
+        ― 伝播速度(px/s)
+      </text>
+      <text x={width - pad.right} y={height - 4} textAnchor="end" fontSize={7} fill="#f59e0b">
+        --- 到達時刻({maxTime.toFixed(2)}s)
+      </text>
+    </svg>
+  );
 }
 
 type RangeControlProps = {
@@ -1028,7 +1149,6 @@ export default function DominoCascadeGame() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const settingsRef = useRef(settings);
   const [hud, setHud] = useState<HudState>(() => toHud(simRef.current as SimState));
-  const hudRef = useRef(hud);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const backgroundRef = useRef<HTMLCanvasElement | null>(null);
@@ -1038,11 +1158,7 @@ export default function DominoCascadeGame() {
   const publishHud = useCallback(() => {
     const sim = simRef.current;
     if (!sim) return;
-    const next = toHud(sim);
-    if (!sameHud(next, hudRef.current)) {
-      hudRef.current = next;
-      setHud(next);
-    }
+    setHud(toHud(sim));
   }, []);
 
   const applySettings = (patch: Partial<Settings>) => {
@@ -1051,6 +1167,7 @@ export default function DominoCascadeGame() {
     setSettings(next);
     const sim = simRef.current;
     if (sim) {
+      const spacingChanged = patch.spacing !== undefined && patch.spacing !== sim.spacing;
       sim.preset = next.preset;
       sim.spacing = next.spacing;
       sim.height = next.height;
@@ -1059,6 +1176,11 @@ export default function DominoCascadeGame() {
       sim.gravity = next.gravity;
       sim.speed = next.speed;
       sim.ghost = null;
+      if (spacingChanged && !sim.running) {
+        sim.dominos = fillTrack(sim.track, next.spacing);
+        sim.nextId = sim.dominos.length;
+        resetPose(sim);
+      }
     }
     publishHud();
   };
@@ -1097,7 +1219,8 @@ export default function DominoCascadeGame() {
     publishHud();
   };
 
-  const resetRun = () => {
+  // Stand dominoes back up in the exact same custom/preset arrangement
+  const standUpDominoes = () => {
     const sim = simRef.current;
     if (!sim) return;
     resetPose(sim);
@@ -1204,11 +1327,7 @@ export default function DominoCascadeGame() {
         hudClock += dt;
         if (hudClock >= 0.08) {
           hudClock = 0;
-          const next = toHud(sim);
-          if (!sameHud(next, hudRef.current)) {
-            hudRef.current = next;
-            setHud(next);
-          }
+          setHud(toHud(sim));
         }
       } else {
         last = now;
@@ -1358,29 +1477,7 @@ export default function DominoCascadeGame() {
     if (sim) clearHover(sim);
   };
 
-  const handlePointerLeave = () => {
-    pointerDownRef.current = false;
-    removeModeRef.current = false;
-    const sim = simRef.current;
-    if (sim) clearHover(sim);
-  };
-
   const reach = Math.round(getReach(settings.height));
-  const completionLabel = hud.settled
-    ? hud.completed
-      ? '完走'
-      : '途中停止'
-    : hud.launched
-      ? '進行中'
-      : '未実行';
-  const statusClass =
-    hud.status === '連鎖中'
-      ? 'border-teal-400/50 bg-teal-950/60 text-teal-200'
-      : hud.status === '完走'
-        ? 'border-emerald-400/50 bg-emerald-950/60 text-emerald-200'
-        : hud.status === '停止'
-          ? 'border-rose-400/50 bg-rose-950/60 text-rose-200'
-          : 'border-amber-400/40 bg-amber-950/40 text-amber-200';
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#07100f] text-stone-100 select-none">
@@ -1395,20 +1492,54 @@ export default function DominoCascadeGame() {
             </Link>
             <div className="min-w-0">
               <p className="truncate font-mono text-[9px] font-bold tracking-[0.18em] text-amber-400 sm:text-[10px]">
-                DOMINO CHAIN LAB / SANDBOX
+                DOMINO WAVE PROPAGATION LAB
               </p>
-              <h2 className="truncate text-xs font-black sm:text-base">ドミノ・カスケード</h2>
+              <h2 className="truncate text-xs font-black sm:text-base">
+                ドミノ・カスケード連鎖伝播ラボ
+              </h2>
             </div>
           </div>
-          <div className="hidden shrink-0 rounded-lg border border-teal-500/30 bg-teal-950/20 px-3 py-1 text-[11px] font-bold text-teal-200 sm:block">
-            連鎖シミュレーター
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={standUpDominoes}
+              className="rounded-lg border border-teal-400/50 bg-teal-950/40 px-2.5 py-1.5 text-[10px] font-black text-teal-200 transition hover:border-teal-300 hover:bg-teal-900/50 sm:text-xs"
+            >
+              同じ配置のまま立たせ直す
+            </button>
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-2.5 py-2.5 sm:px-4 sm:py-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-4">
           <div className="min-w-0">
+            {/* 5 Course Presets Bar */}
+            <div className="mb-2.5 rounded-xl border border-stone-800 bg-stone-900/60 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black tracking-[0.16em] text-amber-400">
+                  コース形状プリセット（5種類）
+                </span>
+                <span className="text-[10px] text-stone-400">{PRESET_NAMES[settings.preset]}</span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+                {(['s', 'loop', 'zigzag', 'spiral', 'branch'] as Preset[]).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => choosePreset(item)}
+                    className={`rounded-lg border px-2 py-1.5 text-[10px] font-bold transition ${
+                      settings.preset === item
+                        ? 'border-teal-400 bg-teal-950/60 text-teal-200'
+                        : 'border-stone-700 bg-stone-900 text-stone-300 hover:border-stone-500'
+                    }`}
+                  >
+                    {PRESET_LABELS[item]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div
               className="relative overflow-hidden rounded-xl border-2 border-stone-800 bg-[#07100f] shadow-2xl"
               style={{ touchAction: 'none' }}
@@ -1416,7 +1547,7 @@ export default function DominoCascadeGame() {
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
-              onPointerLeave={handlePointerLeave}
+              onPointerLeave={handlePointerCancel}
               onLostPointerCapture={handlePointerCancel}
               onContextMenu={(event) => event.preventDefault()}
               onDragStart={(event) => event.preventDefault()}
@@ -1429,66 +1560,85 @@ export default function DominoCascadeGame() {
               />
 
               <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/35 to-transparent px-2 py-2 sm:px-3">
-                <span className={`rounded border px-2 py-0.5 font-mono text-[10px] font-black sm:text-xs ${statusClass}`}>
+                <span className="rounded border border-teal-400/40 bg-teal-950/60 px-2 py-0.5 font-mono text-[10px] font-black text-teal-200 sm:text-xs">
                   {hud.status}
                 </span>
                 <span className="font-mono text-[10px] font-bold text-stone-200 sm:text-xs">
-                  {hud.toppled} / {hud.placed} 枚
+                  転倒 {hud.toppled} / {hud.placed} 枚 ({hud.cascadeDuration.toFixed(2)}s)
                 </span>
               </div>
 
               <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-2 py-2 text-[9px] font-bold text-stone-300 sm:px-3 sm:text-[10px]">
                 <span className="flex items-center gap-1.5">
                   <span className="h-1.5 w-4 rounded-full bg-[#8cf0cd]" />
-                  連鎖可
+                  連鎖到達可 (≤{reach}px)
                   <span className="ml-2 h-1.5 w-4 rounded-full bg-[#ff9b86]" />
-                  途切れる
+                  間隔過大で停止
                 </span>
-                <span className="hidden text-stone-400 sm:inline">タップで削除 / ドラッグで配置</span>
+                <span className="hidden text-stone-400 sm:inline">
+                  既存ドミノをタップで削除 / トラック上をドラッグで追加配置
+                </span>
               </div>
             </div>
 
-            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-5 sm:gap-2">
-              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
-                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">倒壊</p>
-                <p className="font-mono text-sm font-black text-teal-200 sm:text-lg">{hud.toppled}</p>
-              </div>
-              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
-                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">残り</p>
-                <p className="font-mono text-sm font-black text-stone-100 sm:text-lg">{hud.remaining}</p>
-              </div>
-              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
-                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">伝播速度</p>
-                <p className="font-mono text-sm font-black text-amber-200 sm:text-lg">
-                  {hud.propSpeed.toFixed(1)}
-                  <span className="ml-0.5 text-[9px] font-bold text-stone-400">枚/秒</span>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5 sm:gap-2">
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2.5 py-1.5">
+                <p className="text-[9px] font-bold text-stone-400">転倒枚数 / 総数</p>
+                <p className="font-mono text-sm font-black text-teal-200 sm:text-base">
+                  {hud.toppled} / {hud.placed}
                 </p>
               </div>
-              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
-                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">最大連鎖</p>
-                <p className="font-mono text-sm font-black text-white sm:text-lg">{hud.maxChain}</p>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2.5 py-1.5">
+                <p className="text-[9px] font-bold text-stone-400">伝播速度 (枚/秒)</p>
+                <p className="font-mono text-sm font-black text-amber-200 sm:text-base">
+                  {hud.propSpeedDom.toFixed(1)} <span className="text-[9px]">枚/s</span>
+                </p>
               </div>
-              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2 py-1.5">
-                <p className="text-[8px] font-bold tracking-wider text-stone-400 sm:text-[10px]">完走</p>
-                <p className="text-[11px] font-black leading-5 text-stone-100 sm:text-sm">{completionLabel}</p>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2.5 py-1.5">
+                <p className="text-[9px] font-bold text-stone-400">空間伝播速度 (px/s)</p>
+                <p className="font-mono text-sm font-black text-cyan-200 sm:text-base">
+                  {Math.round(hud.propSpeedPx)} <span className="text-[9px]">px/s</span>
+                </p>
+              </div>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2.5 py-1.5">
+                <p className="text-[9px] font-bold text-stone-400">連鎖所要時間</p>
+                <p className="font-mono text-sm font-black text-white sm:text-base">
+                  {hud.cascadeDuration.toFixed(2)}s
+                </p>
+              </div>
+              <div className="rounded-lg border border-stone-800 bg-stone-900/70 px-2.5 py-1.5">
+                <p className="text-[9px] font-bold text-stone-400">最大到達距離</p>
+                <p className="font-mono text-sm font-black text-emerald-200 sm:text-base">
+                  {reach}px
+                </p>
               </div>
             </div>
 
             <div className="mt-2 rounded-xl border border-stone-800 bg-stone-900/60 p-2.5 sm:p-3">
-              <button
-                type="button"
-                onClick={launch}
-                disabled={hud.placed === 0}
-                className="w-full rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-black text-stone-950 shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:border-stone-700 disabled:bg-stone-800 disabled:bg-none disabled:text-stone-500 disabled:shadow-none sm:text-base"
-              >
-                連鎖開始
-              </button>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={launch}
+                  disabled={hud.placed === 0}
+                  className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-black text-stone-950 shadow-lg transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  連鎖スタート（先頭ドミノを倒す）
+                </button>
+                <button
+                  type="button"
+                  onClick={standUpDominoes}
+                  disabled={hud.placed === 0 && !hud.launched}
+                  className="rounded-xl border border-teal-400/60 bg-teal-950/50 px-4 py-2.5 text-sm font-black text-teal-100 transition hover:border-teal-300 hover:bg-teal-900/60 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  同じ配置のままドミノを立たせ直す
+                </button>
+              </div>
+              <div className="mt-2 grid grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={togglePause}
                   disabled={!hud.running}
-                  className="rounded-lg border border-teal-500/40 bg-teal-950/40 px-2 py-2 text-xs font-bold text-teal-200 transition hover:border-teal-300 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+                  className="rounded-lg border border-teal-500/40 bg-teal-950/40 px-2 py-1.5 text-xs font-bold text-teal-200 transition hover:border-teal-300 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {hud.paused ? '再開' : '一時停止'}
                 </button>
@@ -1496,34 +1646,24 @@ export default function DominoCascadeGame() {
                   type="button"
                   onClick={stepOnce}
                   disabled={!hud.paused}
-                  className="rounded-lg border border-stone-600 bg-stone-900 px-2 py-2 text-xs font-bold text-stone-200 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-2 py-1.5 text-xs font-bold text-stone-200 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   1ステップ
-                </button>
-              </div>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={resetRun}
-                  disabled={hud.placed === 0 && !hud.launched}
-                  className="rounded-lg border border-stone-600 bg-stone-900 px-1 py-2 text-[11px] font-bold text-stone-200 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
-                >
-                  リセット
                 </button>
                 <button
                   type="button"
                   onClick={autoFill}
-                  className="rounded-lg border border-stone-600 bg-stone-900 px-1 py-2 text-[11px] font-bold text-stone-200 transition hover:border-teal-400 hover:text-teal-200 sm:text-xs"
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-2 py-1.5 text-xs font-bold text-stone-200 transition hover:border-teal-400 hover:text-teal-200"
                 >
-                  おまかせ配置
+                  等間隔で再配置
                 </button>
                 <button
                   type="button"
                   onClick={clearDominoes}
                   disabled={hud.placed === 0}
-                  className="rounded-lg border border-stone-600 bg-stone-900 px-1 py-2 text-[11px] font-bold text-stone-200 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
+                  className="rounded-lg border border-stone-600 bg-stone-900 px-2 py-1.5 text-xs font-bold text-stone-200 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  クリア
+                  全撤去
                 </button>
               </div>
             </div>
@@ -1531,33 +1671,27 @@ export default function DominoCascadeGame() {
 
           <aside className="flex flex-col gap-2.5">
             <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-400">COURSE</p>
-              <div className="mt-2 grid grid-cols-3 gap-1.5">
-                {(['s', 'loop', 'zigzag'] as Preset[]).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => choosePreset(item)}
-                    className={`rounded-lg border px-1 py-2 text-[11px] font-bold transition sm:text-xs ${
-                      settings.preset === item
-                        ? 'border-teal-400 bg-teal-950/50 text-teal-200'
-                        : 'border-stone-700 bg-stone-900 text-stone-300 hover:border-stone-500'
-                    }`}
-                  >
-                    {PRESET_LABELS[item]}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">
+                  WAVE PROPAGATION (連鎖伝播グラフ)
+                </p>
+                <span className="font-mono text-[10px] text-amber-200">
+                  {hud.cascadeDuration.toFixed(2)}s
+                </span>
               </div>
-              <p className="mt-2 text-[10px] leading-4 text-stone-500">
-                {PRESET_NAMES[settings.preset]}。選択すると現在の間隔で自動配置します。
+              <PropagationWaveGraph samples={hud.waveSamples} totalPlaced={hud.placed} />
+              <p className="mt-1.5 text-[10px] leading-4 text-stone-400">
+                最初の数枚で加速したあと、重力トルクと衝突減衰が釣り合う「終端伝播速度（定常波）」へ収束する様子を観察できます。
               </p>
             </section>
 
             <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">PARAMETERS</p>
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">
+                PHYSICS PARAMETERS
+              </p>
               <div className="mt-3 space-y-3">
                 <RangeControl
-                  label="間隔"
+                  label="配置間隔 (動かすだけで即時再配置)"
                   value={settings.spacing}
                   min={MIN_GAP}
                   max={120}
@@ -1566,7 +1700,7 @@ export default function DominoCascadeGame() {
                   onChange={(value) => applySettings({ spacing: value })}
                 />
                 <RangeControl
-                  label="ドミノの高さ"
+                  label="ドミノの高さ (到達距離に比例)"
                   value={settings.height}
                   min={56}
                   max={132}
@@ -1575,7 +1709,7 @@ export default function DominoCascadeGame() {
                   onChange={(value) => applySettings({ height: value })}
                 />
                 <RangeControl
-                  label="摩擦"
+                  label="摩擦減衰係数"
                   value={settings.friction}
                   min={0}
                   max={1.2}
@@ -1584,7 +1718,7 @@ export default function DominoCascadeGame() {
                   onChange={(value) => applySettings({ friction: value })}
                 />
                 <RangeControl
-                  label="押し出し"
+                  label="初速・押し出しインパルス"
                   value={settings.pushForce}
                   min={0.6}
                   max={2.4}
@@ -1593,17 +1727,17 @@ export default function DominoCascadeGame() {
                   onChange={(value) => applySettings({ pushForce: value })}
                 />
                 <RangeControl
-                  label="重力"
+                  label="重力加速度倍率"
                   value={settings.gravity}
                   min={0.4}
                   max={2}
                   step={0.05}
-                  display={settings.gravity.toFixed(2)}
+                  display={`${settings.gravity.toFixed(2)}x`}
                   onChange={(value) => applySettings({ gravity: value })}
                 />
               </div>
               <div className="mt-3">
-                <p className="text-[11px] font-bold text-stone-300">シミュレーション速度</p>
+                <p className="text-[11px] font-bold text-stone-300">シミュレーション再生速度</p>
                 <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   {[0.5, 1, 2].map((item) => (
                     <button
@@ -1624,31 +1758,19 @@ export default function DominoCascadeGame() {
             </section>
 
             <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-300">SPACING GUIDE</p>
-              <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-stone-300 sm:text-xs">
-                <span>連鎖できる間隔</span>
-                <span className="font-mono font-black text-teal-200">
-                  {MIN_GAP} - {reach}px
-                </span>
-              </div>
-              <p className="mt-2 text-[10px] leading-4 text-stone-500">
-                緑のリンクは次のドミノへ届く間隔、赤は届かない間隔です。高さを変えると到達距離も変わります。
+              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-amber-300">
+                EXPERIMENT TIPS
               </p>
-            </section>
-
-            <section className="rounded-xl border border-stone-800 bg-stone-900/50 p-3 sm:p-4">
-              <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-teal-300">HOW TO USE</p>
-              <ol className="mt-2 space-y-2 text-[11px] leading-5 text-stone-300 sm:text-xs">
+              <ul className="mt-2 space-y-1.5 text-[10px] leading-4 text-stone-300">
                 <li>
-                  <span className="font-bold text-white">1.</span> コースを選ぶか、トラックをなぞってドミノを配置。
+                  ・<span className="font-bold text-teal-200">間隔と高さの比率実験:</span>{' '}
+                  間隔が高さの94%（現在 {reach}px）を超えると、隣のドミノに届かず連鎖が止まります。
                 </li>
                 <li>
-                  <span className="font-bold text-white">2.</span> 既存のドミノをタップすると削除。間隔ガイドを確認。
+                  ・<span className="font-bold text-amber-200">同条件での再実験:</span>{' '}
+                  「同じ配置のままドミノを立たせ直す」を押すと、抜いた隙間を維持したまま重力や高さを変えて再実験できます。
                 </li>
-                <li>
-                  <span className="font-bold text-white">3.</span> 連鎖開始後は速度切替、一時停止、1ステップで観察。
-                </li>
-              </ol>
+              </ul>
             </section>
           </aside>
         </div>

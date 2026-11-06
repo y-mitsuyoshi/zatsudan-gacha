@@ -8,17 +8,19 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
+  title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
   description:
-    '社畜ゲーム10作品、パーティーゲーム6作品、物理シミュレーション5作品を完全無料で公開中。少数派ワード、以心伝心、NGワード会議、禁句トーク、ボール増殖、ドミノ連鎖など、スマホ・PC対応、インストール・登録不要。',
+    '社畜ゲーム10作品、定番ボードゲーム8作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーションラボ5作品を完全無料で公開中。リバーシ3D、立体四目並べ、五目並べ、ソリティア、大富豪、重力オービット、ボール増殖などスマホ・PC対応、登録不要。',
   keywords: [
     '無料ブラウザゲーム',
+    'ボードゲーム 無料',
+    'トランプゲーム 無料',
+    '物理シミュレーション',
     '社畜ゲーム',
     'パーティーゲーム',
-    'オンサイト ゲーム',
-    'オフサイト ゲーム',
-    'ワードゲーム',
-    'チームビルディング',
+    'リバーシ 無料',
+    'ソリティア 無料',
+    '大富豪 無料',
     'スマホ ゲーム',
     '登録不要 ゲーム',
   ],
@@ -26,9 +28,9 @@ export const metadata: Metadata = {
     canonical: '/games',
   },
   openGraph: {
-    title: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
+    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
     description:
-      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議、ボール増殖・ドミノ連鎖などのシミュレーションまで、無料で遊べるブラウザゲーム全21作品をまとめて紹介。',
+      '社畜アクション、3Dリバーシ・立体四目並べ・五目並べ・マンカラ等の定番ボードゲーム、ソリティア・大富豪・ポーカー等のトランプゲーム、パーティーゲーム、本格物理シミュレーションまで全34作品を無料公開。',
     url: `${APP_URL}/games`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -37,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
+    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
     description:
-      '通勤ラッシュ、残業サバイバル、ぶっとばし飛距離アクションに加え、少数派ワードやNGワード会議、ボール増殖・ドミノ連鎖などのシミュレーションまで、無料で遊べるブラウザゲーム全21作品をまとめて紹介。',
+      '社畜アクション、3Dリバーシ・立体四目並べ・五目並べ・マンカラ等の定番ボードゲーム、ソリティア・大富豪・ポーカー等のトランプゲーム、パーティーゲーム、本格物理シミュレーションまで全34作品を無料公開。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -210,42 +212,178 @@ const simulationGames = [
   {
     name: '増殖ボール・シミュレーター',
     href: '/ball-multiply',
-    tagline: '重力と分裂を調整して観察する',
-    description: '重力・ピン段数・分裂確率・反発係数・ボール上限・速度を調整し、ボール数の成長カーブや増加速度を観察する物理サンドボックス。スコアや制限時間はありません。',
+    tagline: '1個から何秒で10個・50個・100個に増えるかを実測',
+    description: 'ピン衝突分裂・×2/×3倍率ゲート・周期スポナーを組み合わせ、倍増時間（Doubling Time）と指数成長〜環境収容力飽和までの推移曲線・ゴルトンボード分布をリアルタイム計測する物理ラボ。',
     cover: 'bg-[#072a2c]',
-    genre: '物理シミュレーション / サンドボックス',
+    genre: '指数増殖・物理シミュレーション',
   },
   {
     name: 'ドミノ・カスケード',
     href: '/domino-cascade',
-    tagline: '間隔と摩擦を変えて連鎖を観察',
-    description: 'S字・ループ・ジグザグのコースにドミノを配置し、間隔・高さ・摩擦・押す力を調整。連鎖の伝わり方や停止する条件を観察できるサンドボックスです。',
+    tagline: '連鎖伝播速度（個/秒）と角度・エネルギー波形を計測',
+    description: '間隔と高さの比率（d/h比）・摩擦・質量を調整し、S字・渦巻き・分岐コースでの連鎖伝播速度と角運動量の伝達推移グラフを観察。ワンクリック即再起立＆自動周回実験に対応。',
     cover: 'bg-[#2b2415]',
-    genre: '物理シミュレーション / サンドボックス',
+    genre: '連鎖波動・物理シミュレーション',
   },
   {
     name: 'サンド・フロー・サンドボックス',
     href: '/sand-flow',
-    tagline: '重力・風・障害物で砂の流れを設計',
-    description: '4色の砂を注ぎ、重力・風向き・風速・流量・ブラシサイズ・障害物を調整。落下・堆積・混色をリアルタイムに観察する粉体サンドボックスです。',
+    tagline: '安息角の自動計測・砂時計流量・比重別粒子ラボ',
+    description: '砂・微細砂・水流・重金属粒子の4素材と自動ノズル、砂時計くびれ・水車・漏斗プリセットを搭載。堆積山の左右傾斜から安息角（Angle of Repose）をリアルタイム算出します。',
     cover: 'bg-[#0d2017]',
-    genre: '粒子シミュレーション / サンドボックス',
+    genre: '粉体力学・粒子シミュレーション',
   },
   {
     name: 'バブル・マージ・ラボ',
     href: '/bubble-merge',
-    tagline: '泡の合体と表面張力を調整',
-    description: '泡を投入し、重力・表面張力・合体しきい値・サイズ範囲・反発係数・発生量を調整。泡が合体して大きくなる過程を観察する物理ラボです。',
+    tagline: '表面張力・オストワルド熟成・粒径ヒストグラム観察',
+    description: 'ラプラス圧による気泡合体、大気泡が小気泡を吸収するオストワルド熟成、対流ヒーター、面積保存則モニター、粒径分布ヒストグラムをリアルタイムに観察できる流体・界面物理ラボ。',
     cover: 'bg-[#0a1a2e]',
-    genre: '物理シミュレーション / サンドボックス',
+    genre: '界面物理・流体シミュレーション',
   },
   {
     name: '重力オービット・サンドボックス',
     href: '/gravity-orbit',
-    tagline: '惑星質量と速度から軌道を観察',
-    description: '惑星質量・重力定数・発射速度・角度・軌道トレイルを調整し、探査機の軌道やスリングショットを観察。複数の探査機を比較できる軌道サンドボックスです。',
+    tagline: 'スイングバイ背面命中軌道＆多体万有引力シミュレーター',
+    description: '恒星・惑星のドラッグ配置、未来軌道予測ライン、星の背後へ回り込むスイングバイ命中プリセット、扇状11機同時スプレッド発射、速度・距離の時系列テレメトリを搭載した天体力学ラボ。',
     cover: 'bg-[#0a1224]',
-    genre: '軌道シミュレーション / サンドボックス',
+    genre: '天体力学・軌道シミュレーション',
+  },
+];
+
+const boardGames = [
+  {
+    name: 'リバーシ（3D / 2D 戦略盤）',
+    href: '/reversi',
+    mark: '8×8',
+    cover: 'bg-[#113826]',
+    genre: '3D/2D 挟み反転ボードゲーム',
+    tagline: '角と確定石を巡る伝統8×8頭脳戦',
+    description:
+      'Three.jsによる立体ディスク反転アニメーションと2D盤面をワンクリック切替。合法手・反転枚数プレビュー、形勢評価グラフ、AI 3段階（初級・中級・上級ミニマックス）＆2人対戦に対応。',
+  },
+  {
+    name: '立体四目並べ 3D（4×4×4 空間盤）',
+    href: '/qubic-four',
+    mark: '4³',
+    cover: 'bg-[#1e293b]',
+    genre: 'Three.js 立体空間四目並べ',
+    tagline: '全76ラインの3次元リーチを読み切れ',
+    description:
+      '4×4のピンに玉を積み重ねる4×4×4の3次元空間ボードゲーム。ドラッグで立体盤を360度回転でき、平面・垂直・立体対角線の全76ラインのリーチ警告ハイライトとAI 3段階対戦を搭載。',
+  },
+  {
+    name: '五目並べ（15×15 連珠・五目盤）',
+    href: '/gomoku',
+    mark: '15×15',
+    cover: 'bg-[#5c3a1e]',
+    genre: '15×15 伝統五目・連珠戦略盤',
+    tagline: '活三・四々・禁手を見極める伝統盤',
+    description:
+      '木目15×15碁盤で遊ぶ本格五目並べ。黒番の三々・四々・長連を判定する「連珠禁手ルール」と「フリースタイル」の切替、脅威ライン検知、AI 3段階対戦＆待った機能に対応。',
+  },
+  {
+    name: 'マンカラ（カラハ・種まき戦略盤）',
+    href: '/mancala',
+    mark: 'SOW',
+    cover: 'bg-[#4a2c18]',
+    genre: '古代種まき頭脳ボードゲーム',
+    tagline: 'ぴったりゴールで連続手番を掴め',
+    description:
+      'ポケットから石を取り出して反時計回りに1つずつ種まきする世界最古級の完全情報ボードゲーム。最終石がどのポケットに落ちるかの軌道プレビュー、横取り（キャプチャ）演出、AI対戦を搭載。',
+  },
+  {
+    name: 'チェッカー（ドラフツ 3D / 2D）',
+    href: '/checkers',
+    mark: 'JUMP',
+    cover: 'bg-[#3b1d1d]',
+    genre: '3D/2D 斜めジャンプ捕獲盤',
+    tagline: '連続ジャンプとキング昇格の連鎖戦術',
+    description:
+      '8×8盤の黒マスを斜めに進み、相手の駒を飛び越えて捕獲する古典チェッカー。Three.js 3D/2D切替、強制ジャンプ・多段連続ジャンプ経路ハイライト、キング昇格、AI 3段階対戦に対応。',
+  },
+  {
+    name: 'ナイン・メンズ・モリス（古代ローマ三目盤）',
+    href: '/nine-mens-morris',
+    mark: 'MILL',
+    cover: 'bg-[#2c3539]',
+    genre: '古代ローマ三目（ミル）戦略盤',
+    tagline: '3つの同心四角形と24交点の頭脳戦',
+    description:
+      '配置・移動・フライング（残り3駒で任意の空き交点へ跳躍）の3フェーズで展開する古代ローマ起源のボードゲーム。縦横3連（ミル）を作るたびに相手駒を1つ除去できる深い戦略性が魅力です。',
+  },
+  {
+    name: 'ヘックス（11×11 六角形接続盤）',
+    href: '/hex-board',
+    mark: 'HEX',
+    cover: 'bg-[#172554]',
+    genre: '11×11 トポロジー接続戦略盤',
+    tagline: '数学的に引き分けが存在しない接続ゲーム',
+    description:
+      '数学者ジョン・ナッシュらが考案した11×11六角形グリッド接続ゲーム。2間ブリッジの急所や最短接続コスト（仮想抵抗ネットワーク）を可視化し、初手スワップルール（パイ・ルール）にも対応。',
+  },
+  {
+    name: 'ドット＆ボックス（陣取り線引き盤）',
+    href: '/dots-and-boxes',
+    mark: 'BOX',
+    cover: 'bg-[#144336]',
+    genre: '格子線引き・連鎖陣取り盤',
+    tagline: '3辺目の罠と長鎖（チェーン）の駆け引き',
+    description:
+      '格子点の間に線を1本ずつ引き、正方形の4辺目を閉じたプレイヤーが陣地を獲得して連続手番を得る古典頭脳ゲーム。盤面サイズ切替（4×4〜6×6）、3辺リーチ警告表示、ハード手筋AIを搭載。',
+  },
+];
+
+const cardGames = [
+  {
+    name: 'ソリティア（クロンダイク）',
+    href: '/klondike',
+    mark: 'A♠',
+    cover: 'bg-[#0f3d28]',
+    genre: '定番1人用トランプパズル',
+    tagline: '1枚/3枚めくり・オートコンプリート対応',
+    description:
+      '赤黒交互・降順で場札を並べ替え、AからKまでスート別に組札へ揃える王道クロンダイク。1枚/3枚ドロー切替、無制限アンドゥ、ダブルクリック自動移動、詰みなしディール、ヒント機能を搭載。',
+  },
+  {
+    name: 'ブラックジャック（期待値ナビ付）',
+    href: '/blackjack',
+    mark: '21',
+    cover: 'bg-[#1a162b]',
+    genre: 'カジノトランプ＆確率戦略ラボ',
+    tagline: 'ベーシックストラテジー最適手をリアルタイム表示',
+    description:
+      'ヒット・スタンド・ダブルダウン・スプリット・インシュランス完備の本格6デッキ・ブラックジャック。現在の手札とディーラー表カードに対する数学的最適手とバースト確率を常時確認できます。',
+  },
+  {
+    name: 'フリーセル（完全情報トランプ）',
+    href: '/freecell',
+    mark: 'FREE',
+    cover: 'bg-[#163042]',
+    genre: '完全情報・思考型ソリティア',
+    tagline: '運要素ゼロ！52枚すべてが見える論理パズル',
+    description:
+      '最初から全52枚が表向きで配られ、4つのフリーセル（一時保管枠）を活用して全てを組札へ収める思考型トランプゲーム。スーパー・ムーブ（複数枚一括移動）自動計算、シード番号選択に対応。',
+  },
+  {
+    name: '大富豪（大貧民・AI 4人対戦）',
+    href: '/daifugo',
+    mark: '8切',
+    cover: 'bg-[#4a1525]',
+    genre: 'AI 4人対戦・定番トランプ',
+    tagline: '革命・8切り・階段・スペ3返し対応',
+    description:
+      '個性豊かなAIプレイヤー3人とすぐ遊べる4人対戦大富豪。革命、8切り、ペア・3枚・4枚出し、階段（シークエンス）、スペードの3返し、縛り・都落ちルールのON/OFF設定と階級推移を搭載。',
+  },
+  {
+    name: 'テキサスホールデム・ポーカー',
+    href: '/texas-holdem',
+    mark: 'HOLD',
+    cover: 'bg-[#2d1b0e]',
+    genre: 'AI 4人対戦・戦略ポーカー',
+    tagline: 'リアルタイム勝率＆ポットオッズ表示搭載',
+    description:
+      '2枚のホールカードと5枚のコミュニティカードで役を競うノーリミット・テキサスホールデム。性格の異なるAI 3人との対戦に加え、モンテカルロ試算によるリアルタイム勝率（Equity）表示を搭載。',
   },
 ];
 
@@ -257,20 +395,21 @@ const creativeTools = [
 ];
 
 const faqs = [
-  { q: '紹介している21のゲームはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、パーティーゲーム6作品、シミュレーションゲーム5作品のすべてをブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
+  { q: '紹介している34のゲーム・シミュレーターはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、定番ボードゲーム8作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品の全34作品をブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
   { q: 'スマートフォンでもPCでも遊べますか？', a: 'はい。各ゲームはスマートフォンのタッチ操作と、PCのマウス・キーボード操作の両方に最適化されています。' },
+  { q: 'ボードゲームやトランプゲームは1人でも遊べますか？', a: 'はい。リバーシ・立体四目並べ・五目並べ・マンカラ・チェッカー・ナインメンズモリス・ヘックス・ドット＆ボックスはすべてAI対戦（難易度3段階）と1台での2人対戦の両方に対応しています。トランプ5作品もすべて1人で今すぐ遊べます。' },
   { q: '会社のオンサイト・オフサイトで使えるゲームはどれですか？', a: '「少数派ワード」「以心伝心ゲーム」「NGワード会議」「禁句トーク」「ランキング予想」「連想リレー」がおすすめです。1台の端末を回して遊べるため、懇親会や研修のアイスブレイクにも使えます。' },
-  { q: 'ゲームの進行状況やハイスコアは保存されますか？', a: '社畜ゲームのハイスコアや解放状況はブラウザのlocalStorageに保存される場合があります。パーティーゲームの名前・回答・秘密の言葉は保存せず、ページを閉じると消えます。シミュレーション5作品は得点や進行状況を持たず、パラメータを調整して挙動を観察するツールです。' },
+  { q: '物理シミュレーション5作品はゲームですか？', a: 'スコアを競うゲームではなく、倍増時間や重力スイングバイ軌道、連鎖伝播速度、安息角、気泡合体などを定量グラフとプリセットで観察・実験できる物理シミュレーションラボです。' },
 ];
 
-const allGames = [...games, ...partyGames, ...simulationGames];
+const allGames = [...games, ...boardGames, ...cardGames, ...partyGames, ...simulationGames];
 
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: '無料ブラウザゲーム一覧｜社畜・パーティー・シミュレーション全21作品',
-    description: '社畜ゲーム10作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
+    name: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全34作品',
+    description: '社畜ゲーム10作品、定番ボードゲーム8作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
     url: `${APP_URL}/games`,
     inLanguage: 'ja-JP',
     mainEntity: {
@@ -325,20 +464,28 @@ export default function GamesPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Game Archive / 21 Titles</p>
+            <p className="paper-kicker">Game Archive / 34 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で遊べる<br className="sm:hidden" />ゲーム一覧
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              通勤ラッシュ、残業サバイバル、人狼、すごろくに加え、少数派ワード・以心伝心・NGワード会議などのパーティーゲーム、ボール増殖・ドミノ連鎖・砂・泡・重力のシミュレーションまで全21作品を収録。
-              すべて完全オリジナル制作・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
+              社畜アクション＆人生シミュレーション10作品、世界中で愛される古典・数学ボードゲーム8作品、定番トランプゲーム5作品、みんなで盛り上がるパーティーゲーム6作品、定量グラフ付きの物理シミュレーションラボ5作品の全34作品を収録。
+              すべて完全オリジナル実装・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
             </p>
           </div>
           <div className="border-l border-[var(--line)] pl-5 text-sm leading-7 text-[var(--ink-soft)]">
-            <p className="font-label text-[9px] text-[var(--accent)]">Play Note</p>
-            <p className="mt-2">
-              1分〜数分のワンタッチゲームから、オンサイトで盛り上がる会話ゲームまで。目的に合わせて選べます。
-            </p>
+            <p className="font-label text-[9px] text-[var(--accent)]">Category Jump</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              <a href="#game-list-heading" className="underline hover:text-[var(--accent)]">社畜ゲーム(10)</a>
+              <span>・</span>
+              <a href="#board-games" className="underline hover:text-[var(--accent)]">ボードゲーム(8)</a>
+              <span>・</span>
+              <a href="#card-games" className="underline hover:text-[var(--accent)]">トランプ(5)</a>
+              <span>・</span>
+              <a href="#party-games" className="underline hover:text-[var(--accent)]">パーティー(6)</a>
+              <span>・</span>
+              <a href="#simulation-games" className="underline hover:text-[var(--accent)]">物理ラボ(5)</a>
+            </div>
           </div>
         </section>
 
@@ -372,6 +519,84 @@ export default function GamesPage() {
                   <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
                   <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
                     Play <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section id="board-games" className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="board-games-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--line)] pb-3">
+            <div>
+              <p className="paper-kicker">CLASSIC &amp; MATHEMATICAL BOARD GAMES</p>
+              <h2 id="board-games-heading" className="font-editorial mt-2 text-2xl">定番・頭脳ボードゲーム（8作品）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 08</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
+            パブリックドメインの伝統盤面ゲームと数学者考案のトポロジーゲームを、Three.js 3D/2DビューとAI 3段階対戦・2人パス＆プレイ対応で収録。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {boardGames.map((game, index) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group flex flex-col border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
+              >
+                <div className={`relative flex aspect-[16/9] items-center justify-center overflow-hidden border-b border-[var(--line)] ${game.cover}`}>
+                  <span className="font-editorial text-3xl tracking-tight text-[#fffaf0] sm:text-4xl">{game.mark}</span>
+                  <span className="font-label absolute left-3 top-3 bg-[#12100d]/70 px-2 py-1 text-[9px] text-[#f2e9d8]">
+                    {String(index + 1).padStart(2, '0')} / BOARD
+                  </span>
+                  <span className="font-label absolute bottom-3 right-3 text-[8px] text-[#fffaf0]/70">AI &amp; 2P</span>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="font-label text-[9px] text-[var(--accent)]">{game.genre}</p>
+                  <h3 className="font-editorial mt-2 text-lg leading-snug">{game.name}</h3>
+                  <p className="mt-1 text-xs font-bold text-[var(--ink)]">{game.tagline}</p>
+                  <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
+                  <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                    Play board game <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section id="card-games" className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="card-games-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--line)] pb-3">
+            <div>
+              <p className="paper-kicker">CLASSIC PLAYING CARDS</p>
+              <h2 id="card-games-heading" className="font-editorial mt-2 text-2xl">定番トランプゲーム（5作品）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 05</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
+            1人でじっくり思考するソリティア・フリーセルから、ベーシックストラテジー期待値ナビ付きブラックジャック、AI 4人対戦の大富豪・テキサスホールデムまで収録。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {cardGames.map((game, index) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group flex flex-col border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
+              >
+                <div className={`relative flex aspect-[16/9] items-center justify-center overflow-hidden border-b border-[var(--line)] ${game.cover}`}>
+                  <span className="font-editorial text-4xl tracking-tight text-[#fffaf0] sm:text-5xl">{game.mark}</span>
+                  <span className="font-label absolute left-3 top-3 bg-[#12100d]/70 px-2 py-1 text-[9px] text-[#f2e9d8]">
+                    {String(index + 1).padStart(2, '0')} / CARDS
+                  </span>
+                  <span className="font-label absolute bottom-3 right-3 text-[8px] text-[#fffaf0]/70">52 DECK</span>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="font-label text-[9px] text-[var(--accent)]">{game.genre}</p>
+                  <h3 className="font-editorial mt-2 text-xl leading-snug">{game.name}</h3>
+                  <p className="mt-1 text-xs font-bold text-[var(--ink)]">{game.tagline}</p>
+                  <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
+                  <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                    Play card game <span aria-hidden="true">→</span>
                   </span>
                 </div>
               </Link>
@@ -480,8 +705,8 @@ export default function GamesPage() {
 
         <SeoContentSection
           eyebrow="GAME GUIDE"
-          title="21の無料ブラウザゲーム"
-          intro="1分で遊べる爽快アクションから、じっくり戦略を練るローグライク、みんなで盛り上がるパーティーゲームまで。気になるタイトルを選んでください。"
+          title="34の無料ブラウザゲーム＆物理シミュレーションラボ"
+          intro="1分で遊べる爽快社畜アクションから、3D対応の伝統ボードゲーム、定番トランプ、みんなで盛り上がるパーティーゲーム、倍増時間や重力軌道を実測できる物理シミュレーションラボまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[
             { href: '/tools', label: '無料ツール一覧', description: '実用・統計・地図・クリエイティブの全49ツール' },
