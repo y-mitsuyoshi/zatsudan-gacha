@@ -1133,7 +1133,7 @@ export function TableScreen({
                         {c.title}
                       </div>
                       <div className="mt-0.5 truncate text-[9px] text-slate-400">
-                        {c.voiceStyle} · {c.cvCredit.replace('VOICEVOX:', 'CV:')}
+                        {c.voiceStyle} · {c.cvCredit.replace('VOICEVOX:', 'CV: ')}
                       </div>
                     </div>
                   </button>

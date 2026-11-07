@@ -227,7 +227,7 @@ export function CharacterGallery({ open, profile, onClose, onSelectPartner }: Ch
                 {[
                   { k: 'プレイスタイル', v: ch.styleLabel },
                   { k: '好きなハンド', v: ch.favoriteHand },
-                  { k: 'キャラクターボイス', v: `${ch.voiceStyle} (${ch.cvCredit.replace('VOICEVOX:', '')})` },
+                  { k: 'キャラクターボイス', v: `${ch.voiceStyle} (${ch.cvCredit.replace(/^(VOICEVOX:|CV:\s*)/, '')})` },
                 ].map((r) => (
                   <div key={r.k} className="rounded-xl border border-white/10 bg-black/40 px-1.5 py-2">
                     <dt className="text-[9px] tracking-wider text-slate-400">{r.k}</dt>

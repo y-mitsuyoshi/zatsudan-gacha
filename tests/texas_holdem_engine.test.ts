@@ -737,12 +737,12 @@ describe('12-Character Cast & Studio Seiyuu Voice Assets', () => {
     'select',
   ];
 
-  it('defines 12 selectable characters with normal/win WebP portraits and VOICEVOX CV credits', () => {
+  it('defines 12 selectable characters with normal/win WebP portraits and studio CV credits', () => {
     assert.equal(CHAR_IDS.length, 12);
     for (const id of CHAR_IDS) {
       const ch = CHARACTERS[id];
       assert.ok(ch, `missing character ${id}`);
-      assert.ok(ch.cvCredit.startsWith('VOICEVOX:'), `${id} missing VOICEVOX CV credit`);
+      assert.ok(ch.cvCredit.startsWith('CV:'), `${id} missing CV credit`);
       const normalFile = path.join(publicDir, charImage(id, 'normal'));
       const winFile = path.join(publicDir, charImage(id, 'win'));
       assert.ok(fs.existsSync(normalFile), `missing portrait ${normalFile}`);

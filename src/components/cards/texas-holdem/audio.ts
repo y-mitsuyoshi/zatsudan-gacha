@@ -1247,7 +1247,7 @@ export const holdemAudio = {
       event: opts.event,
       gender: opts.gender,
     });
-    const url = `${rawUrl}?v=2`;
+    const url = `${rawUrl}?v=3`;
     stopCurrentVoiceClip();
 
     const c = ensureCtx();
