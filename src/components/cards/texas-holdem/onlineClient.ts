@@ -391,11 +391,34 @@ function makeLocalRoomCode(): string {
   return s;
 }
 
+export function onlinePlayerName(profile: HoldemProfile): string {
+  const cleaned = scrubPiiText(profile.playerName, '', 12).trim();
+  const suffix = profile.accountId.replace(/[^A-Z0-9]/gi, '').slice(-4) || '0000';
+  if (!cleaned || cleaned === 'あなた' || cleaned === 'ゲスト') {
+    return `Player#${suffix}`;
+  }
+  return cleaned;
+}
+
+export function resolveOnlineMemberName(
+  playerName: string,
+  accountId: string,
+  isSelf = false,
+): string {
+  const cleaned = (playerName || '').trim();
+  if (isSelf) return cleaned || 'あなた';
+  if (!cleaned || cleaned === 'あなた' || cleaned === 'ゲスト') {
+    const suffix = accountId.replace(/[^A-Z0-9]/gi, '').slice(-4) || '0000';
+    return `Player#${suffix}`;
+  }
+  return cleaned;
+}
+
 function profileToMember(profile: HoldemProfile): OnlineRoomMember {
   const now = Date.now();
   return {
     accountId: profile.accountId,
-    playerName: scrubPiiText(profile.playerName, 'あなた', 12),
+    playerName: onlinePlayerName(profile),
     charId: profile.partner,
     rankPoints: profile.rankPoints,
     equippedTitle: profile.equippedTitle,
@@ -415,7 +438,7 @@ export async function createOnlineRoom(
     action: 'createRoom',
     accountId: profile.accountId,
     accountSecret: profile.accountSecret,
-    playerName: scrubPiiText(profile.playerName, 'あなた', 12),
+    playerName: onlinePlayerName(profile),
     charId: profile.partner,
     rankPoints: profile.rankPoints,
     equippedTitle: profile.equippedTitle,
@@ -461,7 +484,7 @@ export async function joinOnlineRoom(
     roomCode: code,
     accountId: profile.accountId,
     accountSecret: profile.accountSecret,
-    playerName: scrubPiiText(profile.playerName, 'あなた', 12),
+    playerName: onlinePlayerName(profile),
     charId: profile.partner,
     rankPoints: profile.rankPoints,
     equippedTitle: profile.equippedTitle,
@@ -511,7 +534,7 @@ export async function quickMatchOnline(
     action: 'quickMatch',
     accountId: profile.accountId,
     accountSecret: profile.accountSecret,
-    playerName: scrubPiiText(profile.playerName, 'あなた', 12),
+    playerName: onlinePlayerName(profile),
     charId: profile.partner,
     rankPoints: profile.rankPoints,
     equippedTitle: profile.equippedTitle,
@@ -739,7 +762,26 @@ export async function sendOnlineRoomStamp(
 
 /** Populate remaining seats with AI rivals before starting an online room match. */
 export function buildOnlineRoomLineup(room: OnlineRoomState): OnlineRoomMember[] {
-  const humans = room.members.filter((m) => !m.isBot);
+  // If the room is already playing with an authoritative tableState of matching seat count,
+  // preserve the exact seat order so mid-game joiners do not reshuffle existing seats.
+  if (
+    room.tableState &&
+    Array.isArray(room.tableState.seats) &&
+    room.members.length === room.tableState.seats.length &&
+    room.members.length >= 2
+  ) {
+    return room.members.map((m) => ({
+      ...m,
+      playerName: m.isBot ? m.playerName : resolveOnlineMemberName(m.playerName, m.accountId, false),
+    }));
+  }
+
+  const humans = room.members
+    .filter((m) => !m.isBot)
+    .map((m) => ({
+      ...m,
+      playerName: resolveOnlineMemberName(m.playerName, m.accountId, false),
+    }));
   const maxSeats = Math.max(2, Math.min(6, room.settings.maxSeats));
   if (!room.settings.fillWithBots && humans.length >= 2) {
     return humans.slice(0, maxSeats);
@@ -770,7 +812,7 @@ export function buildOnlineRoomLineup(room: OnlineRoomState): OnlineRoomMember[]
 
 /**
  * Rotates an authoritative TableState so that `heroSeat` (0..N-1) becomes view seat 0.
- * Preserves all relative clockwise seat positions, button, toAct, pots, payouts, and reveals.
+ * Preserves all relative clockwise seat positions, button, sbSeat, bbSeat, toAct, pots, payouts, and reveals.
  */
 export function rotateTableForHero(raw: TableState, heroSeat: number): TableState {
   const n = raw.seats.length;
@@ -809,8 +851,28 @@ export function rotateTableForHero(raw: TableState, heroSeat: number): TableStat
   return {
     ...raw,
     button: toView(raw.button),
+    sbSeat: typeof raw.sbSeat === 'number' ? toView(raw.sbSeat) : raw.sbSeat,
+    bbSeat: typeof raw.bbSeat === 'number' ? toView(raw.bbSeat) : raw.bbSeat,
     toAct: raw.toAct === null ? null : toView(raw.toAct),
+    lastAggressor:
+      raw.lastAggressor === null || raw.lastAggressor === undefined
+        ? null
+        : toView(raw.lastAggressor),
+    prevAggressor:
+      raw.prevAggressor === null || raw.prevAggressor === undefined
+        ? raw.prevAggressor
+        : toView(raw.prevAggressor),
     seats: rotatedSeats,
     result: rotatedResult,
   };
+}
+
+/**
+ * Inverse of `rotateTableForHero`: rotates a view-oriented TableState (where `heroSeat` is at index 0)
+ * back into canonical room seat indices.
+ */
+export function rotateTableFromHero(view: TableState, heroSeat: number): TableState {
+  const n = view.seats.length;
+  if (n === 0 || heroSeat <= 0 || heroSeat >= n) return view;
+  return rotateTableForHero(view, (n - (heroSeat % n)) % n);
 }

@@ -33,6 +33,10 @@ export interface SeatViewProps {
   players: number;
   /** where the seat sits relative to the table centre */
   side: 'top' | 'left' | 'right';
+  /** whether this opponent seat is controlled by a real online human player */
+  isRemoteHuman?: boolean;
+  /** whether the table is an online match */
+  isOnline?: boolean;
 }
 
 /** Badge showing the last action (CHECK / CALL / RAISE …) */
@@ -231,17 +235,18 @@ export function SeatView(p: SeatViewProps) {
             {/* Showdown Hand Rank Ribbon */}
             {p.revealed && p.showdownHand && p.showdownHand.category >= 0 && (
               <div
-                className="pointer-events-none absolute -bottom-3.5 left-1/2 z-40 whitespace-nowrap"
+                className="pointer-events-none absolute -bottom-4 left-1/2 z-40 -translate-x-1/2 whitespace-nowrap"
                 style={{ animation: 'rf-hand-ribbon 380ms cubic-bezier(.2,1.4,.4,1) both' }}
               >
                 <span
-                  className={`block rounded-md border px-2 py-[1px] text-[10px] font-black tracking-wider shadow-lg ${
+                  className={`block rounded-md border px-2 py-[1px] text-[10px] font-black tracking-wide shadow-lg ${
                     p.showdownHand.isWinner
                       ? 'border-amber-100 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-[0_0_14px_rgba(253,224,71,0.85)]'
-                      : 'border-white/30 bg-slate-950/90 text-amber-100'
+                      : 'border-white/30 bg-slate-950/95 text-amber-100'
                   }`}
                 >
-                  {p.showdownHand.nameJa}
+                  {p.showdownHand.isWinner ? '👑 ' : ''}
+                  {p.showdownHand.detailJa || p.showdownHand.nameJa}
                 </span>
               </div>
             )}
@@ -255,11 +260,48 @@ export function SeatView(p: SeatViewProps) {
       </div>
       {/* name plate */}
       <div
-        className="relative mt-1 min-w-[78px] max-w-[120px] overflow-hidden rounded-lg border bg-slate-950/85 px-2 pb-0.5 pt-[3px] text-center shadow-[0_4px_12px_rgba(0,0,0,0.6)] backdrop-blur"
-        style={{ borderColor: p.winner ? '#fde047' : `${ch.color}88` }}
+        className={`relative mt-1 min-w-[86px] max-w-[136px] overflow-hidden rounded-lg border bg-slate-950/90 px-2 pb-0.5 pt-[3px] text-center backdrop-blur ${
+          p.isRemoteHuman
+            ? 'shadow-[0_0_14px_rgba(16,185,129,0.45),0_4px_12px_rgba(0,0,0,0.65)]'
+            : 'shadow-[0_4px_12px_rgba(0,0,0,0.6)]'
+        }`}
+        style={{
+          borderColor: p.winner
+            ? '#fde047'
+            : p.isRemoteHuman
+              ? '#34d399'
+              : `${ch.color}88`,
+        }}
       >
-        <div className="absolute inset-x-0 top-0 h-[2px]" style={{ background: `linear-gradient(90deg, ${ch.color}, ${ch.color2})` }} />
-        <div className="truncate text-[10px] font-bold leading-tight text-white/90">{ch.name}</div>
+        <div
+          className="absolute inset-x-0 top-0 h-[2px]"
+          style={{
+            background: p.isRemoteHuman
+              ? 'linear-gradient(90deg, #10b981, #34d399, #6ee7b7)'
+              : `linear-gradient(90deg, ${ch.color}, ${ch.color2})`,
+          }}
+        />
+        <div className="flex items-center justify-center gap-1">
+          {p.isRemoteHuman ? (
+            <span
+              title="本物の人間プレイヤー（オンライン対戦中）"
+              className="inline-flex shrink-0 items-center gap-0.5 rounded bg-emerald-500/25 px-1 py-[0.5px] text-[8px] font-black tracking-wider text-emerald-300 ring-1 ring-emerald-400/50"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              PLAYER
+            </span>
+          ) : (
+            <span
+              title="AIプレイヤー（CPU）"
+              className="inline-flex shrink-0 items-center rounded bg-slate-800/90 px-1 py-[0.5px] text-[8px] font-bold tracking-wider text-slate-400"
+            >
+              CPU
+            </span>
+          )}
+          <div className="truncate text-[10px] font-bold leading-tight text-white/95">
+            {seat.name || ch.name}
+          </div>
+        </div>
         <div className="flex items-center justify-center gap-1">
           <span className="text-[11px] font-black tabular-nums text-amber-200">{fmt(p.displayStack)}</span>
         </div>

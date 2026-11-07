@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, PlayerAction, TableState } from '../types';
-import { applyAction, createTable, decideAi, legalActions, startHand } from '../engine';
+import { applyAction, createTable, decideAi, formatHandDetailJa, legalActions, startHand } from '../engine';
 import { holdemAudio, type SeName } from '../audio';
 import { CHARACTERS, pickLine, type CharId, type VoiceEvent } from '../characters';
 import { blindsForHand, resolveSeatPosition, type HandReport, type SessionSummary, type TableConfig } from '../config';
 import {
   fetchOnlineRoom,
   getCachedOnlineRoom,
+  resolveOnlineMemberName,
   rotateTableForHero,
   sendOnlineRoomStamp,
   subscribeRoomBus,
@@ -33,7 +34,10 @@ export interface SeatBubble {
 export interface CutInData {
   key: number;
   charId: CharId;
-  variant: 'allin' | 'win';
+  playerName?: string;
+  isHero?: boolean;
+  isHumanPlayer?: boolean;
+  variant: 'allin' | 'win' | 'oppWin';
   title: string;
   subtitle: string;
   line: string;
@@ -55,15 +59,25 @@ export interface HandHistoryItem {
 }
 export interface ShowdownSeatHand {
   seat: number;
+  playerName?: string;
+  charId?: CharId;
+  isHumanPlayer?: boolean;
+  isSelf?: boolean;
+  holeCards?: Card[];
+  best5?: Card[];
   nameJa: string;
+  detailJa?: string;
   nameEn: string;
   category: number;
+  score?: number;
   isWinner: boolean;
   payout: number;
+  net?: number;
 }
 export interface ResultInfo {
   title: string;
   handName: string;
+  handDetailJa?: string;
   handTitleEn?: string;
   pot: number;
   heroWon: boolean;
@@ -72,10 +86,14 @@ export interface ResultInfo {
   winners: number[];
   winnerCharId: CharId;
   winnerName: string;
+  winnerIsHuman?: boolean;
+  winnerIsSelf?: boolean;
+  winnerHoleCards?: Card[];
   winnerLine: string;
   showdown: boolean;
   best5: Card[];
-  pots: { label: string; amount: number; winners: string }[];
+  showdownContenders?: ShowdownSeatHand[];
+  pots: { label: string; amount: number; winners: string; handName?: string }[];
 }
 export interface SessionEndInfo {
   summary: SessionSummary;
@@ -148,9 +166,15 @@ function buildInitial(config: TableConfig, heroName: string): TableState {
         seats: rotated.seats.map((s, vSeat) => {
           const rawIdx = (vSeat + mySeat) % n;
           const mem = members[rawIdx];
-          return mem
-            ? { ...s, name: mem.playerName, charId: mem.charId as CharId, isHuman: vSeat === 0 }
-            : s;
+          if (!mem) return s;
+          const resolvedName = mem.isBot
+            ? mem.playerName
+            : resolveOnlineMemberName(
+                vSeat === 0 ? heroName : mem.playerName,
+                mem.accountId,
+                vSeat === 0,
+              );
+          return { ...s, name: resolvedName, charId: mem.charId as CharId, isHuman: vSeat === 0 };
         }),
       };
     }
@@ -232,11 +256,14 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     betsAndRaises: 0,
     calls: 0,
   });
-  const onlineSeqRef = useRef(0);
+  const onlineSeqRef = useRef(
+    config.online ? (getCachedOnlineRoom(config.online.roomId)?.actionSeq ?? 0) : 0,
+  );
   const mySeatRef = useRef(config.online?.mySeat ?? 0);
   const seenStampIdsRef = useRef(new Set<string>());
   const pendingRoomRef = useRef<OnlineRoomState | null>(null);
-  const humanSeatsRef = useRef<Set<number>>((() => {
+  const shownResultHandRef = useRef(0);
+  const initialHumanSet = (() => {
     const set = new Set<number>([0]);
     if (config.online?.members) {
       const members = config.online.members;
@@ -249,7 +276,9 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       });
     }
     return set;
-  })());
+  })();
+  const humanSeatsRef = useRef<Set<number>>(initialHumanSet);
+  const [humanSeats, setHumanSeats] = useState<number[]>(() => Array.from(initialHumanSet));
 
   const nextKey = () => ++keyRef.current;
 
@@ -412,6 +441,9 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     async (next: TableState) => {
       const r = next.result;
       if (!r) return;
+      if (shownResultHandRef.current === next.handNumber) return;
+      shownResultHandRef.current = next.handNumber;
+
       const hero = next.seats[0];
       const bb = next.blinds.bb;
       const sdMap: Record<number, ShowdownSeatHand> = {};
@@ -420,13 +452,25 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         const show = r.reveals.map((x) => x.seat);
         setRevealed((prev) => Array.from(new Set([...prev, ...show])));
         r.reveals.forEach((x) => {
+          const stObj = next.seats[x.seat];
+          const payoutAmt = r.payouts[x.seat] ?? 0;
+          const netAmt = payoutAmt - (stObj?.committed ?? 0);
           sdMap[x.seat] = {
             seat: x.seat,
+            playerName: stObj?.name ?? '',
+            charId: (stObj?.charId as CharId) ?? 'karen',
+            isHumanPlayer: humanSeatsRef.current.has(x.seat),
+            isSelf: x.seat === 0,
+            holeCards: stObj?.holeCards ?? [],
+            best5: x.hand.best5,
             nameJa: x.hand.nameJa,
+            detailJa: formatHandDetailJa(x.hand),
             nameEn: handTitleEn(x.hand),
             category: x.hand.category,
+            score: x.hand.score,
             isWinner: r.winners.includes(x.seat),
-            payout: r.payouts[x.seat] ?? 0,
+            payout: payoutAmt,
+            net: netAmt,
           };
         });
         setShowdownHands(sdMap);
@@ -438,13 +482,24 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         setHighlight(Array.from(ids));
       } else {
         r.winners.forEach((wSeat) => {
+          const stObj = next.seats[wSeat];
+          const payoutAmt = r.payouts[wSeat] ?? next.potTotal;
           sdMap[wSeat] = {
             seat: wSeat,
+            playerName: stObj?.name ?? '',
+            charId: (stObj?.charId as CharId) ?? 'karen',
+            isHumanPlayer: humanSeatsRef.current.has(wSeat),
+            isSelf: wSeat === 0,
+            holeCards: stObj?.holeCards ?? [],
+            best5: [],
             nameJa: 'フォールド勝ち',
+            detailJa: 'フォールド勝ち（他全員フォールド）',
             nameEn: 'UNCONTESTED',
             category: -1,
+            score: -1,
             isWinner: true,
-            payout: r.payouts[wSeat] ?? next.potTotal,
+            payout: payoutAmt,
+            net: payoutAmt - (stObj?.committed ?? 0),
           };
         });
         setShowdownHands(sdMap);
@@ -453,21 +508,33 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       setWinners(r.winners);
       const pot = r.pots.reduce((a, p) => a + p.amount, 0) || next.potTotal;
       const names = r.winners.map((s) => next.seats[s].name).join(' & ');
-      const heroWon = r.winners.includes(0);
       const heroInHand = !hero.folded && !hero.sittingOut && hero.holeCards.length > 0;
       const heroNet = (r.payouts[0] ?? 0) - hero.committed;
+      const mainPotWinners = r.pots[0]?.winners ?? r.winners;
+      const heroWon = r.showdown
+        ? mainPotWinners.includes(0) || (r.winners.includes(0) && heroNet > 0)
+        : r.winners.includes(0);
       const heroReveal = r.reveals.find((x) => x.seat === 0);
       const heroCat = heroReveal?.hand.category ?? -1;
-      const w0 = r.winners[0] ?? 0;
+      const w0 = heroWon && mainPotWinners.includes(0) ? 0 : (r.winners[0] ?? 0);
       const winSeatObj = next.seats[w0] ?? hero;
       const winCharId = (winSeatObj.charId as CharId) || (hero.charId as CharId);
-      const winReveal = r.reveals.find((x) => r.winners.includes(x.seat));
+      const winReveal =
+        r.reveals.find((x) => x.seat === w0) ?? r.reveals.find((x) => r.winners.includes(x.seat));
       const winCat = winReveal?.hand.category ?? -1;
+      const winDetailJa = winReveal
+        ? formatHandDetailJa(winReveal.hand)
+        : r.headline || 'フォールド勝ち（他全員フォールド）';
       const bigPot = pot >= bb * 16;
       const winLine = pickLine(winCharId, bigPot || winCat >= 4 ? 'bigWin' : 'win');
+      const showdownContenders = Object.values(sdMap).sort((a, b) => {
+        if (a.isWinner !== b.isWinner) return a.isWinner ? -1 : 1;
+        return (b.score ?? -1) - (a.score ?? -1);
+      });
       setResult({
         title: `${names} の勝利！`,
-        handName: r.headline,
+        handName: r.headline || 'フォールド勝ち',
+        handDetailJa: winDetailJa,
         handTitleEn: winReveal ? handTitleEn(winReveal.hand) : undefined,
         pot,
         heroWon,
@@ -476,14 +543,21 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         winners: r.winners,
         winnerCharId: winCharId,
         winnerName: winSeatObj.name,
+        winnerIsHuman: humanSeatsRef.current.has(w0),
+        winnerIsSelf: w0 === 0,
+        winnerHoleCards: winSeatObj.holeCards ?? [],
         winnerLine: winLine,
         showdown: r.showdown,
         best5: winReveal?.hand.best5 ?? [],
-        pots: r.pots.map((p) => ({
-          label: p.label,
-          amount: p.amount,
-          winners: p.winners.map((s) => next.seats[s].name).join(' & '),
-        })),
+        showdownContenders,
+        pots: r.pots
+          .filter((p) => p.eligible.length >= 2 || r.pots.length === 1)
+          .map((p) => ({
+            label: p.label,
+            amount: p.amount,
+            winners: p.winners.map((s) => next.seats[s].name).join(' & '),
+            handName: p.handName,
+          })),
       });
       se(heroWon ? 'win' : heroInHand && r.showdown ? 'lose' : 'chips');
       if (w0 !== undefined) speak(w0, bigPot || winCat >= 4 ? 'bigWin' : 'win', 1);
@@ -502,27 +576,32 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         const cutCharId = triggerHeroCutIn ? (hero.charId as CharId) : winCharId;
         const activeReveal = triggerHeroCutIn ? heroReveal : winReveal;
         const activeCat = triggerHeroCutIn ? heroCat : winCat;
-        const title =
-          activeCat >= 2 && activeReveal
+        const activeDetail = activeReveal ? formatHandDetailJa(activeReveal.hand) : winDetailJa;
+        const title = triggerHeroCutIn
+          ? activeCat >= 2 && activeReveal
             ? `${handTitleEn(activeReveal.hand)}!!`
-            : (triggerHeroCutIn ? hero.allIn : winSeatObj.allIn)
+            : hero.allIn
               ? 'ALL-IN WIN!!'
               : r.showdown
                 ? 'SHOWDOWN WIN!!'
-                : 'BIG POT WIN!!';
+                : 'BIG POT WIN!!'
+          : `${winSeatObj.name} WINS`;
         const gainAmt = triggerHeroCutIn ? Math.max(pot, heroNet) : pot;
         holdemAudio.playBgm(triggerHeroCutIn ? 'victory' : 'table');
-        se(triggerHeroCutIn ? 'bigWin' : 'win');
+        se(triggerHeroCutIn ? 'bigWin' : 'reveal');
         if (triggerHeroCutIn && !settingsRef.current.reducedFx) setFxKey(nextKey());
         await showCutIn(
           {
             charId: cutCharId,
-            variant: 'win',
+            playerName: triggerHeroCutIn ? hero.name : winSeatObj.name,
+            isHero: triggerHeroCutIn,
+            isHumanPlayer: triggerHeroCutIn ? true : humanSeatsRef.current.has(w0),
+            variant: triggerHeroCutIn ? 'win' : 'oppWin',
             title,
-            subtitle: `${r.headline || 'SHOWDOWN'}  +${fmt(gainAmt)}`,
+            subtitle: `${activeDetail}  +${fmt(gainAmt)}`,
             line: triggerHeroCutIn ? pickLine(cutCharId, 'bigWin') : winLine,
           },
-          triggerHeroCutIn ? 3100 : 2300,
+          triggerHeroCutIn ? 3100 : 2100,
         );
         later(3200, () => holdemAudio.playBgm('table'));
       } else {
@@ -563,7 +642,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
           {
             handNumber: next.handNumber,
             winnerNames: names,
-            handName: r.headline,
+            handName: winDetailJa,
             pot,
             heroNet,
             board: next.board,
@@ -599,6 +678,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
               isOnline: Boolean(config.online),
             },
           });
+          busyRef.current = false;
           setPhase('sessionOver');
           return;
         }
@@ -606,6 +686,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         if (next.seats[0].stack <= 0) {
           toast('チップがなくなりました！', `無料リバイで ${fmt(config.startingStack)} チップを補充できます`, 'danger');
           bubble(0, 'まだ終わってないわ！無料リバイで新しいスタックを補充して巻き返しましょ！', 5000);
+          busyRef.current = false;
           setPhase('handOver');
           setCountdown(null);
           return;
@@ -614,14 +695,16 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
           toast('テーブル全員を飛ばしました！', '新たなチャレンジャーがフルスタックで着席します', 'gold');
         }
       }
+      busyRef.current = false;
       setPhase('handOver');
-      setCountdown(5);
+      // In online rooms, Host deals at 5s while non-host waits up to 8s for Host's authoritative deal
+      setCountdown(config.online && mySeatRef.current !== 0 ? 8 : 5);
     },
     [bubble, config.autoRebuy, config.mode, config.online, config.startingStack, later, se, setPhase, showCutIn, sleep, speak, toast],
   );
 
   const processAction = useCallback(
-    async (seat: number, action: PlayerAction, fromRemote = false) => {
+    async (seat: number, action: PlayerAction, fromRemote = false, authoritativeNext?: TableState) => {
       const prev = stateRef.current;
       if (prev.toAct !== seat || busyRef.current || phaseRef.current !== 'playing') return;
       busyRef.current = true;
@@ -629,7 +712,11 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       setThinking(null);
       let next: TableState;
       try {
-        next = applyAction(prev, action);
+        if (fromRemote && authoritativeNext && authoritativeNext.handNumber === prev.handNumber) {
+          next = authoritativeNext;
+        } else {
+          next = applyAction(prev, action);
+        }
       } catch {
         busyRef.current = false;
         setPhase('playing');
@@ -722,6 +809,9 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
           await showCutIn(
             {
               charId: ns.charId as CharId,
+              playerName: ns.name,
+              isHero: seat === 0,
+              isHumanPlayer: humanSeatsRef.current.has(seat),
               variant: 'allin',
               title: 'ALL-IN!!',
               subtitle: ns.name,
@@ -774,6 +864,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
 
   const nextHand = useCallback(async () => {
     if (phaseRef.current !== 'handOver') return;
+    busyRef.current = true;
     setPhase('dealing');
     setCountdown(null);
     handTrackRef.current = {
@@ -915,23 +1006,37 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         if (!m.isBot && rawIdx < n) {
           const vSeat = ((rawIdx - myIdx) % n + n) % n;
           if (vSeat !== 0 && !prevHumans.has(vSeat)) {
-            toast(`${m.playerName} さんが着席しました！`, `SEAT #${rawIdx + 1} · ONLINE`, 'gold');
+            const dispName = resolveOnlineMemberName(m.playerName, m.accountId, false);
+            toast(`${dispName} さんが着席しました！`, `👤 PLAYER · SEAT #${rawIdx + 1}`, 'gold');
           }
           nextHumanViewSeats.add(vSeat);
         }
       });
       humanSeatsRef.current = nextHumanViewSeats;
+      setHumanSeats((prev) => {
+        const nextArr = Array.from(nextHumanViewSeats).sort((a, b) => a - b);
+        if (prev.length === nextArr.length && prev.every((v, i) => v === nextArr[i])) return prev;
+        return nextArr;
+      });
+
+      const resolveSeatNameAndChar = (s: TableState['seats'][number], vSeat: number) => {
+        const rawIdx = (vSeat + myIdx) % n;
+        const mem = members[rawIdx];
+        if (!mem) return s;
+        const resolvedName = mem.isBot
+          ? mem.playerName
+          : resolveOnlineMemberName(vSeat === 0 ? heroName : mem.playerName, mem.accountId, vSeat === 0);
+        return { ...s, name: resolvedName, charId: mem.charId as CharId, isHuman: vSeat === 0 };
+      };
 
       // Sync seat names & avatars from room members
       const cur = stateRef.current;
       let namesChanged = false;
       const updatedSeats = cur.seats.map((seatObj, vSeat) => {
-        const rawIdx = (vSeat + myIdx) % n;
-        const mem = members[rawIdx];
-        if (!mem) return seatObj;
-        if (seatObj.name !== mem.playerName || seatObj.charId !== mem.charId) {
+        const nextSeatObj = resolveSeatNameAndChar(seatObj, vSeat);
+        if (seatObj.name !== nextSeatObj.name || seatObj.charId !== nextSeatObj.charId) {
           namesChanged = true;
-          return { ...seatObj, name: mem.playerName, charId: mem.charId };
+          return nextSeatObj;
         }
         return seatObj;
       });
@@ -965,32 +1070,44 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         onlineSeqRef.current = room.actionSeq;
         pendingRoomRef.current = null;
 
+        let nextState: TableState | null = null;
+        if (room.tableState) {
+          const rotated = rotateTableForHero(room.tableState, myIdx);
+          const patchedSeats = rotated.seats.map((s, vSeat) => resolveSeatNameAndChar(s, vSeat));
+          nextState = { ...rotated, seats: patchedSeats };
+        }
+
+        // If a single remote action arrived for the current hand & current toAct, animate it using authoritative nextState
         if (
           room.lastAction &&
           room.lastAction.actorAccountId !== online.accountId &&
-          room.lastAction.seq > prevSeq
+          room.lastAction.seq === prevSeq + 1 &&
+          (!nextState || nextState.handNumber === stateRef.current.handNumber)
         ) {
           const vSeat = ((room.lastAction.seat - myIdx) % n + n) % n;
           if (stateRef.current.toAct === vSeat && phaseRef.current === 'playing') {
-            void processAction(vSeat, room.lastAction.action, true);
+            void processAction(vSeat, room.lastAction.action, true, nextState ?? undefined);
             return;
           }
         }
 
-        if (room.tableState) {
-          const rotated = rotateTableForHero(room.tableState, myIdx);
-          const patchedSeats = rotated.seats.map((s, vSeat) => {
-            const rawIdx = (vSeat + myIdx) % n;
-            const mem = members[rawIdx];
-            return mem ? { ...s, name: mem.playerName, charId: mem.charId } : s;
-          });
-          const nextState: TableState = { ...rotated, seats: patchedSeats };
-          if (nextState.handNumber > stateRef.current.handNumber) {
+        if (nextState) {
+          const localHoleId = stateRef.current.seats[0]?.holeCards?.[0]?.id;
+          const remoteHoleId = nextState.seats[0]?.holeCards?.[0]?.id;
+          const isNewDeal =
+            nextState.handNumber > stateRef.current.handNumber ||
+            (nextState.handNumber === stateRef.current.handNumber &&
+              remoteHoleId &&
+              localHoleId &&
+              remoteHoleId !== localHoleId);
+
+          if (isNewDeal) {
             stateRef.current = nextState;
             setRevealed([]);
             setBadges({});
             setHighlight(null);
             setWinners([]);
+            setShowdownHands({});
             setEquities(null);
             setResult(null);
             setPotFly(null);
@@ -1001,6 +1118,22 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
             setView(nextState);
             setDealKey(nextKey());
             setPhase('playing');
+          } else if (nextState.result && shownResultHandRef.current !== nextState.handNumber) {
+            // Hand finished on the server (e.g. multiple actions occurred between polls): run board & showdown sequence!
+            const prevBoardLen = stateRef.current.board.length;
+            stateRef.current = nextState;
+            busyRef.current = true;
+            setPhase('animating');
+            setThinking(null);
+            setPayoutPending(true);
+            setView(nextState);
+            void (async () => {
+              const grew = nextState.board.length > prevBoardLen;
+              if (grew && nextState.result?.showdown) await runoutSequence(prevBoardLen, nextState);
+              else if (grew) await dealBoard(prevBoardLen, nextState.board.length);
+              else setBoardShown(nextState.board.length);
+              await showdownSequence(nextState);
+            })();
           } else {
             stateRef.current = nextState;
             setView(nextState);
@@ -1010,13 +1143,16 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       }
     };
 
-    // Initial room sync: if host and room has no tableState yet, publish initial state
+    // Initial room sync: if room has no tableState yet, publish canonical initial state
     void fetchOnlineRoom(online.roomId).then((room) => {
       if (!room) return;
       if (!room.tableState) {
+        const n = stateRef.current.seats.length;
+        const mySeat = mySeatRef.current;
+        const rawInit = rotateTableForHero(stateRef.current, (n - mySeat) % n);
         onlineSeqRef.current = room.actionSeq + 1;
         void syncOnlineRoomState(online.roomId, online.accountId, {
-          tableState: stateRef.current,
+          tableState: rawInit,
           actionSeq: onlineSeqRef.current,
         });
       }
@@ -1038,7 +1174,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       unsub();
       window.clearInterval(pollId);
     };
-  }, [bubble, config.online, processAction, se, setPhase, toast]);
+  }, [bubble, config.online, dealBoard, heroName, processAction, runoutSequence, se, setPhase, showdownSequence, toast]);
 
   // hero turn cue + pre-actions
   useEffect(() => {
@@ -1158,9 +1294,21 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     };
     stateRef.current = next;
     setView(next);
+    if (config.online) {
+      const n = next.seats.length;
+      const mySeat = mySeatRef.current;
+      const canonicalNext = rotateTableForHero(next, (n - mySeat) % n);
+      const nextSeq = onlineSeqRef.current + 1;
+      onlineSeqRef.current = nextSeq;
+      void syncOnlineRoomState(config.online.roomId, config.online.accountId, {
+        tableState: canonicalNext,
+        actionSeq: nextSeq,
+        lastAction: null,
+      });
+    }
     se('chips');
     toast('チップを満額補充しました', `+${fmt(added)} → ${fmt(config.startingStack)}`, 'gold');
-  }, [config.autoRebuy, config.startingStack, se, toast]);
+  }, [config.autoRebuy, config.online, config.startingStack, se, toast]);
 
   const changeHeroChar = useCallback(
     (newCharId: CharId) => {
@@ -1171,10 +1319,22 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       };
       stateRef.current = next;
       setView(next);
+      if (config.online) {
+        const n = next.seats.length;
+        const mySeat = mySeatRef.current;
+        const canonicalNext = rotateTableForHero(next, (n - mySeat) % n);
+        const nextSeq = onlineSeqRef.current + 1;
+        onlineSeqRef.current = nextSeq;
+        void syncOnlineRoomState(config.online.roomId, config.online.accountId, {
+          tableState: canonicalNext,
+          actionSeq: nextSeq,
+          lastAction: null,
+        });
+      }
       se('open');
       speak(0, 'select', 1, true);
     },
-    [se, speak],
+    [config.online, se, speak],
   );
 
   return {
@@ -1203,6 +1363,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     heroPeeked,
     level,
     countdown,
+    humanSeats,
     preAction,
     setPreAction,
     heroAct,

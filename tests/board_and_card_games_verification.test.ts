@@ -113,5 +113,12 @@ describe('Board and Card games', () => {
         resultOverlay.includes('満額補充'),
       'Texas Holdem must include busted relief rebuy, retry, and stack top-up UI when chips run out'
     );
+    const holdemPage = read('src/app/texas-holdem/page.tsx');
+    assert.ok(
+      holdemPage.includes('/og/texas-holdem.png') &&
+        holdemPage.includes('一ノ瀬カレン') &&
+        fs.existsSync(path.join(ROOT, 'public/assets/holdem/ogp_cover_v2.png')),
+      'Texas Holdem page OGP metadata and custom Ichinose Karen OGP cover must be configured'
+    );
   });
 });

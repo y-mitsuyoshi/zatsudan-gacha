@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { evaluate7, legalActions, preflopTier } from '../engine';
+import { evaluate7, formatHandDetailJa, legalActions, preflopTier } from '../engine';
 import { holdemAudio } from '../audio';
 import { CHARACTERS, CHAR_IDS, charImage, FELTS, HOLDEM_ASSETS, type CharId } from '../characters';
 import {
@@ -148,7 +148,7 @@ export function TableScreen({
     if (!hero || hero.holeCards.length < 2) return null;
     const shownBoard = view.board.slice(0, t.boardShown);
     if (shownBoard.length >= 3) {
-      return evaluate7([...hero.holeCards, ...shownBoard]).nameJa;
+      return formatHandDetailJa(evaluate7([...hero.holeCards, ...shownBoard]));
     }
     const tier = preflopTier(hero.holeCards);
     return `${tier.notation} (${tier.labelJa})`;
@@ -274,6 +274,17 @@ export function TableScreen({
                   >
                     🔗 招待
                   </button>
+                  <span
+                    title="緑のPLAYERバッジが本物の人間プレイヤー、CPUバッジがAIです"
+                    className="inline-flex items-center gap-1 rounded border border-emerald-400/45 bg-emerald-950/75 px-1.5 py-0.5 text-[10px] font-black text-emerald-200"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>人間 {t.humanSeats.length}人</span>
+                    <span className="text-slate-400">·</span>
+                    <span className="text-slate-300">
+                      CPU {Math.max(0, view.seats.length - t.humanSeats.length)}
+                    </span>
+                  </span>
                   {roomCopyNotice && (
                     <span className="text-[10px] font-black text-emerald-300">{roomCopyNotice}</span>
                   )}
@@ -627,6 +638,8 @@ export function TableScreen({
                 dealOrder={idx}
                 players={alivePlayers}
                 side={side}
+                isRemoteHuman={t.humanSeats.includes(idx)}
+                isOnline={Boolean(config.online)}
               />
             );
           })}
@@ -737,6 +750,9 @@ export function TableScreen({
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
+                    <span className="inline-flex shrink-0 items-center rounded bg-amber-400/25 px-1 py-[0.5px] text-[9px] font-black tracking-wider text-amber-200 ring-1 ring-amber-300/50">
+                      🌟 YOU
+                    </span>
                     <span className="truncate text-xs font-black text-white sm:text-sm">
                       {profile.playerName}
                     </span>
@@ -764,7 +780,7 @@ export function TableScreen({
 
               {/* Hero Hole Cards */}
               <div className="relative flex flex-col items-center">
-                {heroFaceUp && (t.showdownHands[0]?.nameJa || heroHandLabel) && !hero.folded && (
+                {heroFaceUp && (t.showdownHands[0]?.detailJa || t.showdownHands[0]?.nameJa || heroHandLabel) && !hero.folded && (
                   <div
                     className={`mb-1 rounded-full border px-2.5 py-0.5 text-[10px] font-black tracking-wide shadow ${
                       t.winners.includes(0)
@@ -772,8 +788,8 @@ export function TableScreen({
                         : 'border-amber-300/50 bg-slate-950/90 text-amber-200'
                     }`}
                   >
-                    {t.winners.includes(0) ? '👑 ' : '役: '}
-                    {t.showdownHands[0]?.nameJa || heroHandLabel}
+                    {t.winners.includes(0) ? '👑 上がり役: ' : '現在役: '}
+                    {t.showdownHands[0]?.detailJa || t.showdownHands[0]?.nameJa || heroHandLabel}
                   </div>
                 )}
                 <div className="relative flex items-center gap-1.5 sm:gap-2">

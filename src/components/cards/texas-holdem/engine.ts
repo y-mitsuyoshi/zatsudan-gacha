@@ -194,6 +194,45 @@ export function handNameJa(category: number): string {
   return HAND_NAMES[category]?.ja ?? '';
 }
 
+/**
+ * Returns a human-friendly Japanese hand description with specific ranks, suits, and kickers
+ * (e.g. "ワンペア（Aのペア / Kキッカー）", "フルハウス（K×3枚・10×2枚）", "フラッシュ（♠ Aハイ）").
+ */
+export function formatHandDetailJa(hand: EvaluatedHand): string {
+  const score = hand.score;
+  const r0 = (score >> 16) & 15;
+  const r1 = (score >> 12) & 15;
+  const r2 = (score >> 8) & 15;
+  const r3 = (score >> 4) & 15;
+  const r4 = score & 15;
+  const R = (r: number) => rankLabel(r === 1 ? 14 : r);
+  const suitSym = hand.best5[0] ? SUIT_SYMBOL[hand.best5[0].suit] : '';
+
+  switch (hand.category) {
+    case 8:
+      if (r0 === 14) return `ロイヤルフラッシュ（${suitSym} 10-J-Q-K-A）`;
+      if (r0 === 5) return `ストレートフラッシュ（${suitSym} A-2-3-4-5）`;
+      return `ストレートフラッシュ（${suitSym} ${R(r4)}〜${R(r0)}）`;
+    case 7:
+      return `フォーカード（${R(r0)}の4枚 / ${R(r4)}キッカー）`;
+    case 6:
+      return `フルハウス（${R(r0)}×3枚・${R(r3)}×2枚）`;
+    case 5:
+      return `フラッシュ（${suitSym} ${R(r0)}ハイ）`;
+    case 4:
+      if (r0 === 5) return 'ストレート（A-2-3-4-5）';
+      return `ストレート（${R(r4)}〜${R(r0)}）`;
+    case 3:
+      return `スリーカード（${R(r0)}の3枚 / ${R(r3)}キッカー）`;
+    case 2:
+      return `ツーペア（${R(r0)}と${R(r2)}のペア / ${R(r4)}キッカー）`;
+    case 1:
+      return `ワンペア（${R(r0)}のペア / ${R(r2)}キッカー）`;
+    default:
+      return `ハイカード（${R(r0)}・${R(r1)}ハイ）`;
+  }
+}
+
 /** Evaluate the best 5-card hand out of 5..7 cards. */
 export function evaluate7(cards: Card[]): EvaluatedHand {
   const codes = cards.map(cardCode);
@@ -753,14 +792,20 @@ function doShowdown(st: TableState): void {
   const contestedWinners = winners.filter((w) => (contestedPay[w] ?? 0) > 0);
   const pool = contestedWinners.length > 0 ? contestedWinners : winners;
   const rankMap = contestedWinners.length > 0 ? contestedPay : payouts;
-  let headSeat = pool[0];
-  for (const w of pool) if ((rankMap[w] ?? 0) > (rankMap[headSeat] ?? 0)) headSeat = w;
+  const orderedWinners = pool.slice().sort((a, b) => {
+    const payDiff = (rankMap[b] ?? 0) - (rankMap[a] ?? 0);
+    if (payDiff !== 0) return payDiff;
+    const scoreDiff = (hands.get(b)?.score ?? -1) - (hands.get(a)?.score ?? -1);
+    if (scoreDiff !== 0) return scoreDiff;
+    return 0;
+  });
+  const headSeat = orderedWinners[0];
   finishHand(st, {
     showdown: true,
     pots,
     payouts,
     reveals,
-    winners,
+    winners: orderedWinners,
     headline: headSeat !== undefined ? hands.get(headSeat)?.nameJa ?? '' : '',
   });
 }

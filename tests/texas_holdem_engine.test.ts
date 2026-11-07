@@ -25,6 +25,7 @@ import {
   decideAi,
   estimateEquity,
   evaluate7,
+  formatHandDetailJa,
   isHandOver,
   legalActions,
   preflopTier,
@@ -34,7 +35,9 @@ import {
 import {
   buildOnlineRoomLineup,
   createAuthoritativeRoomTableState,
+  resolveOnlineMemberName,
   rotateTableForHero,
+  rotateTableFromHero,
   type OnlineRoomState,
 } from '../src/components/cards/texas-holdem/onlineClient';
 import {
@@ -959,5 +962,73 @@ describe('Account Management, Rank System, Poker Analytics & Online Multiplayer'
     // Both see the exact same hole cards for each player
     assert.deepEqual(friendView.seats[0].holeCards, hostView.seats[1].holeCards);
     assert.deepEqual(friendView.seats[5].holeCards, hostView.seats[0].holeCards);
+  });
+
+  it('formats crystal-clear Japanese hand details (formatHandDetailJa) for every hand category', () => {
+    assert.equal(formatHandDetailJa(ev('Ac Kd 9h 7s 4c 3d 2s')), 'ハイカード（A・Kハイ）');
+    assert.equal(formatHandDetailJa(ev('Ac Ad Kh Qs Jc 3d 2s')), 'ワンペア（Aのペア / Kキッカー）');
+    assert.equal(formatHandDetailJa(ev('Kc Kd 9h 9s Ac 3d 2s')), 'ツーペア（Kと9のペア / Aキッカー）');
+    assert.equal(formatHandDetailJa(ev('7c 7d 7h As 2c 3d 4s')), 'スリーカード（7の3枚 / Aキッカー）');
+    assert.equal(formatHandDetailJa(ev('Ac 2d 3h 4s 5c Kd Ks')), 'ストレート（A-2-3-4-5）');
+    assert.equal(formatHandDetailJa(ev('6c 7d 8h 9s Tc 2d 3s')), 'ストレート（6〜10）');
+    assert.equal(formatHandDetailJa(ev('2h 5h 9h Jh Kh 3d 7s')), 'フラッシュ（♥ Kハイ）');
+    assert.equal(formatHandDetailJa(ev('Kc Kd Kh Ts Tc 3d 7s')), 'フルハウス（K×3枚・10×2枚）');
+    assert.equal(formatHandDetailJa(ev('8c 8d 8h 8s Ac 2d 3h')), 'フォーカード（8の4枚 / Aキッカー）');
+    assert.equal(formatHandDetailJa(ev('5h 6h 7h 8h 9h 2c 2d')), 'ストレートフラッシュ（♥ 5〜9）');
+    assert.equal(formatHandDetailJa(ev('Ts Js Qs Ks As 2c 2d')), 'ロイヤルフラッシュ（♠ 10-J-Q-K-A）');
+  });
+
+  it('excludes uncontested side-pot slice recipients from result.winners when they lose at showdown', () => {
+    // Scenario: P0 (stack 1000), P1 (short stack 200), P2 (stack 1000)
+    // P1 goes all-in for 200; P2 raises to 500; P0 calls 500; on the flop P0 bets 100 and P2 folds.
+    // Now P0 has contributed 600, P2 folded after putting in 500, and P1 is all-in for 200.
+    // Main pot (200 * 3 = 600) is contested between P0 and P1.
+    // Side pot (300 * 2 = 600, from P0 and folded P2) has only 1 eligible active player (P0)!
+    // At showdown, P1 has Royal Flush and beats P0's High Card.
+    // P1 wins the contested Main Pot (600); P0 gets the uncontested Side Pot (600) + 100 uncalled bet back.
+    // Crucially: P1 is the ONLY showdown winner (`result.winners` MUST be `[1]`, NEVER including `0`)!
+    let s = rigged(
+      table([1000, 200, 1000]),
+      { 0: '2c 7d', 1: 'As Ks', 2: '9c Td' },
+      'Qs Js Ts 3d 4h',
+    );
+    // Preflop: P0 (BTN) raises to 500, P1 (SB) calls all-in 200, P2 (BB) calls 500
+    s = act(s, 'raise', 500);
+    s = act(s, 'allin');
+    s = act(s, 'call');
+    assert.equal(s.street, 'flop');
+    // Flop: P2 (BB) checks, P0 bets 100, P2 folds -> triggers all-in runout between P0 and P1
+    s = act(s, 'check');
+    s = act(s, 'bet', 100);
+    s = act(s, 'fold');
+
+    assert.equal(isHandOver(s), true);
+    assert.ok(s.result);
+    // P1 won the contested showdown with Royal Flush
+    assert.deepEqual(s.result.winners, [1]);
+    assert.equal(s.result.pots[0].amount, 600);
+    assert.deepEqual(s.result.pots[0].winners, [1]);
+    // Chip conservation: 1000 + 200 + 1000 = 2200
+    assert.equal(totalChips(s), 2200);
+    assert.equal(s.seats[1].stack, 600);
+    assert.equal(s.seats[0].stack, 1100);
+    assert.equal(s.seats[2].stack, 500);
+  });
+
+  it('rotates and un-rotates all table fields (sbSeat, bbSeat, lastAggressor, result) and disambiguates default opponent names', () => {
+    const raw = startHand(table([2000, 2000, 2000, 2000]), { rng: createSeededRng(88) });
+    const rot2 = rotateTableForHero(raw, 2);
+    assert.equal(rot2.sbSeat, (raw.sbSeat - 2 + 4) % 4);
+    assert.equal(rot2.bbSeat, (raw.bbSeat - 2 + 4) % 4);
+    const back = rotateTableFromHero(rot2, 2);
+    assert.equal(back.button, raw.button);
+    assert.equal(back.sbSeat, raw.sbSeat);
+    assert.equal(back.bbSeat, raw.bbSeat);
+    assert.equal(back.toAct, raw.toAct);
+
+    // Default 'あなた' name is kept for self, but replaced with Player#XXXX for remote opponents
+    assert.equal(resolveOnlineMemberName('あなた', 'RFN-ABCD-9876', true), 'あなた');
+    assert.equal(resolveOnlineMemberName('あなた', 'RFN-ABCD-9876', false), 'Player#9876');
+    assert.equal(resolveOnlineMemberName('ケンジ', 'RFN-ABCD-9876', false), 'ケンジ');
   });
 });

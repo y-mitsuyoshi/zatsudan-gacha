@@ -147,27 +147,40 @@ export function ResultOverlay({
 
   if (!result) return null;
   const winChar = CHARACTERS[result.winnerCharId] ?? ch;
+  const heroWon = result.heroWon;
+  const winnerHoleIds = new Set((result.winnerHoleCards ?? []).map((c) => c.id));
+  const roleBadge = result.winnerIsSelf
+    ? '🌟 YOU'
+    : result.winnerIsHuman
+      ? '🟢 👤 PLAYER'
+      : '🤖 CPU';
 
   return (
     <div
-      className="pointer-events-auto relative mx-auto w-full max-w-lg overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-b from-slate-950/95 via-slate-900/95 to-slate-950/95 px-3.5 py-2.5 text-center shadow-[0_14px_44px_rgba(0,0,0,0.85),0_0_28px_rgba(251,191,36,0.28)] backdrop-blur-md sm:px-4 sm:py-3"
+      className={`pointer-events-auto relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border px-3.5 py-2.5 text-center backdrop-blur-md sm:px-4 sm:py-3 ${
+        heroWon
+          ? 'border-amber-300/75 bg-gradient-to-b from-slate-950/95 via-amber-950/35 to-slate-950/95 shadow-[0_14px_44px_rgba(0,0,0,0.85),0_0_32px_rgba(251,191,36,0.35)]'
+          : 'border-rose-400/55 bg-gradient-to-b from-slate-950/95 via-rose-950/30 to-slate-950/95 shadow-[0_14px_44px_rgba(0,0,0,0.88),0_0_26px_rgba(244,63,94,0.22)]'
+      }`}
       style={{ animation: 'rf-fadeup 260ms ease-out both' }}
     >
       {/* Top shimmer accent bar */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
         style={{
-          background: `linear-gradient(90deg, transparent, ${winChar.color}, #fde047, ${winChar.color2}, transparent)`,
+          background: heroWon
+            ? `linear-gradient(90deg, transparent, ${winChar.color}, #fde047, ${winChar.color2}, transparent)`
+            : `linear-gradient(90deg, transparent, #fb7185, ${winChar.color}, #fb7185, transparent)`,
         }}
       />
 
-      <div className="flex items-center gap-3 text-left">
+      <div className="flex items-start gap-3 text-left">
         {/* Winner Portrait Showcase */}
         <div className="relative shrink-0">
           <div
-            className="h-14 w-14 overflow-hidden rounded-2xl border-2 shadow-[0_0_20px_rgba(253,224,71,0.55)] sm:h-16 sm:w-16"
+            className="h-14 w-14 overflow-hidden rounded-2xl border-2 shadow-[0_0_20px_rgba(253,224,71,0.45)] sm:h-16 sm:w-16"
             style={{
-              borderColor: '#fde047',
+              borderColor: heroWon ? '#fde047' : '#fb7185',
               background: `radial-gradient(circle at 50% 30%, ${winChar.color}66, #090d1a 80%)`,
             }}
           >
@@ -179,26 +192,55 @@ export function ResultOverlay({
               className="h-full w-full object-cover object-top"
             />
           </div>
-          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-100 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 px-1.5 py-[1px] text-[9px] font-black tracking-wider text-slate-950 shadow">
-            👑 WIN
+          <span
+            className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] font-black tracking-wider shadow ${
+              heroWon
+                ? 'border-amber-100 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 text-slate-950'
+                : 'border-rose-200 bg-gradient-to-r from-rose-500 to-amber-500 text-white'
+            }`}
+          >
+            {heroWon ? '👑 YOU WIN' : '⚔️ WINNER'}
           </span>
         </div>
 
         {/* Winner Headline, Hand Rank & Winning 5-Card Strip */}
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] font-black tracking-[0.18em] uppercase">
-            <span className="inline-flex items-center gap-1 rounded-md border border-amber-300/45 bg-amber-400/15 px-2 py-0.5 text-amber-200">
-              <span>{result.showdown ? '✨ SHOWDOWN' : '⚡ UNCONTESTED'}</span>
-              <span>·</span>
-              <span>{result.handName || 'フォールド勝ち'}</span>
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] font-black tracking-[0.12em]">
+            <div className="flex flex-wrap items-center gap-1">
+              <span
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 ${
+                  heroWon
+                    ? 'border-amber-300/60 bg-amber-400/20 text-amber-200'
+                    : 'border-rose-300/50 bg-rose-500/20 text-rose-200'
+                }`}
+              >
+                <span>{heroWon ? '🎉 あなたの勝利' : `⚔️ ${result.winnerName} の勝利`}</span>
+              </span>
+              <span
+                className={`rounded-md px-1.5 py-0.5 text-[9px] font-black ${
+                  result.winnerIsSelf
+                    ? 'bg-amber-400/25 text-amber-200 border border-amber-300/40'
+                    : result.winnerIsHuman
+                      ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-300/45'
+                      : 'bg-slate-800 text-slate-300 border border-white/15'
+                }`}
+              >
+                {roleBadge}
+              </span>
+            </div>
             <span className="rounded-full border border-amber-300/40 bg-black/50 px-2.5 py-0.5 font-mono text-[11px] font-black text-amber-300">
               POT {fmt(result.pot)}
             </span>
           </div>
 
           <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-            <div className="truncate bg-gradient-to-b from-white via-amber-100 to-amber-400 bg-clip-text text-base font-black text-transparent sm:text-lg">
+            <div
+              className={`truncate bg-clip-text text-base font-black text-transparent sm:text-lg ${
+                heroWon
+                  ? 'bg-gradient-to-b from-white via-amber-100 to-amber-400'
+                  : 'bg-gradient-to-b from-white via-rose-100 to-rose-300'
+              }`}
+            >
               {result.title}
             </div>
             <span
@@ -210,52 +252,114 @@ export function ResultOverlay({
                     : 'bg-white/10 text-slate-300'
               }`}
             >
-              あなた: {result.heroNet >= 0 ? '+' : ''}
+              あなた収支: {result.heroNet >= 0 ? '+' : ''}
               {fmt(result.heroNet)}
             </span>
           </div>
 
-          {/* Winning 5-card combination preview at Showdown OR spoken victory quote */}
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-            {result.showdown && result.best5 && result.best5.length > 0 ? (
+          {/* Highlighted Winning Hand (上がり役) Box */}
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/35 bg-black/45 px-2.5 py-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-black tracking-wider text-amber-200">
+                🏆 上がり役
+              </span>
+              <span className="text-xs font-black text-amber-100 sm:text-sm">
+                {result.showdown
+                  ? result.handDetailJa || result.handName || 'ハイカード'
+                  : 'フォールド勝ち（全員降り）'}
+              </span>
+            </div>
+
+            {result.showdown && result.best5 && result.best5.length > 0 && (
               <div className="flex items-center gap-1" aria-label="勝利ハンドの5枚">
                 <span className="mr-0.5 text-[9px] font-bold text-amber-200/80">成立5枚:</span>
                 {result.best5.map((c) => {
                   const isRed = c.suit === 'h' || c.suit === 'd';
+                  const fromHole = winnerHoleIds.has(c.id);
                   return (
                     <span
                       key={c.id}
-                      className={`inline-flex items-center gap-0.5 rounded border border-amber-300/80 bg-gradient-to-b from-amber-50 to-amber-100 px-1.5 py-[1px] font-mono text-[10px] font-black shadow-sm ${
-                        isRed ? 'text-red-600' : 'text-slate-900'
-                      }`}
+                      title={fromHole ? '勝者の手札カード' : 'コミュニティボード'}
+                      className={`relative inline-flex items-center gap-0.5 rounded border px-1.5 py-[1px] font-mono text-[10px] font-black shadow-sm ${
+                        fromHole
+                          ? 'border-amber-300 bg-gradient-to-b from-amber-100 to-amber-200 ring-1 ring-amber-400'
+                          : 'border-slate-300/80 bg-gradient-to-b from-white to-slate-100'
+                      } ${isRed ? 'text-red-600' : 'text-slate-900'}`}
                     >
                       <span>{rankLabel(c.rank)}</span>
                       <span>{SUIT_SYMBOL[c.suit]}</span>
+                      {fromHole && (
+                        <span className="ml-0.5 rounded bg-amber-600 px-0.5 text-[7px] font-black text-white">
+                          手札
+                        </span>
+                      )}
                     </span>
                   );
                 })}
               </div>
-            ) : (
-              result.winnerLine && (
-                <div className="truncate text-[11px] italic text-amber-100/90">
-                  「{result.winnerLine}」
-                </div>
-              )
-            )}
-
-            {result.pots.length > 1 && (
-              <div className="flex flex-wrap items-center gap-1">
-                {result.pots.map((p) => (
-                  <span
-                    key={p.label}
-                    className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-100"
-                  >
-                    {p.label}: {fmt(p.amount)} ({p.winners})
-                  </span>
-                ))}
-              </div>
             )}
           </div>
+
+          {/* Showdown Contenders Hand Comparison Strip */}
+          {result.showdown &&
+            result.showdownContenders &&
+            result.showdownContenders.length > 1 && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {result.showdownContenders.map((ct) => {
+                  const tag = ct.isSelf
+                    ? '🌟YOU'
+                    : ct.isHumanPlayer
+                      ? '🟢👤'
+                      : '🤖';
+                  return (
+                    <div
+                      key={ct.seat}
+                      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] ${
+                        ct.isWinner
+                          ? 'border-amber-300/70 bg-amber-400/15 text-amber-100 font-black'
+                          : 'border-white/15 bg-slate-900/80 text-slate-300 font-bold'
+                      }`}
+                    >
+                      <span>{ct.isWinner ? '👑' : ''}</span>
+                      <span className="text-[9px] opacity-85">{tag}</span>
+                      <span className="max-w-[72px] truncate">{ct.playerName ?? `Seat ${ct.seat}`}</span>
+                      <span className="inline-flex items-center gap-0.5">
+                        {(ct.holeCards ?? []).map((hc) => {
+                          const red = hc.suit === 'h' || hc.suit === 'd';
+                          return (
+                            <span
+                              key={hc.id}
+                              className={`rounded bg-white px-1 py-[0.5px] font-mono text-[9px] font-black ${
+                                red ? 'text-red-600' : 'text-slate-900'
+                              }`}
+                            >
+                              {rankLabel(hc.rank)}
+                              {SUIT_SYMBOL[hc.suit]}
+                            </span>
+                          );
+                        })}
+                      </span>
+                      <span className="text-amber-200/95">
+                        {ct.detailJa || ct.nameJa}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          {result.pots.length > 1 && (
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              {result.pots.map((p) => (
+                <span
+                  key={p.label}
+                  className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-100"
+                >
+                  {p.label}: {fmt(p.amount)} ({p.winners})
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
