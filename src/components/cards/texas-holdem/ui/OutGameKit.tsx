@@ -295,9 +295,16 @@ export function ModalShell({ open, onClose, title, titleEn, children, maxWidth =
 // Voice helper
 // ---------------------------------------------------------------------------
 
-export function speakLine(id: CharId, text: string, enabled: boolean) {
+export function speakLine(id: CharId, text: string, enabled: boolean, event?: VoiceEvent) {
   const ch = CHARACTERS[id];
-  holdemAudio.speak(text, { pitch: ch.voicePitch, rate: ch.voiceRate, gender: ch.voiceGender, enabled });
+  holdemAudio.speak(text, {
+    pitch: ch.voicePitch,
+    rate: ch.voiceRate,
+    gender: ch.voiceGender,
+    enabled,
+    charId: id,
+    event,
+  });
 }
 
 export function randomLine(id: CharId, events: VoiceEvent[]): string {

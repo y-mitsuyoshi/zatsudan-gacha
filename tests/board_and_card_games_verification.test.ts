@@ -92,10 +92,11 @@ describe('Board and Card games', () => {
     const holdem = read(`${holdemDir}/TexasHoldemGame.tsx`);
     assert.ok(holdem.includes('TitleScreen') && holdem.includes('LobbyScreen') && holdem.includes('TableScreen'), 'Texas Holdem must route title / lobby / table screens');
     const chars = read(`${holdemDir}/characters.ts`);
-    for (const id of ['karen', 'rei', 'koharu', 'valentina', 'jin', 'luna']) {
+    for (const id of ['karen', 'rei', 'koharu', 'valentina', 'jin', 'luna', 'sakura', 'alice', 'leon', 'chloe', 'hibiki', 'suou']) {
       assert.ok(chars.includes(`${id}:`), `Texas Holdem character ${id} missing`);
       assert.ok(fs.existsSync(path.join(ROOT, `public/assets/holdem/chars/${id}.webp`)), `missing illustration for ${id}`);
       assert.ok(fs.existsSync(path.join(ROOT, `public/assets/holdem/chars/${id}_win.webp`)), `missing win illustration for ${id}`);
+      assert.ok(fs.existsSync(path.join(ROOT, `public/assets/holdem/voices/${id}/greet_0.mp3`)), `missing voice clip for ${id}`);
     }
     const audio = read(`${holdemDir}/audio.ts`);
     assert.ok(audio.includes('playBgm') && audio.includes('speak'), 'Texas Holdem must include BGM and voice playback');

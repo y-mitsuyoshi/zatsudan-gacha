@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 import {
@@ -10,9 +10,18 @@ import {
   playCardSound,
   PlayingCardView,
   shuffleWithRng,
-  SUIT_LABEL_JA,
   SUIT_SYMBOL,
 } from '@/components/cards/shared/cardUtils';
+import {
+  CHARACTERS,
+  CHAR_IDS,
+  FELTS,
+  HOLDEM_ASSETS,
+  charImage,
+  type CharId,
+  type FeltId,
+} from '@/components/cards/texas-holdem/characters';
+import { holdemAudio } from '@/components/cards/texas-holdem/audio';
 
 export type SocialRank = '大富豪' | '富豪' | '平民' | '貧民' | '大貧民';
 
@@ -37,10 +46,13 @@ export interface TablePlay {
   isSpade3Counter: boolean;
 }
 
+type AiPersona = 'プレイヤー' | '堅実温存タイプ' | '積極革命タイプ' | '速攻あがりタイプ';
+
 interface PlayerState {
   id: number;
+  charId: CharId;
   name: string;
-  persona: string;
+  persona: AiPersona;
   isHuman: boolean;
   hand: CardItem[];
   socialRank: SocialRank;
@@ -56,6 +68,162 @@ interface ExchangeSummaryInfo {
   tributedCards: CardItem[];
   receivedFromUpperCards: CardItem[];
 }
+
+type DaifugoVoiceKey =
+  | 'play'
+  | 'pass'
+  | 'eightCut'
+  | 'revolution'
+  | 'spade3'
+  | 'win'
+  | 'finish';
+
+interface CutInBannerState {
+  id: number;
+  charId: CharId;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  line: string;
+  isWin?: boolean;
+}
+
+const DAIFUGO_LINES: Record<CharId, Record<DaifugoVoiceKey, string>> = {
+  karen: {
+    play: 'ふふん、このカードで主導権は私のものよ！',
+    pass: '…ここは様子見してあげるわ。パス！',
+    eightCut: '8切りよ！場は全部流させてもらうわ！',
+    revolution: '革命発動！今日から私がルールよ！',
+    spade3: 'スペードの3よ！ジョーカーなんて一刀両断ね！',
+    win: '当然の結果ね！大富豪の玉座は私のものよ♪',
+    finish: 'お先に上がらせてもらうわ！',
+  },
+  rei: {
+    play: '確率的にこの一手だ。受けてみろ。',
+    pass: '温存が合理的判断だ。パスする。',
+    eightCut: '8切り成立。ターンの主導権を回収する。',
+    revolution: '革命発動。強弱の序列を完全に反転させる。',
+    spade3: 'スペ3返しだ。ジョーカーの優位はここで潰える。',
+    win: '計算通りだ。大富豪の座は頂いた。',
+    finish: '計画通りあがりだ。',
+  },
+  koharu: {
+    play: 'これ出すにゃーっ！どうかにゃ？',
+    pass: 'うにゃ〜、ここはパスしてお昼寝にゃ…',
+    eightCut: '8切りにゃっ！ぜんぶ流してコハルの番にゃ♪',
+    revolution: 'にゃにゃっ！革命おこしちゃうにゃーっ！',
+    spade3: 'スペ3返しにゃ！ジョーカー捕まえたにゃ！',
+    win: 'やったにゃーっ！大富豪いちばんのりにゃ♪',
+    finish: 'あがりにゃ〜！お先に失礼するにゃ♪',
+  },
+  valentina: {
+    play: 'さあ、このカードを超えられるかしら？',
+    pass: 'ふふ、ここは優雅に譲ってあげるわ。パスよ。',
+    eightCut: '8切りよ。テーブルを綺麗に掃除しましょう。',
+    revolution: '革命よ！世界がひっくり返る瞬間を味わいなさい！',
+    spade3: 'スペードの3…女帝の前にジョーカーは無力よ。',
+    win: 'さあ跪きなさい。大富豪の栄冠は私のものよ♪',
+    finish: '優雅に上がらせてもらうわね。',
+  },
+  jin: {
+    play: 'こいつを置いていくぜ。出せるもんなら出してみな。',
+    pass: '…パスだ。勝負所はここじゃねえ。',
+    eightCut: '8切りだ。場を流してもう一発いくぜ。',
+    revolution: '革命発動だ…！下剋上の味はどうだ？',
+    spade3: 'スペ3返しだ。切り札のジョーカーもここまでだな。',
+    win: '最後に笑うのは俺だ。大富豪、いただいていくぜ。',
+    finish: '悪く思うな、先に抜けるぜ。',
+  },
+  luna: {
+    play: '星の巡りがこのカードを示しています。',
+    pass: '今は星が沈黙しています…パスです。',
+    eightCut: '8切りです。運命の潮流をリセットしますね。',
+    revolution: '革命発動…！天体の運行が逆転しました！',
+    spade3: 'スペードの3…星の導きでジョーカーを討ち取ります。',
+    win: '星導の通り…大富豪の輝きを頂きますね。',
+    finish: '星の導きであがりです。',
+  },
+  sakura: {
+    play: '桜花一閃！このカードで参りますわ！',
+    pass: 'ここは一旦退いて好機を待ちますわ。パスです。',
+    eightCut: '8切りですわ！場を清めて我が手番といたします！',
+    revolution: '革命発動！桜吹雪とともに序列を覆しますわ！',
+    spade3: 'スペードの3！切り札のジョーカー、ここで断ち切りますわ！',
+    win: '天晴れな一局でしたわ。大富豪の座、謹んで頂戴いたします♪',
+    finish: 'お先に上がらせていただきますわね。',
+  },
+  alice: {
+    play: 'えへへ、このカードで魔法をかけちゃうわよ♪',
+    pass: 'うーん、ここはパスしてティータイムにするわね♪',
+    eightCut: '8切りよ〜っ！テーブルをぜんぶお片付けしちゃうわ♪',
+    revolution: '革命スタート！不思議の国みたいに全部あべこべよ♪',
+    spade3: 'スペードの3よ♪ ジョーカーさんを捕まえちゃった！',
+    win: 'わーいっ！アリスが大富豪の女王様よ〜♪',
+    finish: 'お先にゴールしちゃうわね♪',
+  },
+  leon: {
+    play: '王者の威光だ！このカードを超えられるか！',
+    pass: '…パスだ。小競り合いはくれてやろう。',
+    eightCut: '8切りだ！場を制圧し、再び俺が立つ！',
+    revolution: '革命発動！！王者が自ら時代を塗り替えてやろう！',
+    spade3: 'スペードの3だ！ジョーカーとて王の前には跪く！',
+    win: 'ハッハッハ！大富豪の王座は俺のためにある！',
+    finish: '一足先に王座へ着かせてもらうぞ！',
+  },
+  chloe: {
+    play: '残り枚数のカウンティングから導いた最適手よ。',
+    pass: 'ここはパスね。手札効率を優先するわ。',
+    eightCut: '8切り成立。手番を強制回収させてもらうわよ。',
+    revolution: '革命発動。全カードの強弱テーブルを反転させるわ。',
+    spade3: 'スペ3返しよ。ジョーカーを切る確率も織り込み済みだわ。',
+    win: '完全な情報制御ね。大富豪のタイトルは頂いたわ。',
+    finish: '予定通りあがらせてもらうわ。',
+  },
+  hibiki: {
+    play: 'いくわよっ！このカードでビートを刻みなさい！',
+    pass: 'パスね！次のサビまでパワーを溜めておくわ！',
+    eightCut: '8切りよっ！ステージをまるごとジャックするわ！',
+    revolution: '革命発動ーっ！！会場ごとひっくり返してあげるわよ！',
+    spade3: 'スペ3返しよ！ジョーカーなんて一発でぶち抜くわ！',
+    win: 'イェーイ！！大富豪のトップステージは私のものよ♪',
+    finish: 'お先にフィニッシュ決めるわよーっ！',
+  },
+  suou: {
+    play: '静かにこの札を置かせていただきましょう。',
+    pass: '…パスです。今は風を見送るとしましょう。',
+    eightCut: '8切りです。一度場の流れを鎮めましょうか。',
+    revolution: '革命発動…天地が返る瞬間というのは美しいですね。',
+    spade3: 'スペードの3です。ジョーカーの威光もここまでですね。',
+    win: 'ふふ、良い勝負でした。大富豪の座を頂戴いたします。',
+    finish: 'お先に失礼いたしますよ。',
+  },
+};
+
+const RANK_BADGE_META: Record<
+  SocialRank,
+  { label: string; badgeClass: string }
+> = {
+  大富豪: {
+    label: '👑 大富豪',
+    badgeClass: 'border-amber-300/60 bg-gradient-to-r from-amber-500/30 to-yellow-400/20 text-amber-200',
+  },
+  富豪: {
+    label: '✨ 富豪',
+    badgeClass: 'border-sky-300/50 bg-sky-500/20 text-sky-200',
+  },
+  平民: {
+    label: '🎴 平民',
+    badgeClass: 'border-slate-400/35 bg-slate-700/40 text-slate-200',
+  },
+  貧民: {
+    label: '🍂 貧民',
+    badgeClass: 'border-orange-400/40 bg-orange-900/35 text-orange-200',
+  },
+  大貧民: {
+    label: '⛓️ 大貧民',
+    badgeClass: 'border-rose-400/50 bg-rose-950/65 text-rose-200',
+  },
+};
 
 const RANK_ORDER_NORMAL: Record<number, number> = {
   3: 1,
@@ -231,6 +399,8 @@ export function canBeatTable(
   return candidateStrength > tableStrength;
 }
 
+export const canBeatTablePlay = canBeatTable;
+
 function generateAllValidPlays(
   hand: CardItem[],
   tablePlay: TablePlay | null,
@@ -299,7 +469,13 @@ function generateAllValidPlays(
   return results;
 }
 
-export default function DaifugoGame() {
+function getRivalCharIds(partnerId: CharId): [CharId, CharId, CharId] {
+  const preferred: CharId[] = ['karen', 'rei', 'jin', 'valentina', 'luna', 'koharu'];
+  const picked = preferred.filter((id) => id !== partnerId).slice(0, 3);
+  return [picked[0], picked[1], picked[2]];
+}
+
+export function DaifugoGame() {
   const [rules, setRules] = useState<DaifugoRules>({
     revolution: true,
     eightCut: true,
@@ -308,6 +484,9 @@ export default function DaifugoGame() {
     miyakoOchi: true,
   });
 
+  const [felt, setFelt] = useState<FeltId>('crimson');
+  const [partnerId, setPartnerId] = useState<CharId>('koharu');
+  const [voiceOn, setVoiceOn] = useState<boolean>(true);
   const [roundNumber, setRoundNumber] = useState<number>(1);
   const [isRevolution, setIsRevolution] = useState<boolean>(false);
   const [players, setPlayers] = useState<PlayerState[]>([]);
@@ -321,6 +500,63 @@ export default function DaifugoGame() {
   const [soundOn, setSoundOn] = useState<boolean>(true);
   const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [banner, setBanner] = useState<string>('');
+  const [speechBubbles, setSpeechBubbles] = useState<Record<number, string>>({});
+  const [cutIn, setCutIn] = useState<CutInBannerState | null>(null);
+  const cutInTimerRef = useRef<number | null>(null);
+
+  const speakCharacterLine = useCallback(
+    (charId: CharId, text: string) => {
+      if (!voiceOn || typeof window === 'undefined') return;
+      const def = CHARACTERS[charId];
+      holdemAudio.speak(text, {
+        charId,
+        gender: def.voiceGender,
+        pitch: def.voicePitch,
+        rate: def.voiceRate,
+        enabled: voiceOn,
+      });
+    },
+    [voiceOn]
+  );
+
+  const triggerCutIn = useCallback(
+    (
+      charId: CharId,
+      eyebrow: string,
+      title: string,
+      subtitle: string,
+      line: string,
+      isWin = false
+    ) => {
+      if (cutInTimerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(cutInTimerRef.current);
+      }
+      setCutIn({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        charId,
+        eyebrow,
+        title,
+        subtitle,
+        line,
+        isWin,
+      });
+      speakCharacterLine(charId, line);
+      if (typeof window !== 'undefined') {
+        cutInTimerRef.current = window.setTimeout(() => {
+          setCutIn(null);
+        }, 1600);
+      }
+    },
+    [speakCharacterLine]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (cutInTimerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(cutInTimerRef.current);
+      }
+    };
+  }, []);
 
   // Procedural Web Audio BGM loop
   useEffect(() => {
@@ -385,23 +621,52 @@ export default function DaifugoGame() {
     setLogs((prev) => [msg, ...prev.slice(0, 14)]);
   }, []);
 
+  const handleSelectPartner = useCallback(
+    (nextPartner: CharId) => {
+      setPartnerId(nextPartner);
+      const [r1, r2, r3] = getRivalCharIds(nextPartner);
+      setPlayers((prev) => {
+        if (prev.length < 4) return prev;
+        const rivalIds = [r1, r2, r3];
+        return prev.map((p, idx) => {
+          if (idx === 0) {
+            return {
+              ...p,
+              charId: nextPartner,
+            };
+          }
+          const newCharId = rivalIds[idx - 1];
+          return {
+            ...p,
+            charId: newCharId,
+            name: CHARACTERS[newCharId].name,
+          };
+        });
+      });
+      speakCharacterLine(nextPartner, CHARACTERS[nextPartner].lines.select[0]);
+    },
+    [speakCharacterLine]
+  );
+
   const dealRound = useCallback(
-    (nextRound: number, prevRanks?: SocialRank[]) => {
+    (nextRound: number, prevRanks?: SocialRank[], currentPartner: CharId = partnerId) => {
       const deck = create54CardDeck();
       const hands: CardItem[][] = [[], [], [], []];
       deck.forEach((card, idx) => {
         hands[idx % 4].push(card);
       });
 
-      const personas = [
-        { name: 'あなた', persona: 'プレイヤー', isHuman: true },
-        { name: 'AI タクミ', persona: '堅実温存タイプ', isHuman: false },
-        { name: 'AI レイナ', persona: '積極革命タイプ', isHuman: false },
-        { name: 'AI ハヤト', persona: '速攻あがりタイプ', isHuman: false },
+      const [r1, r2, r3] = getRivalCharIds(currentPartner);
+      const personas: { charId: CharId; name: string; persona: AiPersona; isHuman: boolean }[] = [
+        { charId: currentPartner, name: 'あなた', persona: 'プレイヤー', isHuman: true },
+        { charId: r1, name: CHARACTERS[r1].name, persona: '積極革命タイプ', isHuman: false },
+        { charId: r2, name: CHARACTERS[r2].name, persona: '堅実温存タイプ', isHuman: false },
+        { charId: r3, name: CHARACTERS[r3].name, persona: '速攻あがりタイプ', isHuman: false },
       ];
 
       const initialPlayers: PlayerState[] = personas.map((p, idx) => ({
         id: idx,
+        charId: p.charId,
         name: p.name,
         persona: p.persona,
         isHuman: p.isHuman,
@@ -416,6 +681,11 @@ export default function DaifugoGame() {
       setSelectedIds([]);
       setExchangeInfo(null);
       setExchangeRequiredCount(0);
+      setSpeechBubbles({
+        1: CHARACTERS[r1].lines.greet[0],
+        2: CHARACTERS[r2].lines.greet[0],
+        3: CHARACTERS[r3].lines.greet[0],
+      });
 
       // Perform Round 2+ card exchange if rankings exist
       if (nextRound > 1 && prevRanks) {
@@ -437,7 +707,6 @@ export default function DaifugoGame() {
           daihinminTributed = bestTwo;
 
           if (!initialPlayers[daifugoIdx].isHuman) {
-            // AI Daifugo picks 2 weakest cards from its initial hand BEFORE merging tributed cards
             const aiInitialSorted = sortHand(initialPlayers[daifugoIdx].hand, false);
             const giveBack = aiInitialSorted.slice(0, 2);
             const aiRemaining = aiInitialSorted.slice(2);
@@ -461,7 +730,6 @@ export default function DaifugoGame() {
           hinminTributed = bestOne;
 
           if (!initialPlayers[fugoIdx].isHuman) {
-            // AI Fugo picks 1 weakest card from its initial hand BEFORE merging tributed card
             const aiInitialSorted = sortHand(initialPlayers[fugoIdx].hand, false);
             const giveBack = aiInitialSorted.slice(0, 1);
             const aiRemaining = aiInitialSorted.slice(1);
@@ -545,12 +813,13 @@ export default function DaifugoGame() {
       setBanner(`第${nextRound}ラウンド開始！あなたの手番からスタートします。`);
       setLogs([`第${nextRound}ラウンドが開始されました（54枚配牌完了）。`]);
     },
-    []
+    [partnerId]
   );
 
   useEffect(() => {
     dealRound(1);
-  }, [dealRound]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const findNextActivePlayer = useCallback(
     (currentIdx: number, plist: PlayerState[], ignorePass = false): number => {
@@ -659,7 +928,14 @@ export default function DaifugoGame() {
 
       addLog(`${actor.name}: ${cardNames} を出しました${eventTags}`);
 
+      const charLines = DAIFUGO_LINES[actor.charId];
+      let bubbleLine = charLines.play;
+      if (combo.triggersRevolution) bubbleLine = charLines.revolution;
+      else if (isSpade3Counter) bubbleLine = charLines.spade3;
+      else if (isEightCut) bubbleLine = charLines.eightCut;
+
       // Check if actor finished hand
+      let finishedFirst = false;
       if (actor.hand.length === 0) {
         const usedOrders = new Set(
           updatedPlayers.map((p) => p.finishedOrder).filter((n): n is number => n !== null)
@@ -667,6 +943,12 @@ export default function DaifugoGame() {
         const myOrder = [1, 2, 3, 4].find((ord) => !usedOrders.has(ord)) ?? 4;
         actor.finishedOrder = myOrder;
         addLog(`🎉 ${actor.name} が ${myOrder}位であがりました！`);
+        if (myOrder === 1) {
+          finishedFirst = true;
+          bubbleLine = charLines.win;
+        } else {
+          bubbleLine = charLines.finish;
+        }
 
         // Check Miyako-ochi (都落ち): if Round 2+, someone else finished 1st, and previous Daifugo hasn't finished
         if (rules.miyakoOchi && roundNumber > 1 && myOrder === 1 && actor.socialRank !== '大富豪') {
@@ -679,6 +961,51 @@ export default function DaifugoGame() {
             addLog(`💥 都落ち発生！前ラウンド大富豪の ${prevDaifugo.name} が大貧民へ転落しました！`);
           }
         }
+      }
+
+      if (actor.id !== 0) {
+        setSpeechBubbles((prev) => ({ ...prev, [actor.id]: bubbleLine }));
+      }
+
+      // Dramatic diagonal anime cut-in on big events!
+      if (combo.triggersRevolution) {
+        triggerCutIn(
+          actor.charId,
+          'ROYAL FLUSH NIGHT — REVOLUTION',
+          '⚡ 革命発動 — REVOLUTION!!',
+          `${actor.name} が ${cardNames} で強弱を完全逆転！`,
+          charLines.revolution,
+          false
+        );
+      } else if (isSpade3Counter) {
+        triggerCutIn(
+          actor.charId,
+          'MIRACLE COUNTER — SPADE 3',
+          '⚔️ スペ3返し!!',
+          `${actor.name} が最強ジョーカーを ♠3 単騎で討ち取った！`,
+          charLines.spade3,
+          false
+        );
+      } else if (isEightCut) {
+        triggerCutIn(
+          actor.charId,
+          'TABLE SWEEP — EIGHT CUT',
+          '✂️ 8切り — EIGHT CUT!!',
+          `${actor.name}（${cardNames}）が場を強制リセット！`,
+          charLines.eightCut,
+          false
+        );
+      } else if (finishedFirst) {
+        triggerCutIn(
+          actor.charId,
+          'DAIFUGO CROWNED — 1ST PLACE',
+          '👑 大富豪勝利!!',
+          `${actor.name} が第${roundNumber}ラウンド1位あがり！`,
+          charLines.win,
+          true
+        );
+      } else if (!actor.isHuman) {
+        speakCharacterLine(actor.charId, bubbleLine);
       }
 
       setIsRevolution(nextRev);
@@ -742,6 +1069,8 @@ export default function DaifugoGame() {
       finalizeRoundIfComplete,
       findNextActivePlayer,
       soundOn,
+      triggerCutIn,
+      speakCharacterLine,
     ]
   );
 
@@ -755,12 +1084,19 @@ export default function DaifugoGame() {
       actor.passed = true;
       addLog(`${actor.name}: パス`);
 
+      if (actor.id !== 0) {
+        const passLine = DAIFUGO_LINES[actor.charId].pass;
+        setSpeechBubbles((prev) => ({ ...prev, [actor.id]: passLine }));
+      }
+
       const activeUnpassed = updatedPlayers.filter(
         (p) => p.finishedOrder === null && !p.passed
       );
 
-      if (activeUnpassed.length === 0 || (activeUnpassed.length === 1 && tablePlay && activeUnpassed[0].id === tablePlay.playerId)) {
-        // Table clears!
+      if (
+        activeUnpassed.length === 0 ||
+        (activeUnpassed.length === 1 && tablePlay && activeUnpassed[0].id === tablePlay.playerId)
+      ) {
         const nextOwner =
           activeUnpassed.length === 1
             ? activeUnpassed[0].id
@@ -843,12 +1179,13 @@ export default function DaifugoGame() {
       }
 
       executePlay(turnIndex, chosen);
-    }, 650);
+    }, 680);
 
     return () => window.clearTimeout(timer);
   }, [phase, players, turnIndex, tablePlay, rules, isRevolution, executePass, executePlay]);
 
   const humanPlayer = players[0];
+  const partnerDef = CHARACTERS[partnerId];
   const isHumanUpperRank =
     humanPlayer?.socialRank === '大富豪' || humanPlayer?.socialRank === '富豪';
   const isHumanLowerRank =
@@ -878,6 +1215,45 @@ export default function DaifugoGame() {
     if (!humanPlayer || !canHumanSelectCardsInHand) return [];
     return humanPlayer.hand.filter((c) => selectedIds.includes(c.id));
   }, [humanPlayer, canHumanSelectCardsInHand, selectedIds]);
+
+  const selectedComboPreview = useMemo(() => {
+    if (selectedCards.length === 0) return null;
+    const combo = analyzeCombo(selectedCards, rules, isRevolution);
+    if (!combo || !combo.valid) {
+      return {
+        valid: false,
+        beatsTable: false,
+        label: '❌ 役として成立していません',
+        tags: [] as string[],
+      };
+    }
+    const beatsTable = canBeatTable(selectedCards, tablePlay, rules, isRevolution);
+    let kindLabel = '単騎';
+    if (combo.kind === 'sequence') {
+      kindLabel = `${selectedCards.length}枚階段`;
+    } else if (combo.kind === 'group') {
+      if (selectedCards.length === 2) kindLabel = 'ペア';
+      else if (selectedCards.length === 3) kindLabel = '3枚組';
+      else if (selectedCards.length >= 4) kindLabel = '4枚組';
+    }
+    const tags: string[] = [kindLabel];
+    if (combo.triggersRevolution) tags.push('⚡4枚革命!');
+    if (rules.eightCut && combo.containsEight) tags.push('✂️8切り!');
+    if (
+      rules.spade3Return &&
+      tablePlay?.isSingleJoker &&
+      selectedCards.length === 1 &&
+      combo.isSpade3
+    ) {
+      tags.push('⚔️スペ3返し!');
+    }
+    return {
+      valid: true,
+      beatsTable,
+      label: beatsTable ? '✅ 場に出せます' : '⚠️ 現在の場のカードより弱いか枚数・役が異なります',
+      tags,
+    };
+  }, [selectedCards, rules, isRevolution, tablePlay]);
 
   const canHumanPlaySelected = useMemo(() => {
     if (phase !== 'playing' || turnIndex !== 0 || selectedCards.length === 0) return false;
@@ -1000,32 +1376,95 @@ export default function DaifugoGame() {
     playCardSound('card', soundOn);
   };
 
+  const currentFeltObj = FELTS.find((f) => f.id === felt) ?? FELTS[1];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-950 via-slate-950 to-black text-slate-100 select-none">
+    <div
+      className="relative min-h-screen bg-slate-950 text-slate-100 select-none"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(10,6,18,0.78), rgba(6,8,18,0.92)), url(${HOLDEM_ASSETS.bgLounge})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Dramatic Diagonal Anime Cut-In Overlay */}
+      {cutIn && (
+        <div
+          key={cutIn.id}
+          role="dialog"
+          aria-label={cutIn.title}
+          onClick={() => setCutIn(null)}
+          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-hidden bg-black/65 backdrop-blur-[2px]"
+        >
+          <div
+            className="relative flex w-[115%] -rotate-6 items-center justify-between border-y-4 px-6 py-5 shadow-[0_0_70px_rgba(251,191,36,0.55)] sm:px-16 sm:py-7"
+            style={{
+              borderColor: CHARACTERS[cutIn.charId].color2,
+              background: `linear-gradient(100deg, ${CHARACTERS[cutIn.charId].color}ee 0%, #090d1a 58%, ${CHARACTERS[cutIn.charId].color2}dd 100%)`,
+            }}
+          >
+            <div className="z-10 max-w-xl">
+              <p className="text-[10px] font-black tracking-[0.35em] text-amber-200 uppercase sm:text-xs">
+                {cutIn.eyebrow} — {CHARACTERS[cutIn.charId].nameEn}
+              </p>
+              <p className="mt-1 bg-gradient-to-b from-white via-amber-100 to-amber-400 bg-clip-text text-2xl font-black italic tracking-tight text-transparent drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] sm:text-5xl">
+                {cutIn.title}
+              </p>
+              <p className="mt-1.5 inline-block rounded-md bg-black/60 px-2.5 py-0.5 text-xs font-bold text-amber-100 sm:text-sm">
+                {cutIn.subtitle}
+              </p>
+              <p className="mt-2 rounded-xl border border-white/30 bg-white/95 px-3 py-1.5 text-xs font-black text-slate-900 shadow-lg sm:text-sm">
+                「{cutIn.line}」
+              </p>
+            </div>
+            <div className="relative -my-10 h-36 w-36 shrink-0 overflow-hidden rounded-full border-4 border-amber-300 bg-slate-900 shadow-2xl sm:h-48 sm:w-48">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={charImage(cutIn.charId, cutIn.isWin ? 'win' : 'normal')}
+                alt={CHARACTERS[cutIn.charId].name}
+                className="h-full w-full object-cover object-top"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="border-b border-rose-400/20 bg-slate-950/85 backdrop-blur">
+      <header className="border-b border-amber-400/25 bg-slate-950/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-2.5">
             <Link
               href="/games"
-              className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-2.5 py-1.5 text-xs font-bold text-rose-200 transition hover:border-rose-300 hover:bg-rose-500/20"
+              className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-200 transition hover:border-amber-300 hover:bg-amber-500/20"
             >
               ← 無料ゲーム一覧へ
             </Link>
             <div>
-              <p className="text-[10px] font-bold tracking-widest text-amber-400 uppercase">
-                JAPANESE CLASSIC MILLIONAIRE
+              <p className="text-[10px] font-black tracking-[0.22em] text-amber-400 uppercase">
+                ROYAL FLUSH NIGHT — MILLIONAIRE LOUNGE
               </p>
-              <h2 className="text-sm font-black sm:text-lg">
-                大富豪（大貧民・AI 4人対戦）
+              <h2 className="text-sm font-black tracking-tight text-white sm:text-lg">
+                大富豪（ロイヤル・ナイト・大貧民）
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-200">
-              第{roundNumber}ラウンド {isRevolution ? '【⚡革命中：3最強】' : '【通常：2最強】'}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="rounded-lg border border-amber-400/40 bg-amber-400/15 px-2.5 py-1 text-xs font-black text-amber-200">
+              第{roundNumber}R {isRevolution ? '【⚡革命中：3最強】' : '【通常：2最強】'}
             </span>
+            <button
+              type="button"
+              onClick={() => setVoiceOn((prev) => !prev)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                voiceOn
+                  ? 'border-rose-400/60 bg-rose-500/20 text-rose-200'
+                  : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              {voiceOn ? '🗣 ボイス ON' : '🗣 ボイス OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setBgmOn((prev) => !prev)}
@@ -1049,68 +1488,112 @@ export default function DaifugoGame() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[1fr_310px]">
-        {/* Main Table */}
-        <div className="flex flex-col justify-between rounded-2xl border border-rose-400/25 bg-gradient-to-b from-rose-950/45 via-slate-900/80 to-slate-950 p-3 shadow-2xl sm:p-5">
-          {/* 3 AI Opponents Row */}
-          <div className="grid grid-cols-3 gap-2">
+      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[1fr_320px]">
+        {/* Main Luxury Felt Table */}
+        <div
+          className="relative flex flex-col justify-between overflow-hidden rounded-3xl border-2 p-3 shadow-[0_20px_60px_rgba(0,0,0,0.85)] sm:p-5"
+          style={{
+            borderColor: `${currentFeltObj.accent}55`,
+            backgroundImage: `radial-gradient(ellipse at center, rgba(15,23,42,0.22) 0%, rgba(2,6,23,0.78) 100%), url(${HOLDEM_ASSETS.felt[felt]})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          {/* 3 Anime Character AI Rivals Row */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             {players.slice(1).map((ai) => {
               const isTurn = phase === 'playing' && turnIndex === ai.id;
+              const charDef = CHARACTERS[ai.charId];
+              const rankBadge = RANK_BADGE_META[ai.socialRank];
+              const bubble = speechBubbles[ai.id];
               return (
                 <div
                   key={ai.id}
-                  className={`rounded-xl border p-2.5 transition ${
+                  className={`relative rounded-2xl border p-2.5 backdrop-blur-md transition ${
                     isTurn
-                      ? 'border-amber-400 bg-amber-400/15 shadow-[0_0_16px_rgba(251,191,36,0.25)]'
-                      : 'border-white/10 bg-black/35'
+                      ? 'border-amber-300 bg-slate-950/85 shadow-[0_0_24px_rgba(251,191,36,0.35)]'
+                      : 'border-white/15 bg-slate-950/70'
                   }`}
+                  style={{
+                    borderLeftWidth: '4px',
+                    borderLeftColor: charDef.color,
+                  }}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="truncate text-xs font-black text-white">{ai.name}</span>
-                    <span className="rounded bg-rose-500/25 px-1.5 py-0.5 text-[10px] font-bold text-rose-200">
-                      {ai.socialRank}
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 bg-slate-900 shadow-md"
+                      style={{ borderColor: charDef.color }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={charImage(ai.charId, ai.finishedOrder === 1 ? 'win' : 'normal')}
+                        alt={ai.name}
+                        className="h-full w-full object-cover object-top"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate text-xs font-black text-white">{ai.name}</span>
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black ${rankBadge.badgeClass}`}
+                        >
+                          {rankBadge.label}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[10px] font-semibold text-amber-200/80">
+                        {charDef.title} ・ {ai.persona}
+                      </p>
+                      <div className="mt-1 flex items-center justify-between text-xs">
+                        {ai.finishedOrder !== null ? (
+                          <span className="font-black text-amber-300">
+                            🏆 {ai.finishedOrder}位あがり
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[11px] font-black text-emerald-300">
+                            🎴 残り {ai.hand.length}枚
+                          </span>
+                        )}
+                        {ai.passed && ai.finishedOrder === null && (
+                          <span className="rounded bg-rose-500/30 px-1.5 py-0.5 text-[10px] font-black text-rose-200">
+                            PASS
+                          </span>
+                        )}
+                        {isTurn && ai.finishedOrder === null && (
+                          <span className="animate-pulse rounded bg-amber-400/25 px-1.5 py-0.5 text-[10px] font-black text-amber-200">
+                            思考中…
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] text-slate-400">{ai.persona}</p>
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    {ai.finishedOrder !== null ? (
-                      <span className="font-black text-amber-300">
-                        🏆 {ai.finishedOrder}位あがり
-                      </span>
-                    ) : (
-                      <span className="font-mono font-bold text-emerald-300">
-                        残り {ai.hand.length}枚
-                      </span>
-                    )}
-                    {ai.passed && ai.finishedOrder === null && (
-                      <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
-                        PASS
-                      </span>
-                    )}
-                  </div>
+                  {bubble && (
+                    <div className="mt-2 rounded-xl border border-white/10 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-slate-200">
+                      💬 「{bubble}」
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
           {/* Center Field / Table Play */}
-          <div className="my-5 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/40 p-4 sm:min-h-[195px]">
-            <div className="mb-2 flex items-center gap-2 text-xs">
+          <div className="my-4 flex flex-col items-center justify-center rounded-2xl border border-amber-300/25 bg-slate-950/65 p-4 backdrop-blur-sm sm:min-h-[205px]">
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2 text-xs">
               <span
-                className={`rounded-full px-3 py-0.5 font-black ${
+                className={`rounded-full px-3.5 py-1 font-black tracking-wide ${
                   isRevolution
-                    ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.6)]'
-                    : 'bg-emerald-500/20 text-emerald-200'
+                    ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-amber-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.75)]'
+                    : 'border border-emerald-400/30 bg-emerald-500/20 text-emerald-200'
                 }`}
               >
-                {isRevolution ? '⚡ 革命状態（3が最強 / 2が最弱）' : '通常状態（2・Aが強く 3が最弱）'}
+                {isRevolution ? '⚡ 革命状態（3が最強 / 2が最弱）' : '👑 通常状態（2・Aが強く 3が最弱）'}
               </span>
             </div>
 
             {tablePlay ? (
               <div className="flex flex-col items-center">
                 <p className="mb-2 text-xs font-bold text-amber-200">
-                  場のカード（出した人: {tablePlay.playerName}）
+                  場のカード（出したプレイヤー: <span className="text-white">{tablePlay.playerName}</span>）
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {tablePlay.cards.map((c) => (
@@ -1119,21 +1602,23 @@ export default function DaifugoGame() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center py-6 text-slate-400">
-                <p className="text-sm font-black text-slate-300">場にカードはありません（親の自由出し）</p>
-                <p className="mt-1 text-xs">単騎・ペア・3枚組・4枚革命・同スート3枚以上の階段を出せます</p>
+              <div className="flex flex-col items-center py-6 text-slate-300">
+                <p className="text-sm font-black text-amber-100">場にカードはありません（親の自由出し）</p>
+                <p className="mt-1 text-xs text-slate-300">
+                  単騎・ペア・3枚組・4枚革命・同スート3枚以上の階段を出せます
+                </p>
               </div>
             )}
           </div>
 
           {/* Status Banner */}
-          <div className="mb-3 rounded-xl border border-amber-400/25 bg-black/50 px-3.5 py-2 text-center text-xs font-bold text-amber-100 sm:text-sm">
+          <div className="mb-3 rounded-xl border border-amber-400/30 bg-slate-950/80 px-3.5 py-2 text-center text-xs font-bold text-amber-100 shadow-inner sm:text-sm">
             {banner}
           </div>
 
           {/* Dedicated Round 2+ Card Exchange Panel */}
           {phase === 'exchange' && exchangeInfo && isHumanLowerRank && (
-            <div className="mb-3 rounded-2xl border border-rose-400/40 bg-rose-950/60 p-3.5 shadow-lg">
+            <div className="mb-3 rounded-2xl border border-rose-400/40 bg-rose-950/75 p-3.5 shadow-lg backdrop-blur-md">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black text-rose-200 sm:text-sm">
@@ -1184,7 +1669,7 @@ export default function DaifugoGame() {
           )}
 
           {phase === 'exchange' && exchangeInfo && isHumanUpperRank && (
-            <div className="mb-3 rounded-2xl border border-amber-400/40 bg-amber-950/40 p-3.5 shadow-lg">
+            <div className="mb-3 rounded-2xl border border-amber-400/40 bg-amber-950/60 p-3.5 shadow-lg backdrop-blur-md">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black text-amber-200 sm:text-sm">
@@ -1234,26 +1719,47 @@ export default function DaifugoGame() {
             </div>
           )}
 
-          {/* Human Player Hand & Action Bar */}
+          {/* Human Player Hand & Partner Console */}
           {humanPlayer && (
-            <div className="rounded-2xl border border-white/15 bg-black/35 p-3">
+            <div className="rounded-2xl border border-white/15 bg-slate-950/80 p-3 backdrop-blur-md">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-white">あなたの手札</span>
-                  <span className="rounded bg-amber-400/20 px-2 py-0.5 text-xs font-black text-amber-300">
-                    階級: {humanPlayer.socialRank}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {phase === 'exchange'
-                      ? isHumanUpperRank
-                        ? `（渡す不要なカードをあと${Math.max(0, exchangeRequiredCount - selectedCards.length)}枚選択）`
-                        : '（下位階級のためカードの選択はできません・自動交換済み）'
-                      : phase === 'roundEnd'
-                        ? '（ラウンド終了・カード選択不可）'
-                        : turnIndex === 0 && humanPlayer.finishedOrder === null
-                          ? '（緑枠＝現在場に出せるカード）'
-                          : '（相手の手番中・カード選択不可）'}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div
+                    className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 bg-slate-900 shadow"
+                    style={{ borderColor: partnerDef.color }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={charImage(partnerId, humanPlayer.finishedOrder === 1 ? 'win' : 'normal')}
+                      alt={partnerDef.name}
+                      className="h-full w-full object-cover object-top"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-black text-white">
+                        あなた（相棒: {partnerDef.name}）
+                      </span>
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-black ${
+                          RANK_BADGE_META[humanPlayer.socialRank].badgeClass
+                        }`}
+                      >
+                        {RANK_BADGE_META[humanPlayer.socialRank].label}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      {phase === 'exchange'
+                        ? isHumanUpperRank
+                          ? `渡す不要なカードをあと${Math.max(0, exchangeRequiredCount - selectedCards.length)}枚選択してください`
+                          : '下位階級のためカードの選択はできません（自動交換済み）'
+                        : phase === 'roundEnd'
+                          ? 'ラウンド終了（次ラウンドへ進めます）'
+                          : turnIndex === 0 && humanPlayer.finishedOrder === null
+                            ? 'あなたの手番です（緑枠＝現在場に出せるカード）'
+                            : '相手プレイヤーの手番中です'}
+                    </p>
+                  </div>
                 </div>
 
                 {phase === 'exchange' ? (
@@ -1279,7 +1785,8 @@ export default function DaifugoGame() {
                       onClick={() =>
                         dealRound(
                           roundNumber + 1,
-                          players.map((p) => p.socialRank)
+                          players.map((p) => p.socialRank),
+                          partnerId
                         )
                       }
                       className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 shadow hover:bg-amber-300 sm:text-sm"
@@ -1288,7 +1795,7 @@ export default function DaifugoGame() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedIds([])}
@@ -1309,13 +1816,35 @@ export default function DaifugoGame() {
                       type="button"
                       onClick={() => executePlay(0, selectedCards)}
                       disabled={!canHumanPlaySelected}
-                      className="rounded-xl bg-emerald-400 px-4 py-1.5 text-xs font-black text-slate-950 shadow transition hover:bg-emerald-300 disabled:opacity-35 sm:text-sm"
+                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-1.5 text-xs font-black text-slate-950 shadow-lg transition hover:brightness-110 disabled:opacity-35 sm:text-sm"
                     >
                       カードを出す ({selectedCards.length}枚)
                     </button>
                   </div>
                 )}
               </div>
+
+              {/* Live Selected Combo Helper Badge */}
+              {phase === 'playing' && selectedComboPreview && (
+                <div className="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/45 px-3 py-1.5 text-xs">
+                  <span className="font-bold text-slate-300">選択中の役:</span>
+                  {selectedComboPreview.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-md bg-amber-400/20 px-2 py-0.5 font-black text-amber-200"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  <span
+                    className={`font-bold ${
+                      selectedComboPreview.beatsTable ? 'text-emerald-300' : 'text-rose-300'
+                    }`}
+                  >
+                    {selectedComboPreview.label}
+                  </span>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center justify-center gap-1 pt-2 sm:gap-1.5">
                 {humanPlayer.hand.map((card) => {
@@ -1351,9 +1880,63 @@ export default function DaifugoGame() {
           )}
         </div>
 
-        {/* Right Sidebar: Local Rules Toggles & Play Log */}
+        {/* Right Sidebar: Partner Avatar, Felt Selector, Local Rules Toggles & Play Log */}
         <aside className="flex flex-col gap-3">
-          <div className="rounded-2xl border border-rose-400/25 bg-slate-900/90 p-4">
+          {/* Partner Character & Luxury Felt Selector */}
+          <div className="rounded-2xl border border-amber-400/25 bg-slate-900/90 p-4 backdrop-blur-md">
+            <h3 className="text-xs font-black tracking-wider text-amber-300 uppercase">
+              👑 パートナー＆テーブル装飾
+            </h3>
+            <p className="mt-1 text-[11px] text-slate-400">
+              ロイヤル・ナイト・ラウンジの相棒キャラとテーブルフェルトを切り替えられます。
+            </p>
+
+            <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+              {CHAR_IDS.map((cid) => {
+                const c = CHARACTERS[cid];
+                const active = cid === partnerId;
+                return (
+                  <button
+                    key={cid}
+                    type="button"
+                    onClick={() => handleSelectPartner(cid)}
+                    className={`flex items-center gap-1.5 rounded-xl border p-1.5 text-left transition ${
+                      active
+                        ? 'border-amber-300 bg-amber-400/20 text-white shadow'
+                        : 'border-white/10 bg-black/35 text-slate-300 hover:bg-white/10'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={charImage(cid, 'normal')}
+                      alt={c.name}
+                      className="h-7 w-7 shrink-0 rounded-full object-cover object-top"
+                    />
+                    <span className="truncate text-[10px] font-black">{c.name.split(' ').pop()}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center gap-1.5">
+              {FELTS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFelt(f.id)}
+                  className={`flex-1 rounded-lg border px-2 py-1 text-[10px] font-black transition ${
+                    felt === f.id
+                      ? 'border-amber-300 bg-amber-400/20 text-amber-200'
+                      : 'border-white/10 bg-black/30 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {f.name.split('・')[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-rose-400/25 bg-slate-900/90 p-4 backdrop-blur-md">
             <h3 className="text-xs font-black tracking-wider text-amber-300 uppercase">
               ⚙️ ローカルルール設定（ON/OFF）
             </h3>
@@ -1417,7 +2000,7 @@ export default function DaifugoGame() {
 
             <button
               type="button"
-              onClick={() => dealRound(1)}
+              onClick={() => dealRound(1, undefined, partnerId)}
               className="mt-3 w-full rounded-xl border border-white/15 bg-white/10 py-2 text-xs font-bold text-white hover:bg-white/20"
             >
               🔄 第1ラウンドから新規リセット
@@ -1425,7 +2008,7 @@ export default function DaifugoGame() {
           </div>
 
           {/* Play Log */}
-          <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-4">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-4 backdrop-blur-md">
             <h3 className="text-xs font-black tracking-wider text-rose-300 uppercase">
               📜 場札・進行ログ
             </h3>
@@ -1445,3 +2028,5 @@ export default function DaifugoGame() {
     </div>
   );
 }
+
+export default DaifugoGame;

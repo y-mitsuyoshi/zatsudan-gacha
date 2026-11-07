@@ -121,6 +121,8 @@ export interface TableState {
   streetRaises?: number;
   /** (engine-managed, optional) last full bet/raise maker of the previous street (for c-bet logic) */
   prevAggressor?: number | null;
+  /** (engine-managed, optional) street bet level of the last full bet/raise for cumulative short all-in re-open */
+  lastFullBet?: number;
 }
 
 export interface LegalActions {
@@ -137,6 +139,22 @@ export interface LegalActions {
   maxRaiseTo: number;
 }
 
+export type TacticalArchetype =
+  | 'pressure_3bet'
+  | 'gto_solver'
+  | 'set_mine_implied'
+  | 'polarized_overbet'
+  | 'icm_push_specialist'
+  | 'suited_draw_semi_bluff'
+  | 'slowplay_check_raise'
+  | 'float_probe_tricky'
+  | 'heavy_value_barrel'
+  | 'late_steal_squeeze'
+  | 'small_ball_momentum'
+  | 'delayed_turn_counter';
+
+export type SizingBias = 'small' | 'geometric' | 'pot' | 'polarized';
+
 export interface AiProfile {
   /** 0..1 how many hands it plays preflop */
   looseness: number;
@@ -150,6 +168,18 @@ export interface AiProfile {
   shove: number;
   /** 0..1 how much it values drawing hands */
   drawLove: number;
+  /** signature tactical archetype (all equal pro-level EV, distinct strategy) */
+  archetype?: TacticalArchetype;
+  /** preferred bet sizing geometry */
+  sizingBias?: SizingBias;
+  /** 0..1 flop continuation bet frequency */
+  cbetFreq?: number;
+  /** 0..1 check-raise / slowplay trap frequency */
+  checkRaiseFreq?: number;
+  /** 0..1 turn/river probe & float bet frequency */
+  probeBetFreq?: number;
+  /** 0..1 late position steal & 3-bet squeeze tendency */
+  stealFreq?: number;
 }
 
 export interface AiDecision {

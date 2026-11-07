@@ -15,6 +15,15 @@
         "type": 301
       }
     ],
+    "rewrites": [
+      {
+        "source": "/api/holdem-online",
+        "function": {
+          "functionId": "holdemApi",
+          "region": "us-central1"
+        }
+      }
+    ],
     "headers": [
       {
         "source": "**",

@@ -56,8 +56,8 @@ describe('Simulation games', () => {
     }
     assert.ok(hub.includes('id="simulation-games"'));
     assert.ok(footer.includes('/games#simulation-games'));
-    assert.ok(llmsFull.includes('全44作品'));
-    assert.equal(SITE_COUNTS.games, 44);
+    assert.ok(llmsFull.includes('全49作品'));
+    assert.equal(SITE_COUNTS.games, 49);
     assert.equal(SITE_COUNTS.simulationGames, 5);
     assert.equal(SITE_COUNTS.boardGames, 18);
     assert.equal(SITE_COUNTS.cardGames, 5);

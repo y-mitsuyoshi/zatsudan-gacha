@@ -1,5 +1,18 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
+import {
+  CHAR_IDS,
+  CHARACTERS,
+  charImage,
+  charVoiceUrl,
+  resolveVoiceClipUrl,
+  type VoiceEvent,
+} from '../src/components/cards/texas-holdem/characters';
+import {
+  resolveSeatPosition,
+} from '../src/components/cards/texas-holdem/config';
 import {
   activeSeats,
   analyzeOuts,
@@ -18,6 +31,24 @@ import {
   shuffle,
   startHand,
 } from '../src/components/cards/texas-holdem/engine';
+import {
+  buildOnlineRoomLineup,
+  createAuthoritativeRoomTableState,
+  rotateTableForHero,
+  type OnlineRoomState,
+} from '../src/components/cards/texas-holdem/onlineClient';
+import {
+  computePokerMetrics,
+  computeRank,
+  defaultProfile,
+  defaultStats,
+  generateAccountId,
+  generateTransferCode,
+  normalizeProfile,
+  PROFILE_TITLES,
+  RANK_TIERS,
+  scrubPiiText,
+} from '../src/components/cards/texas-holdem/profile';
 import type {
   AiProfile,
   Blinds,
@@ -553,6 +584,43 @@ describe('table engine', () => {
     assert.ok(s.log.some((l) => /^--- フロップ: \S+ \S+ \S+ ---$/.test(l)));
     assert.ok(s.log.includes('P1: ベット 120'));
   });
+
+  it('cumulative short all-ins that reach minRaise reopen raising for a player who already acted', () => {
+    // 4-handed, button=0 -> SB=1 (10), BB=2 (20), UTG=3.
+    // Stacks: P0=35, P1=50, P2=1000, P3=1000.
+    let s = startHand(table([35, 50, 1000, 1000], BLINDS, 0), { rng: createSeededRng(21) });
+    assert.equal(s.toAct, 3);
+    s = act(s, 'call'); // P3 calls 20 (hasActed = true, lastFullBet = 20, minRaise = 20)
+    assert.equal(s.toAct, 0);
+    s = act(s, 'allin'); // P0 all-in for 35 (short raise +15 < 20, does not reopen alone)
+    assert.equal(s.toAct, 1);
+    s = act(s, 'allin'); // P1 all-in for 50 (cumulative +30 over lastFullBet 20 >= minRaise 20 -> reopens!)
+    assert.equal(s.toAct, 2);
+    s = act(s, 'call'); // P2 calls 50
+    assert.equal(s.toAct, 3);
+    const la = legalActions(s);
+    assert.equal(la.canRaise, true, 'cumulative short all-ins should reopen raising for P3');
+  });
+
+  it('showdown headline prioritizes contested pot winner over uncontested side pot return', () => {
+    // P0 has 50 chips (AA), P1 has 500 chips (72o), P2 has 500 chips (folds on flop after putting 200 in)
+    let s = rigged(
+      table([50, 500, 500], BLINDS, 0),
+      { 0: 'As Ad', 1: '7c 2d', 2: 'Kh Qd' },
+      'Ah Ks Qs 4c 9h',
+    );
+    // button=0, SB=1, BB=2, toAct=0
+    s = act(s, 'allin'); // P0 all-in 50
+    s = act(s, 'raise', 200); // P1 raises to 200
+    s = act(s, 'call'); // P2 calls 200 -> flop
+    assert.equal(s.street, 'flop');
+    s = act(s, 'bet', 100); // P1 bets 100 on flop
+    s = act(s, 'fold'); // P2 folds -> P1 gets uncalled 100 back, leaving P1 & P2 having put 200 preflop, P0 50
+    assert.ok(s.result);
+    assert.equal(s.result.showdown, true);
+    // Main pot (150) is won by P0 with スリーカード (AAA), while P1 takes uncontested side pot (300)
+    assert.equal(s.result.headline, 'スリーカード');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -646,5 +714,250 @@ describe('AI', () => {
     assert.equal(hands, 3000);
     assert.ok(showdowns > 100, `showdowns ${showdowns}`);
     assert.ok(sidePots > 5, `side pots ${sidePots}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 12-Character Cast & Studio Seiyuu Voice Assets
+// ---------------------------------------------------------------------------
+
+describe('12-Character Cast & Studio Seiyuu Voice Assets', () => {
+  const publicDir = path.resolve(__dirname, '../public');
+  const events: VoiceEvent[] = [
+    'greet',
+    'check',
+    'call',
+    'raise',
+    'allin',
+    'fold',
+    'win',
+    'bigWin',
+    'lose',
+    'think',
+    'select',
+  ];
+
+  it('defines 12 selectable characters with normal/win WebP portraits and VOICEVOX CV credits', () => {
+    assert.equal(CHAR_IDS.length, 12);
+    for (const id of CHAR_IDS) {
+      const ch = CHARACTERS[id];
+      assert.ok(ch, `missing character ${id}`);
+      assert.ok(ch.cvCredit.startsWith('VOICEVOX:'), `${id} missing VOICEVOX CV credit`);
+      const normalFile = path.join(publicDir, charImage(id, 'normal'));
+      const winFile = path.join(publicDir, charImage(id, 'win'));
+      assert.ok(fs.existsSync(normalFile), `missing portrait ${normalFile}`);
+      assert.ok(fs.existsSync(winFile), `missing win portrait ${winFile}`);
+    }
+  });
+
+  it('includes all 264 pre-rendered studio anime seiyuu MP3 voice clips on disk', () => {
+    let count = 0;
+    for (const id of CHAR_IDS) {
+      for (const ev of events) {
+        const lines = CHARACTERS[id].lines[ev];
+        assert.equal(lines.length, 2, `${id}.${ev} should have 2 lines`);
+        for (let idx = 0; idx < 2; idx++) {
+          const relUrl = charVoiceUrl(id, ev, idx);
+          const absPath = path.join(publicDir, relUrl);
+          assert.ok(fs.existsSync(absPath), `missing voice clip ${absPath}`);
+          const stat = fs.statSync(absPath);
+          assert.ok(stat.size > 1000, `voice clip too small: ${absPath}`);
+          assert.equal(resolveVoiceClipUrl(lines[idx], { charId: id }), relUrl);
+          count++;
+        }
+      }
+    }
+    assert.equal(count, 264);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Account Management, Rank Promotion, Pro Poker Analytics & Online Rotation
+// ---------------------------------------------------------------------------
+
+describe('Account Management, Rank System, Poker Analytics & Online Multiplayer', () => {
+  it('generates zero-PII anonymous Account IDs and Transfer Codes and normalizes legacy profiles', () => {
+    const id = generateAccountId();
+    const code = generateTransferCode();
+    assert.match(id, /^RFN-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    assert.match(code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+
+    const norm = normalizeProfile({ playerName: 'TestHero', rankPoints: 640 });
+    assert.equal(norm.playerName, 'TestHero');
+    assert.equal(norm.rankPoints, 640);
+    assert.equal(norm.highestRankPoints, 640);
+    assert.match(norm.accountId, /^RFN-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    assert.match(norm.transferCode, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    assert.ok(norm.accountSecret.length >= 16);
+    assert.equal(norm.stats.positionStats.BTN.played, 0);
+  });
+
+  it('computes 7-tier competitive ranks (Bronze to Legend) with ★1-★3 sub-divisions and promotion thresholds', () => {
+    assert.equal(RANK_TIERS.length, 7);
+    const bronze1 = computeRank(0);
+    assert.equal(bronze1.tier.id, 'bronze');
+    assert.equal(bronze1.stars, 1);
+    assert.equal(bronze1.label, 'ブロンズ ★1');
+
+    const platinum2 = computeRank(1150);
+    assert.equal(platinum2.tier.id, 'platinum');
+    assert.equal(platinum2.stars, 2);
+    assert.equal(platinum2.label, 'プラチナ ★2');
+
+    const legend = computeRank(3750);
+    assert.equal(legend.tier.id, 'legend');
+    assert.equal(legend.stars, 1);
+    assert.equal(legend.nextTierName, null);
+
+    // Titles unlock properly
+    const p = defaultProfile();
+    p.rankPoints = 1150;
+    p.highestRankPoints = 1150;
+    const platTitle = PROFILE_TITLES.find((t) => t.id === 'platinum');
+    assert.ok(platTitle && platTitle.unlocked(p));
+  });
+
+  it('computes VPIP, PFR, 3-Bet%, AF, WTSD%, W$SD%, BB/100 and 6-axis radar chart metrics', () => {
+    const s = defaultStats();
+    s.handsPlayed = 100;
+    s.handsWon = 28;
+    s.vpipHands = 24;
+    s.pfrHands = 19;
+    s.threeBetOpportunities = 40;
+    s.threeBetHands = 4;
+    s.flopSeenHands = 55;
+    s.totalBetsAndRaises = 33;
+    s.totalCalls = 11;
+    s.wentToShowdownHands = 18;
+    s.showdownsWon = 11;
+    s.allInCount = 6;
+    s.allInWins = 4;
+    s.totalNetBb = 145.5;
+
+    const m = computePokerMetrics(s);
+    assert.equal(m.winRate, 28);
+    assert.equal(m.vpip, 24);
+    assert.equal(m.pfr, 19);
+    assert.equal(m.threeBet, 10);
+    assert.equal(m.af, 3);
+    assert.equal(m.wtsd, 32.7);
+    assert.equal(m.wsd, 61.1);
+    assert.equal(m.bbPer100, 145.5);
+    assert.equal(m.styleCode, 'TAG');
+    assert.equal(m.radar.length, 6);
+    assert.ok(m.radar.every((axis) => axis.value >= 12 && axis.value <= 100));
+  });
+
+  it('resolves table positions (BTN/SB/BB/UTG/MP/CO) and rotates online table views for any seat index', () => {
+    assert.equal(resolveSeatPosition(0, 6, 0), 'BTN');
+    assert.equal(resolveSeatPosition(0, 6, 1), 'SB');
+    assert.equal(resolveSeatPosition(0, 6, 2), 'BB');
+    assert.equal(resolveSeatPosition(0, 6, 3), 'UTG');
+    assert.equal(resolveSeatPosition(0, 6, 4), 'MP');
+    assert.equal(resolveSeatPosition(0, 6, 5), 'CO');
+
+    const rawTable = startHand(table([2000, 2000, 2000, 2000]), { rng: createSeededRng(77) });
+    rawTable.seats[0].name = 'HostPlayer';
+    rawTable.seats[2].name = 'GuestPlayer';
+    const rotatedForSeat2 = rotateTableForHero(rawTable, 2);
+
+    // Seat 2 in raw table becomes Seat 0 (bottom Hero) in rotated view
+    assert.equal(rotatedForSeat2.seats[0].name, 'GuestPlayer');
+    assert.equal(rotatedForSeat2.seats[0].isHuman, true);
+    assert.equal(rotatedForSeat2.seats[2].name, 'HostPlayer');
+    assert.equal(rotatedForSeat2.seats[2].isHuman, false);
+    assert.equal(rotatedForSeat2.button, (rawTable.button - 2 + 4) % 4);
+  });
+
+  it('scrubs accidental PII (emails, phone numbers, URLs, HTML tags) from player names', () => {
+    assert.equal(scrubPiiText('user@example.com', 'あなた'), 'あなた');
+    assert.equal(scrubPiiText('090-1234-5678', 'あなた'), 'あなた');
+    assert.equal(scrubPiiText('https://example.com/secret', 'あなた'), 'あなた');
+    assert.equal(scrubPiiText('<script>alert(1)</script>Rei', 'あなた'), 'scriptalert(1)/scriptRei'.slice(0, 12));
+    assert.equal(scrubPiiText('ロイヤル騎士', 'あなた'), 'ロイヤル騎士');
+  });
+
+  it('gives all 12 CPU characters equal pro-level competence with 12 distinct tactical archetypes', () => {
+    const archetypes = new Set<string>();
+    for (const id of CHAR_IDS) {
+      const ch = CHARACTERS[id];
+      assert.ok(ch.tacticalSummary && ch.tacticalSummary.length > 20, `${id} missing tacticalSummary`);
+      assert.ok(Array.isArray(ch.tacticalBadges) && ch.tacticalBadges.length === 3, `${id} missing tacticalBadges`);
+      assert.ok(ch.ai.archetype, `${id} missing ai.archetype`);
+      archetypes.add(ch.ai.archetype!);
+      // Ensure no weak/passive calling-station outlier: all characters have pro-level aggression >= 0.65
+      assert.ok(ch.ai.aggression >= 0.65 && ch.ai.aggression <= 0.85, `${id} aggression out of pro range`);
+      assert.ok(ch.ai.looseness >= 0.32 && ch.ai.looseness <= 0.55, `${id} looseness out of pro range`);
+    }
+    assert.equal(archetypes.size, 12, 'all 12 characters must have unique tactical archetypes');
+  });
+
+  it('builds synchronized online rooms for both stranger quick-match and friend private rooms', () => {
+    const now = Date.now();
+    const friendRoom: OnlineRoomState = {
+      roomCode: '7K9P2M',
+      visibility: 'private',
+      status: 'waiting',
+      hostAccountId: 'RFN-AAAA-1111',
+      settings: {
+        mode: 'lounge',
+        maxSeats: 6,
+        startingStack: 2000,
+        blinds: { sb: 10, bb: 20, ante: 0 },
+        fillWithBots: true,
+        felt: 'emerald',
+      },
+      members: [
+        {
+          accountId: 'RFN-AAAA-1111',
+          playerName: 'ホスト太郎',
+          charId: 'karen',
+          rankPoints: 1200,
+          equippedTitle: 'プラチナ・ハイローラー',
+          isBot: false,
+          ready: true,
+          joinedAt: now,
+          lastSeenAt: now,
+        },
+        {
+          accountId: 'RFN-BBBB-2222',
+          playerName: 'フレンド花子',
+          charId: 'rei',
+          rankPoints: 1350,
+          equippedTitle: 'プラチナ・ハイローラー',
+          isBot: false,
+          ready: true,
+          joinedAt: now,
+          lastSeenAt: now,
+        },
+      ],
+      tableState: null,
+      actionSeq: 1,
+      lastAction: null,
+      stamps: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const lineup = buildOnlineRoomLineup(friendRoom);
+    assert.equal(lineup.length, 6);
+    assert.equal(lineup[0].playerName, 'ホスト太郎');
+    assert.equal(lineup[1].playerName, 'フレンド花子');
+    assert.equal(lineup.filter((m) => !m.isBot).length, 2);
+    assert.equal(lineup.filter((m) => m.isBot).length, 4);
+
+    const authoritative = createAuthoritativeRoomTableState(friendRoom, lineup);
+    const hostView = rotateTableForHero(authoritative, 0);
+    const friendView = rotateTableForHero(authoritative, 1);
+
+    // Host sees themselves at seat 0 and friend at seat 1
+    assert.equal(hostView.seats[0].name, 'ホスト太郎');
+    assert.equal(hostView.seats[1].name, 'フレンド花子');
+    // Friend sees themselves at seat 0 and host at seat 5 (clockwise wrap)
+    assert.equal(friendView.seats[0].name, 'フレンド花子');
+    assert.equal(friendView.seats[5].name, 'ホスト太郎');
+    // Both see the exact same hole cards for each player
+    assert.deepEqual(friendView.seats[0].holeCards, hostView.seats[1].holeCards);
+    assert.deepEqual(friendView.seats[5].holeCards, hostView.seats[0].holeCards);
   });
 });

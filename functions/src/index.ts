@@ -199,11 +199,13 @@ async function consumeSharedRateLimit(clientIP: string): Promise<boolean> {
 
 // Export Shachiku Jinro Functions
 import * as shachikuJinro from "./shachiku-jinro";
+import {holdemApi as holdemOnlineApi} from "./holdem-online";
 export const createRoom = shachikuJinro.createRoom;
 export const joinRoom = shachikuJinro.joinRoom;
 export const startGame = shachikuJinro.startGame;
 export const submitAction = shachikuJinro.submitAction;
 export const nextPhase = shachikuJinro.nextPhase;
+export const holdemApi = holdemOnlineApi;
 
 export const gemini = onRequest(
   {

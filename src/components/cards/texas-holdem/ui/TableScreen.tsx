@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { legalActions } from '../engine';
+import { evaluate7, legalActions, preflopTier } from '../engine';
 import { holdemAudio } from '../audio';
-import { CHARACTERS, charImage, FELTS, HOLDEM_ASSETS, type CharId } from '../characters';
+import { CHARACTERS, CHAR_IDS, charImage, FELTS, HOLDEM_ASSETS, type CharId } from '../characters';
 import {
   MODE_PRESETS,
   type HandReport,
@@ -16,6 +16,7 @@ import { ChipStack } from './ChipStack';
 import { CutInOverlay } from './CutInOverlay';
 import { Hud } from './Hud';
 import { PlayingCard } from './PlayingCard';
+import { ProfileModal } from './ProfileModal';
 import { RankBadge } from './RankBadge';
 import { ResultOverlay } from './ResultOverlay';
 import { ActionBadge, PositionMarkers, SeatView, SpeechBubble } from './SeatView';
@@ -52,7 +53,11 @@ export function TableScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [stampsOpen, setStampsOpen] = useState(false);
+  const [handsGuideOpen, setHandsGuideOpen] = useState(false);
+  const [charSelectOpen, setCharSelectOpen] = useState(false);
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [roomCopyNotice, setRoomCopyNotice] = useState<string | null>(null);
 
   const arenaRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState<{ w: number; h: number }>({ w: 860, h: 460 });
@@ -76,7 +81,7 @@ export function TableScreen({
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const paused = menuOpen || settingsOpen || confirmExit;
+  const paused = menuOpen || settingsOpen || confirmExit || handsGuideOpen || charSelectOpen || statsModalOpen;
   const t = useHoldemTable({
     config,
     heroName: profile.playerName,
@@ -89,7 +94,8 @@ export function TableScreen({
 
   const { view } = t;
   const hero = view.seats[0];
-  const heroChar = CHARACTERS[config.hero];
+  const activeHeroCharId = (hero?.charId as CharId) || config.hero;
+  const heroChar = CHARACTERS[activeHeroCharId] ?? CHARACTERS[config.hero];
   const modePreset = MODE_PRESETS[config.mode];
   const feltAccent = FELTS.find((f) => f.id === config.felt)?.accent ?? '#34d399';
 
@@ -129,6 +135,7 @@ export function TableScreen({
 
   const statusText = useMemo(() => {
     if (t.phase === 'dealing') return 'カードを配っています…';
+    if (t.phase === 'animating') return 'テーブル進行中…';
     if (t.phase === 'handOver') return 'ハンド終了 — 次のハンドへ進めます';
     if (t.phase === 'sessionOver') return '対局終了';
     if (view.toAct !== null && view.seats[view.toAct]) {
@@ -136,6 +143,16 @@ export function TableScreen({
     }
     return '進行中…';
   }, [t.phase, view]);
+
+  const heroHandLabel = useMemo(() => {
+    if (!hero || hero.holeCards.length < 2) return null;
+    const shownBoard = view.board.slice(0, t.boardShown);
+    if (shownBoard.length >= 3) {
+      return evaluate7([...hero.holeCards, ...shownBoard]).nameJa;
+    }
+    const tier = preflopTier(hero.holeCards);
+    return `${tier.notation} (${tier.labelJa})`;
+  }, [hero, view.board, t.boardShown]);
 
   const handleSettingsChange = (settings: HoldemSettings) => {
     onProfileChange({ ...profile, settings });
@@ -221,6 +238,47 @@ export function TableScreen({
               <span className="rounded bg-amber-400/20 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-300">
                 HAND #{view.handNumber}
               </span>
+              {config.online && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      holdemAudio.se('click');
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        void navigator.clipboard.writeText(config.online!.roomId);
+                      }
+                      setRoomCopyNotice(`コード #${config.online!.roomId} コピー済`);
+                      window.setTimeout(() => setRoomCopyNotice(null), 2200);
+                    }}
+                    title="クリックしてルームコードをコピー"
+                    className="rounded border border-teal-300/50 bg-teal-500/20 px-1.5 py-0.5 font-mono text-[10px] font-black text-teal-200 hover:bg-teal-500/30"
+                  >
+                    🌐 ROOM #{config.online.roomId}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      holdemAudio.se('click');
+                      const url =
+                        typeof window !== 'undefined'
+                          ? `${window.location.origin}/texas-holdem?room=${config.online!.roomId}`
+                          : `/texas-holdem?room=${config.online!.roomId}`;
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        void navigator.clipboard.writeText(url);
+                      }
+                      setRoomCopyNotice('招待URLをコピーしました！');
+                      window.setTimeout(() => setRoomCopyNotice(null), 2200);
+                    }}
+                    title="クリックしてフレンド招待URLをコピー"
+                    className="rounded border border-amber-300/45 bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-black text-amber-200 hover:bg-amber-400/25"
+                  >
+                    🔗 招待
+                  </button>
+                  {roomCopyNotice && (
+                    <span className="text-[10px] font-black text-emerald-300">{roomCopyNotice}</span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="text-[10px] font-bold text-slate-300">
               {config.levelUpEveryHands > 0 ? `Lv.${t.level} · ` : ''}
@@ -231,9 +289,53 @@ export function TableScreen({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="hidden md:block">
+          <button
+            type="button"
+            aria-label="アカウント・ポーカー戦績を開く"
+            onClick={() => {
+              holdemAudio.se('click');
+              setStatsModalOpen(true);
+            }}
+            className="hidden items-center gap-1 rounded-xl border border-amber-300/30 bg-slate-900/75 px-2 py-1 transition hover:border-amber-300 md:flex"
+          >
             <RankBadge points={profile.rankPoints} size="sm" />
-          </div>
+          </button>
+
+          <button
+            type="button"
+            aria-label="ポーカー戦績・統計を開く"
+            onClick={() => {
+              holdemAudio.se('click');
+              setStatsModalOpen(true);
+            }}
+            className="rounded-xl border border-amber-300/35 bg-slate-900/80 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:border-amber-300 active:scale-95"
+          >
+            📊 戦績
+          </button>
+
+          <button
+            type="button"
+            aria-label="パートナーキャラを変更"
+            onClick={() => {
+              holdemAudio.se('click');
+              setCharSelectOpen(true);
+            }}
+            className="rounded-xl border border-amber-300/35 bg-slate-900/80 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:border-amber-300 active:scale-95"
+          >
+            🎭 キャラ
+          </button>
+
+          <button
+            type="button"
+            aria-label="ポーカー役一覧を開く"
+            onClick={() => {
+              holdemAudio.se('click');
+              setHandsGuideOpen(true);
+            }}
+            className="rounded-xl border border-amber-300/35 bg-slate-900/80 px-2.5 py-1.5 text-xs font-black text-amber-200 transition hover:border-amber-300 active:scale-95"
+          >
+            🃏 役一覧
+          </button>
 
           <button
             type="button"
@@ -310,6 +412,35 @@ export function TableScreen({
             className="pointer-events-none absolute z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
             style={{ left: geo.pot.x, top: geo.pot.y }}
           >
+            <div className="mb-1 flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/80 px-2 py-0.5 text-[8px] font-black tracking-widest uppercase backdrop-blur-md sm:text-[9px]">
+              {(['preflop', 'flop', 'turn', 'river', 'showdown'] as const).map((stName, i) => {
+                const active = view.street === stName;
+                const label =
+                  stName === 'preflop'
+                    ? 'PRE'
+                    : stName === 'flop'
+                      ? 'FLOP'
+                      : stName === 'turn'
+                        ? 'TURN'
+                        : stName === 'river'
+                          ? 'RIVER'
+                          : 'SHOW';
+                return (
+                  <React.Fragment key={stName}>
+                    {i > 0 && <span className="text-slate-600">›</span>}
+                    <span
+                      className={
+                        active
+                          ? 'rounded bg-amber-400/25 px-1 text-amber-300'
+                          : 'text-slate-500'
+                      }
+                    >
+                      {label}
+                    </span>
+                  </React.Fragment>
+                );
+              })}
+            </div>
             <div className="flex items-center gap-1.5 rounded-full border border-amber-300/45 bg-slate-950/85 px-3 py-1 shadow-lg backdrop-blur-md">
               <span className="text-[9px] font-black tracking-[0.25em] text-amber-200/80 uppercase">
                 TOTAL POT
@@ -317,6 +448,11 @@ export function TableScreen({
               <span className="font-mono text-sm font-black text-amber-300 sm:text-base">
                 {fmt(view.potTotal)}
               </span>
+              {view.currentBet > 0 && t.phase !== 'handOver' && (
+                <span className="ml-1 rounded-full border border-emerald-300/40 bg-emerald-950/80 px-2 py-0.5 font-mono text-[10px] font-black text-emerald-300">
+                  現在ベット {fmt(view.currentBet)}
+                </span>
+              )}
             </div>
             {midPot > 0 && !t.potFly && (
               <div className="mt-1">
@@ -550,12 +686,13 @@ export function TableScreen({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={charImage(
-                        config.hero,
+                        activeHeroCharId,
                         t.winners.includes(0) ? 'win' : 'normal',
                       )}
                       alt={heroChar.name}
                       draggable={false}
-                      className="h-full w-full object-cover object-top"
+                      onClick={() => setCharSelectOpen(true)}
+                      className="h-full w-full cursor-pointer object-cover object-top"
                     />
                   </div>
                 </div>
@@ -588,35 +725,42 @@ export function TableScreen({
               </div>
 
               {/* Hero Hole Cards */}
-              <div className="relative flex items-center gap-1.5 sm:gap-2">
-                {hero.holeCards.map((c, i) => {
-                  const hl = t.highlight
-                    ? t.highlight.includes(c.id)
-                      ? 'win'
-                      : 'dim'
-                    : null;
-                  return (
-                    <PlayingCard
-                      key={`${t.dealKey}-hero-${i}-${c.id}`}
-                      card={c}
-                      faceUp={heroFaceUp}
-                      size={geo.compact ? 'md' : 'lg'}
-                      highlight={hl}
-                      onClick={!heroFaceUp ? t.peek : undefined}
-                      ariaLabel={!heroFaceUp ? 'タップして手札をめくる' : undefined}
-                      deal={{ dx: 0, dy: -80, delay: 250 + i * 110 }}
-                    />
-                  );
-                })}
-                {!heroFaceUp && hero.holeCards.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={t.peek}
-                    className="absolute inset-x-0 -bottom-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-slate-950 shadow"
-                  >
-                    👆 タップで絞る
-                  </button>
+              <div className="relative flex flex-col items-center">
+                {heroFaceUp && heroHandLabel && !hero.folded && (
+                  <div className="mb-1 rounded-full border border-amber-300/50 bg-slate-950/90 px-2.5 py-0.5 text-[10px] font-black tracking-wide text-amber-200 shadow">
+                    役: {heroHandLabel}
+                  </div>
                 )}
+                <div className="relative flex items-center gap-1.5 sm:gap-2">
+                  {hero.holeCards.map((c, i) => {
+                    const hl = t.highlight
+                      ? t.highlight.includes(c.id)
+                        ? 'win'
+                        : 'dim'
+                      : null;
+                    return (
+                      <PlayingCard
+                        key={`${t.dealKey}-hero-${i}-${c.id}`}
+                        card={c}
+                        faceUp={heroFaceUp}
+                        size={geo.compact ? 'md' : 'lg'}
+                        highlight={hl}
+                        onClick={!heroFaceUp ? t.peek : undefined}
+                        ariaLabel={!heroFaceUp ? 'タップして手札をめくる' : undefined}
+                        deal={{ dx: 0, dy: -80, delay: 250 + i * 110 }}
+                      />
+                    );
+                  })}
+                  {!heroFaceUp && hero.holeCards.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={t.peek}
+                      className="absolute inset-x-0 -bottom-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-slate-950 shadow"
+                    >
+                      👆 タップで絞る
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -640,9 +784,13 @@ export function TableScreen({
                 potTotal={view.potTotal}
                 heroBet={hero.bet}
                 heroStack={hero.stack}
+                currentBet={view.currentBet}
                 bb={view.blinds.bb}
                 sb={view.blinds.sb}
                 heroInHand={heroInHand}
+                waitingForOpponent={
+                  t.phase === 'playing' && view.toAct !== null && view.toAct !== 0
+                }
                 preAction={t.preAction}
                 onPreAction={t.setPreAction}
                 onAction={t.heroAct}
@@ -855,6 +1003,154 @@ export function TableScreen({
           </div>
         </div>
       )}
+
+      {/* Hand Rankings Quick Guide Modal */}
+      {handsGuideOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="ポーカー役一覧ガイド"
+          className="fixed inset-0 z-[74] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setHandsGuideOpen(false)}
+        >
+          <div
+            className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-amber-300/40 bg-slate-950/95 p-5 text-slate-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <div className="text-[10px] font-bold tracking-[0.3em] text-amber-300 uppercase">
+                  HAND RANKINGS
+                </div>
+                <h3 className="text-base font-black text-white">ポーカー役一覧（強い順）</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHandsGuideOpen(false)}
+                className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-bold text-white"
+              >
+                ✕ 閉じる
+              </button>
+            </div>
+            <div className="mt-3 space-y-2 text-xs">
+              {[
+                { rank: '1', name: 'ロイヤルストレートフラッシュ', sample: 'A♠ K♠ Q♠ J♠ 10♠', desc: '同じスートの10〜Aのストレート' },
+                { rank: '2', name: 'ストレートフラッシュ', sample: '9♥ 8♥ 7♥ 6♥ 5♥', desc: '同じスートで数字が5枚連続' },
+                { rank: '3', name: 'フォーカード', sample: 'Q♠ Q♥ Q♦ Q♣ 7♠', desc: '同じ数字が4枚' },
+                { rank: '4', name: 'フルハウス', sample: 'K♠ K♥ K♦ 10♠ 10♥', desc: 'スリーカード＋ワンペア' },
+                { rank: '5', name: 'フラッシュ', sample: 'A♦ J♦ 8♦ 5♦ 2♦', desc: '同じスートが5枚' },
+                { rank: '6', name: 'ストレート', sample: '10♠ 9♦ 8♥ 7♣ 6♠', desc: '数字が5枚連続（A-2-3-4-5も可）' },
+                { rank: '7', name: 'スリーカード', sample: '8♠ 8♥ 8♦ K♣ 4♠', desc: '同じ数字が3枚' },
+                { rank: '8', name: 'ツーペア', sample: 'J♠ J♣ 4♥ 4♦ A♠', desc: '2組のペア' },
+                { rank: '9', name: 'ワンペア', sample: 'A♠ A♥ 9♦ 6♣ 3♠', desc: '同じ数字が2枚' },
+                { rank: '10', name: 'ハイカード（ブタ）', sample: 'A♠ Q♦ 9♣ 6♥ 2♠', desc: '役なし（一番強いカードで勝負）' },
+              ].map((item) => (
+                <div
+                  key={item.rank}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2"
+                >
+                  <div>
+                    <div className="flex items-center gap-1.5 font-black text-amber-200">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-400/20 font-mono text-[10px] text-amber-300">
+                        {item.rank}
+                      </span>
+                      <span>{item.name}</span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-400">{item.desc}</div>
+                  </div>
+                  <div className="shrink-0 rounded-lg border border-amber-300/25 bg-slate-900 px-2 py-1 font-mono text-[11px] font-bold text-white">
+                    {item.sample}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-Table Partner Character Switcher Modal */}
+      {charSelectOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="パートナーキャラクター選択"
+          className="fixed inset-0 z-[74] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setCharSelectOpen(false)}
+        >
+          <div
+            className="max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-amber-300/40 bg-slate-950/95 p-5 text-slate-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <div className="text-[10px] font-bold tracking-[0.3em] text-amber-300 uppercase">
+                  PARTNER SELECT ({CHAR_IDS.length} CAST)
+                </div>
+                <h3 className="text-base font-black text-white">パートナーキャラクター変更（声優ボイス対応）</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCharSelectOpen(false)}
+                className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-bold text-white"
+              >
+                ✕ 閉じる
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {CHAR_IDS.map((cid) => {
+                const c = CHARACTERS[cid];
+                const active = activeHeroCharId === cid;
+                return (
+                  <button
+                    key={cid}
+                    type="button"
+                    onClick={() => {
+                      t.changeHeroChar(cid);
+                      onProfileChange({ ...profile, partner: cid });
+                      setCharSelectOpen(false);
+                    }}
+                    className={`flex items-center gap-2.5 rounded-2xl border p-2 text-left transition active:scale-95 ${
+                      active
+                        ? 'border-amber-300 bg-amber-400/15 shadow-[0_0_16px_rgba(251,191,36,0.3)]'
+                        : 'border-white/10 bg-black/40 hover:border-amber-300/50'
+                    }`}
+                  >
+                    <div
+                      className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border"
+                      style={{ borderColor: c.color }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={charImage(cid)}
+                        alt={c.name}
+                        className="h-full w-full object-cover object-top"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-black text-white">{c.name}</div>
+                      <div className="truncate text-[10px] font-bold" style={{ color: c.color }}>
+                        {c.title}
+                      </div>
+                      <div className="mt-0.5 truncate text-[9px] text-slate-400">
+                        {c.voiceStyle} · {c.cvCredit.replace('VOICEVOX:', 'CV:')}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ProfileModal
+        open={statsModalOpen}
+        profile={profile}
+        onClose={() => setStatsModalOpen(false)}
+        onRename={(name) => onProfileChange({ ...profile, playerName: name })}
+        onProfileChange={onProfileChange}
+      />
 
       <SettingsModal
         open={settingsOpen}

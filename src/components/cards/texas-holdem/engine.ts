@@ -13,6 +13,7 @@ import type {
   PlayerAction,
   PotResult,
   SeatState,
+  Street,
   Suit,
   TableState,
 } from './types';
@@ -474,6 +475,7 @@ export function createTable(opts: {
     log: [],
     streetRaises: 0,
     prevAggressor: null,
+    lastFullBet: 0,
   };
 }
 
@@ -513,6 +515,7 @@ export function startHand(
   st.lastAggressor = null;
   st.streetRaises = 0;
   st.prevAggressor = null;
+  st.lastFullBet = bb;
   const players = st.seats.filter((s) => !s.sittingOut);
   if (players.length < 2) {
     st.toAct = null;
@@ -623,6 +626,7 @@ function beginStreet(st: TableState): void {
   st.currentBet = 0;
   st.minRaise = st.blinds.bb;
   st.streetRaises = 0;
+  st.lastFullBet = 0;
   for (const s of st.seats) {
     s.bet = 0;
     s.hasActed = false;
@@ -740,8 +744,17 @@ function doShowdown(st: TableState): void {
     st.log.push(`${names} が ${pot.label} ${pot.amount} を獲得${split}（${pot.handName}）`);
   });
   const winners = clockwiseOrder(st, Object.keys(payouts).map(Number));
-  let headSeat = winners[0];
-  for (const w of winners) if ((payouts[w] ?? 0) > (payouts[headSeat] ?? 0)) headSeat = w;
+  const contestedPay: Record<number, number> = {};
+  for (const pot of pots) {
+    if (pot.eligible.length < 2) continue;
+    const share = Math.floor(pot.amount / Math.max(1, pot.winners.length));
+    for (const w of pot.winners) contestedPay[w] = (contestedPay[w] ?? 0) + share;
+  }
+  const contestedWinners = winners.filter((w) => (contestedPay[w] ?? 0) > 0);
+  const pool = contestedWinners.length > 0 ? contestedWinners : winners;
+  const rankMap = contestedWinners.length > 0 ? contestedPay : payouts;
+  let headSeat = pool[0];
+  for (const w of pool) if ((rankMap[w] ?? 0) > (rankMap[headSeat] ?? 0)) headSeat = w;
   finishHand(st, {
     showdown: true,
     pots,
@@ -827,8 +840,10 @@ export function applyAction(state: TableState, action: PlayerAction): TableState
     const wasBet = st.currentBet === 0;
     const add = putChips(s, target - s.bet, true);
     const raiseBy = s.bet - st.currentBet;
-    if (raiseBy >= st.minRaise) {
-      st.minRaise = raiseBy;
+    const cumulativeRaise = s.bet - (st.lastFullBet ?? st.currentBet);
+    if (raiseBy >= st.minRaise || cumulativeRaise >= st.minRaise) {
+      st.minRaise = Math.max(st.minRaise, raiseBy);
+      st.lastFullBet = s.bet;
       st.lastAggressor = idx;
       for (const o of st.seats) if (o.seat !== idx) o.hasActed = false;
     }
@@ -952,11 +967,42 @@ function raiseTo(c: AiCtx, potFraction: number): number {
   return c.st.currentBet + (c.pot + c.toCall) * potFraction;
 }
 
+function tacticalBetFraction(p: AiProfile, rng: () => number, street: Street, isStrongValue: boolean): number {
+  const bias = p.sizingBias ?? 'geometric';
+  if (bias === 'small') {
+    return isStrongValue ? 0.45 + rng() * 0.18 : 0.33 + rng() * 0.12;
+  }
+  if (bias === 'polarized') {
+    if (isStrongValue || street === 'river') {
+      return 0.95 + rng() * 0.3;
+    }
+    return 0.45 + rng() * 0.15;
+  }
+  if (bias === 'pot') {
+    return isStrongValue ? 0.78 + rng() * 0.25 : 0.65 + rng() * 0.2;
+  }
+  // geometric (60-68% pot)
+  return 0.58 + rng() * 0.14;
+}
+
 function preflopDecision(c: AiCtx): AiDecision {
   const { p, rng, st, me, bb } = c;
   const chen = chenScore(me.holeCards);
   const dealt = st.seats.filter((s) => !s.sittingOut).length;
-  const adj = chen + (c.pos - 0.5) * 2 + (6 - dealt) * 0.35 + (p.looseness - 0.5) * 2;
+  const isPocketPair = me.holeCards.length === 2 && me.holeCards[0].rank === me.holeCards[1].rank;
+  const isSuitedConnector =
+    me.holeCards.length === 2 &&
+    me.holeCards[0].suit === me.holeCards[1].suit &&
+    Math.abs(me.holeCards[0].rank - me.holeCards[1].rank) <= 2 &&
+    Math.min(me.holeCards[0].rank, me.holeCards[1].rank) >= 5;
+  const stealBonus = c.pos >= 0.65 ? (p.stealFreq ?? 0.6) * 0.9 : 0;
+  const specBonus =
+    c.effBB >= 25 &&
+    ((p.archetype === 'set_mine_implied' && (isPocketPair || isSuitedConnector)) ||
+      (p.archetype === 'suited_draw_semi_bluff' && isSuitedConnector))
+      ? 1.1
+      : 0;
+  const adj = chen + (c.pos - 0.5) * 2 + (6 - dealt) * 0.35 + (p.looseness - 0.5) * 2 + stealBonus * 0.5 + specBonus;
   const raiseLevel = st.currentBet / bb;
   const capped = c.raises >= 4;
 
@@ -974,20 +1020,21 @@ function preflopDecision(c: AiCtx): AiDecision {
 
   if (raiseLevel <= 1) {
     // unopened (or limped) pot
-    const openThr = 8.5 - p.looseness * 3.5;
+    const openThr = 8.5 - p.looseness * 3.5 - stealBonus * 0.35;
     const limpers = Math.max(0, st.seats.filter((s) => isLive(s) && s.bet >= bb && s.seat !== st.bbSeat).length);
-    const size = bb * (2.2 + p.aggression * 0.8 + limpers);
-    if (adj >= openThr + 4 || (adj >= openThr && rng() < 0.45 + p.aggression * 0.55)) {
+    const openMult = p.sizingBias === 'small' ? 2.1 : p.sizingBias === 'pot' ? 2.8 : 2.4 + p.aggression * 0.5;
+    const size = bb * (openMult + limpers);
+    if (adj >= openThr + 3.5 || (adj >= openThr && rng() < 0.52 + p.aggression * 0.45)) {
       return legalize(c, { type: 'raise', amount: size }, adj >= openThr + 5 ? 'confident' : 'normal');
     }
     if (c.la.canCheck) {
       if (rng() < p.bluff * 0.12) return legalize(c, { type: 'raise', amount: size }, 'bluffing');
       return legalize(c, { type: 'check' }, 'normal');
     }
-    if (adj >= openThr - 1.5 && rng() < p.looseness * (1.1 - p.aggression)) {
+    if (adj >= openThr - 1.2 && (specBonus > 0 || rng() < p.looseness * (1.05 - p.aggression * 0.8))) {
       return legalize(c, { type: 'call' }, 'thinking');
     }
-    if (me.seat === st.sbSeat && adj >= openThr - 3 && rng() < p.looseness * 0.5) {
+    if (me.seat === st.sbSeat && adj >= openThr - 2.5 && rng() < p.looseness * 0.5) {
       return legalize(c, { type: 'call' }, 'normal');
     }
     return legalize(c, { type: 'fold' }, 'normal');
@@ -995,9 +1042,17 @@ function preflopDecision(c: AiCtx): AiDecision {
 
   // facing a raise
   const potOdds = c.toCall / (c.pot + c.toCall);
-  const threeBetThr = 12.5 - p.aggression * 2.5 + (raiseLevel > 7 ? 2 : 0) + (raiseLevel > 20 ? 1.5 : 0);
+  const callersCount = st.seats.filter((s) => isLive(s) && s.bet === st.currentBet).length;
+  const squeezeBonus =
+    callersCount >= 2 && (p.archetype === 'late_steal_squeeze' || p.archetype === 'pressure_3bet') ? 1.0 : 0;
+  const threeBetThr =
+    12.5 - p.aggression * 2.5 - squeezeBonus + (raiseLevel > 7 ? 2 : 0) + (raiseLevel > 20 ? 1.5 : 0);
   let callThr = 7.5 + Math.min(raiseLevel, 12) * 0.3 - p.looseness * 2.5 - p.stickiness * 1.2;
   if (potOdds < 0.25) callThr -= 1;
+  // Set-mining implied odds with pocket pairs or suited connectors when deep
+  if ((isPocketPair || isSuitedConnector) && c.toCall <= me.stack * 0.1 && c.effBB >= 25) {
+    callThr -= p.archetype === 'set_mine_implied' ? 2.2 : 1.0;
+  }
   const commit = c.toCall >= me.stack * 0.5;
   if (capped) {
     if (adj >= 15) return legalize(c, { type: 'allin' }, 'confident');
@@ -1027,30 +1082,44 @@ function postflopDecision(c: AiCtx): AiDecision {
   const river = st.street === 'river';
   const spr = me.stack / Math.max(1, c.pot);
   const capped = c.raises >= 4;
+  const checkRaiseTendency = p.checkRaiseFreq ?? (1 - p.aggression) * 0.25;
+  const cbetTendency = p.cbetFreq ?? 0.45 + p.aggression * 0.35;
+  const probeTendency = p.probeBetFreq ?? 0.35 + p.aggression * 0.25;
   // multiway pots need more equity
   const need = (base: number): number => base + (c.opponents - 1) * 6;
 
   if (c.la.canCheck) {
     const iAmAggressor = st.prevAggressor === me.seat;
     if (eq >= need(68)) {
-      // value — sometimes trap (check to check-raise) when out of position
-      if (c.pos < 0.5 && rng() < 0.12 + (1 - p.aggression) * 0.15) return legalize(c, { type: 'check' }, 'thinking');
-      const frac = eq >= 88 && rng() < p.aggression * 0.35 ? 1.25 : 0.55 + rng() * 0.25;
-      if (spr < 1.2 && rng() < 0.4 + p.shove * 0.5) return legalize(c, { type: 'allin' }, 'confident');
+      // Tactical trap (slowplay to check-raise) when out of position or check-raise specialist
+      const trapChance =
+        c.pos < 0.5 ? checkRaiseTendency * 0.65 : p.archetype === 'slowplay_check_raise' ? 0.32 : 0.08;
+      if (!river && rng() < trapChance) return legalize(c, { type: 'check' }, 'thinking');
+      const frac = tacticalBetFraction(p, rng, st.street, eq >= 84);
+      if (spr < 1.3 && rng() < 0.45 + p.shove * 0.5) return legalize(c, { type: 'allin' }, 'confident');
       return legalize(c, { type: 'bet', amount: c.pot * frac }, 'confident');
     }
-    if (eq >= need(50) && rng() < 0.25 + p.aggression * 0.5) {
-      return legalize(c, { type: 'bet', amount: c.pot * (0.4 + rng() * 0.2) }, 'normal');
+    if (eq >= need(50) && rng() < 0.28 + p.aggression * 0.48) {
+      const frac = tacticalBetFraction(p, rng, st.street, false);
+      return legalize(c, { type: 'bet', amount: c.pot * frac }, 'normal');
     }
-    if (iAmAggressor && st.street === 'flop' && c.opponents <= 2 && rng() < 0.45 + p.aggression * 0.35) {
-      return legalize(c, { type: 'bet', amount: c.pot * (0.33 + rng() * 0.2) }, eq < 40 ? 'bluffing' : 'normal');
+    if (iAmAggressor && st.street === 'flop' && c.opponents <= 2 && rng() < cbetTendency) {
+      const frac = tacticalBetFraction(p, rng, st.street, false);
+      return legalize(c, { type: 'bet', amount: c.pot * frac }, eq < 40 ? 'bluffing' : 'normal');
     }
-    if (strongDraw && rng() < p.drawLove * 0.45 + p.aggression * 0.2) {
-      return legalize(c, { type: 'bet', amount: c.pot * (0.5 + rng() * 0.2) }, 'bluffing');
+    // Delayed turn C-bet or turn/river probe bet when checked to
+    if (st.street !== 'flop' && c.opponents <= 2 && (eq >= 42 || strongDraw) && rng() < probeTendency * 0.65) {
+      const frac = tacticalBetFraction(p, rng, st.street, false);
+      return legalize(c, { type: 'bet', amount: c.pot * frac }, eq < 48 ? 'bluffing' : 'normal');
     }
-    const bluffChance = p.bluff * (river ? 0.3 : 0.18) * (c.opponents <= 1 ? 1 : 0.4);
+    if (strongDraw && rng() < p.drawLove * 0.5 + p.aggression * 0.2) {
+      const frac = tacticalBetFraction(p, rng, st.street, false);
+      return legalize(c, { type: 'bet', amount: c.pot * frac }, 'bluffing');
+    }
+    const bluffChance = p.bluff * (river ? 0.28 : 0.16) * (c.opponents <= 1 ? 1 : 0.4);
     if (rng() < bluffChance) {
-      return legalize(c, { type: 'bet', amount: c.pot * (0.66 + rng() * 0.4) }, 'bluffing');
+      const frac = tacticalBetFraction(p, rng, st.street, river && p.sizingBias === 'polarized');
+      return legalize(c, { type: 'bet', amount: c.pot * frac }, 'bluffing');
     }
     return legalize(c, { type: 'check' }, eq < 30 ? 'nervous' : 'normal');
   }
@@ -1058,18 +1127,22 @@ function postflopDecision(c: AiCtx): AiDecision {
   // facing a bet
   const potOdds = c.toCall / (c.pot + c.toCall);
   const checkedThisStreet = me.lastAction?.type === 'check';
-  const perceived = eq / 100 + p.stickiness * 0.08;
+  const floatBonus =
+    st.street === 'flop' && c.pos > 0.55 && p.archetype === 'float_probe_tricky' && c.toCall <= c.pot * 0.55
+      ? 0.045
+      : 0;
+  const perceived = eq / 100 + p.stickiness * 0.08 + floatBonus;
   const bigBet = c.toCall > c.pot * 0.75;
   if (!capped) {
-    if (eq >= need(78) && rng() < 0.25 + p.aggression * 0.65) {
-      if (spr < 1.5 || (eq >= 92 && rng() < p.shove * 0.6)) return legalize(c, { type: 'allin' }, 'confident');
+    if (eq >= need(76) && rng() < 0.3 + p.aggression * 0.6) {
+      if (spr < 1.5 || (eq >= 90 && rng() < p.shove * 0.65)) return legalize(c, { type: 'allin' }, 'confident');
       return legalize(c, { type: 'raise', amount: raiseTo(c, 0.75 + rng() * 0.3) }, 'confident');
     }
-    if (checkedThisStreet && eq >= need(60) && rng() < 0.3 + p.aggression * 0.3) {
-      return legalize(c, { type: 'raise', amount: raiseTo(c, 0.8) }, 'confident');
+    if (checkedThisStreet && eq >= need(58) && rng() < 0.28 + checkRaiseTendency * 0.75) {
+      return legalize(c, { type: 'raise', amount: raiseTo(c, 0.82) }, 'confident');
     }
-    if (strongDraw && !river && c.raises <= 1 && rng() < p.drawLove * p.aggression * 0.35) {
-      return legalize(c, { type: 'raise', amount: raiseTo(c, 0.7) }, 'bluffing');
+    if (strongDraw && !river && c.raises <= 1 && rng() < (p.drawLove * 0.45 + checkRaiseTendency * 0.25)) {
+      return legalize(c, { type: 'raise', amount: raiseTo(c, 0.72) }, 'bluffing');
     }
     if (c.raises <= 1 && c.opponents <= 1 && rng() < p.bluff * 0.05) {
       return legalize(c, { type: 'raise', amount: raiseTo(c, 0.8) }, 'bluffing');

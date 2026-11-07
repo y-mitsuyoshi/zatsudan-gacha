@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { holdemAudio } from '../audio';
 import { CHARACTERS, CHAR_IDS, FELTS, HOLDEM_ASSETS, charImage, type CharId, type FeltId } from '../characters';
 import { MODE_PRESETS, type GameModeId, type TableConfig } from '../config';
 import { computeRank, type HoldemProfile } from '../profile';
 import { CharAvatar } from './CharAvatar';
 import { CharacterGallery } from './CharacterGallery';
+import { OnlineLobbyModal } from './OnlineLobbyModal';
 import { ProfileModal } from './ProfileModal';
 import { RankBadge } from './RankBadge';
 import {
@@ -33,6 +34,8 @@ export interface LobbyScreenProps {
   onPlay(cfg: TableConfig): void;
   onBack(): void;
   onOpenSettings(): void;
+  initialOnlineTab?: 'quick' | 'friend' | null;
+  onConsumeInitialOnlineTab?(): void;
 }
 
 const MODE_ORDER: GameModeId[] = ['lounge', 'tournament', 'duel'];
@@ -77,7 +80,15 @@ function shuffled<T>(arr: T[]): T[] {
 }
 
 /** Home hub: partner stage, mode selection, table options and PLAY. */
-export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSettings }: LobbyScreenProps) {
+export function LobbyScreen({
+  profile,
+  onProfileChange,
+  onPlay,
+  onBack,
+  onOpenSettings,
+  initialOnlineTab,
+  onConsumeInitialOnlineTab,
+}: LobbyScreenProps) {
   const hero = profile.partner;
   const ch = CHARACTERS[hero];
   const rank = computeRank(profile.rankPoints);
@@ -87,30 +98,97 @@ export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSe
   const [mode, setMode] = useState<GameModeId>('lounge');
   const [loungeSeats, setLoungeSeats] = useState<number>(6);
   const [duelPick, setDuelPick] = useState<CharId>(() => CHAR_IDS.find((id) => id !== profile.partner) ?? 'rei');
+  const [customRivals, setCustomRivals] = useState<CharId[]>([]);
+  const [useCustomRivals, setUseCustomRivals] = useState(false);
   const [felt, setFelt] = useState<FeltId>('emerald');
   const [bubble, setBubble] = useState<{ text: string; key: number }>(() => ({ text: ch.catchphrase, key: 0 }));
   const [profileOpen, setProfileOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [onlineOpen, setOnlineOpen] = useState(false);
+  const [onlineInitialTab, setOnlineInitialTab] = useState<'quick' | 'friend'>('quick');
+  const [onlineInitialCode, setOnlineInitialCode] = useState('');
   const [launching, setLaunching] = useState(false);
   const [tapKey, setTapKey] = useState(0);
+
+  // Auto-open room modal if ?room=XXXXXX is present in URL or requested from TitleScreen
+  useEffect(() => {
+    if (initialOnlineTab) {
+      setOnlineInitialTab(initialOnlineTab);
+      setOnlineInitialCode('');
+      setOnlineOpen(true);
+      onConsumeInitialOnlineTab?.();
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const roomParam = params.get('room')?.trim().toUpperCase();
+      if (roomParam && /^[A-Z0-9]{6}$/.test(roomParam)) {
+        setOnlineInitialTab('friend');
+        setOnlineInitialCode(roomParam);
+        setOnlineOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, [initialOnlineTab, onConsumeInitialOnlineTab]);
 
   const others = CHAR_IDS.filter((id) => id !== hero);
   const duelOpponent: CharId = duelPick !== hero ? duelPick : others[0];
   const preset = MODE_PRESETS[mode];
   const seats = mode === 'lounge' ? loungeSeats : preset.seats[0];
+  const neededOpponents = seats - 1;
 
   const click = () => holdemAudio.se('click');
 
+  const selectPartnerQuick = (id: CharId) => {
+    if (id === hero) {
+      tapPartner();
+      return;
+    }
+    click();
+    onProfileChange({ ...profile, partner: id });
+    setCustomRivals((prev) => prev.filter((r) => r !== id));
+    const line = randomLine(id, ['select']);
+    speakLine(id, line, voiceOn, 'select');
+    setBubble({ text: line, key: Date.now() });
+    setTapKey((k) => k + 1);
+  };
+
+  const toggleCustomRival = (id: CharId) => {
+    click();
+    setUseCustomRivals(true);
+    setCustomRivals((prev) => {
+      const clean = prev.filter((r) => r !== hero);
+      if (clean.includes(id)) {
+        return clean.filter((r) => r !== id);
+      }
+      if (clean.length >= neededOpponents) {
+        return [...clean.slice(1), id];
+      }
+      return [...clean, id];
+    });
+  };
+
   const tapPartner = () => {
     const line = randomLine(hero, ['select', 'greet']);
-    speakLine(hero, line, voiceOn);
+    speakLine(hero, line, voiceOn, 'select');
     setBubble({ text: line, key: Date.now() });
     setTapKey((k) => k + 1);
   };
 
   const play = () => {
     if (launching) return;
-    const opponents = mode === 'duel' ? [duelOpponent] : shuffled(others).slice(0, seats - 1);
+    let opponents: CharId[];
+    if (mode === 'duel') {
+      opponents = [duelOpponent];
+    } else if (useCustomRivals && customRivals.filter((r) => r !== hero).length > 0) {
+      const chosen = customRivals.filter((r) => r !== hero).slice(0, neededOpponents);
+      const restPool = shuffled(others.filter((id) => !chosen.includes(id)));
+      opponents = [...chosen, ...restPool].slice(0, neededOpponents);
+    } else {
+      opponents = shuffled(others).slice(0, neededOpponents);
+    }
     const cfg: TableConfig = {
       mode,
       hero,
@@ -183,10 +261,24 @@ export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSe
               </button>
             )}
           </div>
-          <div className="ml-auto flex gap-1.5">
-            <button type="button" className={topBtn} aria-label="プロフィール" onClick={() => { click(); setProfileOpen(true); }}>
+          <div className="ml-auto flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              className={topBtn}
+              aria-label="オンライン対戦"
+              onClick={() => {
+                click();
+                setOnlineInitialTab('quick');
+                setOnlineInitialCode('');
+                setOnlineOpen(true);
+              }}
+            >
+              <span aria-hidden>🌐</span>
+              <span className="hidden text-xs font-bold sm:inline">オンライン・個室</span>
+            </button>
+            <button type="button" className={topBtn} aria-label="プロフィール・統計・アカウント" onClick={() => { click(); setProfileOpen(true); }}>
               <IconUser />
-              <span className="hidden text-xs font-bold md:inline">プロフィール</span>
+              <span className="hidden text-xs font-bold md:inline">アカウント・戦績</span>
             </button>
             <button type="button" className={topBtn} aria-label="キャラクター" onClick={() => { click(); setGalleryOpen(true); }}>
               <IconCards />
@@ -269,12 +361,120 @@ export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSe
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3.5 sm:p-5">
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className={SUB_LABEL}>GAME MODE</p>
-                    <h2 className={`text-xl font-black tracking-wide sm:text-2xl ${GOLD_TEXT}`}>モード選択</h2>
+                    <p className={SUB_LABEL}>GAME MODE & CAST</p>
+                    <h2 className={`text-xl font-black tracking-wide sm:text-2xl ${GOLD_TEXT}`}>対局モード＆キャラ選択</h2>
                   </div>
                   <p className="text-[10px] text-slate-400">
                     現在 <span className="font-bold" style={{ color: rank.tier.color }}>{rank.label}</span>
                   </p>
+                </div>
+
+                {/* Quick Partner Picker (All 12 Characters) */}
+                <div className="rounded-2xl border border-amber-300/25 bg-black/35 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div>
+                      <p className={SUB_LABEL}>PARTNER SELECT · パートナー選択（全{CHAR_IDS.length}名）</p>
+                      <p className="text-[11px] font-bold text-amber-100">
+                        現在: <span style={{ color: ch.color }}>{ch.name}</span>（{ch.voiceStyle} / {ch.cvCredit}）
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { click(); setGalleryOpen(true); }}
+                      className="rounded-xl border border-amber-300/40 bg-amber-400/15 px-2.5 py-1 text-[11px] font-black text-amber-200 transition hover:bg-amber-400/25 active:scale-95"
+                    >
+                      🎭 図鑑・ボイス試聴
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-6" role="radiogroup" aria-label="パートナーキャラクター選択">
+                    {CHAR_IDS.map((id) => {
+                      const c = CHARACTERS[id];
+                      const active = hero === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          aria-label={`パートナー：${c.name}`}
+                          onClick={() => selectPartnerQuick(id)}
+                          className={`group flex flex-col items-center gap-1 rounded-xl border p-1.5 transition active:scale-95 ${FOCUS_RING} ${
+                            active
+                              ? 'bg-slate-900/95 shadow-lg'
+                              : 'border-white/10 bg-black/40 opacity-80 hover:border-amber-300/40 hover:opacity-100'
+                          }`}
+                          style={
+                            active
+                              ? { borderColor: c.color, boxShadow: `0 0 14px ${c.color}55` }
+                              : undefined
+                          }
+                        >
+                          <CharAvatar id={id} size={36} active={active} />
+                          <span
+                            className="w-full truncate text-center text-[10px] font-black"
+                            style={{ color: active ? c.color : '#e2e8f0' }}
+                          >
+                            {c.name.split(' ').pop()}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Online Matchmaking & Friend Room Banner */}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      click();
+                      setOnlineInitialTab('quick');
+                      setOnlineInitialCode('');
+                      setOnlineOpen(true);
+                    }}
+                    className={`group flex items-center gap-3 rounded-2xl border border-amber-300/45 bg-gradient-to-br from-amber-500/20 via-indigo-950/60 to-slate-950/90 p-3 text-left transition hover:border-amber-300 hover:brightness-110 active:scale-[0.98] ${FOCUS_RING}`}
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-300/40 bg-black/50 text-lg">
+                      🌐
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-amber-100 sm:text-sm">オンライン段位戦</span>
+                        <span className="rounded bg-amber-400 px-1.5 py-0.2 text-[9px] font-black text-slate-950">
+                          RP +25%
+                        </span>
+                      </div>
+                      <p className="truncate text-[10px] text-slate-300">
+                        全国のプレイヤーとクイックマッチ
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      click();
+                      setOnlineInitialTab('friend');
+                      setOnlineInitialCode('');
+                      setOnlineOpen(true);
+                    }}
+                    className={`group flex items-center gap-3 rounded-2xl border border-teal-300/45 bg-gradient-to-br from-teal-500/20 via-slate-900/70 to-slate-950/90 p-3 text-left transition hover:border-teal-300 hover:brightness-110 active:scale-[0.98] ${FOCUS_RING}`}
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-teal-300/40 bg-black/50 text-lg">
+                      🔑
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-teal-100 sm:text-sm">フレンド個室対戦</span>
+                        <span className="rounded bg-teal-400 px-1.5 py-0.2 text-[9px] font-black text-slate-950">
+                          6桁コード
+                        </span>
+                      </div>
+                      <p className="truncate text-[10px] text-slate-300">
+                        部屋を作成・コード共有で仲間と対局
+                      </p>
+                    </div>
+                  </button>
                 </div>
 
                 {/* mode cards */}
@@ -382,16 +582,80 @@ export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSe
                       </div>
                     </div>
                   )}
-                  {mode === 'tournament' && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-2">
-                        {others.map((id) => (
-                          <CharAvatar key={id} id={id} size={30} />
-                        ))}
+                  {(mode === 'lounge' || mode === 'tournament') && (
+                    <div className={mode === 'lounge' ? 'mt-3 border-t border-white/10 pt-2.5' : ''}>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <p className={SUB_LABEL}>
+                          RIVALS · 同卓ライバル選択（{neededOpponents}名）
+                        </p>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              click();
+                              setUseCustomRivals(false);
+                              setCustomRivals([]);
+                            }}
+                            className={`rounded-lg border px-2 py-0.5 text-[10px] font-bold transition ${
+                              !useCustomRivals
+                                ? 'border-amber-300 bg-amber-400/20 text-amber-100'
+                                : 'border-white/15 bg-black/40 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            🎲 ランダム編成
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              click();
+                              setUseCustomRivals(true);
+                              if (customRivals.length === 0) {
+                                setCustomRivals(others.slice(0, neededOpponents));
+                              }
+                            }}
+                            className={`rounded-lg border px-2 py-0.5 text-[10px] font-bold transition ${
+                              useCustomRivals
+                                ? 'border-amber-300 bg-amber-400/20 text-amber-100'
+                                : 'border-white/15 bg-black/40 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            ✨ ライバル指名 ({customRivals.filter((r) => r !== hero).slice(0, neededOpponents).length}/{neededOpponents})
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-[11px] leading-snug text-slate-300">
-                        全キャラクター参戦の<b className="text-amber-200">6人</b>トーナメント。優勝でランクポイント大量獲得！
-                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {others.map((id) => {
+                          const c = CHARACTERS[id];
+                          const picked =
+                            useCustomRivals &&
+                            customRivals
+                              .filter((r) => r !== hero)
+                              .slice(0, neededOpponents)
+                              .includes(id);
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => toggleCustomRival(id)}
+                              className={`flex items-center gap-1 rounded-full border py-0.5 pl-1 pr-2 text-[10px] font-bold transition active:scale-95 ${
+                                picked
+                                  ? 'bg-slate-900 text-white'
+                                  : 'border-white/10 bg-black/30 text-slate-300 opacity-75 hover:opacity-100'
+                              }`}
+                              style={
+                                picked
+                                  ? { borderColor: c.color, boxShadow: `0 0 10px ${c.color}44` }
+                                  : undefined
+                              }
+                            >
+                              <CharAvatar id={id} size={22} active={picked} />
+                              <span style={{ color: picked ? c.color : undefined }}>
+                                {c.name.split(' ').pop()}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                   {mode === 'duel' && (
@@ -426,8 +690,10 @@ export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSe
                           );
                         })}
                       </div>
-                      <p className="mt-1.5 text-[10px] text-slate-400">
-                        {CHARACTERS[duelOpponent].styleLabel}・{CHARACTERS[duelOpponent].title}
+                      <p className="mt-1.5 text-[10px] text-slate-300">
+                        <span className="font-bold text-amber-200">{CHARACTERS[duelOpponent].styleLabel}</span>
+                        {' — '}
+                        {CHARACTERS[duelOpponent].tacticalSummary}
                       </p>
                     </div>
                   )}
@@ -524,6 +790,18 @@ export function LobbyScreen({ profile, onProfileChange, onPlay, onBack, onOpenSe
         profile={profile}
         onClose={() => setProfileOpen(false)}
         onRename={(name) => onProfileChange({ ...profile, playerName: name })}
+        onProfileChange={onProfileChange}
+      />
+      <OnlineLobbyModal
+        open={onlineOpen}
+        initialTab={onlineInitialTab}
+        initialRoomCode={onlineInitialCode}
+        profile={profile}
+        onClose={() => setOnlineOpen(false)}
+        onStartOnlineMatch={(cfg) => {
+          setOnlineOpen(false);
+          onPlay(cfg);
+        }}
       />
       <CharacterGallery
         open={galleryOpen}

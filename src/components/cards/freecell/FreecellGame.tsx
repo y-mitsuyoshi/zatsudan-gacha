@@ -19,6 +19,16 @@ import {
   SuitVectorIcon,
   useCardTableBgm,
 } from '@/components/cards/shared/cardUtils';
+import {
+  CHARACTERS,
+  CHAR_IDS,
+  FELTS,
+  HOLDEM_ASSETS,
+  charImage,
+  type CharId,
+  type FeltId,
+} from '@/components/cards/texas-holdem/characters';
+import { holdemAudio } from '@/components/cards/texas-holdem/audio';
 
 interface FreecellState {
   freeCells: (CardItem | null)[];
@@ -31,6 +41,293 @@ interface FreecellSelection {
   zone: 'freecell' | 'tableau';
   index: number; // freecell slot 0..3 or tableau col 0..7
   cardIndex?: number;
+}
+
+type SolitaireCommentEvent = 'deal' | 'foundation' | 'hint' | 'clear' | 'win';
+
+const FREECELL_LINES: Record<CharId, Record<SolitaireCommentEvent, string[]>> = {
+  luna: {
+    deal: [
+      '星々の配置が整いました…すべてのカードが見通せる完全情報の世界へようこそ。',
+      'ディール開始です。フリーセルの空きを星図のように使いこなしましょう。',
+    ],
+    foundation: [
+      '美しい軌跡…組札へカードが収まりましたね。',
+      '星の導きのままに。順調に組札が満ちています。',
+    ],
+    hint: [
+      '星の輝きがあのカードを示しています…いかがでしょうか？',
+      '焦らずとも大丈夫。次の一手はここに眠っていますよ。',
+    ],
+    clear: [
+      '空き列が生まれました！スーパー・ムーブの可動域が大きく広がります。',
+      '流れが一気に加速しています…星々が連なっていきますね。',
+    ],
+    win: [
+      'VICTORY!! 52枚の星すべてが組札の星座へと還りました…見事な完全勝利です！',
+      '素晴らしい論理と直感の調和…今夜のロイヤル・サロンはあなたのものです。',
+    ],
+  },
+  karen: {
+    deal: [
+      '運のせいにはできない完全情報戦よ！あんたの頭脳、見せてみなさい！',
+      'さあ始めましょう！フリーセル4枠をどう使うかが勝負の分かれ目よ！',
+    ],
+    foundation: [
+      'いい調子じゃない！どんどん組札へ送り込みなさい！',
+      'ふふん、鮮やかな一手ね！その調子よ！',
+    ],
+    hint: [
+      'もう、しょうがないわね！特別に狙い目のカードを教えてあげる！',
+      'ここよ、ここ！しっかり盤面を見渡しなさいよね！',
+    ],
+    clear: [
+      '列が空いたわよ！これでまとめて大移動できるじゃない！',
+      '一気に畳み掛けるわよ！主導権は私たちのものね！',
+    ],
+    win: [
+      'VICTORY!! 当然の結果ね！私たちにかかればフリーセルなんて楽勝よ♪',
+      '完全制覇よ！さあ、次のディールも華麗にねじ伏せてあげるわ！',
+    ],
+  },
+  rei: {
+    deal: [
+      '全52枚が開示された初期盤面だ。最適手順を逆算して攻略しよう。',
+      'フリーセルと空き列の数を管理すれば、最大移動枚数は指数関数的に増える。',
+    ],
+    foundation: [
+      '合理的な回収だ。盤面の自由度が1段階向上した。',
+      '組札への格納完了。計算通りの進行だ。',
+    ],
+    hint: [
+      '現局面における期待値の高い候補をハイライトした。確認してくれ。',
+      'ボトルネックを解消する一手はここだ。',
+    ],
+    clear: [
+      '空き列の確保に成功した。これでスーパー・ムーブの上限が倍増する。',
+      '収束に入ったな。残りの組札回収まで最短ルートだ。',
+    ],
+    win: [
+      'VICTORY!! 完璧な論理展開だ。1枚の無駄もない見事なソルブだったよ。',
+      'Q.E.D. 証明終了だ。次のシードでも最適解を導き出そう。',
+    ],
+  },
+  koharu: {
+    deal: [
+      'にゃっほー！ぜんぶ表向きのキラキラ盤面にゃ！楽しくパズルするにゃ♪',
+      'フリーセルは4つのお昼寝スペースにゃ！上手に使うにゃ～！',
+    ],
+    foundation: [
+      'やったにゃ！組札がひとつ進んだにゃ♪',
+      'いいリズムにゃ～！ピカピカ集めるにゃ！',
+    ],
+    hint: [
+      'くんくん…こっちのカードが動きたそうにしているにゃ！',
+      'コハルの直感レーダーがピピッと光ったにゃ！ここはどうかにゃ？',
+    ],
+    clear: [
+      'わぁい！列がまるごと空いたにゃ！いっぱいまとめて動かせるにゃ！',
+      'シュシュシュッと大回収にゃーっ！気持ちいいにゃ♪',
+    ],
+    win: [
+      'VICTORY!! ぜんぶ揃ったにゃーっ！天才パズルマスター誕生にゃ♪',
+      '大勝利にゃ！ご褒美にロイヤル・サロンのパフェでお祝いするにゃ！',
+    ],
+  },
+  valentina: {
+    deal: [
+      'ふふっ、隠されたカードのない真剣勝負…あなたの知性を見せてちょうだい。',
+      'ロイヤル・ナイト・サロンの特等席よ。優雅に解き明かしましょう。',
+    ],
+    foundation: [
+      '美しいわ…宝石を並べるように組札を整えていくのね。',
+      'ええ、その調子よ。焦らず華麗に進めましょう。',
+    ],
+    hint: [
+      '迷っているのかしら？ふふ、女帝が少しだけ導いてあげるわ。',
+      'このカードに視線を向けてごらんなさい。道が開けるはずよ。',
+    ],
+    clear: [
+      '見事なスペースメイクね。盤面があなたの支配下に入ったわ。',
+      'さあ、フィナーレよ。華やかにすべてを回収してしまいなさい。',
+    ],
+    win: [
+      'VICTORY!! 惚れ惚れするほど優雅なクリアね。今夜のグラスをあなたに捧げるわ。',
+      '完全なる勝利…私の目に狂いはなかったようね♪',
+    ],
+  },
+  jin: {
+    deal: [
+      '言い訳のきかねえ完全情報パズルだ。じっくり筋を読んでいきな。',
+      'フリーセルを埋めすぎないのが鉄則だ。退路を常に残しておけよ。',
+    ],
+    foundation: [
+      '悪くねえ一手だ。着実に組札へ積んでいけ。',
+      'よし、盤面が軽くなってきたな。',
+    ],
+    hint: [
+      '詰まった時は視点を変えるんだ。このカードから崩してみな。',
+      '焦るな。突破口はそこにあるぜ。',
+    ],
+    clear: [
+      '列を空けたか！いい判断だ、これで一気に勝負がつくぜ。',
+      '見事なラッシュだ。最後まで気を抜くんじゃねえぞ。',
+    ],
+    win: [
+      'VICTORY!! 鮮やかな手並みだったぜ。まさにプロの思考だな。',
+      '完勝だ。次のディールでもその冴えた読みを見せてくれ。',
+    ],
+  },
+  sakura: {
+    deal: [
+      'すべての札が表向き…一点の曇りなき真剣勝負ですわね。',
+      'フリーセル4枠をいかに活かすか、お手並み拝見いたしますわ。',
+    ],
+    foundation: [
+      'お見事ですわ。組札へ美しく収まりました。',
+      '凛とした手順ですわね。そのまま参りましょう。',
+    ],
+    hint: [
+      'お迷いですか？あの札に活路がございますわ。',
+      '桜の風が示す一手はこちらですわ。',
+    ],
+    clear: [
+      '空き列が整いましたわ！一気に連ねて参りましょう！',
+      '盤面が開けましたわね。勝負を決める好機です！',
+    ],
+    win: [
+      'VICTORY!! 52枚すべてが咲き誇りました…天晴れな完全勝利ですわ！',
+      '一点の乱れもなき見事な采配でしたわ♪',
+    ],
+  },
+  alice: {
+    deal: [
+      'わぁ♪ ぜんぶのカードが見えてる不思議の国パズルね！',
+      'フリーセルのお部屋を上手に使ってあそびましょ♪',
+    ],
+    foundation: [
+      'えへへ、組札にぴょんと入ったわ♪',
+      'キラキラ集まっていくわね！いい感じよ♪',
+    ],
+    hint: [
+      'ふふっ、あのカードが「こっちだよ」って手を振ってるわ♪',
+      'アリスの魔法のルーペだと、ここが怪しいわよ♪',
+    ],
+    clear: [
+      'やったぁ！列がまるごと空いたから大行進できるわよ♪',
+      'ワンダーランドの特急列車みたいに一気に片付けちゃお！',
+    ],
+    win: [
+      'VICTORY!! ぜんぶのカードが揃ったわ〜っ！拍手喝采よ♪',
+      'すごーい！アリスもびっくりな名探偵さんね♪',
+    ],
+  },
+  leon: {
+    deal: [
+      '全カードが開示された真っ向勝負だな！王者の知略を見せてやろう！',
+      'フリーセルを制する者が盤面を制す。堂々と挑め！',
+    ],
+    foundation: [
+      'いいぞ、着実に組札の城が築かれているな！',
+      '力強く美しい一手だ！そのまま突き進め！',
+    ],
+    hint: [
+      '突破口はここだ！迷わずこのカードを動かせ！',
+      '王者の眼には次の一手が見えているぞ。ここだ！',
+    ],
+    clear: [
+      'よし、空き列を確保したな！大軍勢を一気に進軍させろ！',
+      '盤面は完全に我々の支配下だ！一気に決着をつけよう！',
+    ],
+    win: [
+      'VICTORY!! 52枚完全制覇！王座にふさわしい圧倒的な頭脳だ！',
+      'ハッハッハ！見事な完勝だ、次のディールも制覇するぞ！',
+    ],
+  },
+  chloe: {
+    deal: [
+      '完全情報ゲームね。初期配置のグラフ構造から最短解を導き出すわよ。',
+      'フリーセルの占有率を最小限に抑えるのがアルゴリズムの鉄則よ。',
+    ],
+    foundation: [
+      '組札への格納を確認。探索空間が順調に縮小しているわ。',
+      '無駄のないムーブね。評価値が上がっているわよ。',
+    ],
+    hint: [
+      '盤面解析の結果、最も優先度の高いムーブはここよ。',
+      'デッドロックを回避する最適手を示したわ。確認しなさい。',
+    ],
+    clear: [
+      '空き列の生成に成功ね。最大移動枚数が倍増したわ。',
+      '収束ルートが確定したわね。残りを高速回収しましょう。',
+    ],
+    win: [
+      'VICTORY!! 計算通りの完全解ね。あなたの論理思考、認めてあげるわ。',
+      '全52枚の格納完了。美しいソルブデータだわ。',
+    ],
+  },
+  hibiki: {
+    deal: [
+      'ぜんぶ表向きのガチンコ勝負ね！ノリとひらめきで一気に解くわよ！',
+      'フリーセルの4枠、リズムよく回していきなさい！',
+    ],
+    foundation: [
+      'ナイス！いいテンポで組札に決まってるわよ！',
+      'ガンガン積んでいきましょ！ノッてきたわね！',
+    ],
+    hint: [
+      'ほら、あのカードがウズウズしてるわよ！動かしてみな！',
+      '私の直感ビートがここを指してるわ！いっちゃいなさい！',
+    ],
+    clear: [
+      '列が空いたわよ！スーパー・ムーブでド派手にぶち抜きなさい！',
+      '最高潮のラッシュ突入よ！一気にフィニッシュまで駆け抜けるわよ！',
+    ],
+    win: [
+      'VICTORY!! パーフェクトクリアきたわねーっ！！最高のライブだったわ♪',
+      'あんたの頭脳、マジでロックだわ！次もぶちかましましょ！',
+    ],
+  },
+  suou: {
+    deal: [
+      'すべてが見通せる盤面…まるで枯山水の庭園を眺めているかのようですね。',
+      '一手の重みを感じながら、静かに紐解いていきましょう。',
+    ],
+    foundation: [
+      '組札へと綺麗に収まりましたね。心地よい流れです。',
+      '焦らずとも、自ずと道は整っていきますよ。',
+    ],
+    hint: [
+      'ふふ、あの札に少し触れてみてはいかがでしょう。',
+      '静かに目を凝らせば、次の一手が浮かび上がってきますよ。',
+    ],
+    clear: [
+      '余白が生まれましたね。これで大きく盤面を動かせます。',
+      '澱みが消え、清らかな流れになりました。さあ仕上げです。',
+    ],
+    win: [
+      'VICTORY!! 52枚すべてが在るべき場所へ還りました…お見事です。',
+      '洗練された美しい手順でした。もう一局、お付き合いいたしましょう。',
+    ],
+  },
+};
+
+function speakPartnerLine(
+  charId: CharId,
+  voicePitch: number,
+  voiceRate: number,
+  voiceGender: 'female' | 'male',
+  text: string,
+  enabled: boolean
+): void {
+  if (!enabled || typeof window === 'undefined') return;
+  holdemAudio.speak(text, {
+    charId,
+    pitch: voicePitch,
+    rate: voiceRate,
+    gender: voiceGender,
+    enabled,
+  });
 }
 
 function cloneFreecell(state: FreecellState): FreecellState {
@@ -151,6 +448,12 @@ export default function FreecellGame() {
   const [oneTapAuto, setOneTapAuto] = useState<boolean>(true);
   const [soundOn, setSoundOn] = useState<boolean>(true);
   const [bgmOn, setBgmOn] = useState<boolean>(false);
+  const [voiceOn, setVoiceOn] = useState<boolean>(true);
+  const [felt, setFelt] = useState<FeltId>('midnight');
+  const [partnerId, setPartnerId] = useState<CharId>('luna');
+  const [partnerLine, setPartnerLine] = useState<string>(
+    FREECELL_LINES.luna.deal[0]
+  );
   const [elapsedSec, setElapsedSec] = useState<number>(0);
   useCardTableBgm(bgmOn, 'lounge');
   const [hintCardId, setHintCardId] = useState<string | null>(null);
@@ -158,6 +461,32 @@ export default function FreecellGame() {
     'ゲーム番号 #1：すべてのカードが最初から表向きの完全情報パズルです'
   );
   const [clearedDeals, setClearedDeals] = useState<number>(0);
+
+  const partner = CHARACTERS[partnerId];
+  const feltMeta = FELTS.find((f) => f.id === felt) ?? FELTS[2];
+
+  const triggerPartnerComment = useCallback(
+    (event: SolitaireCommentEvent, overrideCharId?: CharId) => {
+      const cid = overrideCharId ?? partnerId;
+      const ch = CHARACTERS[cid];
+      const pool = FREECELL_LINES[cid][event];
+      const line = pool[Math.floor(Math.random() * pool.length)] ?? ch.catchphrase;
+      setPartnerLine(line);
+      speakPartnerLine(cid, ch.voicePitch, ch.voiceRate, ch.voiceGender, line, voiceOn);
+    },
+    [partnerId, voiceOn]
+  );
+
+  const handleSelectPartner = useCallback(
+    (nextId: CharId) => {
+      setPartnerId(nextId);
+      const ch = CHARACTERS[nextId];
+      const line = ch.lines.select[0] ?? ch.catchphrase;
+      setPartnerLine(line);
+      speakPartnerLine(nextId, ch.voicePitch, ch.voiceRate, ch.voiceGender, line, voiceOn);
+    },
+    [voiceOn]
+  );
 
   const foundationTotal =
     gameState.foundations.spades.length +
@@ -201,13 +530,16 @@ export default function FreecellGame() {
       setElapsedSec(0);
       setStatusMessage(`ディール #${normalized} を開始しました。`);
       playCardSound('flip', soundOn);
+      triggerPartnerComment('deal');
     },
-    [soundOn]
+    [soundOn, triggerPartnerComment]
   );
 
   const commitState = useCallback(
-    (nextRaw: FreecellState, message: string) => {
+    (nextRaw: FreecellState, message: string, commentHint?: SolitaireCommentEvent) => {
+      const prevEmptyCols = gameState.tableau.filter((c) => c.length === 0).length;
       const next = applySafeAutoFoundations(nextRaw);
+      const nextEmptyCols = next.tableau.filter((c) => c.length === 0).length;
       setHistory((prev) => [...prev.slice(-90), cloneFreecell(gameState)]);
       setGameState(next);
       setSelected(null);
@@ -228,11 +560,17 @@ export default function FreecellGame() {
         } catch {
           // ignore
         }
+        triggerPartnerComment('win');
       } else {
         playCardSound('card', soundOn);
+        if (commentHint) {
+          triggerPartnerComment(commentHint);
+        } else if (nextEmptyCols > prevEmptyCols) {
+          triggerPartnerComment('clear');
+        }
       }
     },
-    [gameState, soundOn, clearedDeals]
+    [gameState, soundOn, clearedDeals, triggerPartnerComment]
   );
 
   const handleUndo = useCallback(() => {
@@ -257,7 +595,11 @@ export default function FreecellGame() {
         next.freeCells[src.index] = null;
         next.foundations[card.suit].push(card);
         next.moves += 1;
-        commitState(next, `${SUIT_LABEL_JA[card.suit]}${formatRank(card.rank)}を組札へ移動しました。`);
+        commitState(
+          next,
+          `${SUIT_LABEL_JA[card.suit]}${formatRank(card.rank)}を組札へ移動しました。`,
+          'foundation'
+        );
         return true;
       }
       const col = next.tableau[src.index];
@@ -269,7 +611,11 @@ export default function FreecellGame() {
       col.pop();
       next.foundations[card.suit].push(card);
       next.moves += 1;
-      commitState(next, `${SUIT_LABEL_JA[card.suit]}${formatRank(card.rank)}を組札へ移動しました。`);
+      commitState(
+        next,
+        `${SUIT_LABEL_JA[card.suit]}${formatRank(card.rank)}を組札へ移動しました。`,
+        'foundation'
+      );
       return true;
     },
     [gameState, commitState]
@@ -440,6 +786,7 @@ export default function FreecellGame() {
   );
 
   const handleHint = useCallback(() => {
+    triggerPartnerComment('hint');
     // 1. Check foundation moves
     for (let i = 0; i < 4; i += 1) {
       const c = gameState.freeCells[i];
@@ -498,7 +845,7 @@ export default function FreecellGame() {
 
     setStatusMessage('💡 ヒント: 「一手戻す」で別ルートを試すか、フリーセルを空けましょう');
     playCardSound('error', soundOn);
-  }, [gameState, soundOn]);
+  }, [gameState, soundOn, triggerPartnerComment]);
 
   const handleAutoFinishAll = useCallback(() => {
     const next = cloneFreecell(gameState);
@@ -528,7 +875,7 @@ export default function FreecellGame() {
       }
       if (!moved) break;
     }
-    commitState(next, '組札へ出せるカードをまとめて回収しました。');
+    commitState(next, '組札へ出せるカードをまとめて回収しました。', 'clear');
   }, [gameState, commitState]);
 
   const formatTime = (sec: number) => {
@@ -538,20 +885,37 @@ export default function FreecellGame() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-950 via-emerald-950 to-slate-950 text-slate-100 select-none">
+    <div className="relative min-h-screen overflow-hidden bg-[#060a14] text-slate-100 select-none">
+      {/* Sky Lounge Atmospheric Backdrop */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={HOLDEM_ASSETS.bgLounge}
+          alt=""
+          className="h-full w-full scale-105 object-cover opacity-35 blur-[2px]"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at 50% 35%, rgba(7,11,20,0.35) 0%, rgba(5,8,16,0.88) 75%, #04070e 100%)',
+          }}
+        />
+      </div>
+
       {/* Header */}
-      <header className="border-b border-teal-400/20 bg-slate-950/85 backdrop-blur">
+      <header className="relative z-20 border-b border-amber-300/25 bg-slate-950/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-2.5">
             <Link
               href="/games"
-              className="rounded-lg border border-teal-400/30 bg-teal-500/10 px-2.5 py-1.5 text-xs font-bold text-teal-200 transition hover:border-teal-300 hover:bg-teal-500/20"
+              className="rounded-lg border border-amber-300/35 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-200 transition hover:border-amber-300 hover:bg-amber-500/20"
             >
               ← 無料ゲーム一覧へ
             </Link>
             <div>
-              <p className="text-[10px] font-bold tracking-widest text-teal-300 uppercase">
-                PERFECT INFORMATION SOLITAIRE
+              <p className="text-[10px] font-bold tracking-widest text-amber-300 uppercase">
+                ROYAL FLUSH NIGHT · SOLITAIRE SALON
               </p>
               <h2 className="text-sm font-black sm:text-lg">
                 フリーセル（FreeCell）
@@ -561,8 +925,8 @@ export default function FreecellGame() {
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* Game Seed Selector */}
-            <div className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs">
-              <span className="font-bold text-teal-300">#</span>
+            <div className="flex items-center gap-1 rounded-lg border border-amber-300/25 bg-black/50 px-2 py-1 text-xs">
+              <span className="font-bold text-amber-300">#</span>
               <input
                 type="number"
                 min={1}
@@ -575,7 +939,7 @@ export default function FreecellGame() {
               <button
                 type="button"
                 onClick={() => startDeal(Number(seedInput))}
-                className="rounded bg-teal-500 px-2 py-0.5 text-[11px] font-black text-slate-950 hover:bg-teal-400"
+                className="rounded bg-amber-400 px-2 py-0.5 text-[11px] font-black text-slate-950 hover:bg-amber-300"
               >
                 開始
               </button>
@@ -588,6 +952,35 @@ export default function FreecellGame() {
               </button>
             </div>
 
+            {/* Felt Selector */}
+            <div className="hidden items-center gap-1 rounded-lg border border-white/15 bg-black/40 p-0.5 text-[11px] sm:flex">
+              {FELTS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFelt(f.id)}
+                  className={`rounded-md px-2 py-1 font-bold transition ${
+                    felt === f.id
+                      ? 'bg-amber-400/25 text-amber-200 ring-1 ring-amber-300/60'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {f.name.split('・')[0]}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setVoiceOn((prev) => !prev)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                voiceOn
+                  ? 'border-amber-300/60 bg-amber-500/20 text-amber-200'
+                  : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              {voiceOn ? '🗣 ボイス ON' : '🗣 ボイス OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setBgmOn((prev) => !prev)}
@@ -611,13 +1004,73 @@ export default function FreecellGame() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-2 py-3 sm:px-4 sm:py-5">
+      <div className="relative z-10 mx-auto max-w-6xl px-2 py-3 sm:px-4 sm:py-5">
+        {/* Partner Character Navigator Widget */}
+        <div className="mb-3 flex flex-col justify-between gap-3 rounded-2xl border border-amber-300/30 bg-gradient-to-r from-slate-950/90 via-slate-900/85 to-slate-950/90 p-3 shadow-xl backdrop-blur-md lg:flex-row lg:items-center">
+          <div className="flex items-center gap-3">
+            <div
+              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 shadow-lg sm:h-16 sm:w-16"
+              style={{ borderColor: partner.color }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={charImage(partnerId, isWon ? 'win' : 'normal')}
+                alt={partner.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-black tracking-wider text-amber-300">
+                  SALON PARTNER
+                </span>
+                <span className="text-xs font-black text-white sm:text-sm">{partner.name}</span>
+                <span className="text-[11px] font-bold text-slate-400">（{partner.title}）</span>
+              </div>
+              <div className="mt-1 rounded-xl border border-white/10 bg-black/45 px-3 py-1.5 text-xs font-bold text-amber-100 shadow-inner">
+                「{partnerLine}」
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              ナビゲーター切替:
+            </span>
+            {CHAR_IDS.map((cid) => {
+              const c = CHARACTERS[cid];
+              const active = cid === partnerId;
+              return (
+                <button
+                  key={cid}
+                  type="button"
+                  onClick={() => handleSelectPartner(cid)}
+                  title={`${c.name}（${c.title}）`}
+                  className={`flex items-center gap-1.5 rounded-xl border px-2 py-1 text-xs font-bold transition ${
+                    active
+                      ? 'border-amber-300 bg-amber-400/20 text-amber-100 shadow'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/25 hover:bg-white/10'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={charImage(cid, 'normal')}
+                    alt={c.name}
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                  <span className="hidden sm:inline">{c.name.split(' ')[1] ?? c.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Metrics & Controls */}
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-teal-400/20 bg-slate-950/65 p-2.5 sm:px-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-300/20 bg-slate-950/75 p-2.5 backdrop-blur sm:px-4">
           <div className="flex flex-wrap items-center gap-3 sm:gap-5 text-xs sm:text-sm">
             <div>
               <span className="text-slate-400">ディール</span>{' '}
-              <span className="font-mono font-black text-teal-300">#{dealNumber}</span>
+              <span className="font-mono font-black text-amber-300">#{dealNumber}</span>
             </div>
             <div>
               <span className="text-slate-400">残りカード</span>{' '}
@@ -675,7 +1128,7 @@ export default function FreecellGame() {
         </div>
 
         {/* Status Message */}
-        <div className="mb-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-xs font-bold text-teal-100">
+        <div className="mb-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs font-bold text-amber-100 backdrop-blur">
           <span>{statusMessage}</span>
           {selected && (
             <button
@@ -688,243 +1141,274 @@ export default function FreecellGame() {
           )}
         </div>
 
-        {/* Top Row: 4 FreeCells (Left) + 4 Foundations (Right) */}
-        <div className="mb-4 grid grid-cols-8 gap-1 sm:gap-2.5">
-          {/* 4 Free Cells */}
-          {gameState.freeCells.map((card, slotIdx) => {
-            const isSelected = selected?.zone === 'freecell' && selected.index === slotIdx;
-            const isHinted = card && hintCardId === card.id;
-            const red = card ? isRedSuit(card.suit, card.rank) : false;
+        {/* Salon Felt Table Surface */}
+        <div
+          className="relative overflow-hidden rounded-3xl border-2 p-3 shadow-[0_20px_60px_rgba(0,0,0,0.75)] sm:p-5"
+          style={{
+            borderColor: `${feltMeta.accent}55`,
+            backgroundImage: `linear-gradient(180deg, rgba(6,10,20,0.35) 0%, rgba(6,10,20,0.65) 100%), url(${HOLDEM_ASSETS.felt[felt]})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          {/* Top Row: 4 FreeCells (Left) + 4 Foundations (Right) */}
+          <div className="mb-4 grid grid-cols-8 gap-1 sm:gap-2.5">
+            {/* 4 Free Cells */}
+            {gameState.freeCells.map((card, slotIdx) => {
+              const isSelected = selected?.zone === 'freecell' && selected.index === slotIdx;
+              const isHinted = card && hintCardId === card.id;
+              const red = card ? isRedSuit(card.suit, card.rank) : false;
 
-            return (
-              <div key={`fc-${slotIdx}`} className="flex flex-col items-center">
-                <span className="mb-1 text-[9px] font-bold text-teal-300/80 sm:text-[10px]">
-                  FREE #{slotIdx + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!card) {
-                      if (selected) tryMoveToFreeCell(selected, slotIdx);
-                      return;
-                    }
-                    handleCardSelectOrMove({ zone: 'freecell', index: slotIdx });
-                  }}
-                  aria-label={`フリーセル ${slotIdx + 1}`}
-                  className={`flex aspect-[5/7] w-full max-w-[76px] flex-col justify-between rounded-lg border transition sm:rounded-xl ${
-                    card
-                      ? `bg-gradient-to-b from-white to-slate-100 p-1 shadow-md sm:p-1.5 ${
-                          red ? 'text-rose-600' : 'text-slate-900'
-                        }`
-                      : 'items-center justify-center border-2 border-dashed border-teal-400/35 bg-teal-950/40 text-teal-300/45'
-                  } ${
-                    isSelected
-                      ? '-translate-y-1 border-amber-400 ring-2 ring-amber-400'
-                      : isHinted
-                        ? 'border-emerald-400 ring-2 ring-emerald-400'
-                        : 'border-slate-300 hover:border-amber-300'
-                  }`}
-                >
-                  {card ? (
-                    <>
-                      <div className="flex items-center justify-between leading-none">
-                        <span className="font-mono text-[11px] font-black sm:text-sm">
-                          {formatRank(card.rank)}
-                        </span>
-                        <span className="text-[10px] sm:text-xs">{SUIT_SYMBOL[card.suit]}</span>
-                      </div>
-                      <div className="flex items-center justify-center">
-                        <SuitVectorIcon suit={card.suit} className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-                      </div>
-                      <div className="flex rotate-180 items-center justify-between leading-none">
-                        <span className="font-mono text-[10px] font-black sm:text-xs">
-                          {formatRank(card.rank)}
-                        </span>
-                        <span className="text-[9px] sm:text-xs">{SUIT_SYMBOL[card.suit]}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="text-[9px] font-bold">空き</span>
-                  )}
-                </button>
-              </div>
-            );
-          })}
-
-          {/* 4 Foundations */}
-          {STANDARD_SUITS.map((suit) => {
-            const pile = gameState.foundations[suit];
-            const top = pile.length > 0 ? pile[pile.length - 1] : null;
-            const red = isRedSuit(suit);
-
-            return (
-              <div key={`fd-${suit}`} className="flex flex-col items-center">
-                <span className="mb-1 text-[9px] font-bold text-amber-300/85 sm:text-[10px]">
-                  {SUIT_SYMBOL[suit]} 組札
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selected) {
-                      tryMoveToFoundation(selected);
-                    }
-                  }}
-                  aria-label={`${SUIT_LABEL_JA[suit]}の組札`}
-                  className={`flex aspect-[5/7] w-full max-w-[76px] flex-col justify-between rounded-lg border transition sm:rounded-xl ${
-                    top
-                      ? `border-slate-300 bg-gradient-to-b from-white to-slate-100 p-1 shadow-md sm:p-1.5 ${
-                          red ? 'text-rose-600' : 'text-slate-900'
-                        }`
-                      : 'items-center justify-center border-2 border-dashed border-amber-400/35 bg-slate-900/50'
-                  }`}
-                >
-                  {top ? (
-                    <>
-                      <div className="flex items-center justify-between leading-none">
-                        <span className="font-mono text-[11px] font-black sm:text-sm">
-                          {formatRank(top.rank)}
-                        </span>
-                        <span className="text-[10px] sm:text-xs">{SUIT_SYMBOL[suit]}</span>
-                      </div>
-                      <div className="flex items-center justify-center">
-                        <SuitVectorIcon suit={suit} className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-                      </div>
-                      <div className="flex rotate-180 items-center justify-between leading-none">
-                        <span className="font-mono text-[10px] font-black sm:text-xs">
-                          {formatRank(top.rank)}
-                        </span>
-                        <span className="text-[9px] sm:text-xs">{SUIT_SYMBOL[suit]}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center opacity-50">
-                      <SuitVectorIcon
-                        suit={suit}
-                        className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                          red ? 'text-rose-400' : 'text-teal-200'
-                        }`}
-                      />
-                      <span className="mt-0.5 font-mono text-[8px] font-bold">A→K</span>
-                    </div>
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 8 Tableau Columns */}
-        <div className="grid grid-cols-8 gap-1 sm:gap-2">
-          {gameState.tableau.map((col, colIdx) => {
-            const colMinHeight = Math.max(290, 90 + col.length * 25);
-            return (
-              <div key={`col-${colIdx}`} className="flex flex-col items-center">
-                <span className="mb-1 font-mono text-[9px] font-bold text-teal-300/75 sm:text-[10px]">
-                  {colIdx + 1}列
-                </span>
-                <div
-                  className="relative w-full max-w-[76px]"
-                  style={{ minHeight: `${colMinHeight}px` }}
-                >
-                  {col.length === 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selected) tryMoveToTableauCol(selected, colIdx);
-                      }}
-                      className="flex aspect-[5/7] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-teal-400/30 bg-teal-950/30 text-[9px] font-bold text-teal-300/50 hover:border-amber-300 sm:rounded-xl"
-                    >
-                      空き列
-                    </button>
-                  )}
-
-                  {col.map((card, cardIdx) => {
-                    const topOffset = cardIdx * 23;
-                    const isSelected =
-                      selected?.zone === 'tableau' &&
-                      selected.index === colIdx &&
-                      selected.cardIndex !== undefined &&
-                      cardIdx >= selected.cardIndex;
-                    const isHinted = hintCardId === card.id;
-                    const red = isRedSuit(card.suit, card.rank);
-
-                    return (
-                      <button
-                        key={card.id}
-                        type="button"
-                        onClick={() =>
-                          handleCardSelectOrMove({
-                            zone: 'tableau',
-                            index: colIdx,
-                            cardIndex: cardIdx,
-                          })
-                        }
-                        style={{ top: `${topOffset}px`, zIndex: cardIdx + 1 }}
-                        className={`absolute inset-x-0 flex aspect-[5/7] w-full flex-col justify-between rounded-lg border bg-gradient-to-b from-white via-slate-50 to-slate-100 p-1 text-left shadow-md transition-transform sm:rounded-xl sm:p-1.5 ${
-                          isSelected
-                            ? '-translate-y-1 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]'
-                            : isHinted
-                              ? 'border-emerald-400 ring-2 ring-emerald-400'
-                              : 'border-slate-300 hover:border-amber-300'
-                        } ${red ? 'text-rose-600' : 'text-slate-900'}`}
-                      >
+              return (
+                <div key={`fc-${slotIdx}`} className="flex flex-col items-center">
+                  <span className="mb-1 text-[9px] font-bold text-teal-200/90 sm:text-[10px]">
+                    FREE #{slotIdx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!card) {
+                        if (selected) tryMoveToFreeCell(selected, slotIdx);
+                        return;
+                      }
+                      handleCardSelectOrMove({ zone: 'freecell', index: slotIdx });
+                    }}
+                    aria-label={`フリーセル ${slotIdx + 1}`}
+                    className={`flex aspect-[5/7] w-full max-w-[76px] flex-col justify-between rounded-lg border transition sm:rounded-xl ${
+                      card
+                        ? `bg-gradient-to-b from-white to-slate-100 p-1 shadow-md sm:p-1.5 ${
+                            red ? 'text-rose-600' : 'text-slate-900'
+                          }`
+                        : 'items-center justify-center border-2 border-dashed border-teal-300/40 bg-slate-950/50 text-teal-200/60'
+                    } ${
+                      isSelected
+                        ? '-translate-y-1 border-amber-400 ring-2 ring-amber-400'
+                        : isHinted
+                          ? 'border-emerald-400 ring-2 ring-emerald-400'
+                          : 'border-slate-300 hover:border-amber-300'
+                    }`}
+                  >
+                    {card ? (
+                      <>
                         <div className="flex items-center justify-between leading-none">
-                          <span className="font-mono text-[10px] font-black tracking-tighter sm:text-xs">
+                          <span className="font-mono text-[11px] font-black sm:text-sm">
                             {formatRank(card.rank)}
                           </span>
-                          <span className="text-[9px] leading-none sm:text-xs">
-                            {SUIT_SYMBOL[card.suit]}
-                          </span>
+                          <span className="text-[10px] sm:text-xs">{SUIT_SYMBOL[card.suit]}</span>
                         </div>
                         <div className="flex items-center justify-center">
-                          <SuitVectorIcon suit={card.suit} className="h-3 w-3 sm:h-4.5 sm:w-4.5" />
+                          <SuitVectorIcon suit={card.suit} className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                         </div>
                         <div className="flex rotate-180 items-center justify-between leading-none">
-                          <span className="font-mono text-[9px] font-black tracking-tighter sm:text-xs">
+                          <span className="font-mono text-[10px] font-black sm:text-xs">
                             {formatRank(card.rank)}
                           </span>
-                          <span className="text-[8px] leading-none sm:text-[10px]">
-                            {SUIT_SYMBOL[card.suit]}
-                          </span>
+                          <span className="text-[9px] sm:text-xs">{SUIT_SYMBOL[card.suit]}</span>
                         </div>
-                      </button>
-                    );
-                  })}
+                      </>
+                    ) : (
+                      <span className="text-[9px] font-bold">空き</span>
+                    )}
+                  </button>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+
+            {/* 4 Foundations */}
+            {STANDARD_SUITS.map((suit) => {
+              const pile = gameState.foundations[suit];
+              const top = pile.length > 0 ? pile[pile.length - 1] : null;
+              const red = isRedSuit(suit);
+
+              return (
+                <div key={`fd-${suit}`} className="flex flex-col items-center">
+                  <span className="mb-1 text-[9px] font-bold text-amber-300/90 sm:text-[10px]">
+                    {SUIT_SYMBOL[suit]} 組札
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selected) {
+                        tryMoveToFoundation(selected);
+                      }
+                    }}
+                    aria-label={`${SUIT_LABEL_JA[suit]}の組札`}
+                    className={`flex aspect-[5/7] w-full max-w-[76px] flex-col justify-between rounded-lg border transition sm:rounded-xl ${
+                      top
+                        ? `border-slate-300 bg-gradient-to-b from-white to-slate-100 p-1 shadow-md sm:p-1.5 ${
+                            red ? 'text-rose-600' : 'text-slate-900'
+                          }`
+                        : 'items-center justify-center border-2 border-dashed border-amber-300/45 bg-slate-950/55'
+                    }`}
+                  >
+                    {top ? (
+                      <>
+                        <div className="flex items-center justify-between leading-none">
+                          <span className="font-mono text-[11px] font-black sm:text-sm">
+                            {formatRank(top.rank)}
+                          </span>
+                          <span className="text-[10px] sm:text-xs">{SUIT_SYMBOL[suit]}</span>
+                        </div>
+                        <div className="flex items-center justify-center">
+                          <SuitVectorIcon suit={suit} className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+                        </div>
+                        <div className="flex rotate-180 items-center justify-between leading-none">
+                          <span className="font-mono text-[10px] font-black sm:text-xs">
+                            {formatRank(top.rank)}
+                          </span>
+                          <span className="text-[9px] sm:text-xs">{SUIT_SYMBOL[suit]}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center opacity-60">
+                        <SuitVectorIcon
+                          suit={suit}
+                          className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                            red ? 'text-rose-400' : 'text-teal-200'
+                          }`}
+                        />
+                        <span className="mt-0.5 font-mono text-[8px] font-bold">A→K</span>
+                      </div>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 8 Tableau Columns */}
+          <div className="grid grid-cols-8 gap-1 sm:gap-2">
+            {gameState.tableau.map((col, colIdx) => {
+              const colMinHeight = Math.max(290, 90 + col.length * 25);
+              return (
+                <div key={`col-${colIdx}`} className="flex flex-col items-center">
+                  <span className="mb-1 font-mono text-[9px] font-bold text-amber-200/80 sm:text-[10px]">
+                    {colIdx + 1}列
+                  </span>
+                  <div
+                    className="relative w-full max-w-[76px]"
+                    style={{ minHeight: `${colMinHeight}px` }}
+                  >
+                    {col.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selected) tryMoveToTableauCol(selected, colIdx);
+                        }}
+                        className="flex aspect-[5/7] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-amber-300/35 bg-slate-950/45 text-[9px] font-bold text-amber-200/60 hover:border-amber-300 sm:rounded-xl"
+                      >
+                        空き列
+                      </button>
+                    )}
+
+                    {col.map((card, cardIdx) => {
+                      const topOffset = cardIdx * 23;
+                      const isSelected =
+                        selected?.zone === 'tableau' &&
+                        selected.index === colIdx &&
+                        selected.cardIndex !== undefined &&
+                        cardIdx >= selected.cardIndex;
+                      const isHinted = hintCardId === card.id;
+                      const red = isRedSuit(card.suit, card.rank);
+
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          onClick={() =>
+                            handleCardSelectOrMove({
+                              zone: 'tableau',
+                              index: colIdx,
+                              cardIndex: cardIdx,
+                            })
+                          }
+                          style={{ top: `${topOffset}px`, zIndex: cardIdx + 1 }}
+                          className={`absolute inset-x-0 flex aspect-[5/7] w-full flex-col justify-between rounded-lg border bg-gradient-to-b from-white via-slate-50 to-slate-100 p-1 text-left shadow-md transition-transform sm:rounded-xl sm:p-1.5 ${
+                            isSelected
+                              ? '-translate-y-1 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]'
+                              : isHinted
+                                ? 'border-emerald-400 ring-2 ring-emerald-400'
+                                : 'border-slate-300 hover:border-amber-300'
+                          } ${red ? 'text-rose-600' : 'text-slate-900'}`}
+                        >
+                          <div className="flex items-center justify-between leading-none">
+                            <span className="font-mono text-[10px] font-black tracking-tighter sm:text-xs">
+                              {formatRank(card.rank)}
+                            </span>
+                            <span className="text-[9px] leading-none sm:text-xs">
+                              {SUIT_SYMBOL[card.suit]}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-center">
+                            <SuitVectorIcon suit={card.suit} className="h-3 w-3 sm:h-4.5 sm:w-4.5" />
+                          </div>
+                          <div className="flex rotate-180 items-center justify-between leading-none">
+                            <span className="font-mono text-[9px] font-black tracking-tighter sm:text-xs">
+                              {formatRank(card.rank)}
+                            </span>
+                            <span className="text-[8px] leading-none sm:text-[10px]">
+                              {SUIT_SYMBOL[card.suit]}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Win Celebration */}
+        {/* Royal Flush Night Victory Cut-In Banner */}
         {isWon && (
-          <div className="mt-6 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-teal-900/90 via-emerald-900/90 to-teal-900/90 p-5 text-center shadow-2xl">
-            <p className="text-xs font-black tracking-widest text-amber-300 uppercase">
-              FREECELL DEAL #{dealNumber} SOLVED!
-            </p>
-            <h3 className="mt-1 text-2xl font-black text-white sm:text-3xl">
-              🎉 フリーセル #{dealNumber} 完全クリア！
-            </h3>
-            <p className="mt-2 text-sm text-teal-100">
-              クリア手数: <span className="font-mono font-bold">{gameState.moves}手</span> ／ タイム:{' '}
-              <span className="font-mono font-bold">{formatTime(elapsedSec)}</span> ／ 累計クリア:{' '}
-              <span className="font-mono font-bold">{clearedDeals}回</span>
-            </p>
-            <div className="mt-4 flex justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => startDeal(dealNumber + 1)}
-                className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg hover:bg-amber-300"
-              >
-                次のディール (#{dealNumber + 1}) へ進む
-              </button>
-              <button
-                type="button"
-                onClick={() => startDeal(Math.floor(Math.random() * 99999) + 1)}
-                className="rounded-xl border border-amber-300 bg-amber-400/20 px-5 py-2.5 text-sm font-black text-amber-100 hover:bg-amber-400/30"
-              >
-                ランダムな番号で遊ぶ
-              </button>
+          <div className="mt-6 overflow-hidden rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-slate-950/95 via-indigo-950/95 to-slate-950/95 p-5 shadow-[0_0_50px_rgba(251,191,36,0.35)] sm:p-6">
+            <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div
+                  className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-2 border-amber-300 shadow-xl sm:h-28 sm:w-28"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={charImage(partnerId, 'win')}
+                    alt={partner.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-black tracking-widest text-amber-300 uppercase">
+                    ROYAL FLUSH NIGHT · FREECELL DEAL #{dealNumber} SOLVED!
+                  </p>
+                  <h3 className="mt-1 text-2xl font-black text-white sm:text-3xl">
+                    🎉 VICTORY!! フリーセル #{dealNumber} 完全クリア！
+                  </h3>
+                  <p className="mt-1.5 text-xs font-bold text-amber-200 sm:text-sm">
+                    {partner.name}「{partnerLine}」
+                  </p>
+                  <p className="mt-2 text-xs text-slate-300 sm:text-sm">
+                    クリア手数: <span className="font-mono font-bold text-white">{gameState.moves}手</span> ／ タイム:{' '}
+                    <span className="font-mono font-bold text-amber-300">{formatTime(elapsedSec)}</span> ／ 累計クリア:{' '}
+                    <span className="font-mono font-bold text-emerald-300">{clearedDeals}回</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => startDeal(dealNumber + 1)}
+                  className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg hover:bg-amber-300"
+                >
+                  次のディールへ (#{dealNumber + 1})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startDeal(Math.floor(Math.random() * 99999) + 1)}
+                  className="rounded-xl border border-amber-300 bg-amber-400/20 px-5 py-2.5 text-sm font-black text-amber-100 hover:bg-amber-400/30"
+                >
+                  ランダムな番号で遊ぶ
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -106,7 +106,7 @@ export function CharacterGallery({ open, profile, onClose, onSelectPartner }: Ch
     <ModalShell open={open} onClose={close} title="キャラクター" titleEn="CHARACTERS" maxWidth="max-w-5xl" tall>
       <div className="flex min-h-full flex-col lg:flex-row">
         {/* list */}
-        <div className="shrink-0 border-b border-amber-300/10 p-3 lg:w-[300px] lg:border-b-0 lg:border-r">
+        <div className="max-h-[36dvh] shrink-0 overflow-y-auto border-b border-amber-300/10 p-3 lg:max-h-none lg:w-[320px] lg:border-b-0 lg:border-r">
           <div className="grid grid-cols-6 gap-2 lg:grid-cols-2" role="listbox" aria-label="キャラクター一覧">
             {CHAR_IDS.map((id, i) => {
               const c = CHARACTERS[id];
@@ -227,7 +227,7 @@ export function CharacterGallery({ open, profile, onClose, onSelectPartner }: Ch
                 {[
                   { k: 'プレイスタイル', v: ch.styleLabel },
                   { k: '好きなハンド', v: ch.favoriteHand },
-                  { k: 'ボイス', v: ch.voiceStyle },
+                  { k: 'キャラクターボイス', v: `${ch.voiceStyle} (${ch.cvCredit.replace('VOICEVOX:', '')})` },
                 ].map((r) => (
                   <div key={r.k} className="rounded-xl border border-white/10 bg-black/40 px-1.5 py-2">
                     <dt className="text-[9px] tracking-wider text-slate-400">{r.k}</dt>
@@ -238,6 +238,30 @@ export function CharacterGallery({ open, profile, onClose, onSelectPartner }: Ch
                 ))}
               </dl>
               <p className="text-[13px] leading-relaxed text-slate-200">{ch.bio}</p>
+
+              {/* Tactical Signature Card */}
+              <div className="rounded-xl border border-amber-300/25 bg-black/50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="text-[10px] font-black tracking-[0.22em] text-amber-300">
+                    TACTICAL SIGNATURE · 戦術シグネチャ
+                  </span>
+                  <span className="rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-200">
+                    全キャラ同格プロ水準
+                  </span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {ch.tacticalBadges.map((b) => (
+                    <span
+                      key={b}
+                      className="rounded-full border px-2 py-0.5 text-[10px] font-black"
+                      style={{ borderColor: `${ch.color}66`, backgroundColor: `${ch.color}1f`, color: ch.color }}
+                    >
+                      #{b}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-300">{ch.tacticalSummary}</p>
+              </div>
 
               <div>
                 <p className={`${SUB_LABEL} mb-1.5`}>VOICE LINES</p>

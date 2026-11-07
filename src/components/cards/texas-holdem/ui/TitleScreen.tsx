@@ -10,7 +10,7 @@ import { FOCUS_RING, IconBook, IconGear, OutGameStyles, PORTRAIT_MASK, stagger }
 
 export interface TitleScreenProps {
   profile: HoldemProfile;
-  onStart(): void;
+  onStart(initialOnlineTab?: 'quick' | 'friend'): void;
   onOpenSettings(): void;
 }
 
@@ -59,12 +59,12 @@ export function TitleScreen({ profile, onStart, onOpenSettings }: TitleScreenPro
     [],
   );
 
-  const start = () => {
+  const start = (initialOnlineTab?: 'quick' | 'friend') => {
     if (leaving) return;
     holdemAudio.unlock();
     holdemAudio.se('open');
     setLeaving(true);
-    timer.current = window.setTimeout(onStart, reduced ? 80 : 520);
+    timer.current = window.setTimeout(() => onStart(initialOnlineTab), reduced ? 80 : 520);
   };
 
   const topBtn = `grid h-10 w-10 place-items-center rounded-full border border-amber-300/40 bg-slate-950/60 text-amber-100 backdrop-blur-md transition hover:bg-slate-900/80 hover:text-amber-50 active:scale-95 shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.5)] ${FOCUS_RING}`;
@@ -151,7 +151,7 @@ export function TitleScreen({ profile, onStart, onOpenSettings }: TitleScreenPro
       {/* full-screen tap target */}
       <button
         type="button"
-        onClick={start}
+        onClick={() => start()}
         aria-label="タップしてスタート"
         className="absolute inset-0 z-10 cursor-pointer outline-none"
       />
@@ -246,6 +246,30 @@ export function TitleScreen({ profile, onStart, onOpenSettings }: TitleScreenPro
           <span className="text-[11px] text-slate-200">
             パートナー：<span className="font-bold" style={{ color: partner.color }}>{partner.name}</span>
           </span>
+        </div>
+        <div className="pointer-events-auto relative z-20 mt-3 flex flex-wrap justify-center gap-2 px-3" style={stagger(2, 1100)}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              start('quick');
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-slate-950/85 px-3.5 py-1.5 text-xs font-black text-amber-100 shadow-lg backdrop-blur-md transition hover:border-amber-200 hover:bg-slate-900 active:scale-95 ${FOCUS_RING}`}
+          >
+            <span aria-hidden>🌐</span>
+            <span>オンライン対戦（全国マッチ）</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              start('friend');
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-teal-300/60 bg-slate-950/85 px-3.5 py-1.5 text-xs font-black text-teal-100 shadow-lg backdrop-blur-md transition hover:border-teal-200 hover:bg-slate-900 active:scale-95 ${FOCUS_RING}`}
+          >
+            <span aria-hidden>🔑</span>
+            <span>フレンド個室（部屋作成・参加）</span>
+          </button>
         </div>
       </div>
 

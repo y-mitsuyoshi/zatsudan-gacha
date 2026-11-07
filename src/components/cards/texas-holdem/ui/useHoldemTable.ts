@@ -5,7 +5,16 @@ import type { Card, PlayerAction, TableState } from '../types';
 import { applyAction, createTable, decideAi, legalActions, startHand } from '../engine';
 import { holdemAudio, type SeName } from '../audio';
 import { CHARACTERS, pickLine, type CharId, type VoiceEvent } from '../characters';
-import { blindsForHand, type HandReport, type SessionSummary, type TableConfig } from '../config';
+import { blindsForHand, resolveSeatPosition, type HandReport, type SessionSummary, type TableConfig } from '../config';
+import {
+  fetchOnlineRoom,
+  getCachedOnlineRoom,
+  rotateTableForHero,
+  sendOnlineRoomStamp,
+  subscribeRoomBus,
+  syncOnlineRoomState,
+  type OnlineRoomState,
+} from '../onlineClient';
 import type { HoldemSettings } from '../profile';
 import { fmt, handTitleEn, inHandSeats, runoutEquity, STAMPS, thinkDelay, type BadgeType } from './tableUtils';
 
@@ -58,7 +67,7 @@ export interface SessionEndInfo {
   summary: SessionSummary;
   placement: number;
 }
-export type PreAction = 'none' | 'checkFold' | 'callAny';
+export type PreAction = 'none' | 'checkFold' | 'autoCheck' | 'callCurrent';
 
 const EVENT_FOR: Record<BadgeType, VoiceEvent> = {
   check: 'check',
@@ -107,6 +116,31 @@ function classify(prev: TableState, next: TableState, seat: number): { type: Bad
 }
 
 function buildInitial(config: TableConfig, heroName: string): TableState {
+  if (config.online) {
+    const cached = getCachedOnlineRoom(config.online.roomId);
+    const rawTable = config.online.initialTableState ?? cached?.tableState ?? null;
+    const members = config.online.members ?? cached?.members ?? [];
+    const mySeat =
+      config.online.mySeat ??
+      Math.max(
+        0,
+        members.findIndex((m) => m.accountId === config.online!.accountId),
+      );
+    if (rawTable && rawTable.seats && rawTable.seats.length >= 2) {
+      const rotated = rotateTableForHero(rawTable, mySeat);
+      const n = rotated.seats.length;
+      return {
+        ...rotated,
+        seats: rotated.seats.map((s, vSeat) => {
+          const rawIdx = (vSeat + mySeat) % n;
+          const mem = members[rawIdx];
+          return mem
+            ? { ...s, name: mem.playerName, charId: mem.charId as CharId, isHuman: vSeat === 0 }
+            : s;
+        }),
+      };
+    }
+  }
   const ids: CharId[] = [config.hero, ...config.opponents];
   const players = ids.map((id, i) => ({
     charId: id,
@@ -174,6 +208,33 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
   const handsPlayedRef = useRef(0);
   const cutInResolveRef = useRef<(() => void) | null>(null);
   const lastStampRef = useRef(0);
+  const handTrackRef = useRef({
+    vpip: false,
+    pfr: false,
+    threeBet: false,
+    threeBetOpportunity: false,
+    sawFlop: false,
+    betsAndRaises: 0,
+    calls: 0,
+  });
+  const onlineSeqRef = useRef(0);
+  const mySeatRef = useRef(config.online?.mySeat ?? 0);
+  const seenStampIdsRef = useRef(new Set<string>());
+  const pendingRoomRef = useRef<OnlineRoomState | null>(null);
+  const humanSeatsRef = useRef<Set<number>>((() => {
+    const set = new Set<number>([0]);
+    if (config.online?.members) {
+      const members = config.online.members;
+      const n = members.length;
+      const myIdx = config.online.mySeat ?? 0;
+      members.forEach((m, rawIdx) => {
+        if (!m.isBot && n > 0) {
+          set.add(((rawIdx - myIdx) % n + n) % n);
+        }
+      });
+    }
+    return set;
+  })());
 
   const nextKey = () => ++keyRef.current;
 
@@ -231,7 +292,14 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       if (showBubble) bubble(seat, line);
       if (Math.random() < chance) {
         const st = settingsRef.current;
-        holdemAudio.speak(line, { pitch: ch.voicePitch, rate: ch.voiceRate, gender: ch.voiceGender, enabled: st.voiceOn });
+        holdemAudio.speak(line, {
+          pitch: ch.voicePitch,
+          rate: ch.voiceRate,
+          gender: ch.voiceGender,
+          enabled: st.voiceOn,
+          charId: id,
+          event: ev,
+        });
       }
     },
     [bubble],
@@ -394,6 +462,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       }
 
       handsPlayedRef.current += 1;
+      const ht = handTrackRef.current;
       const report: HandReport = {
         handNumber: next.handNumber,
         heroWon,
@@ -408,6 +477,17 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
           heroWon && r.showdown
             ? r.reveals.filter((x) => x.seat !== 0 && !r.winners.includes(x.seat)).map((x) => next.seats[x.seat].charId as CharId)
             : [],
+        position: resolveSeatPosition(next.button, next.seats.length, 0),
+        vpip: ht.vpip,
+        pfr: ht.pfr,
+        threeBet: ht.threeBet,
+        threeBetOpportunity: ht.threeBetOpportunity,
+        sawFlop: ht.sawFlop || (next.board.length >= 3 && heroInHand),
+        betsAndRaises: ht.betsAndRaises,
+        calls: ht.calls,
+        holeCards: hero.holeCards.map((c) => c.id),
+        board: next.board.map((c) => c.id),
+        isOnline: Boolean(config.online),
       };
       cbRef.current.onHandComplete(report);
       setHistory((h) =>
@@ -448,6 +528,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
               placement,
               players: next.seats.length,
               completed: true,
+              isOnline: Boolean(config.online),
             },
           });
           setPhase('sessionOver');
@@ -468,11 +549,11 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       setPhase('handOver');
       setCountdown(5);
     },
-    [bubble, config.autoRebuy, config.mode, config.startingStack, later, se, setPhase, showCutIn, sleep, speak, toast],
+    [bubble, config.autoRebuy, config.mode, config.online, config.startingStack, later, se, setPhase, showCutIn, sleep, speak, toast],
   );
 
   const processAction = useCallback(
-    async (seat: number, action: PlayerAction) => {
+    async (seat: number, action: PlayerAction, fromRemote = false) => {
       const prev = stateRef.current;
       if (prev.toAct !== seat || busyRef.current || phaseRef.current !== 'playing') return;
       busyRef.current = true;
@@ -489,9 +570,59 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       stateRef.current = next;
       const { type, added } = classify(prev, next, seat);
       const ps = prev.seats[seat];
+
+      // Track hero stats for Pro Analytics
+      if (seat === 0) {
+        const ht = handTrackRef.current;
+        const isAggressive =
+          type === 'bet' ||
+          type === 'raise' ||
+          (type === 'allin' && ps.bet + added > prev.currentBet);
+        if (prev.street === 'preflop') {
+          const facingRaise = prev.currentBet > prev.blinds.bb;
+          if (facingRaise) ht.threeBetOpportunity = true;
+          if (type === 'call' || type === 'bet' || type === 'raise' || type === 'allin') {
+            ht.vpip = true;
+          }
+          if (isAggressive) {
+            ht.pfr = true;
+            if (facingRaise) ht.threeBet = true;
+          }
+        }
+        if (isAggressive) ht.betsAndRaises += 1;
+        else if (type === 'call' || (type === 'allin' && added > 0)) ht.calls += 1;
+      }
+      if (next.board.length >= 3 && !next.seats[0].folded && !next.seats[0].sittingOut) {
+        handTrackRef.current.sawFlop = true;
+      }
+
+      // Broadcast action to online room if local or host-driven bot
+      if (config.online && !fromRemote) {
+        const n = next.seats.length;
+        const mySeat = mySeatRef.current;
+        const rawSeat = (seat + mySeat) % n;
+        const rawNext = rotateTableForHero(next, (n - mySeat) % n);
+        const nextSeq = onlineSeqRef.current + 1;
+        onlineSeqRef.current = nextSeq;
+        void syncOnlineRoomState(config.online.roomId, config.online.accountId, {
+          tableState: rawNext,
+          actionSeq: nextSeq,
+          lastAction: {
+            seq: nextSeq,
+            seat: rawSeat,
+            action,
+            actorAccountId: config.online.accountId,
+            timestamp: Date.now(),
+          },
+        });
+      }
+      const badgeAmount =
+        type === 'bet' || type === 'raise' || type === 'call' || type === 'allin'
+          ? ps.bet + added
+          : added;
       setBadges((b) => ({
         ...b,
-        [seat]: { type, amount: type === 'bet' || type === 'raise' ? ps.bet + added : added, key: nextKey() },
+        [seat]: { type, amount: badgeAmount, key: nextKey() },
       }));
       se(SE_FOR[type]);
       if (type === 'call' || type === 'bet' || type === 'raise') later(120, () => se('chips'));
@@ -499,6 +630,10 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       speak(seat, EVENT_FOR[type], VOICE_CHANCE[type] * (isHero ? 0.6 : 1), !isHero || Math.random() < 0.6);
 
       const streetChanged = next.board.length !== prev.board.length || next.street !== prev.street || !!next.result;
+      const betIncreased = !streetChanged && next.currentBet > prev.currentBet;
+      if (streetChanged || betIncreased) {
+        setPreAction('none');
+      }
       const ns = next.seats[seat];
       const mid: TableState = {
         ...prev,
@@ -566,13 +701,22 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       busyRef.current = false;
       setPhase('playing');
     },
-    [dealBoard, later, runoutSequence, se, setPhase, showCutIn, showdownSequence, sleep, speak],
+    [config.online, dealBoard, later, runoutSequence, se, setPhase, showCutIn, showdownSequence, sleep, speak],
   );
 
   const nextHand = useCallback(async () => {
     if (phaseRef.current !== 'handOver') return;
     setPhase('dealing');
     setCountdown(null);
+    handTrackRef.current = {
+      vpip: false,
+      pfr: false,
+      threeBet: false,
+      threeBetOpportunity: false,
+      sawFlop: false,
+      betsAndRaises: 0,
+      calls: 0,
+    };
     const cur = stateRef.current;
     const handNo = cur.handNumber + 1;
     const { blinds, level: lv } = blindsForHand(config, handNo);
@@ -585,6 +729,18 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     }
     const next = startHand(cur, { blinds, rebuyTo: config.autoRebuy ? config.startingStack : undefined });
     stateRef.current = next;
+    if (config.online) {
+      const n = next.seats.length;
+      const mySeat = mySeatRef.current;
+      const rawNext = rotateTableForHero(next, (n - mySeat) % n);
+      const nextSeq = onlineSeqRef.current + 1;
+      onlineSeqRef.current = nextSeq;
+      void syncOnlineRoomState(config.online.roomId, config.online.accountId, {
+        tableState: rawNext,
+        actionSeq: nextSeq,
+        lastAction: null,
+      });
+    }
     setRevealed([]);
     setBadges({});
     setHighlight(null);
@@ -638,19 +794,29 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     };
   }, [dealSequence, setPhase, sleep, speak]);
 
-  // AI turns
+  // AI turns (in online rooms, remote human seats wait for remote actions; non-host clients wait for host bot actions)
   useEffect(() => {
     if (phase !== 'playing' || paused) return;
     const s = view.toAct;
     if (s === null) return;
     const seat = stateRef.current.seats[s];
-    if (!seat || seat.isHuman) return;
+    if (!seat || s === 0) return;
+    const isRemoteHuman = Boolean(config.online && humanSeatsRef.current.has(s));
+    const isRemoteDrivenBot = Boolean(config.online && mySeatRef.current !== 0 && !isRemoteHuman);
     setThinking(s);
-    const delay = thinkDelay(settingsRef.current.speed);
-    const thinkLine = delay > 1300 && Math.random() < 0.25 ? window.setTimeout(() => speak(s, 'think', 0), 400) : 0;
+    const delay = isRemoteHuman ? 24000 : isRemoteDrivenBot ? 9000 : thinkDelay(settingsRef.current.speed);
+    const thinkLine =
+      !isRemoteHuman && !isRemoteDrivenBot && delay > 1300 && Math.random() < 0.25
+        ? window.setTimeout(() => speak(s, 'think', 0), 400)
+        : 0;
     const t = window.setTimeout(() => {
       const st = stateRef.current;
       if (st.toAct !== s) return;
+      if (isRemoteHuman) {
+        const leg = legalActions(st);
+        void processAction(s, { type: leg.canCheck ? 'check' : 'fold' });
+        return;
+      }
       const dec = decideAi(st, CHARACTERS[seat.charId as CharId].ai);
       void processAction(s, dec.action);
     }, delay);
@@ -658,7 +824,152 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       window.clearTimeout(t);
       if (thinkLine) window.clearTimeout(thinkLine);
     };
-  }, [phase, paused, view.toAct, view.handNumber, processAction, speak]);
+  }, [config.online, phase, paused, view.toAct, view.handNumber, processAction, speak]);
+
+  // Online Room live sync (actions, initial state, stamps, member names)
+  useEffect(() => {
+    const online = config.online;
+    if (!online) return;
+
+    const applyRoomUpdate = (room: OnlineRoomState) => {
+      const members = room.members || [];
+      const n = stateRef.current.seats.length;
+      const myIdx = Math.max(
+        0,
+        members.findIndex((m) => m.accountId === online.accountId),
+      );
+      mySeatRef.current = myIdx;
+
+      const prevHumans = humanSeatsRef.current;
+      const nextHumanViewSeats = new Set<number>([0]);
+      members.forEach((m, rawIdx) => {
+        if (!m.isBot && rawIdx < n) {
+          const vSeat = ((rawIdx - myIdx) % n + n) % n;
+          if (vSeat !== 0 && !prevHumans.has(vSeat)) {
+            toast(`${m.playerName} さんが着席しました！`, `SEAT #${rawIdx + 1} · ONLINE`, 'gold');
+          }
+          nextHumanViewSeats.add(vSeat);
+        }
+      });
+      humanSeatsRef.current = nextHumanViewSeats;
+
+      // Sync seat names & avatars from room members
+      const cur = stateRef.current;
+      let namesChanged = false;
+      const updatedSeats = cur.seats.map((seatObj, vSeat) => {
+        const rawIdx = (vSeat + myIdx) % n;
+        const mem = members[rawIdx];
+        if (!mem) return seatObj;
+        if (seatObj.name !== mem.playerName || seatObj.charId !== mem.charId) {
+          namesChanged = true;
+          return { ...seatObj, name: mem.playerName, charId: mem.charId };
+        }
+        return seatObj;
+      });
+      if (namesChanged) {
+        const patched = { ...cur, seats: updatedSeats };
+        stateRef.current = patched;
+        setView(patched);
+      }
+
+      // Display incoming remote stamps
+      if (Array.isArray(room.stamps)) {
+        for (const stmp of room.stamps) {
+          if (!seenStampIdsRef.current.has(stmp.id)) {
+            seenStampIdsRef.current.add(stmp.id);
+            if (stmp.accountId !== online.accountId) {
+              const vSeat = ((stmp.seat - myIdx) % n + n) % n;
+              se('stamp');
+              bubble(vSeat, stmp.text, 2400, true);
+            }
+          }
+        }
+      }
+
+      // Sync remote action or new hand state
+      if (room.actionSeq > onlineSeqRef.current) {
+        if (busyRef.current) {
+          pendingRoomRef.current = room;
+          return;
+        }
+        const prevSeq = onlineSeqRef.current;
+        onlineSeqRef.current = room.actionSeq;
+        pendingRoomRef.current = null;
+
+        if (
+          room.lastAction &&
+          room.lastAction.actorAccountId !== online.accountId &&
+          room.lastAction.seq > prevSeq
+        ) {
+          const vSeat = ((room.lastAction.seat - myIdx) % n + n) % n;
+          if (stateRef.current.toAct === vSeat && phaseRef.current === 'playing') {
+            void processAction(vSeat, room.lastAction.action, true);
+            return;
+          }
+        }
+
+        if (room.tableState) {
+          const rotated = rotateTableForHero(room.tableState, myIdx);
+          const patchedSeats = rotated.seats.map((s, vSeat) => {
+            const rawIdx = (vSeat + myIdx) % n;
+            const mem = members[rawIdx];
+            return mem ? { ...s, name: mem.playerName, charId: mem.charId } : s;
+          });
+          const nextState: TableState = { ...rotated, seats: patchedSeats };
+          if (nextState.handNumber > stateRef.current.handNumber) {
+            stateRef.current = nextState;
+            setRevealed([]);
+            setBadges({});
+            setHighlight(null);
+            setWinners([]);
+            setEquities(null);
+            setResult(null);
+            setPotFly(null);
+            setPayoutPending(false);
+            setPreAction('none');
+            setCountdown(null);
+            setBoardShown(nextState.board.length);
+            setView(nextState);
+            setDealKey(nextKey());
+            setPhase('playing');
+          } else {
+            stateRef.current = nextState;
+            setView(nextState);
+            setBoardShown(nextState.board.length);
+          }
+        }
+      }
+    };
+
+    // Initial room sync: if host and room has no tableState yet, publish initial state
+    void fetchOnlineRoom(online.roomId).then((room) => {
+      if (!room) return;
+      if (!room.tableState) {
+        onlineSeqRef.current = room.actionSeq + 1;
+        void syncOnlineRoomState(online.roomId, online.accountId, {
+          tableState: stateRef.current,
+          actionSeq: onlineSeqRef.current,
+        });
+      }
+      applyRoomUpdate(room);
+    });
+
+    const unsub = subscribeRoomBus(online.roomId, applyRoomUpdate);
+    const pollId = window.setInterval(async () => {
+      if (!busyRef.current && pendingRoomRef.current) {
+        const queued = pendingRoomRef.current;
+        pendingRoomRef.current = null;
+        applyRoomUpdate(queued);
+      }
+      const latest = await fetchOnlineRoom(online.roomId);
+      if (latest) applyRoomUpdate(latest);
+    }, 1100);
+
+    return () => {
+      unsub();
+      window.clearInterval(pollId);
+    };
+  }, [bubble, config.online, processAction, se, setPhase, toast]);
 
   // hero turn cue + pre-actions
   useEffect(() => {
@@ -669,12 +980,20 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     }
     const t = window.setTimeout(() => {
       const st = stateRef.current;
-      if (st.toAct !== 0) return;
+      if (st.toAct !== 0 || phaseRef.current !== 'playing') return;
       const legal = legalActions(st);
       setPreAction('none');
-      if (preAction === 'checkFold') void processAction(0, { type: legal.canCheck ? 'check' : 'fold' });
-      else void processAction(0, { type: legal.canCheck ? 'check' : 'call' });
-    }, 350);
+      if (preAction === 'checkFold') {
+        void processAction(0, { type: legal.canCheck ? 'check' : 'fold' });
+      } else if (preAction === 'autoCheck') {
+        if (legal.canCheck) void processAction(0, { type: 'check' });
+        else se('tick');
+      } else if (preAction === 'callCurrent') {
+        if (legal.canCheck) void processAction(0, { type: 'check' });
+        else if (legal.canCall) void processAction(0, { type: 'call' });
+        else se('tick');
+      }
+    }, 320);
     return () => window.clearTimeout(t);
   }, [phase, view.toAct, view.handNumber, preAction, processAction, se]);
 
@@ -711,13 +1030,23 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       if (!st) return;
       se('stamp');
       bubble(0, `${st.emoji} ${st.text}`, 2200, true);
+      if (config.online) {
+        void sendOnlineRoomStamp(
+          config.online.roomId,
+          config.online.accountId,
+          heroName,
+          mySeatRef.current,
+          st.id,
+          `${st.emoji} ${st.text}`,
+        );
+      }
       if (Math.random() < 0.6) {
         const opps = stateRef.current.seats.filter((s) => !s.isHuman && !s.sittingOut);
         const who = opps[Math.floor(Math.random() * opps.length)];
         if (who) later(900 + Math.random() * 700, () => speak(who.seat, STAMP_REPLY[id] ?? 'think', 0.3));
       }
     },
-    [bubble, later, se, speak],
+    [bubble, config.online, heroName, later, se, speak],
   );
 
   const leaveTable = useCallback(() => {
@@ -730,8 +1059,9 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       placement: config.autoRebuy ? 0 : Math.max(1, alive),
       players: st.seats.length,
       completed: false,
+      isOnline: Boolean(config.online),
     });
-  }, [config.autoRebuy, config.mode, config.startingStack]);
+  }, [config.autoRebuy, config.mode, config.online, config.startingStack]);
 
   const finishSession = useCallback(() => {
     if (sessionEnd) cbRef.current.onExit(sessionEnd.summary);
@@ -762,6 +1092,21 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     se('chips');
     toast('チップを満額補充しました', `+${fmt(added)} → ${fmt(config.startingStack)}`, 'gold');
   }, [config.autoRebuy, config.startingStack, se, toast]);
+
+  const changeHeroChar = useCallback(
+    (newCharId: CharId) => {
+      const cur = stateRef.current;
+      const next: TableState = {
+        ...cur,
+        seats: cur.seats.map((s) => (s.seat === 0 ? { ...s, charId: newCharId } : s)),
+      };
+      stateRef.current = next;
+      setView(next);
+      se('open');
+      speak(0, 'select', 1, true);
+    },
+    [se, speak],
+  );
 
   return {
     view,
@@ -800,6 +1145,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     finishSession,
     retrySession,
     topUpHero,
+    changeHeroChar,
   };
 }
 

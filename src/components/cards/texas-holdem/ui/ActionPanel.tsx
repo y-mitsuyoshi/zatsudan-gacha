@@ -11,10 +11,13 @@ export interface ActionPanelProps {
   potTotal: number;
   heroBet: number;
   heroStack: number;
+  currentBet?: number;
   bb: number;
   sb: number;
   /** hero still in the hand (for pre-actions) */
   heroInHand: boolean;
+  /** true only when phase === 'playing' and an opponent seat is currently acting */
+  waitingForOpponent?: boolean;
   preAction: PreAction;
   onPreAction: (p: PreAction) => void;
   onAction: (a: PlayerAction) => void;
@@ -28,13 +31,22 @@ const BTN =
 
 export function ActionPanel(p: ActionPanelProps) {
   const { legal } = p;
-  const [raiseOpen, setRaiseOpen] = useState(false);
   const [raiseTo, setRaiseTo] = useState(0);
 
   const canAggro = !!legal && (legal.canBet || legal.canRaise);
   const minTo = legal?.minRaiseTo ?? 0;
   const maxTo = legal?.maxRaiseTo ?? 0;
   const step = Math.max(1, p.sb);
+
+  // Reset bet/raise slider whenever legal bounds change on a new turn or street
+  useEffect(() => {
+    if (legal && (legal.canBet || legal.canRaise)) {
+      setRaiseTo(legal.minRaiseTo);
+    } else {
+      setRaiseTo(0);
+    }
+  }, [legal, minTo, maxTo]);
+
   const clamp = (v: number) => {
     if (!legal) return 0;
     const r = Math.round(v / step) * step;
@@ -52,8 +64,8 @@ export function ActionPanel(p: ActionPanelProps) {
     const mk = (f: number) => p.heroBet + call + potAfter * f;
     return [
       { label: 'MIN', v: minTo },
-      { label: '1/2', v: mk(0.5) },
-      { label: '2/3', v: mk(2 / 3) },
+      { label: '1/2 POT', v: mk(0.5) },
+      { label: '2/3 POT', v: mk(2 / 3) },
       { label: 'POT', v: mk(1) },
       { label: 'ALL-IN', v: maxTo },
     ];
@@ -61,27 +73,14 @@ export function ActionPanel(p: ActionPanelProps) {
 
   const act = (a: PlayerAction) => {
     p.onClickSe();
-    setRaiseOpen(false);
     setRaiseTo(0);
     p.onAction(a);
   };
+
   const confirmRaise = () => {
-    if (!legal) return;
-    if (isAllIn) act({ type: 'allin' });
-    else act({ type: legal.canBet ? 'bet' : 'raise', amount: value });
-  };
-  const onRaiseBtn = () => {
     if (!legal || !canAggro) return;
-    if (maxTo <= minTo) {
-      act({ type: 'allin' });
-      return;
-    }
-    if (!raiseOpen) {
-      p.onClickSe();
-      setRaiseOpen(true);
-      return;
-    }
-    confirmRaise();
+    if (isAllIn || maxTo <= minTo) act({ type: 'allin' });
+    else act({ type: legal.canBet ? 'bet' : 'raise', amount: value });
   };
 
   // keyboard shortcuts
@@ -89,58 +88,63 @@ export function ActionPanel(p: ActionPanelProps) {
     if (!legal) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' && (t as HTMLInputElement).type === 'text')) return;
+      if (t && t.tagName === 'INPUT' && (t as HTMLInputElement).type === 'text') return;
       if (t && t.tagName === 'TEXTAREA') return;
       const k = e.key.toLowerCase();
       if (k === 'f' && legal.canFold && !legal.canCheck) {
         e.preventDefault();
         p.onClickSe();
-        setRaiseOpen(false);
         p.onAction({ type: 'fold' });
       } else if (k === 'c') {
         e.preventDefault();
         p.onClickSe();
-        setRaiseOpen(false);
-        p.onAction({ type: legal.canCheck ? 'check' : 'call' });
-      } else if (k === 'r' && (legal.canBet || legal.canRaise)) {
-        e.preventDefault();
-        setRaiseOpen((o) => !o);
-      } else if (k === 'a' && (legal.canBet || legal.canRaise || legal.canCall)) {
-        e.preventDefault();
-        setRaiseOpen(true);
-        setRaiseTo(legal.maxRaiseTo);
-      } else if (k === 'enter' && raiseOpen) {
+        p.onAction({ type: legal.canCheck ? 'check' : callIsAllIn ? 'allin' : 'call' });
+      } else if ((k === 'r' || k === 'enter') && (legal.canBet || legal.canRaise)) {
         e.preventDefault();
         const v = raiseTo ? Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, raiseTo)) : legal.minRaiseTo;
         p.onClickSe();
-        setRaiseOpen(false);
         setRaiseTo(0);
         if (v >= legal.maxRaiseTo) p.onAction({ type: 'allin' });
         else p.onAction({ type: legal.canBet ? 'bet' : 'raise', amount: v });
-      } else if (k === 'escape') {
-        setRaiseOpen(false);
+      } else if (k === 'a' && (legal.canBet || legal.canRaise)) {
+        e.preventDefault();
+        p.onClickSe();
+        setRaiseTo(legal.maxRaiseTo);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [legal, raiseOpen, raiseTo, p]);
+  }, [legal, raiseTo, callIsAllIn, p]);
 
   const h = p.compact ? 'h-14' : 'h-16';
 
   if (!legal) {
+    const curBet = p.currentBet ?? 0;
+    const pendingToCall = Math.min(p.heroStack, Math.max(0, curBet - p.heroBet));
+    const preOptions: [PreAction, string][] =
+      pendingToCall > 0
+        ? [
+            ['checkFold', 'チェック / フォールド'],
+            [
+              'callCurrent',
+              p.heroBet > 0
+                ? `コール +${fmt(pendingToCall)} (計${fmt(p.heroBet + pendingToCall)})`
+                : `コール ${fmt(pendingToCall)}`,
+            ],
+          ]
+        : [
+            ['checkFold', 'チェック / フォールド'],
+            ['autoCheck', '自動チェック'],
+          ];
+
     return (
       <div className="flex w-full flex-col gap-2">
-        <div className="rounded-xl border border-amber-300/20 bg-slate-950/70 px-3 py-2 text-center text-[11px] font-bold text-amber-100/80 backdrop-blur-md">
+        <div className="rounded-xl border border-amber-300/20 bg-slate-950/75 px-3 py-2 text-center text-[11px] font-bold text-amber-100/85 backdrop-blur-md">
           {p.statusText}
         </div>
-        {p.heroInHand && (
+        {p.heroInHand && p.waitingForOpponent && p.heroStack > 0 && (
           <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ['checkFold', 'チェック / フォールド'],
-                ['callAny', 'コール・エニー'],
-              ] as [PreAction, string][]
-            ).map(([id, label]) => {
+            {preOptions.map(([id, label]) => {
               const on = p.preAction === id;
               return (
                 <button
@@ -153,11 +157,13 @@ export function ActionPanel(p: ActionPanelProps) {
                     p.onPreAction(on ? 'none' : id);
                   }}
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-bold transition active:scale-95 ${
-                    on ? 'border-amber-300 bg-amber-400/20 text-amber-100' : 'border-white/15 bg-slate-900/70 text-white/70'
+                    on
+                      ? 'border-amber-300 bg-amber-400/20 text-amber-100 shadow-[0_0_14px_rgba(251,191,36,0.25)]'
+                      : 'border-white/15 bg-slate-900/75 text-white/75 hover:border-white/30'
                   }`}
                 >
                   <span
-                    className={`flex h-4 w-4 items-center justify-center rounded border ${
+                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                       on ? 'border-amber-300 bg-amber-400 text-slate-950' : 'border-white/40'
                     }`}
                   >
@@ -167,7 +173,7 @@ export function ActionPanel(p: ActionPanelProps) {
                       </svg>
                     )}
                   </span>
-                  {label}
+                  <span className="truncate">{label}</span>
                 </button>
               );
             })}
@@ -177,31 +183,44 @@ export function ActionPanel(p: ActionPanelProps) {
     );
   }
 
+  const callTotalStreetBet = p.heroBet + legal.callAmount;
+  const raiseAddedChips = Math.max(0, value - p.heroBet);
+
   return (
-    <div className="relative flex w-full flex-col gap-2">
-      {raiseOpen && canAggro && (
-        <div
-          className="rounded-2xl border border-amber-300/40 bg-slate-950/90 p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.6)] backdrop-blur-md"
-          style={{ animation: 'rf-fadeup 200ms ease-out both' }}
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">{verb} TO</span>
-            <span className="bg-gradient-to-b from-amber-100 via-amber-300 to-amber-600 bg-clip-text text-2xl font-black tabular-nums text-transparent">
-              {fmt(value)}
+    <div className="relative flex w-full flex-col gap-1.5">
+      {canAggro && maxTo > minTo && (
+        <div className="rounded-2xl border border-amber-300/35 bg-slate-950/90 px-2.5 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-black tracking-[0.2em] text-amber-200/80 uppercase">
+                {verb === 'BET' ? 'BET SIZE' : 'RAISE TO'}
+              </span>
+              {p.heroBet > 0 && (
+                <span className="rounded bg-amber-400/15 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-200">
+                  +{fmt(raiseAddedChips)} 追加
+                </span>
+              )}
+            </div>
+            <span className="bg-gradient-to-b from-amber-100 via-amber-300 to-amber-500 bg-clip-text font-mono text-base font-black tabular-nums text-transparent sm:text-lg">
+              {isAllIn ? `ALL-IN ${fmt(value)}` : fmt(value)}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              aria-label="減らす"
-              onClick={() => setRaiseTo(clamp(value - p.bb))}
-              className="h-9 w-9 shrink-0 rounded-lg border border-white/20 bg-slate-800 text-lg font-black text-white active:scale-95"
+              aria-label="ベット額を減らす"
+              onClick={() => {
+                p.onClickSe();
+                setRaiseTo(clamp(value - p.bb));
+              }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-slate-800 text-sm font-black text-white transition hover:border-amber-300/50 active:scale-95"
             >
               −
             </button>
             <input
               type="range"
-              aria-label="ベット額"
+              aria-label="ベット額スライダー"
               min={minTo}
               max={maxTo}
               step={step}
@@ -211,14 +230,18 @@ export function ActionPanel(p: ActionPanelProps) {
             />
             <button
               type="button"
-              aria-label="増やす"
-              onClick={() => setRaiseTo(clamp(value + p.bb))}
-              className="h-9 w-9 shrink-0 rounded-lg border border-white/20 bg-slate-800 text-lg font-black text-white active:scale-95"
+              aria-label="ベット額を増やす"
+              onClick={() => {
+                p.onClickSe();
+                setRaiseTo(clamp(value + p.bb));
+              }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-slate-800 text-sm font-black text-white transition hover:border-amber-300/50 active:scale-95"
             >
               +
             </button>
           </div>
-          <div className="mt-2 grid grid-cols-5 gap-1">
+
+          <div className="mt-1.5 grid grid-cols-5 gap-1">
             {presets.map((pr) => {
               const v = clamp(pr.v);
               const on = v === value;
@@ -231,10 +254,10 @@ export function ActionPanel(p: ActionPanelProps) {
                     p.onClickSe();
                     setRaiseTo(v);
                   }}
-                  className={`rounded-lg border px-1 py-1.5 text-[10px] font-black transition active:scale-95 ${
+                  className={`rounded-lg border px-1 py-1 text-[10px] font-black transition active:scale-95 ${
                     on
-                      ? 'border-amber-200 bg-gradient-to-b from-amber-300 to-amber-600 text-slate-950'
-                      : 'border-amber-300/30 bg-slate-900 text-amber-100'
+                      ? 'border-amber-200 bg-gradient-to-b from-amber-300 to-amber-600 text-slate-950 shadow'
+                      : 'border-amber-300/25 bg-slate-900/90 text-amber-100 hover:border-amber-300/60'
                   }`}
                 >
                   {pr.label}
@@ -244,17 +267,18 @@ export function ActionPanel(p: ActionPanelProps) {
           </div>
         </div>
       )}
+
       <div className="grid grid-cols-3 gap-2">
         {legal.canCheck ? (
           <button
             type="button"
-            aria-label="チェック / フォールド (F)"
+            aria-label="フォールド (現在チェック可能)"
             disabled={!legal.canFold}
             onClick={() => act({ type: 'fold' })}
             className={`${BTN} ${h} border-rose-300/40 bg-gradient-to-b from-rose-500/70 to-rose-900/80 opacity-80`}
           >
             <span className="text-sm">FOLD</span>
-            <span className="text-[9px] font-bold opacity-70">F</span>
+            <span className="text-[9px] font-bold opacity-70">チェック可</span>
           </button>
         ) : (
           <button
@@ -264,9 +288,10 @@ export function ActionPanel(p: ActionPanelProps) {
             className={`${BTN} ${h} border-rose-300/50 bg-gradient-to-b from-rose-500 via-rose-600 to-rose-900`}
           >
             <span className="text-base">FOLD</span>
-            <span className="text-[9px] font-bold opacity-70">F</span>
+            <span className="text-[9px] font-bold opacity-75">降りる [F]</span>
           </button>
         )}
+
         {legal.canCheck ? (
           <button
             type="button"
@@ -276,7 +301,7 @@ export function ActionPanel(p: ActionPanelProps) {
             style={{ animation: 'rf-glowbtn 2s ease-in-out infinite' }}
           >
             <span className="text-base">CHECK</span>
-            <span className="text-[9px] font-bold opacity-70">C</span>
+            <span className="text-[9px] font-bold opacity-80">パス [C]</span>
           </button>
         ) : (
           <button
@@ -286,29 +311,36 @@ export function ActionPanel(p: ActionPanelProps) {
             onClick={() => act({ type: callIsAllIn ? 'allin' : 'call' })}
             className={`${BTN} ${h} border-emerald-200/50 bg-gradient-to-b from-emerald-400 via-emerald-600 to-teal-900`}
           >
-            <span className="text-sm leading-none">{callIsAllIn ? 'ALL-IN' : 'CALL'}</span>
-            <span className="mt-0.5 text-sm tabular-nums leading-none text-emerald-50">{fmt(legal.callAmount)}</span>
+            <span className="text-xs leading-none sm:text-sm">
+              {callIsAllIn ? 'ALL-IN CALL' : 'CALL'}
+            </span>
+            <span className="mt-0.5 font-mono text-sm font-black tabular-nums leading-none text-emerald-50">
+              {p.heroBet > 0 ? `+${fmt(legal.callAmount)}` : fmt(legal.callAmount)}
+            </span>
+            <span className="mt-0.5 text-[9px] font-bold leading-none text-emerald-100/85">
+              {p.heroBet > 0 ? `計 ${fmt(callTotalStreetBet)} [C]` : 'コール [C]'}
+            </span>
           </button>
         )}
+
         <button
           type="button"
-          aria-label={raiseOpen ? `${verb} ${value} を確定 (Enter)` : `${verb} (R)`}
+          aria-label={`${verb} ${value} (R)`}
           disabled={!canAggro}
-          onClick={onRaiseBtn}
+          onClick={confirmRaise}
           className={`${BTN} ${h} border-amber-100/60 bg-gradient-to-b from-amber-300 via-amber-500 to-orange-700 text-slate-950`}
-          style={raiseOpen ? { animation: 'rf-glowbtn 1.2s ease-in-out infinite' } : undefined}
         >
-          {raiseOpen ? (
-            <>
-              <span className="text-[11px] leading-none">{isAllIn ? 'ALL-IN' : `${verb} TO`}</span>
-              <span className="mt-0.5 text-sm tabular-nums leading-none">{fmt(value)}</span>
-            </>
-          ) : (
-            <>
-              <span className="text-base">{maxTo <= minTo && canAggro ? 'ALL-IN' : verb}</span>
-              <span className="text-[9px] font-bold opacity-70">R</span>
-            </>
+          <span className="text-xs font-black leading-none sm:text-sm">
+            {isAllIn || (maxTo <= minTo && canAggro) ? 'ALL-IN' : `${verb} TO`}
+          </span>
+          {canAggro && (
+            <span className="mt-0.5 font-mono text-sm font-black tabular-nums leading-none text-slate-950">
+              {fmt(value)}
+            </span>
           )}
+          <span className="mt-0.5 text-[9px] font-bold leading-none text-slate-950/75">
+            {canAggro && p.heroBet > 0 ? `+${fmt(raiseAddedChips)} 追加 [R]` : `${verb} [R]`}
+          </span>
         </button>
       </div>
     </div>

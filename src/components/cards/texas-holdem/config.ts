@@ -1,7 +1,25 @@
 import type { CharId, FeltId } from './characters';
-import type { Blinds } from './types';
+import type { PositionId } from './profile';
+import type { Blinds, TableState } from './types';
 
 export type GameModeId = 'lounge' | 'tournament' | 'duel';
+
+export interface OnlineTableMemberMeta {
+  accountId: string;
+  playerName: string;
+  charId: CharId;
+  isBot: boolean;
+}
+
+export interface OnlineTableMeta {
+  roomId: string;
+  accountId: string;
+  isPublicMatch?: boolean;
+  roomCode?: string;
+  mySeat?: number;
+  initialTableState?: TableState | null;
+  members?: OnlineTableMemberMeta[];
+}
 
 export interface TableConfig {
   mode: GameModeId;
@@ -16,6 +34,8 @@ export interface TableConfig {
   levelUpEveryHands: number;
   /** lounge: busted players auto re-buy */
   autoRebuy: boolean;
+  /** optional online multiplayer session descriptor */
+  online?: OnlineTableMeta;
 }
 
 export interface ModePreset {
@@ -91,7 +111,22 @@ export function blindsForHand(cfg: TableConfig, handNumber: number): { blinds: B
   return { blinds: BLIND_LEVELS[idx], level: idx + 1 };
 }
 
-/** Per-hand report from the table to the app shell (used for rank / stats). */
+/** Determine standard poker position label (BTN / SB / BB / UTG / MP / CO) for a seat. */
+export function resolveSeatPosition(buttonSeat: number, totalSeats: number, seat: number): PositionId {
+  const n = Math.max(2, totalSeats);
+  const rel = ((seat - buttonSeat) % n + n) % n;
+  if (n === 2) {
+    return rel === 0 ? 'BTN' : 'BB';
+  }
+  if (rel === 0) return 'BTN';
+  if (rel === 1) return 'SB';
+  if (rel === 2) return 'BB';
+  if (rel === n - 1) return 'CO';
+  if (rel === 3) return 'UTG';
+  return 'MP';
+}
+
+/** Per-hand report from the table to the app shell (used for rank & detailed poker stats). */
 export interface HandReport {
   handNumber: number;
   heroWon: boolean;
@@ -106,6 +141,18 @@ export interface HandReport {
   heroHandName: string;
   /** characters that hero beat at showdown this hand (for affection) */
   opponentsInHand: CharId[];
+  /** detailed analytics fields */
+  position?: PositionId;
+  vpip?: boolean;
+  pfr?: boolean;
+  threeBet?: boolean;
+  threeBetOpportunity?: boolean;
+  sawFlop?: boolean;
+  betsAndRaises?: number;
+  calls?: number;
+  holeCards?: string[];
+  board?: string[];
+  isOnline?: boolean;
 }
 
 export interface SessionSummary {
@@ -118,11 +165,12 @@ export interface SessionSummary {
   players: number;
   /** true if the session reached a natural end (tournament finished) */
   completed: boolean;
+  isOnline?: boolean;
 }
 
 /** Rank points awarded for a finished session (applied in the app shell). */
 export function sessionRankPoints(s: SessionSummary): number {
-  const mult = MODE_PRESETS[s.mode].rankMultiplier;
+  const mult = (MODE_PRESETS[s.mode]?.rankMultiplier ?? 1) * (s.isOnline ? 1.25 : 1);
   if (s.mode === 'lounge') {
     return Math.round(Math.max(-20, Math.min(60, s.netChips / 100)) * mult);
   }
@@ -132,11 +180,14 @@ export function sessionRankPoints(s: SessionSummary): number {
   return Math.round(base * mult);
 }
 
-/** Small per-hand rank points (so lounge play also progresses). */
+/** Small per-hand rank points (so lounge & online play progress smoothly). */
 export function handRankPoints(r: HandReport): number {
   let pts = 0;
-  if (r.heroWon) pts += 2 + Math.min(8, Math.floor(r.potTotal / Math.max(1, r.bigBlind) / 10));
+  if (r.heroWon) {
+    pts += 3 + Math.min(10, Math.floor(r.potTotal / Math.max(1, r.bigBlind) / 8));
+  }
   if (r.heroWon && r.wentToShowdown) pts += 2;
   if (r.heroHandCategory >= 6) pts += 5; // full house+
+  if (r.isOnline && r.heroWon) pts += 3; // online bonus
   return pts;
 }

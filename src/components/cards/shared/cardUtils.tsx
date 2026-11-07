@@ -441,21 +441,18 @@ export function PlayingCardView({
         onClick={onClick}
         disabled={!onClick}
         aria-label={ariaLabel ?? '裏向きのカード'}
-        className={`relative select-none overflow-hidden border-2 border-indigo-200/80 bg-gradient-to-br from-indigo-900 via-blue-950 to-slate-900 shadow-md transition-transform ${
+        className={`relative select-none overflow-hidden border-2 border-amber-300/75 bg-slate-950 shadow-[0_6px_16px_rgba(0,0,0,0.65)] transition-transform ${
           SIZE_CLASSES[size]
         } ${onClick ? 'cursor-pointer hover:brightness-110 active:scale-95' : 'cursor-default'} ${className}`}
       >
-        <div
-          className="absolute inset-1 rounded border border-amber-300/35 opacity-80"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.22) 1px, transparent 1px), repeating-linear-gradient(45deg, rgba(99, 102, 241, 0.16) 0px, rgba(99, 102, 241, 0.16) 3px, transparent 3px, transparent 6px)',
-            backgroundSize: '8px 8px, 10px 10px',
-          }}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/assets/holdem/card_back.webp"
+          alt=""
+          draggable={false}
+          className="h-full w-full object-cover"
         />
-        <div className="relative flex h-full w-full items-center justify-center">
-          <span className="text-xs font-black tracking-widest text-amber-300/60">♠♥</span>
-        </div>
+        <div className="pointer-events-none absolute inset-0.5 rounded border border-amber-200/40" />
       </button>
     );
   }

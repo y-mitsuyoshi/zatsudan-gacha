@@ -13,6 +13,8 @@
  *   bgmBus / seBus / reverb return → master → compressor → limiter → out
  */
 
+import { resolveVoiceClipUrl, type CharId, type VoiceEvent } from './characters';
+
 export type BgmTrack = 'title' | 'lobby' | 'table' | 'tension' | 'victory';
 export type SeName =
   | 'click' | 'hover' | 'open' | 'close' | 'deal' | 'flip' | 'chip' | 'chips' | 'potSweep'
@@ -1107,55 +1109,81 @@ const SE: Record<SeName, (b: Bus, t: number) => void> = {
   },
 };
 
-// ───────────────────────────── speech ─────────────────────────────
-const FEMALE = ['Nanami', 'Kyoko', 'Haruka', 'Ayumi', 'Mizuki', 'Sayaka', 'Aoi', 'Shiori', 'Mayu', 'Google 日本語', 'O-ren', 'Female', '女性'];
-const MALE = ['Keita', 'Ichiro', 'Otoya', 'Daichi', 'Naoki', 'Hattori', 'Male', '男性'];
-let voiceList: SpeechSynthesisVoice[] = [];
-let voicesHooked = false;
-let currentUtter: SpeechSynthesisUtterance | null = null;
+// ───────────────────────────── studio anime voice player ─────────────────────────────
+let currentVoiceAudio: HTMLAudioElement | null = null;
+let currentVoiceSource: AudioBufferSourceNode | null = null;
+let currentVoiceGain: GainNode | null = null;
+const voiceBufCache = new Map<string, AudioBuffer>();
 
-function synth(): SpeechSynthesis | null {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
-  return window.speechSynthesis;
-}
-function loadVoices() {
-  const s = synth();
-  if (s) voiceList = s.getVoices();
-}
-function hookVoices() {
-  const s = synth();
-  if (!s || voicesHooked) return;
-  voicesHooked = true;
-  loadVoices();
-  s.addEventListener('voiceschanged', loadVoices);
-}
-function pickVoice(gender: 'female' | 'male'): SpeechSynthesisVoice | null {
-  if (!voiceList.length) loadVoices();
-  const ja = voiceList.filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith('ja'));
-  if (!ja.length) return null;
-  const prefs = gender === 'female' ? FEMALE : MALE;
-  const other = gender === 'female' ? MALE : FEMALE;
-  const score = (v: SpeechSynthesisVoice) => {
-    const idx = prefs.findIndex((n) => v.name.includes(n));
-    let sc = idx >= 0 ? 100 - idx : 0;
-    if (other.some((n) => v.name.includes(n))) sc -= 200;
-    if (/Natural|Neural|Online|Premium|Enhanced/i.test(v.name)) sc += 20;
-    if (v.localService) sc += 2;
-    return sc;
-  };
-  return [...ja].sort((a, b) => score(b) - score(a))[0] ?? null;
-}
 function setDuck(on: boolean) {
   if (ducked === on) return;
   ducked = on;
-  applyVolumes(on ? 0.25 : 0.6);
+  applyVolumes(on ? 0.2 : 0.55);
+}
+
+function stopCurrentVoiceClip() {
+  if (currentVoiceSource) {
+    try {
+      currentVoiceSource.onended = null;
+      currentVoiceSource.stop();
+      currentVoiceSource.disconnect();
+    } catch {
+      /* ignore */
+    }
+    currentVoiceSource = null;
+  }
+  if (currentVoiceGain) {
+    try {
+      currentVoiceGain.disconnect();
+    } catch {
+      /* ignore */
+    }
+    currentVoiceGain = null;
+  }
+  if (currentVoiceAudio) {
+    try {
+      currentVoiceAudio.pause();
+      currentVoiceAudio.currentTime = 0;
+    } catch {
+      /* ignore */
+    }
+    currentVoiceAudio = null;
+  }
+  setDuck(false);
+}
+
+function playDecodedVoiceBuffer(c: AudioContext, buf: AudioBuffer) {
+  if (!masterGain) return;
+  stopCurrentVoiceClip();
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const g = c.createGain();
+  g.gain.value = clamp(vols.master * vols.voice * 1.15, 0, 1.5);
+  src.connect(g);
+  g.connect(masterGain);
+  currentVoiceSource = src;
+  currentVoiceGain = g;
+  setDuck(true);
+  src.onended = () => {
+    if (currentVoiceSource === src) {
+      currentVoiceSource = null;
+      currentVoiceGain = null;
+      setDuck(false);
+    }
+    try {
+      src.disconnect();
+      g.disconnect();
+    } catch {
+      /* ignore */
+    }
+  };
+  src.start(0);
 }
 
 // ───────────────────────────── public API ─────────────────────────────
 export const holdemAudio = {
   unlock(): void {
     const c = ensureCtx();
-    hookVoices();
     if (!c) return;
     const go = () => {
       if (c.state === 'running' && pendingTrack) {
@@ -1173,7 +1201,12 @@ export const holdemAudio = {
     vols.se = clamp(v.se, 0, 1);
     vols.voice = clamp(v.voice, 0, 1);
     applyVolumes();
-    if (currentUtter) currentUtter.volume = clamp(vols.master * vols.voice, 0, 1);
+    if (currentVoiceGain) {
+      currentVoiceGain.gain.value = clamp(vols.master * vols.voice * 1.15, 0, 1.5);
+    }
+    if (currentVoiceAudio) {
+      currentVoiceAudio.volume = clamp(vols.master * vols.voice, 0, 1);
+    }
   },
   playBgm(track: BgmTrack): void {
     if (typeof window === 'undefined') return;
@@ -1197,41 +1230,68 @@ export const holdemAudio = {
     const fn = SE[name];
     try { fn(seBus, c.currentTime + 0.005); } catch { /* ignore */ }
   },
-  speak(text: string, opts: { pitch: number; rate: number; gender: 'female' | 'male'; enabled: boolean }): void {
-    const s = synth();
-    if (!s || !opts.enabled || !text) return;
-    hookVoices();
-    s.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP';
-    const v = pickVoice(opts.gender);
-    if (v) u.voice = v;
-    u.pitch = clamp(opts.pitch, 0.1, 2);
-    u.rate = clamp(opts.rate, 0.5, 2);
-    u.volume = clamp(vols.master * vols.voice, 0, 1);
-    const done = () => {
-      if (currentUtter === u) {
-        currentUtter = null;
-        setDuck(false);
+  speak(
+    text: string,
+    opts: {
+      pitch?: number;
+      rate?: number;
+      gender?: 'female' | 'male';
+      enabled: boolean;
+      charId?: CharId;
+      event?: VoiceEvent;
+    },
+  ): void {
+    if (typeof window === 'undefined' || !opts.enabled || !text) return;
+    const rawUrl = resolveVoiceClipUrl(text, {
+      charId: opts.charId,
+      event: opts.event,
+      gender: opts.gender,
+    });
+    const url = `${rawUrl}?v=2`;
+    stopCurrentVoiceClip();
+
+    const c = ensureCtx();
+    if (c && c.state === 'running' && voiceBufCache.has(url)) {
+      playDecodedVoiceBuffer(c, voiceBufCache.get(url)!);
+      return;
+    }
+
+    // Play immediately with HTMLAudioElement and warm cache for Web Audio
+    try {
+      const audio = new Audio(url);
+      audio.volume = clamp(vols.master * vols.voice, 0, 1);
+      currentVoiceAudio = audio;
+      setDuck(true);
+      const done = () => {
+        if (currentVoiceAudio === audio) {
+          currentVoiceAudio = null;
+          setDuck(false);
+        }
+      };
+      audio.onended = done;
+      audio.onerror = done;
+      void audio.play().catch(done);
+
+      if (c && !voiceBufCache.has(url)) {
+        void fetch(url)
+          .then((r) => (r.ok ? r.arrayBuffer() : null))
+          .then((ab) => (ab ? c.decodeAudioData(ab) : null))
+          .then((decoded) => {
+            if (decoded) voiceBufCache.set(url, decoded);
+          })
+          .catch(() => {
+            /* ignore */
+          });
       }
-    };
-    u.onstart = () => { if (currentUtter === u) setDuck(true); };
-    u.onend = done;
-    u.onerror = done;
-    currentUtter = u;
-    s.speak(u);
+    } catch {
+      setDuck(false);
+    }
   },
   stopVoice(): void {
-    const s = synth();
-    currentUtter = null;
-    setDuck(false);
-    if (s) s.cancel();
+    stopCurrentVoiceClip();
   },
   dispose(): void {
     holdemAudio.stopVoice();
-    const s = synth();
-    if (s && voicesHooked) s.removeEventListener('voiceschanged', loadVoices);
-    voicesHooked = false;
     if (timer) clearTimeout(timer);
     timer = null;
     for (const p of players) killPlayer(p);
