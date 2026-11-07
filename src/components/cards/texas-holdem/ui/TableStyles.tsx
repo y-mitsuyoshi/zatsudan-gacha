@@ -75,6 +75,24 @@ export function TableStyles() {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
 }
+@keyframes rf-hand-ribbon {
+  0% { transform: translateX(-50%) scale(0.4) skewX(-10deg); opacity: 0; }
+  65% { transform: translateX(-50%) scale(1.12) skewX(-10deg); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1) skewX(-10deg); opacity: 1; }
+}
+@keyframes rf-payout-float {
+  0% { transform: translate(-50%, 10px) scale(0.6); opacity: 0; }
+  25% { transform: translate(-50%, -2px) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -6px) scale(1); opacity: 1; }
+}
+@keyframes rf-crown-bounce {
+  0%, 100% { transform: translate(-50%, 0) scale(1); }
+  50% { transform: translate(-50%, -4px) scale(1.08); }
+}
+@keyframes rf-street-sweep {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
 @media (prefers-reduced-motion: reduce) {
   .rf-motion { animation: none !important; transition: none !important; }
 }

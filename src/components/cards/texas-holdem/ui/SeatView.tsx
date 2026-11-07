@@ -6,7 +6,7 @@ import { CHARACTERS, type CharId } from '../characters';
 import { CharAvatar } from './CharAvatar';
 import { PlayingCard } from './PlayingCard';
 import { BADGE_STYLE, fmt, type Pt } from './tableUtils';
-import type { SeatBadge, SeatBubble } from './useHoldemTable';
+import type { SeatBadge, SeatBubble, ShowdownSeatHand } from './useHoldemTable';
 
 export interface SeatViewProps {
   seat: SeatState;
@@ -23,6 +23,7 @@ export interface SeatViewProps {
   bubble?: SeatBubble;
   revealed: boolean;
   winner: boolean;
+  showdownHand?: ShowdownSeatHand;
   highlightIds: string[] | null;
   displayStack: number;
   equity?: number;
@@ -157,7 +158,16 @@ export function SeatView(p: SeatViewProps) {
         />
       )}
       <div className="relative">
-        {p.badge && <ActionBadge badge={p.badge} className="-top-6" />}
+        {p.winner && (
+          <div
+            className="pointer-events-none absolute -top-7 left-1/2 z-40 flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-100 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 px-2 py-0.5 text-[10px] font-black tracking-wider text-slate-950 shadow-[0_0_16px_rgba(253,224,71,0.9)]"
+            style={{ animation: 'rf-crown-bounce 1.2s ease-in-out infinite' }}
+          >
+            <span>👑</span>
+            <span>{p.showdownHand?.payout ? `+${fmt(p.showdownHand.payout)}` : 'WINNER'}</span>
+          </div>
+        )}
+        {p.badge && !p.winner && <ActionBadge badge={p.badge} className="-top-6" />}
         {p.thinking && !p.bubble && <ThinkingDots color={ch.color} />}
         {p.bubble && (
           <SpeechBubble
@@ -218,6 +228,23 @@ export function SeatView(p: SeatViewProps) {
                 />
               );
             })}
+            {/* Showdown Hand Rank Ribbon */}
+            {p.revealed && p.showdownHand && p.showdownHand.category >= 0 && (
+              <div
+                className="pointer-events-none absolute -bottom-3.5 left-1/2 z-40 whitespace-nowrap"
+                style={{ animation: 'rf-hand-ribbon 380ms cubic-bezier(.2,1.4,.4,1) both' }}
+              >
+                <span
+                  className={`block rounded-md border px-2 py-[1px] text-[10px] font-black tracking-wider shadow-lg ${
+                    p.showdownHand.isWinner
+                      ? 'border-amber-100 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-[0_0_14px_rgba(253,224,71,0.85)]'
+                      : 'border-white/30 bg-slate-950/90 text-amber-100'
+                  }`}
+                >
+                  {p.showdownHand.nameJa}
+                </span>
+              </div>
+            )}
           </div>
         )}
         {p.equity !== undefined && (

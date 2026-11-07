@@ -85,6 +85,18 @@ export function CutInOverlay({ data, reducedFx, onSkip }: CutInOverlayProps) {
         className="absolute bottom-0 right-[-4%] top-[6%] w-[min(78vw,640px)]"
         style={{ animation: reducedFx ? undefined : 'rfc-char 520ms cubic-bezier(.2,.9,.2,1) 60ms both' }}
       >
+        {win && !reducedFx && (
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70"
+            style={{
+              background:
+                'repeating-conic-gradient(from 0deg, rgba(253,224,71,0.45) 0deg 10deg, transparent 10deg 24deg)',
+              maskImage: 'radial-gradient(circle, black 20%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(circle, black 20%, transparent 70%)',
+              animation: 'rf-rays 8s linear infinite',
+            }}
+          />
+        )}
         <div className="h-full w-full" style={{ animation: reducedFx ? undefined : `rfc-drift ${dur}s linear both` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -122,17 +134,19 @@ export function CutInOverlay({ data, reducedFx, onSkip }: CutInOverlayProps) {
       {/* text */}
       <div className="absolute left-[4%] top-1/2 z-10 max-w-[92vw] -translate-y-1/2">
         <div
-          className="text-[10px] font-bold uppercase tracking-[0.4em] text-white/80 sm:text-xs"
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-slate-950/80 px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.3em] text-amber-200 shadow-lg sm:text-xs"
           style={{ animation: 'rfc-sub 300ms ease-out 200ms both' }}
         >
-          {win ? 'VICTORY' : 'ALL-IN'} — {ch.nameEn}
+          <span>{win ? '👑 VICTORY SHOWCASE' : '🔥 HIGH STAKES ALL-IN'}</span>
+          <span className="text-white/50">|</span>
+          <span>{ch.name}</span>
         </div>
         <div
-          className="whitespace-nowrap bg-gradient-to-b from-white via-amber-200 to-amber-600 bg-clip-text font-black italic leading-none text-transparent"
+          className="mt-1 whitespace-nowrap bg-gradient-to-b from-white via-amber-200 to-amber-500 bg-clip-text font-black italic leading-none text-transparent"
           style={{
-            fontSize: win ? 'clamp(40px, 11vw, 132px)' : 'clamp(48px, 13vw, 150px)',
+            fontSize: win ? 'clamp(38px, 10.5vw, 126px)' : 'clamp(48px, 13vw, 150px)',
             WebkitTextStroke: '2px rgba(120,53,15,0.85)',
-            filter: 'drop-shadow(0 6px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 24px rgba(253,224,71,0.6))',
+            filter: 'drop-shadow(0 6px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 28px rgba(253,224,71,0.75))',
             animation: reducedFx ? undefined : 'rfc-title 520ms cubic-bezier(.2,1.2,.4,1) 120ms both',
             transform: 'rotate(-6deg)',
           }}
@@ -141,15 +155,16 @@ export function CutInOverlay({ data, reducedFx, onSkip }: CutInOverlayProps) {
         </div>
         {data.subtitle && (
           <div
-            className="mt-2 inline-block rounded-md bg-black/60 px-3 py-1 text-sm font-black tracking-wider text-amber-100 sm:text-lg"
+            className="mt-2.5 inline-flex items-center gap-2 rounded-xl border border-amber-300/70 bg-gradient-to-r from-slate-950/90 via-amber-950/85 to-slate-950/90 px-4 py-1.5 text-sm font-black tracking-wider text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.45)] sm:text-lg"
             style={{ animation: 'rfc-sub 300ms ease-out 380ms both' }}
           >
-            {data.subtitle}
+            <span>✨</span>
+            <span>{data.subtitle}</span>
           </div>
         )}
         {data.line && (
           <div
-            className="mt-2 max-w-[60vw] rounded-2xl border-2 bg-white/95 px-3 py-2 text-xs font-bold text-slate-900 shadow-xl sm:max-w-md sm:text-base"
+            className="mt-2.5 max-w-[68vw] rounded-2xl border-2 bg-white/95 px-3.5 py-2 text-xs font-bold text-slate-900 shadow-2xl sm:max-w-md sm:text-base"
             style={{ borderColor: ch.color, animation: 'rfc-sub 300ms ease-out 520ms both' }}
           >
             「{data.line}」

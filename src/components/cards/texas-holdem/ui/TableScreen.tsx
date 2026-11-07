@@ -527,14 +527,36 @@ export function TableScreen({
             })}
           </div>
 
-          {/* All-In Showdown Banner */}
+          {/* Street & Showdown Kinetic Banner */}
           {t.banner && (
-            <div className="pointer-events-none absolute inset-x-0 top-[18%] z-40 flex justify-center">
+            <div className="pointer-events-none absolute inset-x-0 top-[17%] z-40 flex justify-center px-3">
               <div
-                style={{ animation: 'rf-banner 420ms ease-out both' }}
-                className="rounded-full border-2 border-amber-300 bg-gradient-to-r from-rose-950/95 via-amber-900/95 to-rose-950/95 px-6 py-1.5 text-sm font-black tracking-[0.2em] text-amber-100 shadow-[0_0_40px_rgba(251,191,36,0.7)] sm:text-lg"
+                key={t.banner}
+                style={{ animation: 'rf-banner 380ms cubic-bezier(.2,1.2,.3,1) both', transform: 'skewX(-10deg)' }}
+                className={`relative overflow-hidden rounded-2xl border-2 px-6 py-1.5 text-center shadow-[0_0_45px_rgba(251,191,36,0.75)] ${
+                  t.banner.includes('SHOWDOWN')
+                    ? 'border-amber-200 bg-gradient-to-r from-rose-950/95 via-amber-700/95 to-rose-950/95 text-amber-50'
+                    : 'border-amber-300/80 bg-gradient-to-r from-slate-950/95 via-indigo-950/95 to-slate-950/95 text-amber-200'
+                }`}
               >
-                ⚡ {t.banner} ⚡
+                <div
+                  className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent"
+                  style={{ animation: 'rf-street-sweep 900ms ease-out infinite' }}
+                />
+                <div className="relative z-10 text-sm font-black italic tracking-[0.22em] sm:text-xl">
+                  {t.banner.includes('SHOWDOWN') ? `⚡ ${t.banner} ⚡` : `✦ ${t.banner} ✦`}
+                </div>
+                <div className="relative z-10 text-[9px] font-bold tracking-[0.25em] text-amber-200/90 uppercase sm:text-[10px]">
+                  {t.banner === 'ALL-IN SHOWDOWN'
+                    ? 'ホールカード全公開 · リアルタイム勝率表示'
+                    : t.banner === 'SHOWDOWN'
+                      ? 'カードをオープン！ 最強の5枚で勝負！'
+                      : t.banner === 'FLOP'
+                        ? 'COMMUNITY CARDS · フロップ3枚公開'
+                        : t.banner === 'TURN'
+                          ? 'FOURTH STREET · ターン4枚目公開'
+                          : 'FIFTH STREET · リバー最終カード'}
+                </div>
               </div>
             </div>
           )}
@@ -597,6 +619,7 @@ export function TableScreen({
                 bubble={t.bubbles[idx]}
                 revealed={t.revealed.includes(idx)}
                 winner={t.winners.includes(idx)}
+                showdownHand={t.showdownHands[idx]}
                 highlightIds={t.highlight}
                 displayStack={displayStack(idx)}
                 equity={t.equities?.[idx]}
@@ -664,7 +687,22 @@ export function TableScreen({
               {/* Partner Character Bust + Speech Bubble */}
               <div className="relative flex items-center gap-2.5">
                 <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
-                  {t.badges[0] && <ActionBadge badge={t.badges[0]} className="-top-5" />}
+                  {t.winners.includes(0) && (
+                    <div
+                      className="pointer-events-none absolute -top-6 left-1/2 z-40 flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-100 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 px-2.5 py-0.5 text-[10px] font-black tracking-wider text-slate-950 shadow-[0_0_18px_rgba(253,224,71,0.95)]"
+                      style={{ animation: 'rf-crown-bounce 1.2s ease-in-out infinite' }}
+                    >
+                      <span>👑</span>
+                      <span>
+                        {t.showdownHands[0]?.payout
+                          ? `+${fmt(t.showdownHands[0].payout)}`
+                          : 'WINNER'}
+                      </span>
+                    </div>
+                  )}
+                  {t.badges[0] && !t.winners.includes(0) && (
+                    <ActionBadge badge={t.badges[0]} className="-top-5" />
+                  )}
                   {t.bubbles[0] && (
                     <SpeechBubble
                       bubble={t.bubbles[0]}
@@ -726,9 +764,16 @@ export function TableScreen({
 
               {/* Hero Hole Cards */}
               <div className="relative flex flex-col items-center">
-                {heroFaceUp && heroHandLabel && !hero.folded && (
-                  <div className="mb-1 rounded-full border border-amber-300/50 bg-slate-950/90 px-2.5 py-0.5 text-[10px] font-black tracking-wide text-amber-200 shadow">
-                    役: {heroHandLabel}
+                {heroFaceUp && (t.showdownHands[0]?.nameJa || heroHandLabel) && !hero.folded && (
+                  <div
+                    className={`mb-1 rounded-full border px-2.5 py-0.5 text-[10px] font-black tracking-wide shadow ${
+                      t.winners.includes(0)
+                        ? 'border-amber-100 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 text-slate-950 shadow-[0_0_14px_rgba(253,224,71,0.85)]'
+                        : 'border-amber-300/50 bg-slate-950/90 text-amber-200'
+                    }`}
+                  >
+                    {t.winners.includes(0) ? '👑 ' : '役: '}
+                    {t.showdownHands[0]?.nameJa || heroHandLabel}
                   </div>
                 )}
                 <div className="relative flex items-center gap-1.5 sm:gap-2">

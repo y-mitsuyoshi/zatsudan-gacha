@@ -53,14 +53,28 @@ export interface HandHistoryItem {
   board: Card[];
   heroHole: Card[];
 }
+export interface ShowdownSeatHand {
+  seat: number;
+  nameJa: string;
+  nameEn: string;
+  category: number;
+  isWinner: boolean;
+  payout: number;
+}
 export interface ResultInfo {
   title: string;
   handName: string;
+  handTitleEn?: string;
   pot: number;
   heroWon: boolean;
   heroNet: number;
   heroInHand: boolean;
   winners: number[];
+  winnerCharId: CharId;
+  winnerName: string;
+  winnerLine: string;
+  showdown: boolean;
+  best5: Card[];
   pots: { label: string; amount: number; winners: string }[];
 }
 export interface SessionEndInfo {
@@ -180,6 +194,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
   const [payoutPending, setPayoutPending] = useState(false);
   const [highlight, setHighlight] = useState<string[] | null>(null);
   const [winners, setWinners] = useState<number[]>([]);
+  const [showdownHands, setShowdownHands] = useState<Record<number, ShowdownSeatHand>>({});
   const [equities, setEquities] = useState<Record<number, number> | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [result, setResult] = useState<ResultInfo | null>(null);
@@ -346,6 +361,11 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
 
   const dealBoard = useCallback(
     async (from: number, to: number) => {
+      const streetLabel = to === 3 ? 'FLOP' : to === 4 ? 'TURN' : to === 5 ? 'RIVER' : null;
+      if (streetLabel) {
+        setBanner(streetLabel);
+        later(620, () => setBanner((b) => (b === streetLabel ? null : b)));
+      }
       await sleep(220);
       for (let i = from + 1; i <= to; i++) {
         setBoardShown(i);
@@ -394,14 +414,40 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       if (!r) return;
       const hero = next.seats[0];
       const bb = next.blinds.bb;
+      const sdMap: Record<number, ShowdownSeatHand> = {};
       if (r.showdown) {
+        setBanner('SHOWDOWN');
         const show = r.reveals.map((x) => x.seat);
         setRevealed((prev) => Array.from(new Set([...prev, ...show])));
+        r.reveals.forEach((x) => {
+          sdMap[x.seat] = {
+            seat: x.seat,
+            nameJa: x.hand.nameJa,
+            nameEn: handTitleEn(x.hand),
+            category: x.hand.category,
+            isWinner: r.winners.includes(x.seat),
+            payout: r.payouts[x.seat] ?? 0,
+          };
+        });
+        setShowdownHands(sdMap);
         se('reveal');
         await sleep(950);
+        setBanner(null);
         const ids = new Set<string>();
         r.reveals.filter((x) => r.winners.includes(x.seat)).forEach((x) => x.hand.best5.forEach((c) => ids.add(c.id)));
         setHighlight(Array.from(ids));
+      } else {
+        r.winners.forEach((wSeat) => {
+          sdMap[wSeat] = {
+            seat: wSeat,
+            nameJa: 'フォールド勝ち',
+            nameEn: 'UNCONTESTED',
+            category: -1,
+            isWinner: true,
+            payout: r.payouts[wSeat] ?? next.potTotal,
+          };
+        });
+        setShowdownHands(sdMap);
       }
       setEquities(null);
       setWinners(r.winners);
@@ -412,14 +458,27 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       const heroNet = (r.payouts[0] ?? 0) - hero.committed;
       const heroReveal = r.reveals.find((x) => x.seat === 0);
       const heroCat = heroReveal?.hand.category ?? -1;
+      const w0 = r.winners[0] ?? 0;
+      const winSeatObj = next.seats[w0] ?? hero;
+      const winCharId = (winSeatObj.charId as CharId) || (hero.charId as CharId);
+      const winReveal = r.reveals.find((x) => r.winners.includes(x.seat));
+      const winCat = winReveal?.hand.category ?? -1;
+      const bigPot = pot >= bb * 16;
+      const winLine = pickLine(winCharId, bigPot || winCat >= 4 ? 'bigWin' : 'win');
       setResult({
         title: `${names} の勝利！`,
         handName: r.headline,
+        handTitleEn: winReveal ? handTitleEn(winReveal.hand) : undefined,
         pot,
         heroWon,
         heroNet,
         heroInHand,
         winners: r.winners,
+        winnerCharId: winCharId,
+        winnerName: winSeatObj.name,
+        winnerLine: winLine,
+        showdown: r.showdown,
+        best5: winReveal?.hand.best5 ?? [],
         pots: r.pots.map((p) => ({
           label: p.label,
           amount: p.amount,
@@ -427,9 +486,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
         })),
       });
       se(heroWon ? 'win' : heroInHand && r.showdown ? 'lose' : 'chips');
-      const w0 = r.winners[0];
-      const bigPot = pot >= bb * 25;
-      if (w0 !== undefined) speak(w0, bigPot ? 'bigWin' : 'win', 1);
+      if (w0 !== undefined) speak(w0, bigPot || winCat >= 4 ? 'bigWin' : 'win', 1);
       if (!heroWon && heroInHand && r.showdown) later(900, () => speak(0, 'lose', 0, true));
       await sleep(800);
       setPotFly(r.winners);
@@ -439,24 +496,35 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
       setPotFly(null);
       se('chips');
 
-      const bigHero = heroWon && (heroCat >= 4 || bigPot || hero.allIn);
-      if (bigHero) {
+      const triggerHeroCutIn = heroWon && (r.showdown || heroCat >= 3 || bigPot || hero.allIn);
+      const triggerOppCutIn = !heroWon && r.showdown && (winCat >= 4 || bigPot || winSeatObj.allIn);
+      if (triggerHeroCutIn || triggerOppCutIn) {
+        const cutCharId = triggerHeroCutIn ? (hero.charId as CharId) : winCharId;
+        const activeReveal = triggerHeroCutIn ? heroReveal : winReveal;
+        const activeCat = triggerHeroCutIn ? heroCat : winCat;
         const title =
-          heroCat >= 4 && heroReveal ? `${handTitleEn(heroReveal.hand)}!!` : hero.allIn ? 'ALL-IN WIN!!' : 'BIG POT WIN!!';
-        holdemAudio.playBgm('victory');
-        se('bigWin');
-        if (!settingsRef.current.reducedFx) setFxKey(nextKey());
+          activeCat >= 2 && activeReveal
+            ? `${handTitleEn(activeReveal.hand)}!!`
+            : (triggerHeroCutIn ? hero.allIn : winSeatObj.allIn)
+              ? 'ALL-IN WIN!!'
+              : r.showdown
+                ? 'SHOWDOWN WIN!!'
+                : 'BIG POT WIN!!';
+        const gainAmt = triggerHeroCutIn ? Math.max(pot, heroNet) : pot;
+        holdemAudio.playBgm(triggerHeroCutIn ? 'victory' : 'table');
+        se(triggerHeroCutIn ? 'bigWin' : 'win');
+        if (triggerHeroCutIn && !settingsRef.current.reducedFx) setFxKey(nextKey());
         await showCutIn(
           {
-            charId: hero.charId as CharId,
+            charId: cutCharId,
             variant: 'win',
             title,
-            subtitle: `${r.headline || 'POT'}  +${fmt(Math.max(0, heroNet))}`,
-            line: pickLine(hero.charId as CharId, 'bigWin'),
+            subtitle: `${r.headline || 'SHOWDOWN'}  +${fmt(gainAmt)}`,
+            line: triggerHeroCutIn ? pickLine(cutCharId, 'bigWin') : winLine,
           },
-          3400,
+          triggerHeroCutIn ? 3100 : 2300,
         );
-        later(3500, () => holdemAudio.playBgm('table'));
+        later(3200, () => holdemAudio.playBgm('table'));
       } else {
         holdemAudio.playBgm('table');
       }
@@ -745,6 +813,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     setBadges({});
     setHighlight(null);
     setWinners([]);
+    setShowdownHands({});
     setEquities(null);
     setResult(null);
     setPotFly(null);
@@ -1121,6 +1190,7 @@ export function useHoldemTable({ config, heroName, settings, onHandComplete, onE
     payoutPending,
     highlight,
     winners,
+    showdownHands,
     equities,
     banner,
     result,
