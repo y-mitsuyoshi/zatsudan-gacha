@@ -8,9 +8,9 @@ import { JsonLd } from '@/components/seo/JsonLd';
 const APP_URL = 'https://zatsudan-gacha.app';
 
 export const metadata: Metadata = {
-  title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全44作品',
+  title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・カジノ・物理シミュレーション全49作品',
   description:
-    '社畜ゲーム10作品、現代＆定番ボードゲーム18作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーションラボ5作品を完全無料で公開中。硝子工房のモザイク師、王宮の密使、天空の植物園、仮面の円卓、蒸気機関の鉄路王、星屑のアトリエ、リバーシ3D、ソリティア、大富豪、テキサスホールデムなどスマホ・PC対応、登録不要。',
+    '社畜ゲーム10作品、現代＆定番ボードゲーム18作品、トランプゲーム5作品、カジノゲーム5作品、パーティーゲーム6作品、物理シミュレーションラボ5作品を完全無料で公開中。硝子工房のモザイク師、王宮の密使、天空の植物園、仮面の円卓、蒸気機関の鉄路王、星屑のアトリエ、リバーシ3D、ソリティア、大富豪、テキサスホールデムなどスマホ・PC対応、登録不要。',
   keywords: [
     '無料ブラウザゲーム',
     'ボードゲーム 無料',
@@ -28,9 +28,9 @@ export const metadata: Metadata = {
     canonical: '/games',
   },
   openGraph: {
-    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全44作品',
+    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・カジノ・物理シミュレーション全49作品',
     description:
-      '社畜アクション、ドラフトパズル・宮廷心理推理・生態系エンジン・ブラフ競り・蒸気鉄路ワーカー配置などの現代ボードゲーム＆3D古典盤18作品、トランプ5作品、パーティー6作品、本格物理シミュレーション5作品まで全44作品を無料公開。',
+      '社畜アクション、現代＆古典ボードゲーム18作品、トランプ5作品、ルーレット・バカラ・ビデオポーカーなどカジノ5作品、パーティー6作品、物理シミュレーション5作品まで全49作品を無料公開。',
     url: `${APP_URL}/games`,
     siteName: '雑談テーマガチャ',
     locale: 'ja_JP',
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全44作品',
+    title: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・カジノ・物理シミュレーション全49作品',
     description:
-      '社畜アクション、ドラフトパズル・宮廷心理推理・生態系エンジン・ブラフ競り・蒸気鉄路ワーカー配置などの現代ボードゲーム＆3D古典盤18作品、トランプ5作品、パーティー6作品、本格物理シミュレーション5作品まで全44作品を無料公開。',
+      '社畜アクション、現代＆古典ボードゲーム18作品、トランプ5作品、ルーレット・バカラ・ビデオポーカーなどカジノ5作品、パーティー6作品、物理シミュレーション5作品まで全49作品を無料公開。',
     images: [`${APP_URL}/ogp.png`],
   },
 };
@@ -480,10 +480,64 @@ const cardGames = [
     href: '/texas-holdem',
     mark: 'HOLD',
     cover: 'bg-[#2d1b0e]',
+    image: '/assets/holdem/key_visual.webp',
     genre: 'アニメキャラ対戦・本格ポーカー',
     tagline: 'カットイン演出・ボイス・ランク戦搭載',
     description:
       '描き下ろしのアニメキャラクター6人と卓を囲むノーリミット・テキサスホールデム。オールイン時のカットイン演出、キャラクターボイス、ジャズBGM、ナイト・トーナメント／1on1デュエル、ランク戦、勝率HUDを搭載。',
+  },
+];
+
+const casinoGames = [
+  {
+    name: 'グランド・ルーレット',
+    href: '/roulette-casino',
+    mark: 'ROULETTE',
+    cover: 'bg-[#0d2b22]',
+    genre: 'ヨーロピアン・ルーレット',
+    tagline: '緑のフェルトと真鍮のホイールで、0〜36に賭ける',
+    description:
+      'シングルゼロのヨーロピアンルーレット。赤黒・奇数偶数・ハイロー・ダズン・数字へ仮想チップを置き、回転するホイールとボールの着地を楽しめます。配当計算・履歴・ルール・責任ある遊びの注意付き。',
+  },
+  {
+    name: 'バカラ・ロイヤル',
+    href: '/baccarat',
+    mark: 'BACCARAT',
+    cover: 'bg-[#2a1014]',
+    genre: 'Punto Banco / カードカジノ',
+    tagline: 'プレイヤーか、バンカーか。第三カードの緊張感',
+    description:
+      'プレイヤー／バンカー／タイに賭ける定番バカラ。標準の第三カードルール、5%コミッション、カード演出、配当、履歴を搭載。仮想チップのみで遊べる無料カジノゲームです。',
+  },
+  {
+    name: 'ビデオポーカー・ラウンジ',
+    href: '/video-poker',
+    mark: 'VIDEO POKER',
+    cover: 'bg-[#16132a]',
+    genre: 'Jacks or Better / ビデオポーカー',
+    tagline: '5枚を交換して、役を完成させろ',
+    description:
+      'ジャックス・オア・ベターの5カードドロー。ベット1〜5、ホールド／ドロー、配当表、履歴、ルールを搭載したラウンジ風ビデオポーカー。仮想クレジットのみで遊べます。',
+  },
+  {
+    name: 'ダイス・カジノ',
+    href: '/dice-casino',
+    mark: 'SIC BO',
+    cover: 'bg-[#26180d]',
+    genre: '三ダイス・カジノ',
+    tagline: '3つのダイスの目に、ビッグ／スモールから一点賭けまで',
+    description:
+      '3個のダイスで遊ぶシックボー風カジノ。ビッグ／スモール、奇数／偶数、合計値、ゾロ目などに仮想チップを賭け、配当と履歴を確認できます。',
+  },
+  {
+    name: 'ケノ・ラウンジ',
+    href: '/keno-lounge',
+    mark: 'KENO',
+    cover: 'bg-[#131d2c]',
+    genre: 'ナンバーズ・カジノ',
+    tagline: '1〜80から数字を選び、20球の抽選を待つ',
+    description:
+      '1〜80から最大10個の数字を選び、20個の当選番号を抽選するケノ。ヒット数に応じた配当表、ベット、履歴、ルールを備えたラウンジ風カジノゲームです。',
   },
 ];
 
@@ -495,21 +549,21 @@ const creativeTools = [
 ];
 
 const faqs = [
-  { q: '紹介している44のゲーム・シミュレーターはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、現代＆定番ボードゲーム18作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品の全44作品をブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
+  { q: '紹介している49のゲーム・シミュレーターはすべて無料ですか？', a: 'はい。社畜ゲーム10作品、現代＆定番ボードゲーム18作品、トランプゲーム5作品、カジノゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品の全49作品をブラウザで開くだけで完全無料で遊べます。インストールや会員登録、課金は一切不要です。' },
   { q: 'スマートフォンでもPCでも遊べますか？', a: 'はい。各ゲームはスマートフォンのタッチ操作と、PCのマウス・キーボード操作の両方に最適化されています。' },
   { q: 'ボードゲームやトランプゲームは1人でも遊べますか？', a: 'はい。現代ボードゲーム10作品（硝子工房のモザイク師・王宮の密使・天空の植物園・仮面の円卓・蒸気機関の鉄路王・星屑のアトリエ・群島開拓記・深海サルベージ・からくりバザール・サイコロ港町）および定番ボードゲーム8作品はすべてAI対戦とローカル対戦に対応しています。トランプ5作品もすべて1人で今すぐ遊べます。' },
   { q: '会社のオンサイト・オフサイトで使えるゲームはどれですか？', a: '「少数派ワード」「以心伝心ゲーム」「NGワード会議」「禁句トーク」「ランキング予想」「連想リレー」がおすすめです。1台の端末を回して遊べるため、懇親会や研修のアイスブレイクにも使えます。' },
   { q: '物理シミュレーション5作品はゲームですか？', a: 'スコアを競うゲームではなく、倍増時間や重力スイングバイ軌道、連鎖伝播速度、安息角、気泡合体などを定量グラフとプリセットで観察・実験できる物理シミュレーションラボです。' },
 ];
 
-const allGames = [...games, ...boardGames, ...cardGames, ...partyGames, ...simulationGames];
+const allGames = [...games, ...boardGames, ...cardGames, ...casinoGames, ...partyGames, ...simulationGames];
 
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・物理シミュレーション全44作品',
-    description: '社畜ゲーム10作品、現代＆定番ボードゲーム18作品、トランプゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
+    name: '無料ブラウザゲーム一覧｜社畜・ボード・トランプ・カジノ・物理シミュレーション全49作品',
+    description: '社畜ゲーム10作品、現代＆定番ボードゲーム18作品、トランプゲーム5作品、カジノゲーム5作品、パーティーゲーム6作品、物理シミュレーション5作品をまとめた無料ブラウザゲーム一覧。',
     url: `${APP_URL}/games`,
     inLanguage: 'ja-JP',
     mainEntity: {
@@ -564,12 +618,12 @@ export default function GamesPage() {
 
         <section className="grid gap-8 py-10 lg:grid-cols-[1fr_0.45fr] lg:items-end">
           <div>
-            <p className="paper-kicker">Game Archive / 44 Titles</p>
+            <p className="paper-kicker">Game Archive / 49 Titles</p>
             <h1 className="font-editorial mt-3 text-4xl leading-tight sm:text-5xl">
               無料で遊べる<br className="sm:hidden" />ゲーム一覧
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)]">
-              社畜アクション＆人生シミュレーション10作品、ドラフトパズル・宮廷心理推理・生態系エンジン・ブラフ競り・蒸気鉄路ワーカー配置などの現代ボードゲーム＆古典盤18作品、定番トランプゲーム5作品、みんなで盛り上がるパーティーゲーム6作品、定量グラフ付きの物理シミュレーションラボ5作品の全44作品を収録。
+              社畜アクション＆人生シミュレーション10作品、現代＆古典ボードゲーム18作品、定番トランプ5作品、カジノ5作品、パーティー6作品、物理シミュレーションラボ5作品の全49作品を収録。
               すべて完全オリジナル実装・インストール不要で、PCでもスマートフォンでも今すぐ遊べます。
             </p>
           </div>
@@ -684,7 +738,21 @@ export default function GamesPage() {
                 className="group flex flex-col border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
               >
                 <div className={`relative flex aspect-[16/9] items-center justify-center overflow-hidden border-b border-[var(--line)] ${game.cover}`}>
-                  <span className="font-editorial text-4xl tracking-tight text-[#fffaf0] sm:text-5xl">{game.mark}</span>
+                  {'image' in game && game.image ? (
+                    <>
+                      <Image
+                        src={game.image}
+                        alt={`${game.name}のキービジュアル`}
+                        width={800}
+                        height={450}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                      />
+                      <span className="absolute inset-0 bg-gradient-to-t from-[#090604]/75 via-transparent to-transparent" />
+                      <span className="font-editorial absolute bottom-3 left-3 text-xl tracking-tight text-[#fffaf0] drop-shadow">{game.mark}</span>
+                    </>
+                  ) : (
+                    <span className="font-editorial text-4xl tracking-tight text-[#fffaf0] sm:text-5xl">{game.mark}</span>
+                  )}
                   <span className="font-label absolute left-3 top-3 bg-[#12100d]/70 px-2 py-1 text-[9px] text-[#f2e9d8]">
                     {String(index + 1).padStart(2, '0')} / CARDS
                   </span>
@@ -736,6 +804,45 @@ export default function GamesPage() {
                   <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
                   <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
                     Play together <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section id="casino-games" className="mt-12 border-t border-[var(--line)] pt-6" aria-labelledby="casino-games-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--line)] pb-3">
+            <div>
+              <p className="paper-kicker">CASINO LOUNGE</p>
+              <h2 id="casino-games-heading" className="font-editorial mt-2 text-2xl">カジノラウンジ（5作品）</h2>
+            </div>
+            <span className="font-label text-[9px] text-[var(--ink-soft)]">01 — 05</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
+            ルーレット、バカラ、ビデオポーカー、ダイス、ケノ。すべて仮想チップで遊べる無料カジノゲームです。実際のお金は使いません。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {casinoGames.map((game, index) => (
+              <Link
+                key={game.href}
+                href={game.href}
+                className="group flex flex-col border border-[var(--line)] bg-[var(--paper-strong)] transition-colors hover:border-[var(--accent)]"
+              >
+                <div className={`relative flex aspect-[16/9] items-center justify-center overflow-hidden border-b border-[var(--line)] ${game.cover}`}>
+                  <span className="font-editorial text-2xl tracking-tight text-[#fffaf0] sm:text-3xl">{game.mark}</span>
+                  <span className="font-label absolute left-3 top-3 bg-[#12100d]/75 px-2 py-1 text-[9px] text-[#f2e9d8]">
+                    {String(index + 1).padStart(2, '0')} / CASINO
+                  </span>
+                  <span className="font-label absolute bottom-3 right-3 text-[8px] text-[#fffaf0]/70">CHIP ONLY</span>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="font-label text-[9px] text-[var(--accent)]">{game.genre}</p>
+                  <h3 className="font-editorial mt-2 text-xl leading-snug">{game.name}</h3>
+                  <p className="mt-1 text-xs font-bold text-[var(--ink)]">{game.tagline}</p>
+                  <p className="mt-2 flex-1 text-xs leading-6 text-[var(--ink-soft)]">{game.description}</p>
+                  <span className="font-label mt-4 inline-flex items-center gap-2 text-[9px] text-[var(--ink-soft)] transition-colors group-hover:text-[var(--accent)]">
+                    Play casino <span aria-hidden="true">→</span>
                   </span>
                 </div>
               </Link>
@@ -805,8 +912,8 @@ export default function GamesPage() {
 
         <SeoContentSection
           eyebrow="GAME GUIDE"
-          title="44の無料ブラウザゲーム＆物理シミュレーションラボ"
-          intro="1分で遊べる爽快社畜アクションから、最新ユーロ＆インディー風の現代ボードゲーム10作品、3D対応の伝統ボードゲーム8作品、定番トランプ5作品、みんなで盛り上がるパーティーゲーム、倍増時間や重力軌道を実測できる物理シミュレーションラボまで。気になるタイトルを選んでください。"
+          title="49の無料ブラウザゲーム・カジノ・物理シミュレーション"
+          intro="1分で遊べる社畜アクションから、現代＆古典ボードゲーム18作品、定番トランプ5作品、ルーレット・バカラ・ビデオポーカーなどのカジノ5作品、パーティーゲーム、物理シミュレーションラボまで。気になるタイトルを選んでください。"
           faqs={faqs}
           related={[
             { href: '/tools', label: '無料ツール一覧', description: '実用・統計・地図・クリエイティブの全49ツール' },

@@ -532,7 +532,7 @@ async function main() {
 
     fs.mkdirSync(path.dirname(imageFilePath), { recursive: true });
     const customMortgageCover = path.resolve('public/assets/mortgage_cover_v2.png');
-    const customHoldemCover = path.resolve('public/assets/holdem/ogp_cover.png');
+    const customHoldemCover = path.resolve('public/assets/holdem/ogp_cover_v2.png');
     if (route === '/mortgage-life' && fs.existsSync(customMortgageCover)) {
       await sharp(customMortgageCover)
         .resize(1200, 630, { fit: 'cover' })

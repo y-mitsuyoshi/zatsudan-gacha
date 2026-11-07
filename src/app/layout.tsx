@@ -4,7 +4,6 @@ import { Providers } from "./providers";
 import { DomainRedirect } from "@/components/DomainRedirect";
 import { AdSenseScript } from "@/components/AdSenseScript";
 import { Footer } from "@/components/Footer";
-import { MetaDedupe } from "@/components/MetaDedupe";
 import { themeCategories } from "@/lib/themeCategories";
 import { themeData } from "@/lib/themeData";
 
@@ -172,7 +171,6 @@ export default function RootLayout({
         <DomainRedirect />
         <Providers>
           {children}
-          <MetaDedupe />
           <Footer />
           <AdSenseScript />
         </Providers>

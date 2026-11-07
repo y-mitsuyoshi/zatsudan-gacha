@@ -12,6 +12,7 @@ const gameLinks: FooterLink[] = [
   { label: 'ゲーム一覧', href: '/games', note: `全${SITE_COUNTS.games}作品` },
   { label: '社畜ゲーム', href: '/games#game-list-heading', note: '10作品' },
   { label: 'パーティーゲーム', href: '/games#party-games', note: `${SITE_COUNTS.partyGames}作品` },
+  { label: 'カジノラウンジ', href: '/games#casino-games', note: `${SITE_COUNTS.casinoGames}作品` },
   { label: '物理シミュレーション', href: '/games#simulation-games', note: `${SITE_COUNTS.simulationGames}作品` },
   { label: '定番ボードゲーム', href: '/games#board-games', note: `${SITE_COUNTS.boardGames}作品` },
   { label: 'トランプゲーム', href: '/games#card-games', note: `${SITE_COUNTS.cardGames}作品` },
